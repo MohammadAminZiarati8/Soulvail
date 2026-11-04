@@ -12,7 +12,8 @@ public sealed class EnemyStatuses
     public const string HastedKey = "status.enemy.hasted";
     public const string PoisonedKey = "status.enemy.poisoned";
 
-    private const float CrowdControlBossScale = 0.5f;
+    // JG-26a: no boss is stunned, rooted or slowed.
+    private const float CrowdControlBossScale = 0f;
 
     public EnemyStatuses()
     {

@@ -54,14 +54,17 @@ public sealed class EnemyStatusesTests
     }
 
     [Test]
-    public void BossScale_HalfForCrowdControl_FullForHaste()
+    public void BossScale_ZeroForCrowdControl_FullForHaste()
     {
         EnemyAgent boss = _system.SpawnBoss(new ContentId(BossId), Vector3.Zero);
 
         _system.Stun(boss.Id, 2f);
         _system.Haste(boss.Id, 0.25f, 2f);
 
-        Assert.That(_system.Remaining(boss.Id, _statuses.Stunned.Id), Is.EqualTo(1f).Within(Tolerance));
+        Assert.That(_statuses.Stunned.BossScale, Is.Zero);
+        Assert.That(_statuses.Rooted.BossScale, Is.Zero);
+        Assert.That(_statuses.Slowed.BossScale, Is.Zero);
+        Assert.That(_system.Remaining(boss.Id, _statuses.Stunned.Id), Is.Zero);
         Assert.That(_system.Remaining(boss.Id, _statuses.Hasted.Id), Is.EqualTo(2f).Within(Tolerance));
     }
 

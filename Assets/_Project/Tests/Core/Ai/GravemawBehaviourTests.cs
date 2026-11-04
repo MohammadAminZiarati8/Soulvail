@@ -255,27 +255,27 @@ public sealed class GravemawBehaviourTests
     // ---- Rule 9 -------------------------------------------------------------------------------------
 
     [Test]
-    public void Stun_StretchesWindow()
+    public void Stun_WindowUnchanged()
     {
         StartSession(new Vector3(0f, 0f, 3f));
         SessionUntil(() => _gravemaw.State == GravemawState.Surfaced, 5f);
         SessionFor(2f);
-        Assert.That(_enemies.Stun(_agent.Id, 2f), Is.True, "A boss keeps half: 1 s.");
-        SessionFor(2.9f);
-        Assert.That(_gravemaw.State, Is.EqualTo(GravemawState.Surfaced), "3.9 s ticked of 4.");
+        Assert.That(_enemies.Stun(_agent.Id, 2f), Is.True, "JG-26a: a boss shrugs it off.");
+        SessionFor(1.9f);
+        Assert.That(_gravemaw.State, Is.EqualTo(GravemawState.Surfaced), "3.9 s of 4.");
         SessionFor(0.2f);
         Assert.That(_gravemaw.State, Is.EqualTo(GravemawState.Dive));
     }
 
     [Test]
-    public void Root_Tunnel_RingStillBites()
+    public void Root_Tunnel_BodyStillArrives()
     {
         StartSession(new Vector3(0f, 0f, 9f));
         SessionUntil(() => _gravemaw.State == GravemawState.Tunnel, 4f);
         Vector3 centre = _gravemaw.RingCentre;
         Assert.That(_enemies.Root(_agent.Id, 4f), Is.True);
         SessionUntil(() => _gravemaw.State == GravemawState.Surfaced, 1.5f);
-        Assert.That(Flat(_bossAt - centre), Is.GreaterThan(8f), "Rooted, the body stayed put.");
+        Assert.That(Flat(_bossAt - centre), Is.LessThan(1f), "JG-26a: the root never held it.");
         GravemawErupted erupted = _events.Single<GravemawErupted>();
         Assert.That(erupted.At, Is.EqualTo(centre));
         Assert.That(erupted.Hit, Is.True);
@@ -297,7 +297,7 @@ public sealed class GravemawBehaviourTests
     }
 
     [Test]
-    public void Slow_ChaseSlower()
+    public void Slow_ChaseUnchanged()
     {
         StartSession(new Vector3(0f, 0f, 20f));
         SessionFor(Frame);
@@ -305,7 +305,7 @@ public sealed class GravemawBehaviourTests
         Assert.That(full, Is.EqualTo(_agent.MoveSpeed.Value).Within(1e-4f));
         Assert.That(_enemies.Slow(_agent.Id, 0.5f, 4f), Is.True);
         SessionFor(Frame);
-        Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.EqualTo(full * 0.5f).Within(1e-3f));
+        Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.EqualTo(full).Within(1e-3f));
     }
 
     // ---- Rule 10 ------------------------------------------------------------------------------------

@@ -248,38 +248,30 @@ public sealed class WarlordChargeTests
         Assert.That(_warlord.GuardHalfArcDeg, Is.EqualTo(60f));
     }
 
-    // Rule 5: real session routing through RootGate, without CC knowledge in the behaviour.
+    // JG-26a through the real session: a root never stops the dash.
     [Test]
-    public void Rooted_InLane_NoDaze()
+    public void Rooted_InLane_DashRuns()
     {
         StartSession();
         SessionDash(true, 6f);
         Assert.That(_enemies.Root(_agent.Id, 4f), Is.True);
         SessionTick(0.1f);
-        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
-        SessionTick(0.59f);
-        Assert.That(_warlord.Move, Is.EqualTo(WarlordMove.None));
-        Assert.That(_warlord.IsDazed, Is.False);
-        Assert.That(_events.Count<WarlordDazed>(), Is.Zero);
+        Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.EqualTo(16f));
+        Assert.That(_agent.CrowdControl.IsRooted, Is.False);
     }
 
-    // Rule 6: a boss keeps half the stun and its dash timer freezes until release.
+    // JG-26a: a stun mid-dash is shrugged off; the dash keeps its clock.
     [Test]
-    public void Stunned_MidDash_NotTicked_HalfDuration()
+    public void Stunned_MidDash_DashRuns()
     {
         StartSession();
         SessionDash(false);
         SessionTick(0.8f);
         Assert.That(_enemies.Stun(_agent.Id, 2f), Is.True);
-        SessionTick(0.99f);
-        Assert.That(_warlord.Move, Is.EqualTo(WarlordMove.Charge));
-        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
         SessionTick(0.02f);
+        Assert.That(_agent.CrowdControl.IsStunned, Is.False);
+        Assert.That(_warlord.Move, Is.EqualTo(WarlordMove.Charge));
         Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.EqualTo(16f));
-        SessionTick(0.34f);
-        Assert.That(_warlord.Move, Is.EqualTo(WarlordMove.Charge));
-        SessionTick(0.02f);
-        Assert.That(_warlord.Move, Is.EqualTo(WarlordMove.None));
     }
 
     // Rule 7: stale reports are inert; a phase drops motion but honours an opened lane.

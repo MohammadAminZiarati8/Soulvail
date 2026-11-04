@@ -2,15 +2,15 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_Updated 2026-11-04, JG-25g._
+_Updated 2026-11-04, JG-26a._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-25g**: stage 25 is Gravemaw's. |
-| **Next task** | None specced; Apex (30) next. |
+| **Last merged** | **JG-26a**: bosses ignore CC. |
+| **Next task** | JG-25h: Gravemaw through cover. |
 | **Verified** | EditMode 5 517: 5 516 pass, 1 inconclusive. No PlayMode. 0 errors/new warnings; formatted. |
 
 ## What works
@@ -38,7 +38,7 @@ Levels bank points; paused tree picks. Death pays Shards. Save v5; older saves l
 Clash UI; LocKeys. 22 Marksman ranks.
 Tree preview/choice, rank pips, Learn. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles; 0.5 s auto gap; mirrored. Legacy saves expand to six.
-Player status icons; pooled enemy CC, bosses half; poison bubbles, drop icon. Marksman look, cyan trim,
+Player status icons; pooled enemy CC, bosses immune; poison bubbles, drop icon. Marksman look, cyan trim,
 KayKit quiver, glowing string, bright arrows; silent resume, plain menu.
 
 ## What does not work yet

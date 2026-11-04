@@ -238,7 +238,7 @@ public sealed class BindResolverTests
 
     [TestCase(true)]
     [TestCase(false)]
-    public void Boss_Half(bool bound)
+    public void Boss_Immune(bool bound)
     {
         EnemyAgent target = _enemies.SpawnBoss(new ContentId("boss.test"), new Vector3(4f, 0f, 0f));
         EnemyAgent anchor = bound ? _enemies.SpawnBoss(new ContentId("boss.test"), new Vector3(6f, 0f, 0f)) : null;
@@ -250,10 +250,10 @@ public sealed class BindResolverTests
             Step();
         }
 
-        Assert.That(Remaining(target), Is.EqualTo(bound ? 1f : 0.375f));
+        Assert.That(Remaining(target), Is.Zero);
         if (bound)
         {
-            Assert.That(Remaining(anchor), Is.EqualTo(1f));
+            Assert.That(Remaining(anchor), Is.Zero);
         }
     }
 

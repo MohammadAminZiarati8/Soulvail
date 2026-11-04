@@ -217,9 +217,9 @@ public sealed class ThornheartBehaviourTests
         Assert.That(_events.Of<EnemyTelegraph>()[1].Move, Is.EqualTo((int)ThornheartMove.Pods), "The rotation ran on.");
     }
 
-    // Rule 7, through the census that skips a stunned boss.
+    // JG-26a, through the census that would skip a stunned boss: the slam opens the heart on time.
     [Test]
-    public void Stun_PausesRotationAndExposed()
+    public void Stun_Shrugged_HeartOpensOnTime()
     {
         _enemies.Registry.Despawn(_agent.Id);
         _agent = _enemies.SpawnBoss(new ContentId(BossId), Vector3.Zero);
@@ -230,33 +230,10 @@ public sealed class ThornheartBehaviourTests
         Assert.That(_heart.Move, Is.EqualTo(ThornheartMove.Slam));
         float slamAt = _now;
         Assert.That(_enemies.Stun(_agent.Id, 4f), Is.True);
-        int roseBefore = RoseCount();
-        while (_agent.CrowdControl.IsStunned)
-        {
-            Step(census: true);
-            if (_agent.CrowdControl.IsStunned)
-            {
-                Assert.That(_heart.IsExposed, Is.False, "Not ticked while stunned.");
-            }
-        }
+        Assert.That(_agent.CrowdControl.IsStunned, Is.False);
 
-        Assert.That(RoseCount(), Is.GreaterThan(roseBefore), "The armed wall rose on its own clock.");
-        if (!_heart.IsExposed)
-        {
-            Step(census: true);
-        }
-
-        Assert.That(_heart.IsExposed, Is.True, "Opens on the first tick back.");
-        float openedAt = _now;
-
-        Assert.That(_enemies.Stun(_agent.Id, 4f), Is.True);
-        RunUntil(() => !_heart.IsExposed, census: true);
-        Assert.That(_now - openedAt, Is.GreaterThan(ThornheartBehaviour.ExposedSeconds + 1f), "The exposed clock paused.");
-
-        RunUntilTelegraphs(SlamTelegraph + 1, census: true);
-        float slamCycle = ThornheartBehaviour.SlamTelegraphSeconds + ThornheartBehaviour.RecoverSeconds
-            + ThornheartBehaviour.AttackGapSeconds;
-        Assert.That(_now - slamAt, Is.GreaterThan(slamCycle + 2f), "The rotation paused through both stuns.");
+        RunUntil(() => _heart.IsExposed, census: true);
+        Assert.That(_now - slamAt, Is.LessThan(ThornheartBehaviour.SlamTelegraphSeconds + 0.5f));
     }
 
     // Rule 8.

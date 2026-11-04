@@ -90,13 +90,13 @@ public sealed class TrapSystemTests
     }
 
     [Test]
-    public void Spring_Boss_Half()
+    public void Spring_Boss_NotRooted_StillHurt()
     {
         EnemyAgent boss = _enemies.SpawnBoss(new ContentId("boss.test"), Vector3.Zero);
         Upgrade(PlayerStat.SnareRoot, 1f);
         _handler.Apply(Snare(), this);
         _traps.Tick(0.3f);
-        Assert.That(_enemies.Remaining(boss.Id, new ContentId(EnemyStatuses.RootedKey)), Is.EqualTo(1.5f));
+        Assert.That(_enemies.Remaining(boss.Id, new ContentId(EnemyStatuses.RootedKey)), Is.Zero);
         Assert.That(boss.Health.Current, Is.EqualTo(Hp - 51f));
     }
 

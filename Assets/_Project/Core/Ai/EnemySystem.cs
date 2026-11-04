@@ -607,10 +607,13 @@ public sealed class EnemySystem
     }
 
     /// <summary>
-    /// Stuns a living enemy for <paramref name="seconds"/> (half on a boss): its behaviour is not
+    /// Stuns a living enemy for <paramref name="seconds"/> (never a boss, JG-26a): its behaviour is not
     /// ticked, so its timers freeze and it neither moves nor attacks (MK-06a rule 2).
     /// </summary>
-    /// <returns><see langword="false"/> for an unknown id or a corpse, with nothing changed.</returns>
+    /// <returns>
+    /// <see langword="false"/> for an unknown id or a corpse, with nothing changed; a living boss
+    /// returns <see langword="true"/> with nothing changed and nothing published.
+    /// </returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="seconds"/> is not positive and finite.</exception>
     public bool Stun(int enemyId, float seconds)
     {
@@ -619,6 +622,11 @@ public sealed class EnemySystem
         if (!TryLiving(enemyId, out EnemyAgent agent))
         {
             return false;
+        }
+
+        if (Shrugs(agent, Statuses.Stunned))
+        {
+            return true;
         }
 
         Announce(enemyId, Statuses.Stunned, agent.CrowdControl.Stun(Scaled(agent, Statuses.Stunned, seconds)));
@@ -639,6 +647,11 @@ public sealed class EnemySystem
         if (!TryLiving(enemyId, out EnemyAgent agent))
         {
             return false;
+        }
+
+        if (Shrugs(agent, Statuses.Rooted))
+        {
+            return true;
         }
 
         Announce(enemyId, Statuses.Rooted, agent.CrowdControl.Root(Scaled(agent, Statuses.Rooted, seconds)));
@@ -670,6 +683,11 @@ public sealed class EnemySystem
         if (!TryLiving(enemyId, out EnemyAgent agent))
         {
             return false;
+        }
+
+        if (Shrugs(agent, Statuses.Slowed))
+        {
+            return true;
         }
 
         Announce(enemyId, Statuses.Slowed, agent.CrowdControl.Slow(fraction, Scaled(agent, Statuses.Slowed, seconds)));
@@ -1487,6 +1505,10 @@ public sealed class EnemySystem
             throw new ArgumentOutOfRangeException(nameof(seconds), seconds, "A status lasts a positive, finite time.");
         }
     }
+
+    /// <summary>JG-26a: a boss refuses a status whose boss scale is zero — no timer, no event.</summary>
+    private static bool Shrugs(EnemyAgent agent, StatusRule rule) =>
+        agent.Behaviour is BossBehaviour && !(rule.BossScale > 0f);
 
     /// <summary>Rule 1: an agent driven by a <see cref="BossSpec"/> takes the rule's share; an Elite takes full.</summary>
     private static float Scaled(EnemyAgent agent, StatusRule rule, float seconds) =>

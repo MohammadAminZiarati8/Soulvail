@@ -58,15 +58,23 @@ public sealed class CrowdControlTests
     // ---- Rule 1 -------------------------------------------------------------------------------------
 
     [Test]
-    public void Boss_TakesHalf()
+    public void Boss_ShrugsOffStunRootSlow_EliteTakesFull()
     {
         EnemyAgent boss = _system.SpawnBoss(new ContentId(BossId), Vector3.Zero);
         EnemyAgent elite = _system.Spawn(new ContentId(EliteId), new Vector3(3f, 0f, 0f));
+        float speed = boss.MoveSpeed.Value;
+        _events.Clear();
 
-        Assert.That(_system.Stun(boss.Id, 2f), Is.True);
+        Assert.That(_system.Stun(boss.Id, 2f), Is.True, "A living boss is still a hit.");
+        Assert.That(_system.Root(boss.Id, 2f), Is.True);
+        Assert.That(_system.Slow(boss.Id, 0.5f, 2f), Is.True);
         Assert.That(_system.Stun(elite.Id, 2f), Is.True);
 
-        Assert.That(_system.Remaining(boss.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.EqualTo(1f).Within(Tolerance));
+        Assert.That(_system.Remaining(boss.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.Zero);
+        Assert.That(_system.Remaining(boss.Id, new ContentId(EnemyStatuses.RootedKey)), Is.Zero);
+        Assert.That(_system.Remaining(boss.Id, new ContentId(EnemyStatuses.SlowedKey)), Is.Zero);
+        Assert.That(boss.MoveSpeed.Value, Is.EqualTo(speed));
+        Assert.That(_events.Of<EnemyStatusChanged>(), Has.Count.EqualTo(1), "Only the elite's stun is announced.");
         Assert.That(_system.Remaining(elite.Id, new ContentId(EnemyStatuses.StunnedKey)), Is.EqualTo(2f).Within(Tolerance), "Elites take full.");
     }
 

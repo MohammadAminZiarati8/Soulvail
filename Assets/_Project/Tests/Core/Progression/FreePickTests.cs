@@ -172,8 +172,6 @@ public sealed class FreePickTests
         Assert.That(state.TakenNodeIds.Select(id => id.Value), Is.EqualTo(new[] { NodeA1 }));
         Assert.That(state.SkillPoints, Is.EqualTo(1));
         Assert.That(_events.Count<NodeTaken>(), Is.EqualTo(1));
-        Assert.That(_events.Count<OverflowGranted>(), Is.Zero, "A taken point is not an Overflow one.");
-        Assert.That(state.OverflowLevels, Is.Zero);
     }
 
     [Test]
@@ -247,30 +245,21 @@ public sealed class FreePickTests
         Assert.That(state.SkillPoints, Is.Zero);
     }
 
-    // ---- Rule 6: a full tree pays Overflow -------------------------------------------------------
+    // ---- LV-02c: a full tree keeps its points -----------------------------------------------------
 
     [Test]
-    public void Settle_NothingAvailable_SpendsAsOverflow()
+    public void Settle_FullTree_KeepsPointsBanked()
     {
-        // The whole tree taken and two points still owed: level 8 earns seven picks, five on nodes.
         Start(free: true, level: 8, pending: 2, taken: Everything());
-
         RunState state = _session.State;
+        float hp = state.PlayerMaxHp;
 
-        Assert.That(state.OverflowLevels, Is.Zero, "The fixture's premise: nothing was spare yet.");
+        Progression.SettleFullTree();
+        Progression.SettleFullTree();
+
         Assert.That(state.SkillPoints, Is.EqualTo(2));
-
-        Progression.SettleFullTree();
-
-        Assert.That(state.OverflowLevels, Is.EqualTo(2));
-        Assert.That(state.SkillPoints, Is.Zero);
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(2), "Each point is announced.");
-
-        // Idempotent: nothing is left to settle.
-        Progression.SettleFullTree();
-
-        Assert.That(state.OverflowLevels, Is.EqualTo(2));
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(2));
+        Assert.That(state.PlayerMaxHp, Is.EqualTo(hp));
+        Assert.That(_events.Count<OfferPresented>(), Is.Zero);
     }
 
     [Test]
@@ -281,8 +270,6 @@ public sealed class FreePickTests
         Progression.SettleFullTree();
 
         Assert.That(_session.State.SkillPoints, Is.EqualTo(2));
-        Assert.That(_session.State.OverflowLevels, Is.Zero);
-        Assert.That(_events.Count<OverflowGranted>(), Is.Zero);
 
         // And a run that draws is none of its business, however full its tree.
         _session.End();
@@ -291,7 +278,6 @@ public sealed class FreePickTests
         Progression.SettleFullTree();
 
         Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2), "A drawing run settles through OpenLevelUp.");
-        Assert.That(_session.State.OverflowLevels, Is.Zero);
 
         // A question the frame loop asks every frame, so a finished run answers it quietly.
         _session.End();
@@ -347,15 +333,13 @@ public sealed class FreePickTests
 
         Assert.That(state.SkillPoints, Is.EqualTo(3), "The banked points came back.");
         Assert.That(state.TakenNodeCount, Is.EqualTo(2));
-        Assert.That(state.OverflowLevels, Is.EqualTo(2), "And the Overflow sum is still derived.");
 
         Assert.That(
-            state.TakenNodeCount + state.OverflowLevels + state.SkillPoints,
-            Is.EqualTo(state.Level - 1),
-            "Level − 1 = Taken + Overflow + Pending, with no field of its own.");
+            state.TakenNodeCount + state.SkillPoints,
+            Is.LessThan(state.Level - 1),
+            "A legacy gap remains spent and grants nothing on resume.");
 
         Assert.That(state.OwnedActiveCount, Is.EqualTo(1), "The Active was replayed into the runner.");
-        Assert.That(_events.Count<OverflowGranted>(), Is.Zero, "A resume is silent.");
         Assert.That(_events.Count<NodeTaken>(), Is.Zero);
         Assert.That(_events.Count<OfferPresented>(), Is.Zero);
 
@@ -568,7 +552,6 @@ public sealed class FreePickTests
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ArenaEntry(new ContentId(FirstArenaId)), new ArenaEntry(new ContentId(SecondArenaId)) },
             bossRoster: null,
-            overflow: new OverflowSpec(0.02f, 0.02f),
             sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f),
             hasFreePick: free);
     }

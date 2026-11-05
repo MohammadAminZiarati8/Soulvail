@@ -62,11 +62,6 @@ namespace Soulvail.Game.Authoring
                  "level differently, or not at all.")]
         [SerializeField] private XpBlock _xp = new XpBlock();
 
-        [Tooltip("CH §5.2's Overflow for this mode: what a level is worth once the tree is full " +
-                 "and there is nothing left to buy. The same sentence as the curve above, " +
-                 "finished — so it lives beside it (GD §4.5).")]
-        [SerializeField] private OverflowBlock _overflow = new OverflowBlock();
-
         [Tooltip("LV-01a: what every level gained adds to base max HP and weapon damage, " +
                  "pooled with every other percentage. Gaining max HP heals the same amount.")]
         [SerializeField] private LevelGrowthBlock _levelGrowth = new LevelGrowthBlock();
@@ -175,7 +170,6 @@ namespace Soulvail.Game.Authoring
                     BuildRoster(),
                     BuildArenas(),
                     BuildBossRoster(),
-                    BuildOverflow(),
                     BuildEssence(),
                     BuildSanctum(),
                     BuildOrdealSchedule(),
@@ -245,33 +239,8 @@ namespace Soulvail.Game.Authoring
         }
 
         /// <summary>
-        /// Turns the authored Overflow block into the <see cref="OverflowSpec"/> core consumes.
-        /// </summary>
-        /// <remarks>
-        /// A missing block is refused rather than defaulted, for <see cref="BuildScaling"/>'s
-        /// reason — and the consequence here is the quietest of the three, which is why it is
-        /// refused rather than shrugged at: a mode with no Overflow block would level a player past
-        /// a full tree and give them nothing, with no error and nothing on screen to say the grant
-        /// had stopped meaning anything. A block that is <em>present</em> and says zero is a
-        /// different statement and is legal (<see cref="OverflowSpec"/>).
-        /// </remarks>
-        private OverflowSpec BuildOverflow()
-        {
-            if (_overflow is null)
-            {
-                throw new ArgumentException(
-                    "its overflow block is missing. CH §5.2's Overflow is not optional — a mode "
-                        + "without one pays nothing for a level with nothing left to buy, and says "
-                        + "nothing about it.",
-                    nameof(_overflow));
-            }
-
-            return _overflow.ToSpec();
-        }
-
-        /// <summary>
         /// Turns the authored growth block into the <see cref="LevelGrowthSpec"/> core consumes.
-        /// A missing block is refused for <see cref="BuildOverflow"/>'s reason; a block saying zero
+        /// A missing block is refused for <see cref="BuildScaling"/>'s reason; a block saying zero
         /// is a mode whose levels grow nothing, and legal.
         /// </summary>
         private LevelGrowthSpec BuildLevelGrowth()
@@ -291,7 +260,7 @@ namespace Soulvail.Game.Authoring
         /// Turns the authored income block into the <see cref="EssenceSpec"/> core consumes.
         /// </summary>
         /// <remarks>
-        /// A missing block is refused rather than defaulted, for <see cref="BuildOverflow"/>'s
+        /// A missing block is refused rather than defaulted, for <see cref="BuildScaling"/>'s
         /// reason and with its consequence: a mode with no Essence block would clear stage after
         /// stage and pay nothing, with no error and nothing on screen to say the economy had
         /// stopped meaning anything. A block that is <em>present</em> and says zero is a different
@@ -608,45 +577,6 @@ namespace Soulvail.Game.Authoring
         }
 
         /// <summary>
-        /// CH §5.2's Overflow as a designer tunes it — what a level is worth when the tree is full.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// A <c>[Serializable]</c> class for <see cref="XpBlock"/>'s reason, and it draws as the
-        /// foldout beside it: one says what a level costs, the other what a spare one buys.
-        /// </para>
-        /// <para>
-        /// <b>The initialisers are the two numbers that shipped as <c>const</c>s from M3-08a to
-        /// M5-06b</b>, so a mode created from the Create menu pays for a full tree rather than being
-        /// silently worth nothing — <see cref="ScalingBlock"/>'s bargain, third of three. Traps §7
-        /// applies exactly as it does there: <c>Descent.asset</c> ships the same 0.02 and 0.02, so
-        /// <c>ModeDefinitionTests.Descent_EveryYamlKeyBindsToAField</c> is the row that can tell a
-        /// bound key from a dropped one, and the row that asserts the values cannot.
-        /// </para>
-        /// <para>
-        /// It validates nothing <see cref="OverflowSpec"/> already validates; <c>[Min]</c> clamps
-        /// the Inspector GUI and nothing else (Traps §5), which is why a hand-edited negative still
-        /// meets a door at conversion.
-        /// </para>
-        /// </remarks>
-        [Serializable]
-        private sealed class OverflowBlock
-        {
-            [Header("Overflow — CH §5.2: a level with nothing left to buy")]
-            [Tooltip("What one Overflow level adds to weapon damage, as a fraction pooled with " +
-                     "every other percentage — 0.02 is +2 %, and ten levels are ×1.20 rather " +
-                     "than 1.02^10 (ADR-0008).")]
-            [SerializeField, Min(0f)] private float _damage = 0.02f;
-
-            [Tooltip("What one Overflow level adds to maximum hit points, on the same terms. " +
-                     "Raising the ceiling is deliberately not a heal.")]
-            [SerializeField, Min(0f)] private float _maxHp = 0.02f;
-
-            /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
-            public OverflowSpec ToSpec() => new OverflowSpec(_damage, _maxHp);
-        }
-
-        /// <summary>
         /// LV-01a's per-level growth as a designer tunes it. <b>Initialisers are zero on purpose</b>
         /// (Traps §7): the Jungle authors 0.03 and 0.02, so
         /// <c>ModeDefinitionTests.Jungle_CarriesItsLevelGrowth</c> can tell a bound key from a
@@ -673,7 +603,7 @@ namespace Soulvail.Game.Authoring
         /// </summary>
         /// <remarks>
         /// <para>
-        /// A <c>[Serializable]</c> class for <see cref="OverflowBlock"/>'s reason, and it draws as
+        /// A <c>[Serializable]</c> class for <see cref="LevelGrowthBlock"/>'s reason, and it draws as
         /// the foldout beside it: one says what a level is worth, the other what a stage is.
         /// </para>
         /// <para>

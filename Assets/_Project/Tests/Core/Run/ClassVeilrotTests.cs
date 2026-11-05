@@ -616,7 +616,7 @@ public sealed class ClassVeilrotTests
             _events);
 
         var levelUp = new LevelUpFlow(
-            tree, progression, runner, registry, _events, new OverflowSpec(0.02f, 0.02f), meter);
+            tree, progression, runner, registry, _events, meter);
 
         return new SanctumShop(prices, new EssenceWallet(_events), _combat, meter, tree, levelUp, _events, relationship);
     }

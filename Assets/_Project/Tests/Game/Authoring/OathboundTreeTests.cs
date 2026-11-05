@@ -693,12 +693,8 @@ public sealed class OathboundTreeTests
         Assert.That(session.State.TakenNodeCount, Is.EqualTo(12));
         Assert.That(session.State.IsTreeFull, Is.True);
 
-        // The thirteenth pick is spent the moment the twelfth choice re-opens: Choose clears the
-        // offer and calls Open again, which finds nothing available and grants CH §5.2's Overflow
-        // rather than pausing on an empty screen.
         Assert.That(session.State.HasOffer, Is.False);
-        Assert.That(session.State.OverflowLevels, Is.EqualTo(1), "The thirteenth level overflowed.");
-        Assert.That(session.State.PendingLevelUps, Is.Zero, "And nothing is left banked.");
+        Assert.That(session.State.PendingLevelUps, Is.EqualTo(1), "The thirteenth point stays banked.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

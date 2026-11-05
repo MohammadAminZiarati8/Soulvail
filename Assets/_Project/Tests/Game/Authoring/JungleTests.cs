@@ -119,7 +119,7 @@ public sealed class JungleTests
     /// </remarks>
     private static readonly string[] SharedBlocks =
     {
-        "_startingStage", "_scaling", "_overflow", "_essence",
+        "_startingStage", "_scaling", "_essence",
         "_sanctum", "_ordeals",
     };
 
@@ -212,7 +212,6 @@ public sealed class JungleTests
             session.End();
         }
     }
-
 
     [Test]
     public void Jungle_Cousins_HaveTheirNumbers()

@@ -14,7 +14,7 @@ namespace Soulvail.Core.Content;
 /// </para>
 /// <para>
 /// <b>The cost is stated rather than hidden:</b> a shipped Ordeal leaves four dials at their neutral
-/// value, which is what <see cref="OverflowSpec"/> already looks like. The gain is that M6-06b is four
+/// value, which is what <see cref="LevelGrowthSpec"/> already looks like. The gain is that M6-06b is four
 /// one-line reads instead of four dispatches.
 /// </para>
 /// <para>
@@ -170,7 +170,7 @@ public sealed class OrdealSpec
 
     /// <summary>
     /// The one door for all three multipliers, written once: they are the same kind of number and
-    /// owe the same sentence — <see cref="OverflowSpec"/>'s <c>Require</c>'s shape.
+    /// owe the same sentence — <see cref="LevelGrowthSpec"/>'s <c>Require</c>'s shape.
     /// </summary>
     /// <remarks>
     /// <c>!(value &gt; 0f)</c> so NaN is refused with zero and the negatives (AR §18.3), and infinity

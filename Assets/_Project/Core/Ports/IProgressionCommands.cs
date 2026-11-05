@@ -72,13 +72,12 @@ public interface IProgressionCommands
     /// Whether an offer is currently on the table — what the gate holds the pause against.
     /// </summary>
     /// <remarks>
-    /// <see langword="false"/> when no run is running, and <see langword="false"/> for an Overflow
-    /// level, which is granted silently and never puts anything on a table (M3-08a rule 7).
+    /// False when no run is running or no node is available. Points stay banked without an offer.
     /// </remarks>
     bool HasOffer { get; }
 
     /// <summary>
-    /// Draws the offer for the pick that is owed, or spends it as Overflow (CH §5.2).
+    /// Draws an offer for an owed pick when nodes are available; otherwise keeps it banked.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -146,14 +145,11 @@ public interface IProgressionCommands
     void TakeNode(ContentId id);
 
     /// <summary>
-    /// Spends every banked point as Overflow (CH §5.2) when the tree has no node left to take;
-    /// otherwise does nothing (UI-03a rule 6).
+    /// Leaves unspent points banked, including when the tree is full (LV-02c).
     /// </summary>
     /// <remarks>
-    /// <b>Called every frame the frame loop sees a banked point</b>, where it calls
-    /// <see cref="OpenLevelUp"/> for a mode that draws. A no-op unless the mode has a free pick and
-    /// nothing is available — and, being a question the frame loop asks every frame, it is a no-op
-    /// rather than a throw when no run is running.
+    /// Called every frame the frame loop sees a banked point in free-pick mode.
+    /// This is a no-op, including when no run is running.
     /// </remarks>
     void SettleFullTree();
 

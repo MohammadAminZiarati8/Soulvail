@@ -17,46 +17,11 @@ namespace Soulvail.Core.Progression;
 // outside, publishing rather than being subscribed to.
 
 /// <summary>
-/// A run's level-up flow: the offer on the table, the pick it is for, and CH §5.2's Overflow for a
-/// pick with nothing left to spend it on.
+/// A run's lazy level-up offers and ordered skill picks. Points stay banked when no node is available.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>The draw is lazy, and that is the whole of M3-04's inherited rule.</b> <see cref="Open"/> is
-/// called on the frame <em>after</em> the tick that earned the level, never inside it. The boundary
-/// snapshot is taken on entering <c>Clear</c> — the same tick as a stage's last kill, which is the
-/// kill most likely to level (AR §18.1, M2-14a) — so it captures the <c>Offers</c> stream before
-/// any draw, and a run killed with a pick owed rolls the same three nodes on resume. Drawn in-tick
-/// instead, the capture would record a position the draw had already advanced and killing the app
-/// would be a free reroll. Nothing here reads a clock; <c>RunTicker</c> owns the <em>when</em>.
-/// </para>
-/// <para>
-/// An empty draw does not prove the run is full: level-gated nodes may remain, and an unchosen
-/// path still has room. MK-01b keeps those points banked until a node can be taken; only a full
-/// class and path tree pays Overflow.
-/// </para>
-/// <para>
-/// <b>Overflow is silent and instant: no pause, no screen.</b> CH §5.2 makes it a consolation for a
-/// level with nowhere to go, and GD §13.1's pause exists to let someone <em>choose</em>. Pausing a
-/// fight to show a card with one button would tax the player for the game having run out of nodes.
-/// It is announced instead, through <see cref="OverflowGranted"/>, so M3-10's HUD or M3-13 can toast
-/// it — which keeps CH §5.2's <em>"levelling never stops meaning something"</em> visible without
-/// stopping the game.
-/// </para>
-/// <para>
-/// <b>Nothing here is stored on the snapshot, and v4 deliberately did not add a field for it
-/// either</b> (M6-01b).
-/// Every pick a run has earned is spent on a node, spent on Overflow, or unspent, so the Overflow
-/// count is <em>derived</em> on resume — see <see cref="GrantOverflow"/>. The offer is not saved
-/// either: the lazy draw means a resumed run re-draws the identical three from the same stream
-/// position, which is a stronger guarantee than storing them and one that survives a content change.
-/// </para>
-/// <para>
-/// <b>This object is never handed out of <c>RunState</c></b> (AR §18.2, the seventh time).
-/// <see cref="Choose"/> takes a node and <see cref="Open"/> consumes the run's <c>Offers</c> stream;
-/// a public handle would let a view grant the player a skill and spend draws the simulation is
-/// counting on. <c>RunState</c> exposes scalar reads and <see cref="Offer"/> instead.
-/// </para>
+/// Draws happen after the tick that earns a level, preserving the saved Offers stream position.
+/// RunState exposes scalar reads and the offer view rather than the live flow.
 /// </remarks>
 public sealed class LevelUpFlow
 {
@@ -86,16 +51,7 @@ public sealed class LevelUpFlow
     private readonly OfferView _offerView;
 
     /// <summary>
-    /// The two effects, built once and applied repeatedly. They are immutable and identical every
-    /// time — <c>EffectRegistry.Apply</c> adds a fresh <c>Modifier</c> per call whatever instance it
-    /// is handed — so constructing a pair per Overflow level would allocate on a path that has no
-    /// reason to.
-    /// </summary>
-    private readonly ModifyStat _overflowDamage;
-    private readonly ModifyStat _overflowMaxHp;
-
-    /// <summary>
-    /// The uninstalled path also counts as room when deciding whether to pay Overflow.
+    /// An uninstalled path counts as room when checking whether the run has a full tree.
     /// </summary>
     private readonly PathFlow _path;
 
@@ -111,16 +67,8 @@ public sealed class LevelUpFlow
     /// <param name="progression">Where the picks are banked and spent.</param>
     /// <param name="runner">Told directly about a chosen Active, because core does not subscribe to
     /// its own events (M3-03 rule 7).</param>
-    /// <param name="effects">Where Overflow's two modifiers go on.</param>
+    /// <param name="effects">Where a chosen Pact applies its effects.</param>
     /// <param name="events">Where the three announcements go out.</param>
-    /// <param name="overflow">
-    /// CH §5.2's Overflow for the mode being played — what a spare level is worth
-    /// (<see cref="ModeSpec.Overflow"/>). <b>An argument rather than two <c>const</c>s, and the
-    /// <c>const</c>s are gone rather than kept as defaults</b> (M5-06b rules 8 and 10): a default
-    /// beside an authored value is a second place the number lives, and the next reader would not
-    /// know which one the game used. A zeroed spec is ordinary and means Overflow is worth nothing
-    /// in this mode.
-    /// </param>
     /// <param name="veilrot">
     /// GD §10's meter, which a corrupted take pays into (M6-05b rule 6). Required — every run has
     /// one, and a null would be a run that took Pacts for free (M6-01a rule 5's argument).
@@ -138,7 +86,7 @@ public sealed class LevelUpFlow
     /// <param name="path">The run's path choice, or null for a class without paths.</param>
     /// <exception cref="ArgumentNullException">A required reference argument is null.</exception>
     public LevelUpFlow(SkillTree tree, LevelTracker progression, SkillRunner runner,
-                       EffectRegistry effects, IDomainEvents events, OverflowSpec overflow,
+                       EffectRegistry effects, IDomainEvents events,
                        Veilrot veilrot, Ordeals ordeals = null, bool isFree = false, PathFlow path = null)
     {
         _tree = tree ?? throw new ArgumentNullException(nameof(tree));
@@ -154,12 +102,6 @@ public sealed class LevelUpFlow
 
         _generator = new OfferGenerator(tree.Rules);
         _offerView = new OfferView(this);
-
-        // Built here rather than per grant for the reason the fields say, and read off the mode
-        // rather than off a constant as of M5-06b: OverflowSpec has already refused a NaN, an
-        // infinity and a negative, so nothing below has an opinion about the two numbers.
-        _overflowDamage = new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, overflow.Damage);
-        _overflowMaxHp = new ModifyStat(PlayerStat.MaxHp, ModifierKind.PercentAdd, overflow.MaxHp);
     }
 
     /// <summary>
@@ -188,11 +130,6 @@ public sealed class LevelUpFlow
 
     /// <summary>Which offered card is a Pact, or <c>-1</c>. Empty offer answers <c>-1</c>.</summary>
     public int PactIndex => _count > 0 ? _pactIndex : -1;
-
-    /// <summary>
-    /// How many levels this run has spent on CH §5.2's Overflow rather than on a node.
-    /// </summary>
-    public int OverflowLevels { get; private set; }
 
     /// <summary>Rerolls bought in the Sanctum and not yet spent by a draw (M6-02b rule 3).</summary>
     public int RerollCharges { get; private set; }
@@ -225,21 +162,9 @@ public sealed class LevelUpFlow
     }
 
     /// <summary>
-    /// Opens the level-up for the pick that is owed: draws an offer, or spends the pick as Overflow,
-    /// or does nothing when nothing is owed.
+    /// Draws one offer when a point is owed and nodes are available; otherwise keeps points banked.
+    /// Idempotent while an offer is open, so unseen draws cannot advance the saved stream.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>It loops while picks are owed and stops at the first that draws something</b>, because a
-    /// grant can cross several thresholds at once (M3-01a rule 4) and the first two may both be
-    /// Overflow. At most one offer is on the table at a time, and <c>OfferPresented.PicksOwed</c> is
-    /// what CH §5.1's screen shows as <em>"pick 1 of n"</em>.
-    /// </para>
-    /// <para>
-    /// Idempotent while an offer is open: no second event, and — the half that matters — no second
-    /// draw, because a draw the player never sees is a seed divergence (AR §18.3).
-    /// </para>
-    /// </remarks>
     /// <param name="offers">The run's <c>Offers</c> stream, and no other (ADR-0011).</param>
     /// <exception cref="ArgumentNullException"><paramref name="offers"/> is null.</exception>
     public void Open(IRandomStream offers)
@@ -249,7 +174,7 @@ public sealed class LevelUpFlow
             throw new ArgumentNullException(nameof(offers));
         }
 
-        // A free run never draws: its points wait for Take, or for Settle when the tree is full
+        // A free run never draws: its points wait for Take
         // (UI-03a rule 2). Guarded here as well as by RunState.IsLevelUpPending, so a stray call
         // cannot spend a draw the simulation is not counting on.
         if (IsFree)
@@ -266,14 +191,14 @@ public sealed class LevelUpFlow
 
         int cards = CardsToOffer();
 
-        while (_progression.PendingLevelUps > 0)
+        if (_progression.PendingLevelUps > 0)
         {
             int drawn = _generator.Draw(_tree, offers, cards, _offer, out int pactIndex);
 
             if (drawn > 0)
             {
                 // **M6-02b rule 3: a banked reroll is spent here, and only on a draw that found
-                // something** — an Overflow level below spends no charge, because there was no
+                // something** — a full tree spends no charge, because there is no
                 // offer to reroll. The first three are discarded unseen and the second draw comes
                 // from the same Offers stream, so the only thing the extra draw moves is which
                 // nodes this run is offered later (ADR-0011). The tree has not changed between the
@@ -304,14 +229,6 @@ public sealed class LevelUpFlow
 
                 return;
             }
-
-            // A locked level gate or a future path is room for this point, even with an empty draw.
-            if (!IsFull)
-            {
-                return;
-            }
-
-            GrantOne();
         }
     }
 
@@ -449,92 +366,9 @@ public sealed class LevelUpFlow
         }
     }
 
-    /// <summary>
-    /// Spends every banked point as Overflow when the tree has no node left to take; otherwise does
-    /// nothing (UI-03a rule 6).
-    /// </summary>
-    /// <remarks>
-    /// <see cref="Open"/>'s Overflow branch for a run that never draws: a point with nowhere to go is
-    /// worth CH §5.2's consolation rather than waiting for a screen that has nothing on it. Nothing
-    /// here is a draw, so it is as safe on any frame as <see cref="Open"/> is on the frame after a
-    /// tick.
-    /// </remarks>
+    /// <summary>Leaves unspent points banked, including when the tree is full.</summary>
     public void Settle()
     {
-        if (!IsFree || _progression.PendingLevelUps <= 0)
-        {
-            return;
-        }
-
-        if (!IsFull)
-        {
-            return;
-        }
-
-        while (_progression.PendingLevelUps > 0)
-        {
-            GrantOne();
-        }
-    }
-
-    /// <summary>
-    /// Puts <paramref name="times"/> Overflow levels on, silently and without spending a pick — the
-    /// resume path.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Silent, for the reason the whole restore block is</b> (AR §18.1): nothing may publish
-    /// before <c>RunStarted</c>, and a resumed run's Overflow was earned in a previous session and
-    /// is not news. It spends nothing because the pick was already spent in that session — the
-    /// snapshot's <c>PendingLevelUps</c> is restored separately by <c>LevelTracker.Restore</c>.
-    /// </para>
-    /// <para>
-    /// <b>Its caller derives the count rather than reading it</b>, because no field carries it:
-    /// <c>Overflow = Level − 1 − TakenNodeCount − PendingLevelUps</c>, the exact mirror of M3-03
-    /// rule 6. See <c>RunSession.Start</c>, which also owns the refusal when that does not add up.
-    /// </para>
-    /// </remarks>
-    /// <param name="times">How many levels. Zero is ordinary and does nothing.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="times"/> is negative.</exception>
-    internal void GrantOverflow(int times)
-    {
-        if (times < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(times), times, "Overflow cannot be negative.");
-        }
-
-        for (int i = 0; i < times; i++)
-        {
-            ApplyOneOverflow();
-        }
-    }
-
-    /// <summary>Spends one owed pick on Overflow and announces it.</summary>
-    private void GrantOne()
-    {
-        ApplyOneOverflow();
-
-        _progression.SpendLevelUp();
-
-        // Published last, after the modifiers are on and the pick is spent, so a handler reading the
-        // state it is being told about sees the settled one — `NodeTaken`'s rule.
-        _events.Publish(new OverflowGranted(_progression.Level, OverflowLevels));
-    }
-
-    /// <summary>
-    /// The arithmetic both paths share: two <c>PercentAdd</c> modifiers under one source, so ten
-    /// Overflow levels at Descent's authored 2 % are ×1.20 rather than 1.02¹⁰ (GD §13.1's
-    /// <em>"additively within a family"</em>, ADR-0008's order). Raising <c>MaxHp</c> is
-    /// deliberately <b>not</b> a heal (M3-05).
-    /// </summary>
-    private void ApplyOneOverflow()
-    {
-        OverflowLevels++;
-
-        // `this` is the source for the whole run, so the ten modifiers pool rather than stacking
-        // multiplicatively and a single RemoveAll would take them all back (M3-05 rule 7).
-        _effects.Apply(_overflowDamage, this);
-        _effects.Apply(_overflowMaxHp, this);
     }
 
     /// <summary>

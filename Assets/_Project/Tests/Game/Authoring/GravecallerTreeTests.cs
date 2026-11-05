@@ -18,8 +18,7 @@ namespace Soulvail.Tests.Game.Authoring;
 
 /// <summary>
 /// The twelve shipped Gravecaller nodes, their twelve effect assets and the tree that holds them —
-/// plus <c>Descent.asset</c>'s Overflow block, which is what a level is worth once that tree is
-/// full. <c>OathboundTreeTests</c>' shape, one class along.
+/// <c>OathboundTreeTests</c>' shape, one class along.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -36,13 +35,6 @@ namespace Soulvail.Tests.Game.Authoring;
 /// count field and the verb — and shipped it reachable by no asset;
 /// <see cref="MinionNodes_ChangeWhatAWightIsWorth"/> is the row that walks it end to end, from an
 /// effect asset to the numbers a raised body stands up with.
-/// </para>
-/// <para>
-/// <b>The two <c>Overflow_*</c> rows are ledger row 5(i) and are deliberately here.</b> They need
-/// the shipped <c>Descent.asset</c>, and a shipped asset means <see cref="AssetDatabase"/>, which
-/// <c>Soulvail.Tests.Core</c> cannot reach (M0-10). <c>LevelUpFlowTests</c> and
-/// <c>TimeToKillTests</c> keep the numbers they can assert without one and meet these rows at 0.02
-/// — the arrangement <c>TimeToKillTests</c> has had with <c>KeenCenser.asset</c> since M3-12c.
 /// </para>
 /// <para>
 /// <b>Nothing about this class is playable yet and no row here claims otherwise</b> (M5-02 rule 9).
@@ -126,10 +118,7 @@ public sealed class GravecallerTreeTests
     private const float HuskContactDamage = 8f;
     private const float HuskMoveSpeed = 2f;
 
-    /// <summary>What <c>Descent.asset</c> authors per Overflow level (rule 11).</summary>
-    private const float OverflowPerLevel = 0.02f;
-
-    /// <summary><c>Oathbound.asset</c>'s maximum hit points, for the Overflow rows' arithmetic.</summary>
+    /// <summary><c>Oathbound.asset</c>'s maximum hit points, for resumed runs.</summary>
     private const float OathboundMaxHp = 140f;
 
     private const int Capacity = 64;
@@ -814,60 +803,6 @@ public sealed class GravecallerTreeTests
                 Is.False,
                 $"An Oathbound run can reach {id}.");
         }
-    }
-
-    // ---- Ledger row 5(i): what a level is worth ---------------------------------------------------
-
-    [Test]
-    public void Overflow_ComesFromTheMode()
-    {
-        // **Rules 8 and 9, end to end and without a literal in sight.** The run's grant is measured
-        // against what Descent.asset's own block says, so retuning the asset moves this row with it
-        // — which is the whole of what row 5(i) bought. Overflow_TheShippedRunIsIdentical is the row
-        // that holds the literal, so a retune is still a visible diff somewhere.
-        OverflowSpec authored = Load<ModeDefinition>(DescentPath).ToSpec().Overflow;
-
-        RunSession session = StartRun(OathboundId, level: 15, pending: 0);
-
-        Assert.That(session.State.OverflowLevels, Is.EqualTo(14), "15 − 1 − 0 taken − 0 owed.");
-
-        Assert.That(
-            session.State.PlayerMaxHp,
-            Is.EqualTo(OathboundMaxHp * (1f + (14f * authored.MaxHp))).Within(0.01f),
-            "Fourteen PercentAdd modifiers under one source, pooled (ADR-0008).");
-
-        // **The damage half is not asserted through the run, and cannot be.** RunState hands out no
-        // weapon number — `Combat` is internal on AR §18.2's "a live object is never handed out",
-        // and `PlayerMaxHp` exists only because the HUD draws a bar. So this row owns the half a
-        // public read reaches and `LevelUpFlowTests.Overflow_ARetunedModeMovesTheGrant` owns the
-        // other, over a flow built by hand; the two meet at the OverflowSpec rather than at a
-        // number, which is the stronger seam.
-        Assert.That(
-            authored.Damage,
-            Is.GreaterThan(0f),
-            "A mode that grants no damage would make the sibling row above vacuous.");
-    }
-
-    [Test]
-    public void Overflow_TheShippedRunIsIdentical()
-    {
-        // **Rule 11, and the row that makes this an ADR-0006 change rather than a balance one.**
-        // Descent.asset carries 0.02 and 0.02, so every number in every shipped run is the same
-        // before and after row 5(i) — ×1.28 on both stats at fourteen Overflow levels, which is what
-        // RunSessionResumeTests.Resume_DerivesOverflow has asserted over a fixture mode since M3-08a
-        // and this asserts over the real one.
-        OverflowSpec authored = Load<ModeDefinition>(DescentPath).ToSpec().Overflow;
-
-        Assert.That(authored.Damage, Is.EqualTo(OverflowPerLevel).Within(1e-7f));
-        Assert.That(authored.MaxHp, Is.EqualTo(OverflowPerLevel).Within(1e-7f));
-
-        RunSession session = StartRun(OathboundId, level: 15, pending: 0);
-
-        Assert.That(session.State.PlayerMaxHp, Is.EqualTo(OathboundMaxHp * 1.28f).Within(0.01f));
-
-        // And the control: retuning the asset is meant to move the game, so the number this row
-        // pins must not be reachable by accident from a mode that grants nothing.
-        Assert.That(session.State.PlayerMaxHp, Is.Not.EqualTo(OathboundMaxHp).Within(0.01f));
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

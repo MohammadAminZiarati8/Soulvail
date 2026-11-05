@@ -799,7 +799,6 @@ public sealed partial class TreeScreenTests : InputTestFixture
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ArenaEntry(new ContentId(ArenaId)) },
-            overflow: new OverflowSpec(0.02f, 0.02f),
             hasFreePick: free);
     }
 

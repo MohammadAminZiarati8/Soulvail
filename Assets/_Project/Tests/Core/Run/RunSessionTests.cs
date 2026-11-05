@@ -621,9 +621,7 @@ public sealed class RunSessionTests
 
         Assert.That(_session.State.HasOffer, Is.False);
         Assert.That(_session.State.Offer, Is.Empty);
-        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0), "no tree means no Overflow either.");
         Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(0));
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0));
 
         // Choosing, on the other hand, is a view reporting a tap on a card that cannot exist.
         Assert.Throws<InvalidOperationException>(() => progression.ChooseOffer(0));

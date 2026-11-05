@@ -1300,8 +1300,7 @@ public sealed class SplashFlowTests
         Scalings.Xp(),
         Array.Empty<RosterEntry>(),
         new[] { new ArenaEntry(new ContentId("arena.pillars")) },
-        null,
-        new OverflowSpec(0.02f, 0.02f));
+        null);
 
     private static ContentId Primary(char branch, int tier, char slot) =>
         Id($"skill.oathbound.{branch}{tier}{slot}");

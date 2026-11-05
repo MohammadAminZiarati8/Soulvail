@@ -822,8 +822,7 @@ public sealed class SplashPresenterTests
         new XpCurve(20f, 12f, 1.4f),
         Array.Empty<RosterEntry>(),
         new[] { new ArenaEntry(new ContentId(ArenaId)) },
-        null,
-        new OverflowSpec(0.02f, 0.02f));
+        null);
 
     private static ContentId Primary(char branch, int tier, char slot) =>
         Id($"skill.oathbound.{branch}{tier}{slot}");

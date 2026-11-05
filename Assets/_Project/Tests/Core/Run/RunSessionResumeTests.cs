@@ -329,7 +329,7 @@ public sealed class RunSessionResumeTests
             _random.Seed,
 
             // Three nodes taken and one pick still owed needs level 5 to add up (M3-08a rule 9):
-            // 5 − 1 − 3 − 1 = 0 Overflow. The fixture's default level 4 describes a run that spent
+            // 5 − 1 = 3 taken + 1 pending. The fixture's default level 4 describes a run that spent
             // four picks having earned three, which RunSession.Start now refuses outright.
             level: 5,
             takenNodeIds: ThreeActives(),
@@ -568,15 +568,11 @@ public sealed class RunSessionResumeTests
                 4,
                 _random.Seed,
 
-                // Level 3 with one node taken and one owed is 3 − 1 − 1 − 1 = 0 Overflow, which is
-                // what keeps this row's maximum exactly 160 (M3-08a rule 9). At the fixture's
-                // default level 4 the run would also carry one Overflow level, and the +2 % would
-                // turn a row that reads as arithmetic into one that reads as a tolerance.
+                // Level 3 earned two picks: one taken and one pending.
                 level: 3,
                 playerHp: SavedHpAboveBaseMax,
                 takenNodeIds: new[] { new ContentId(NodeMaxHp) }));
 
-        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0), "the row's arithmetic assumes none.");
         Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp + MaxHpNodeBonus).Within(0.01f));
 
         Assert.That(
@@ -591,75 +587,52 @@ public sealed class RunSessionResumeTests
         Assert.That(SavedHpAboveBaseMax, Is.LessThanOrEqualTo(TreeMaxHp + MaxHpNodeBonus));
     }
 
-    // ---- Overflow on resume (M3-08a rule 9) ------------------------------------------------------
+    // ---- LV-02c: retired grants do not change resumed stats --------------------------------------
 
     [Test]
-    public void Resume_DerivesOverflow()
+    public void Resume_FormerOverflowLevels_GrantNothing()
     {
-        BuildWithTree(seed: 7);
+        BuildWithTree(seed: 7, fullLegacyTree: true);
+        var taken = new ContentId[20];
+        for (int i = 0; i < taken.Length; i++)
+        {
+            taken[i] = new ContentId($"skill.legacy.n{i}");
+        }
 
-        // **Nothing is stored and nothing needs to be.** Level 15 with no node taken and no pick
-        // owed says that all fourteen picks this run earned went somewhere that is not a node — and
-        // Overflow is the only other place a pick can go: Level − 1 − TakenNodeCount −
-        // PendingLevelUps. The spec's fourteen, arrived at with this fixture's five-node tree rather
-        // than a 27-node one.
-        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 15, pendingLevelUps: 0, playerHp: 100f));
+        // 30 - 1 - 20 - 2 = 7 levels formerly spent without nodes. Only level growth returns.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 30, pendingLevelUps: 2,
+            takenNodeIds: taken, playerHp: 100f));
 
-        Assert.That(_session.State.OverflowLevels, Is.EqualTo(14));
-
-        // ×1.28 on a clean stack: fourteen 2 % PercentAdd modifiers pool to +28 %.
-        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * 1.28f).Within(0.01f));
-
-        Assert.That(
-            _events.Count<OverflowGranted>(),
-            Is.EqualTo(0),
-            "a resumed run's Overflow was earned in a previous session and is not news.");
-
-        Assert.That(
-            RunSnapshot.CurrentVersion,
-            Is.EqualTo(5),
-            "deriving it is what keeps Overflow off the format — v4 added six fields and "
-                + "still carries none for this one.");
+        Assert.That(_session.State.TakenNodeCount, Is.EqualTo(20));
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2));
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * (1f + (29f * 0.03f))).Within(0.01f));
+        Assert.That(_events.Count<LeveledUp>(), Is.Zero);
+        Assert.That(_events.Count<NodeTaken>(), Is.Zero);
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(5));
     }
 
     [Test]
-    public void Resume_DerivesZeroForAFreshShape()
+    public void Resume_AllPicksBanked_GrantNothing()
     {
         BuildWithTree(seed: 7);
-
-        // Every run in this build: levels earned, nothing spent, because no class ships a tree.
-        // 3 − 1 − 0 − 2 = 0, so the identity holds for the shape that is actually on disk today.
         StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 3, pendingLevelUps: 2));
 
-        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0));
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2));
         Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp).Within(0.01f));
     }
 
     [Test]
-    public void Resume_OverflowRunsBeforeHealthRestore()
+    public void Resume_FormerBonusHp_ClampsToCurrentMaximum()
     {
         BuildWithTree(seed: 7);
-
-        // **The second ordering row on this block, and it fails on a swap rather than reporting a
-        // different number** (AR §18.1, M3-03's shape from a second writer). Fourteen Overflow levels
-        // take a 140 class to 179.2, and the run was saved at 170 — above the unmodified maximum on
-        // purpose. Grant the Overflow *after* Health.Restore and 170 is clamped against 140.
         StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 15, pendingLevelUps: 0, playerHp: 170f));
 
-        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * 1.28f).Within(0.01f));
-
-        Assert.That(
-            _session.State.PlayerHp,
-            Is.EqualTo(170f).Within(0.01f),
-            "Move GrantOverflow below Health.Restore and this is 140 rather than 170.");
-
-        // The fixture's own claims, checked out loud, or the row proves nothing either way.
-        Assert.That(170f, Is.GreaterThan(TreeMaxHp));
-        Assert.That(170f, Is.LessThanOrEqualTo(TreeMaxHp * 1.28f));
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp).Within(0.01f));
+        Assert.That(_session.State.PlayerHp, Is.EqualTo(TreeMaxHp).Within(0.01f));
     }
 
     [Test]
-    public void Resume_ArithmeticThatDoesNotAddUp_Throws()
+    public void Resume_TooManyPicks_StillRefused()
     {
         BuildWithTree(seed: 7);
 
@@ -686,6 +659,15 @@ public sealed class RunSessionResumeTests
         Assert.That(thrown.Message, Does.Contain("3"));
         Assert.That(thrown.Message, Does.Contain("-2"));
 
+        AssertNothingStands();
+    }
+
+    [Test]
+    public void Resume_TooManyPendingPicks_StillRefused()
+    {
+        BuildWithTree(seed: 7);
+        Assert.Throws<ArgumentException>(() => StartResumed(stage: 4,
+            Snapshot(4, _random.Seed, level: 2, pendingLevelUps: 2)));
         AssertNothingStands();
     }
 
@@ -744,9 +726,7 @@ public sealed class RunSessionResumeTests
         Assert.That(_session.State.PendingLevelUps, Is.EqualTo(2), "still banked, still unspent.");
         Assert.That(_session.State.HasOffer, Is.False);
         Assert.That(_session.State.Offer, Is.Empty);
-        Assert.That(_session.State.OverflowLevels, Is.EqualTo(0));
         Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(0));
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0));
 
         // And the identity is not asserted over a save whose ids were discarded: with no tree the
         // taken list is ignored, so refusing this arithmetic would refuse a legal save.
@@ -1164,8 +1144,7 @@ public sealed class RunSessionResumeTests
 
         var actives = new[] { new ContentId(NodeActive), new ContentId(NodeActive + ".1") };
 
-        // Level 4, one pick owed and two nodes is 4 − 1 − 2 − 1 = 0 Overflow, so the maximum below is
-        // 140 × 0.8 exactly — the 75 row's fifth and nothing else.
+        // With zero level growth and no HP nodes, the maximum is 140 × 0.8 from Veilrot alone.
         StartResumed(
             stage: 4,
             Snapshot(4, _random.Seed, takenNodeIds: actives, economy: new RunEconomy(SavedEssence, Veilrot.Max, 0, 0)));
@@ -1647,23 +1626,44 @@ public sealed class RunSessionResumeTests
     /// Leaves one of the tree's node ids unauthored, for the row about an authoring mistake being
     /// caught at <c>Start</c>.
     /// </param>
-    private void BuildWithTree(int seed, bool treeNamesAStranger = false)
+    private void BuildWithTree(int seed, bool treeNamesAStranger = false, bool fullLegacyTree = false)
     {
         _events = new RecordingEvents();
         _random = new FixedRandom(seed, Alternating(8_192));
         _clock = new FixedClock(Instant);
-        _mode = Mode();
+        _mode = Mode(fullLegacyTree ? new LevelGrowthSpec(0.03f, 0.02f) : default);
 
         IReadOnlyList<SkillSpec> skills = treeNamesAStranger
             ? new[] { Passive(NodeDamage, 0.15f), Passive(NodeB, 0.05f), Passive(NodeC, 0.05f) }
             : TreeSkills();
+
+        SkillTreeSpec tree = Tree();
+        if (fullLegacyTree)
+        {
+            var ids = new string[18];
+            var legacy = new SkillSpec[20];
+            for (int i = 0; i < legacy.Length; i++)
+            {
+                string id = $"skill.legacy.n{i}";
+                legacy[i] = Passive(id, 0f);
+                if (i < ids.Length)
+                {
+                    ids[i] = id;
+                }
+            }
+
+            tree = new SkillTreeSpec(new ContentId(TreeIdValue), new ContentId(OathboundId),
+                new[] { Branch('a', ids), Branch('b', new[] { "skill.legacy.n18" }),
+                    Branch('c', new[] { "skill.legacy.n19" }) });
+            skills = legacy;
+        }
 
         _catalog = new ContentCatalog(
             new[] { Oathbound(TreeMaxHp) },
             new[] { Husk() },
             new[] { _mode },
             skills,
-            new[] { Tree() });
+            new[] { tree });
 
         _session = SessionOver(_events);
     }
@@ -2007,12 +2007,6 @@ public sealed class RunSessionResumeTests
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ArenaEntry(new ContentId(FirstArenaId)), new ArenaEntry(new ContentId(SecondArenaId)) },
             bossRoster: null,
-
-            // **Authored here, and it is the two Overflow rows below that need it** (M5-06b rule
-            // 8). Since Overflow moved off LevelUpFlow's two consts and onto the mode, a ModeSpec
-            // built without one grants nothing per spare level — which is the honest default and
-            // would make Resume_DerivesOverflow's ×1.28 a ×1.00. Descent's own shipped pair.
-            overflow: new OverflowSpec(0.02f, 0.02f),
 
             // GD §13.3's shop at Descent's prices, for the M6-02b rows: nothing else here buys, and
             // the mode pays no Essence, so every other row is untouched by it.

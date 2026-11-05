@@ -765,7 +765,6 @@ public sealed class LevelUpPresenterTests
 
         _session.OpenLevelUp();
 
-        Assert.That(_spy.Count<OverflowGranted>(), Is.EqualTo(1), "the pick was not spent on Overflow.");
         Assert.That(_spy.Count<OfferPresented>(), Is.Zero, "a full tree drew cards.");
 
         // Silent and instant: GD §13.1's pause exists to let someone *choose*, and a card with one

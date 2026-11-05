@@ -750,7 +750,6 @@ public sealed class OrdealEffectsTests
         _runner,
         _registry,
         _events,
-        new OverflowSpec(0.02f, 0.02f),
         new Veilrot(_stats, _combat, _combat.Blackboard, _events),
         ordeals);
 

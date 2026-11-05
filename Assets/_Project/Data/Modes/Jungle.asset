@@ -47,9 +47,6 @@ MonoBehaviour:
     _perLevel: 5.1
     _exponent: 1.4
     _maxLevel: 30
-  _overflow:
-    _damage: 0.02
-    _maxHp: 0.02
   _levelGrowth:
     _maxHp: 0.03
     _damage: 0.02

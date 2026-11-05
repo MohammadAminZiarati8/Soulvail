@@ -297,7 +297,7 @@ public sealed class RunState
 
     /// <summary>
     /// Whether every class and path node is taken, with no unchosen candidate path still to add.
-    /// Only then does a banked pick become Overflow (CH §5.2, MK-01b).
+    /// Points stay banked even after every node is taken.
     /// </summary>
     /// <remarks>
     /// False for a class with no tree, and that is the right answer rather than a convenient one: a
@@ -749,17 +749,6 @@ public sealed class RunState
     /// that draws or has no tree (UI-03a rule 3).
     /// </summary>
     public int SkillPoints => IsFreePick ? Progression.PendingLevelUps : 0;
-
-    /// <summary>
-    /// How many levels this run has spent on CH §5.2's Overflow rather than on a node — 0 for a run
-    /// with no tree.
-    /// </summary>
-    /// <remarks>
-    /// Derived rather than stored: nothing on <c>RunSnapshot</c> carries it, and a resumed run
-    /// recomputes it as <c>Level − 1 − TakenNodeCount − PendingLevelUps</c> (M3-08a rule 9). The
-    /// read exists because the number is otherwise only observable through the stats it moved.
-    /// </remarks>
-    public int OverflowLevels => LevelUp is null ? 0 : LevelUp.OverflowLevels;
 
     /// <summary>
     /// What every level gained adds in this run (LV-01a) — a value, not the live object, so a view

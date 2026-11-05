@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, LV-02b._
+_2026-11-05, LV-02c._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **LV-02b**: Overflow toast, HUD wiring and localisation key removed; badge follows levels/nodes. |
-| **Next task** | LV-02c: Overflow leaves core and the modes; old saves still load (then LV-02d). |
-| **Verified** | EditMode 5677: 5676 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
+| **Last merged** | **LV-02c**: Overflow removed from core/modes; full-tree points banked; legacy saves load without bonuses. |
+| **Next task** | LV-02d: Marksman ranks merge to fit 29 points; removed saved ranks refunded. |
+| **Verified** | EditMode 5664: 5663 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
 
 ## What works
 
@@ -48,7 +48,7 @@ Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 ## Known issues
 
 1. ArenaView zero-spawn reload warning; TimeManager reserialises.
-2. ContactDamage ruling pending. Invalid tree saves strand Continue; Core Overflow still live (LV-02c).
+2. ContactDamage ruling pending. Invalid tree saves strand Continue.
 3. Boundary non-binding bolts leave bodies; pooled Bind/Move snap with autoSyncTransforms off.
 4. Sanctum draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
 5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; bosses unprofiled.

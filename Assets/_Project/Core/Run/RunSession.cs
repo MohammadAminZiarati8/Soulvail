@@ -841,16 +841,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             RequireOwnAddresses(tree.Rules, playerStats, character.Id);
         }
 
-        // Beside the tree, and null exactly when the tree is: a class with no tree banks its levels
-        // and never opens a flow (M3-08a rule 5), which is every run in this build until M3-12
-        // authors one. Below the runner because it pushes a chosen Active into it, and below the
-        // registry because Overflow's two modifiers go on through it.
-        //
-        // **What a spare level is worth comes off the mode** (M5-06b rules 8 and 9), like the curve
-        // that decides when one is earned: LevelTracker above reads mode.Xp, and this reads
-        // mode.Overflow. The two used to be a field and a pair of consts, which made one half of
-        // CH §5.2 an Inspector edit and the other half a rebuild. The run's Ordeals ride last, for
-        // Vigil's count (M6-06b rule 5) — optional on the constructor and never absent here.
+        // A class without a tree banks levels without creating an offer flow.
+        // The runner and registry already exist for chosen Actives and Pacts.
         PathFlow path = tree is null ? null : new PathFlow(tree, _catalog, character, _events);
 
         // **LV-01a's per-level growth, in every run, tree or none.** It attaches itself to the
@@ -860,7 +852,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         LevelUpFlow levelUp = tree is null
             ? null
             : new LevelUpFlow(
-                tree, progression, skills, effects, _events, mode.Overflow, veilrot, ordeals, mode.HasFreePick, path);
+                tree, progression, skills, effects, _events, veilrot, ordeals, mode.HasFreePick, path);
 
         // **CH §5.4's half-tree moment, null in exactly the runs the flow above is null in**
         // (M5-07a-ii rule 1). A separate object rather than a fifth state on `LevelUpFlow`: this one
@@ -972,7 +964,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // is left for SkillTree.Restore's existing refusal, which is the one that names it.
             //
             // This is what keeps a single enum-sized fact off the save format altogether, which is
-            // LevelUpFlow.GrantOverflow's bargain exactly — and v4 shipping at M6-01b did not change
+            // the silent restore bargain — and v4 shipping at M6-01b did not change
             // it: the branch is still derived, because the reason was never that a bump was dear.
             // Paths follow the same derived-save bargain, and must precede the replay too.
             if (path is not null && path.TryDerive(resumed.TakenNodeIds, out ContentId pathId))
@@ -1039,43 +1031,23 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // sits rather than the run's power (SkillRunner.Restore).
             skills.Restore(resumed.ManualSkillIds);
 
-            // **After the tree restore and above Health.Restore, and the second half of that is an
-            // AR §18.1 row rather than a preference** (M3-08a rule 9). Overflow puts a `+2 % MaxHp`
-            // modifier on per level, so fourteen of them move the maximum by 28 % — and the saved
-            // hit points are absolute and are clamped against the live maximum. Replayed *after* the
-            // clamp, a run saved at 170 of 179 comes back at 140: the same loss SkillTree.Restore is
-            // ordered against, from a second writer.
-            //
-            // **Derived, because no field carries it, and v4 deliberately did not add one.** Every
-            // pick a run has earned is spent on a node, spent on Overflow, or unspent — the exact
-            // mirror of M3-03 rule 6, which says the *pending* count is the one that cannot be
-            // derived. Anything that later spends a pick without taking a node owes this identity or
-            // owes a field; M6-02's Banish does not, since it removes a node from the pool rather
-            // than a pick from the player.
-            //
-            // Guarded on the flow rather than computed unconditionally, for the reason the tree's
-            // own restore is `tree?.Restore`: a class with no tree ignores the saved ids entirely,
-            // and asserting an identity over numbers half of which were discarded would refuse a
-            // legal save. It costs nothing to skip — with no tree nothing can spend a pick, so every
-            // level is banked and the identity is 0 either way (rule 5).
+            // Older saves may have spent levels without taking nodes. Accept that gap without
+            // granting anything, but still refuse more taken/pending picks than the level earned.
+            // A class without a tree ignores saved node ids, so retain its existing bypass.
             if (levelUp is not null)
             {
-                int overflow = resumed.Level - 1 - resumed.TakenNodeIds.Count - resumed.PendingLevelUps;
+                int unused = resumed.Level - 1 - resumed.TakenNodeIds.Count - resumed.PendingLevelUps;
 
-                if (overflow < 0)
+                if (unused < 0)
                 {
                     throw new ArgumentException(
                         $"The saved picks do not add up: level {resumed.Level} earns "
                             + $"{resumed.Level - 1} pick(s), of which {resumed.TakenNodeIds.Count} "
                             + $"went on nodes and {resumed.PendingLevelUps} are unspent, leaving "
-                            + $"{overflow} for Overflow. It is arithmetic rather than content, so it "
+                            + $"{unused} unused picks. It is arithmetic rather than content, so it "
                             + "cannot be rescued by clamping.",
                         nameof(config));
                 }
-
-                // Silent, for the reason the whole block is: nothing may publish before RunStarted,
-                // and a resumed run's Overflow was earned in a previous session and is not news.
-                levelUp.GrantOverflow(overflow);
             }
 
             // **Below the tree's restore and above Health.Restore, and that is an AR §18.1 row
@@ -1111,7 +1083,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // under. **Stated honestly, the order is uniformity rather than arithmetic for this
             // writer alone**: a modifier that only *shrinks* the maximum lands the same on either
             // side, because Health.OnMaxHpChanged pulls Current down with a falling maximum. It is
-            // the *raising* writers above — the tree, Overflow — for which the other side costs hit
+            // the *raising* writers above — the tree, level growth — for which the other side costs hit
             // points on every resume, and a block read as an order is kept as one.
             //
             // Silent, like everything else in this block: no VeilrotChanged, no crossings and no

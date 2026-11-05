@@ -9,7 +9,7 @@ namespace Soulvail.Core.Content;
 /// </summary>
 /// <remarks>
 /// <b><c>default(LevelGrowthSpec)</c> is legal and means a level grows nothing</b> — the same
-/// bargain as <see cref="OverflowSpec"/>: the invariant is "finite and not negative", and zero is
+/// bargain as <see cref="EssenceSpec"/>: the invariant is "finite and not negative", and zero is
 /// both, so AR §18.3's both-ends rule does not bite.
 /// </remarks>
 public readonly struct LevelGrowthSpec

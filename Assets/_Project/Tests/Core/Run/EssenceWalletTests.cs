@@ -278,7 +278,7 @@ public sealed class EssenceWalletTests
     [Test]
     public void Essence_RefusesANegativeNumber()
     {
-        // Refused where the table is *authored* rather than where it is paid, for OverflowSpec's
+        // Refused where the table is *authored* rather than where it is paid, for LevelGrowthSpec's
         // reason: the symptom of a mode that charges for clearing a stage is a balance nobody can
         // explain, half an hour into a run and a long way from the asset. The message names the
         // field, so a designer reading the Console knows which of the four moved.
@@ -854,7 +854,6 @@ public sealed class EssenceWalletTests
             bossRoster: bossEvery == 0
                 ? null
                 : new[] { new BossRosterEntry(new ContentId(BossId), bossEvery) },
-            overflow: default,
             essence: essence);
     }
 

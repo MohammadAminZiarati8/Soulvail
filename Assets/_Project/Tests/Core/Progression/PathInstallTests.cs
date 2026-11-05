@@ -104,7 +104,7 @@ public sealed class PathInstallTests
         var stats = new PlayerStats(combat,
             new PlayerMotor(new MovementSpec(3f, 0.06f, 0.08f, 720f), Vector3.UnitZ), progression);
         var flow = new LevelUpFlow(tree, progression, new SkillRunner(effects, combat.Blackboard, events),
-            effects, events, new OverflowSpec(0.02f, 0.02f),
+            effects, events,
             new Veilrot(stats, combat, combat.Blackboard, events), isFree: true);
         Assert.Throws<InvalidOperationException>(() => flow.Take(head));
         Assert.That(progression.PendingLevelUps, Is.EqualTo(1));

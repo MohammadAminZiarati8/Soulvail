@@ -1071,7 +1071,6 @@ public sealed class SanctumPresenterTests
             new StatCurve(0.02f, 1.3f, 5, 0)),
         new XpCurve(20f, 12f, 1.4f),
         new[] { new RosterEntry(new ContentId(HuskId), 1) },
-        overflow: new OverflowSpec(0.02f, 0.02f),
         sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f),
         hasVeilrot: hasVeilrot);
 

@@ -170,44 +170,38 @@ public sealed class PathFlowTests
 
     [TestCase(true)]
     [TestCase(false)]
-    public void Overflow_NotBeforeAPath(bool free)
+    public void Points_BankedBeforeAPath(bool free)
     {
         for (int level = 11; level <= 12; level++)
         {
             Start(level, BaseNodes(), free);
             Settle(free);
             Assert.That(_session.State.PendingLevelUps, Is.EqualTo(level - 10));
-            Assert.That(_session.State.OverflowLevels, Is.Zero);
             Assert.That(_session.State.IsTreeFull, Is.False);
-            Assert.That(_events.Count<OverflowGranted>(), Is.Zero);
         }
     }
 
     [TestCase(true)]
     [TestCase(false)]
-    public void Overflow_GatedNodesLeft_Banks(bool free)
+    public void Points_GatedNodesLeft_Banks(bool free)
     {
         var taken = new List<ContentId>(BaseNodes()) { FirstRank, SecondRank };
         Start(18, taken, free);
         Assert.That(_session.State.IsNodeAvailable(LastSkill), Is.False);
         Settle(free);
         Assert.That(_session.State.PendingLevelUps, Is.EqualTo(6));
-        Assert.That(_session.State.OverflowLevels, Is.Zero);
         Assert.That(_session.State.IsTreeFull, Is.False);
-        Assert.That(_events.Count<OverflowGranted>(), Is.Zero);
     }
 
     [TestCase(true)]
     [TestCase(false)]
-    public void Overflow_AllTaken_Pays(bool free)
+    public void Points_AllTaken_StayBanked(bool free)
     {
         var taken = new List<ContentId>(BaseNodes()) { FirstRank, SecondRank, LastSkill };
         Start(20, taken, free);
         Settle(free);
         Assert.That(_session.State.IsTreeFull, Is.True);
-        Assert.That(_session.State.PendingLevelUps, Is.Zero);
-        Assert.That(_session.State.OverflowLevels, Is.EqualTo(7));
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(7));
+        Assert.That(_session.State.PendingLevelUps, Is.EqualTo(7));
     }
 
     [Test]
@@ -290,7 +284,7 @@ public sealed class PathFlowTests
                 new StatCurve(0.035f, 3f, 1, 1), new StatCurve(0.02f, 1.3f, 5, 0)), Scalings.Xp(),
             new[] { new RosterEntry(new ContentId("enemy.husk"), 1) },
             new[] { new ArenaEntry(new ContentId("arena.first")) },
-            overflow: new OverflowSpec(0.02f, 0.02f), hasFreePick: free);
+            hasFreePick: free);
         var enemy = new EnemySpec(new ContentId("enemy.husk"), new LocKey("enemy.name"),
             10f, 2f, 1, 4, 12f, false, 8f, 1.2f, 0.4f, 0.6f, 30f, EnemyBehaviourKind.Static);
         _catalog = new ContentCatalog(new[] { character, other }, new[] { enemy }, new[] { mode }, skills,

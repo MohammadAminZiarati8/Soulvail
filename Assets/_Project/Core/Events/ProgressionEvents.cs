@@ -196,7 +196,7 @@ public readonly struct OfferPresented
 /// Nothing more is owed. The screen closes and the run is ticked again.
 /// </summary>
 /// <remarks>
-/// Published after the last pick is spent, whether it went on a node or on Overflow — so a screen
+/// Published after the last pick is spent on a node — so a screen
 /// that opened on <see cref="OfferPresented"/> has exactly one event that closes it, rather than
 /// having to work out from a count whether another card is coming.
 /// </remarks>
@@ -284,33 +284,5 @@ public readonly struct SplashChosen
         CharacterId = characterId;
         Branch = branch;
         NodesGained = nodesGained;
-    }
-}
-
-/// <summary>
-/// A pick was spent with nothing left to offer, and paid out as CH §5.2's Overflow instead.
-/// </summary>
-/// <remarks>
-/// <b>Announced rather than shown.</b> Overflow is silent and instant — no pause, no screen — because
-/// GD §13.1's pause exists to let someone <em>choose</em>, and a card with one button would tax the
-/// player for the game having run out of nodes. This event is what keeps CH §5.2's <em>"levelling
-/// never stops meaning something"</em> visible without stopping the game: M3-10's HUD or M3-13 can
-/// toast it. Nothing publishes it during a restore, for <c>NodeTaken</c>'s reason.
-/// </remarks>
-public readonly struct OverflowGranted
-{
-    /// <summary>The level whose pick was spent on it.</summary>
-    public readonly int Level;
-
-    /// <summary>
-    /// How many Overflow levels the run has now, this one counted — the running total, so a toast
-    /// can say <em>"+2 % damage (×7)"</em> without keeping a tally of its own.
-    /// </summary>
-    public readonly int Total;
-
-    public OverflowGranted(int level, int total)
-    {
-        Level = level;
-        Total = total;
     }
 }

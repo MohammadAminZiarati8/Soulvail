@@ -13,7 +13,7 @@ namespace Soulvail.Core.Content;
 /// classes turn three different dials, and the version that reads them with a
 /// <c>switch (character.Id)</c> is ADR-0009's ban with the word <em>effect</em> removed. A class that
 /// leaves a dial neutral costs nothing, which is what <see cref="ScalingSpec"/> and
-/// <see cref="OverflowSpec"/> already look like.
+/// <see cref="LevelGrowthSpec"/> already look like.
 /// </para>
 /// <para>
 /// <b>No dial scales a Pact's effects</b> (M6-07c). CH §3.1's third Oathbound clause — <em>"Pact

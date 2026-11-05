@@ -441,7 +441,7 @@ public sealed class PactOfferTests
         SkillTree tree = Wide(4, pacted: true);
 
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, Overflow(), null));
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, null));
     }
 
     [Test]
@@ -476,9 +476,7 @@ public sealed class PactOfferTests
     private float Damage => _stats.Resolve(PlayerStat.WeaponDamage).Value;
 
     private LevelUpFlow Flow(SkillTree tree) =>
-        new LevelUpFlow(tree, _progression, _runner, _registry, _events, Overflow(), _veilrot);
-
-    private static OverflowSpec Overflow() => new OverflowSpec(0.02f, 0.02f);
+        new LevelUpFlow(tree, _progression, _runner, _registry, _events, _veilrot);
 
     private static OfferGenerator Generator(SkillTree tree) => new OfferGenerator(tree.Rules);
 

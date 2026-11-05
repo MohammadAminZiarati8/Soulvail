@@ -280,7 +280,6 @@ public sealed class FreePickModeTests
                 Array.Empty<ContentId>())));
     }
 
-
     private void Build()
     {
         ILocalizer localizer = Shipped();
@@ -451,7 +450,6 @@ public sealed class FreePickModeTests
             new XpCurve(20f, 12f, 1.4f),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ArenaEntry(new ContentId(ArenaId)) },
-            overflow: new OverflowSpec(0.02f, 0.02f),
             hasFreePick: free);
     }
 

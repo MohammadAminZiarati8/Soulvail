@@ -154,5 +154,5 @@ _No milestone. The owner is setting the next direction._
 - [x] **LV-01b** — Boss HP rises to match level growth: seven bosses re-authored, fight-length probes price the player's level (S)
 - [x] **LV-02a** — Level cap 30, reached at stage 25 (perLevel 5.1); XP strip reads MAX (S)
 - [x] **LV-02b** — The Overflow toast leaves the HUD (S)
-- [ ] **[LV-02c](tasks/LV-02c-overflow-out-of-core.md)** — Overflow leaves core and the modes; old saves still load (M)
+- [x] **LV-02c** — Overflow leaves core and the modes; old saves still load (M)
 - [ ] **[LV-02d](tasks/LV-02d-marksman-rank-merge.md)** — Marksman ranks merge to fit 29 points; over-rank saves refunded (S)

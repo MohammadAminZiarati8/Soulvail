@@ -17,10 +17,10 @@ using Soulvail.Tests.Core.Support;
 namespace Soulvail.Tests.Core.Progression;
 
 /// <summary>
-/// <c>LevelUpFlow</c>: the lazy offer, the ordered take, and CH §5.2's Overflow.
+/// <c>LevelUpFlow</c>: the lazy offer, the ordered take, and banked points.
 /// </summary>
 /// <remarks>
-/// The rows that need a whole run — the boundary ordering, the resume derivation and the two
+/// The rows that need a whole run — the boundary ordering, legacy-save compatibility and the two
 /// commands' refusals — live in <c>RunSessionTests</c> and <c>RunSessionResumeTests</c> beside the
 /// fixtures that already build one, rather than a second composition being stood up here.
 /// </remarks>
@@ -32,22 +32,6 @@ public sealed class LevelUpFlowTests
     private const float WeaponDamage = 13f;
     private const float MoveSpeed = 3f;
     private const int EnemyCapacity = 32;
-
-    /// <summary>
-    /// What <c>Descent.asset</c> authors per Overflow level, written out — the number every row
-    /// below reasons with, and no longer a <c>const</c> anybody can reach from here.
-    /// </summary>
-    /// <remarks>
-    /// <b>Two fixtures meeting at a number, which is this assembly's standing bargain and not a new
-    /// one</b> (M5-06b rule 10). Until M5-06b these rows read <c>LevelUpFlow.OverflowDamage</c>, so
-    /// a retune moved the test with the code and neither could disagree with the other — which also
-    /// meant a retune was a rebuild, which is what ledger row 5(i) was about.
-    /// <c>Soulvail.Tests.Core</c> cannot reach <c>AssetDatabase</c> (M0-10), so it cannot open the
-    /// mode; <c>GravecallerTreeTests.Overflow_ComesFromTheMode</c> is the row in the assembly that
-    /// can, and a retune that moved one and not the other reddens one of the two. That is the same
-    /// arrangement <c>TimeToKillTests</c> has had with <c>KeenCenser.asset</c> since M3-12c.
-    /// </remarks>
-    private const float OverflowPerLevel = 0.02f;
 
     private RecordingEvents _events;
     private RecordingIntents _intents;
@@ -115,7 +99,6 @@ public sealed class LevelUpFlowTests
         Assert.That(flow.HasOffer, Is.False);
         Assert.That(flow.Offer.Count, Is.EqualTo(0));
         Assert.That(_events.Count<OfferPresented>(), Is.EqualTo(0));
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0));
 
         // The half that matters: a draw nobody asked for would advance the stream and change what
         // the *next* level-up shows, from a seed (AR §18.3).
@@ -330,52 +313,12 @@ public sealed class LevelUpFlowTests
             "NodeTaken is the event a chosen card publishes (rule 6).");
     }
 
-    // ---- Overflow (rules 2, 7, 8) ----------------------------------------------------------------
-
-    [Test]
-    public void Open_FullTree_GrantsOverflow()
-    {
-        SkillTree tree = FullTree();
-        LevelUpFlow flow = Flow(tree);
-
-        TakeEverything(tree);
-
-        Assert.That(tree.IsFull, Is.True, "the fixture's premise.");
-
-        float damageBefore = Damage;
-        float maxHpBefore = MaxHpValue;
-
-        BankPicks(1);
-
-        var random = new CountingRandom(new FixedRandom(5));
-
-        flow.Open(random.Offers);
-
-        Assert.That(flow.HasOffer, Is.False, "Overflow puts nothing on a table (rule 7).");
-        Assert.That(random.OffersDraws, Is.EqualTo(0), "nothing was drawn, so no draw was spent.");
-
-        OverflowGranted granted = _events.Single<OverflowGranted>();
-
-        Assert.That(granted.Total, Is.EqualTo(1));
-        Assert.That(granted.Level, Is.EqualTo(_progression.Level));
-
-        Assert.That(flow.OverflowLevels, Is.EqualTo(1));
-        Assert.That(_progression.PendingLevelUps, Is.EqualTo(0), "the pick was spent.");
-
-        // **+2 % of the BASE, not of the current value**, and the difference is the whole point of
-        // PercentAdd. This tree's 27 nodes already pool to +180 %, so one Overflow level takes the
-        // stat from ×2.80 to ×2.82 — a ×1.007 change, not a ×1.02 one. Asserting the *delta* against
-        // the base is what says that out loud; a row written as `before × 1.02` would have been red
-        // against correct code, and was.
-        Assert.That(Damage - damageBefore, Is.EqualTo(WeaponDamage * OverflowPerLevel).Within(0.0001f));
-        Assert.That(MaxHpValue - maxHpBefore, Is.EqualTo(MaxHp * OverflowPerLevel).Within(0.0001f));
-    }
+    // ---- Banked points (LV-02c) ----------------------------------------------------------------
 
     [Test]
     public void Open_DrawsWhateverIsAvailableRatherThanThree()
     {
-        // **This row replaces the spec's `Open_BlockedButNotFull_GrantsOverflow`, which cannot be
-        // built.** That row wanted a tree with nodes left and none available. Over a tree `TreeRules`
+        // Over a tree `TreeRules`
         // accepts, that state is unreachable: an ordinary node needs `tier - 1` taken in its branch,
         // so every branch always offers its whole first tier; a Keystone needs `NodeCount - 1`, which
         // is satisfied exactly when the rest of its branch is taken; and an Upgrade needs a parent in
@@ -384,7 +327,7 @@ public sealed class LevelUpFlowTests
         //
         // What is checkable, and what this row keeps, is that `Open` reports the generator's count
         // rather than assuming three: a tree with one node left offers one card and does not fall
-        // through to Overflow.
+        // discard the point.
         SkillTree tree = FullTree();
         LevelUpFlow flow = Flow(tree);
 
@@ -399,225 +342,49 @@ public sealed class LevelUpFlowTests
         Assert.That(flow.HasOffer, Is.True);
         Assert.That(flow.Offer.Count, Is.EqualTo(1), "one available node is an offer of one.");
         Assert.That(_events.Single<OfferPresented>().Count, Is.EqualTo(1));
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0), "a drawable pick is never Overflow.");
     }
 
     [Test]
-    public void Overflow_PoolsAdditively()
-    {
-        // **Nothing taken**, deliberately: over a tree whose 27 nodes already pool to +180 % the
-        // ×1.20 would be buried in a ×2.80, and the row would read as arithmetic nobody can check by
-        // eye. With a clean stack, ten Overflow levels is ×1.20 exactly and the contrast with 1.02¹⁰
-        // is visible in the numbers themselves.
-        LevelUpFlow flow = Flow(FullTree());
-
-        int modifiersBefore = _stats.Resolve(PlayerStat.WeaponDamage).ModifierCount;
-
-        Grant(flow, 10);
-
-        Assert.That(flow.OverflowLevels, Is.EqualTo(10));
-
-        // GD §13.1's "additively within a family" and ADR-0008's order — ten sources pooled under one
-        // PercentAdd family, so the tenth is worth what the first was.
-        Assert.That(Damage, Is.EqualTo(WeaponDamage * 1.20f).Within(0.0001f));
-        Assert.That(MaxHpValue, Is.EqualTo(MaxHp * 1.20f).Within(0.0001f));
-
-        Assert.That(
-            Damage,
-            Is.Not.EqualTo(WeaponDamage * MathF.Pow(1.02f, 10)).Within(0.0001f),
-            "multiplicative stacking would have exponentiated behind the designer's back.");
-
-        Assert.That(
-            _stats.Resolve(PlayerStat.WeaponDamage).ModifierCount - modifiersBefore,
-            Is.EqualTo(10),
-            "one modifier per Overflow level, all under the flow as a single source.");
-    }
-
-    [Test]
-    public void Overflow_MaxHpIsNotAHeal()
+    public void Open_FullTree_OpensNothing()
     {
         SkillTree tree = FullTree();
-        LevelUpFlow flow = Flow(tree);
-
         TakeEverything(tree);
-
-        // 100 of 140 before the modifier goes on. Any tree damage the take applied is to WeaponDamage
-        // only, so the maximum here is still the class's.
-        //
-        // **The shield is paid off first, and it has to be read rather than assumed**: CC §7's class
-        // carries a 30-point Aegis, so a flat 40 damage lands 10 on the bar and leaves 130 — which is
-        // exactly what the first version of this row asserted its way past.
-        _combat.ApplyDamage(_combat.Health.Shield + (MaxHp - 100f), 0f);
-
-        Assert.That(_combat.Health.Current, Is.EqualTo(100f).Within(0.001f), "the fixture's premise.");
-
-        BankPicks(1);
-
-        flow.Open(Offers());
-
-        Assert.That(MaxHpValue, Is.EqualTo(142.8f).Within(0.001f));
-        Assert.That(_combat.Health.Current, Is.EqualTo(100f).Within(0.001f), "raising the ceiling is not a heal.");
-    }
-
-    [Test]
-    public void Overflow_ClearsEveryPendingPick()
-    {
-        SkillTree tree = FullTree();
         LevelUpFlow flow = Flow(tree);
-
-        TakeEverything(tree);
-
-        BankPicks(3);
-
-        flow.Open(Offers());
-
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(3));
-        Assert.That(_progression.PendingLevelUps, Is.EqualTo(0));
-        Assert.That(flow.HasOffer, Is.False);
-    }
-
-    [Test]
-    public void Overflow_AnnouncesTheRunningTotal()
-    {
-        SkillTree tree = FullTree();
-        LevelUpFlow flow = Flow(tree);
-
-        TakeEverything(tree);
-
-        BankPicks(3);
-
-        flow.Open(Offers());
-
-        Assert.That(
-            _events.Of<OverflowGranted>().Select(g => g.Total).ToArray(),
-            Is.EqualTo(new[] { 1, 2, 3 }),
-            "the running total, in order, so a toast needs no tally of its own.");
-    }
-
-    [Test]
-    public void Overflow_RestoreIsSilentAndSpendsNothing()
-    {
-        // GrantOverflow's own contract, which the resume path in RunSessionResumeTests depends on:
-        // it puts the modifiers on and announces nothing, because a resumed run's Overflow was
-        // earned in a previous session and is not news (AR §18.1's restore block).
-        SkillTree tree = FullTree();
-        LevelUpFlow flow = Flow(tree);
-
-        float damageBefore = Damage;
-
         BankPicks(2);
+        float damage = Damage;
+        float hp = MaxHpValue;
+        var random = new CountingRandom(new FixedRandom(5));
 
-        Grant(flow, 14);
+        flow.Open(random.Offers);
+        flow.Open(random.Offers);
 
-        Assert.That(flow.OverflowLevels, Is.EqualTo(14));
-        Assert.That(Damage, Is.EqualTo(damageBefore * 1.28f).Within(0.0001f));
-
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(0), "silent.");
-        Assert.That(_progression.PendingLevelUps, Is.EqualTo(2), "it spends no pick.");
+        Assert.That(flow.HasOffer, Is.False);
+        Assert.That(flow.Offer, Is.Empty);
+        Assert.That(_progression.PendingLevelUps, Is.EqualTo(2));
+        Assert.That(Damage, Is.EqualTo(damage));
+        Assert.That(MaxHpValue, Is.EqualTo(hp));
+        Assert.That(random.OffersDraws, Is.Zero);
+        Assert.That(_events.Count<OfferPresented>(), Is.Zero);
     }
 
     [Test]
-    public void Overflow_ZeroIsOrdinary()
+    public void Settle_FullTree_KeepsPointsBanked()
     {
-        LevelUpFlow flow = Flow(FullTree());
-
-        float damageBefore = Damage;
-
-        Grant(flow, 0);
-
-        Assert.That(flow.OverflowLevels, Is.EqualTo(0));
-        Assert.That(Damage, Is.EqualTo(damageBefore).Within(0.0001f));
-    }
-
-    [Test]
-    public void Overflow_Negative_Throws()
-    {
-        LevelUpFlow flow = Flow(FullTree());
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => Grant(flow, -1));
-    }
-
-    // ---- Ledger row 5(i): what a level is worth is the mode's (M5-06b rules 8–11) ----------------
-
-    [Test]
-    public void Overflow_TheConstantsAreGone()
-    {
-        // **The row that stops the literal coming back.** ADR-0006 says every number is in an
-        // asset; these two were `public const float` from M3-08a to M5-06b, and rule 10's ruling is
-        // that they are *deleted* rather than left as defaults — a default beside an authored value
-        // is a second place the number lives, and the next reader would not know which one the game
-        // used. Reflection over every member, not just the public ones: a private const would be
-        // the same fault, quieter.
-        foreach (string name in new[] { "OverflowDamage", "OverflowMaxHp" })
-        {
-            Assert.That(
-                typeof(LevelUpFlow).GetField(
-                    name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static),
-                Is.Null,
-                $"LevelUpFlow.{name} is back. What a level is worth is the mode's statement "
-                    + "(GD §4.5) and lives on ModeDefinition — a constant here would be a second "
-                    + "copy that the game may or may not be the one reading.");
-        }
-    }
-
-    [Test]
-    public void Overflow_ARetunedModeMovesTheGrant()
-    {
-        // **The whole point of row 5(i), asserted.** The same ten levels over the same clean stack,
-        // under a mode that authors 5 % rather than 2 %: ×1.50, not ×1.20. Before this task the
-        // only way to get this number was to edit `Core/Progression/` and rebuild.
-        LevelUpFlow flow = Flow(FullTree(), new OverflowSpec(0.05f, 0.05f));
-
-        Grant(flow, 10);
-
-        Assert.That(Damage, Is.EqualTo(WeaponDamage * 1.50f).Within(0.0001f));
-        Assert.That(MaxHpValue, Is.EqualTo(MaxHp * 1.50f).Within(0.0001f));
-
-        // And the control, so the row cannot pass on a flow that ignores its argument and happens
-        // to be right: the shipped pair over the same ten levels is the ×1.20 above.
-        Assert.That(
-            WeaponDamage * 1.50f,
-            Is.Not.EqualTo(WeaponDamage * (1f + (10f * OverflowPerLevel))).Within(0.0001f));
-    }
-
-    [Test]
-    public void Overflow_DamageAndMaxHpAreTwoNumbers()
-    {
-        // **The ledger called them "the 2 %", singular, for a milestone**, and they are two fields
-        // that happen to ship equal. A mode is free to move one — a Boss Rush that pays for spare
-        // levels in damage alone is the obvious shape — so this is the row that says the pair is
-        // not one number wearing two names.
-        LevelUpFlow flow = Flow(FullTree(), new OverflowSpec(0.05f, 0f));
-
-        Grant(flow, 10);
-
-        Assert.That(Damage, Is.EqualTo(WeaponDamage * 1.50f).Within(0.0001f));
-        Assert.That(MaxHpValue, Is.EqualTo(MaxHp).Within(0.0001f), "maxHp was authored at zero.");
-    }
-
-    [Test]
-    public void Overflow_AZeroedModeGrantsNothing()
-    {
-        // `default(OverflowSpec)` is legal content, which is why the constructor has no null row for
-        // its sixth argument (see Flow_NullArguments_Throw). A mode that never mentioned Overflow is
-        // a mode whose spare levels are worth nothing — still counted, still announced, worth zero.
         SkillTree tree = FullTree();
-        LevelUpFlow flow = Flow(tree, default);
-
         TakeEverything(tree);
+        var flow = new LevelUpFlow(tree, _progression, _runner, _registry, _events, _veilrot, isFree: true);
+        BankPicks(2);
+        float damage = Damage;
+        float hp = MaxHpValue;
 
-        float damageBefore = Damage;
-        float maxHpBefore = MaxHpValue;
+        flow.Settle();
+        flow.Settle();
 
-        BankPicks(1);
-
-        flow.Open(Offers());
-
-        Assert.That(flow.OverflowLevels, Is.EqualTo(1), "the pick was still spent on Overflow.");
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(1), "and still announced.");
-
-        Assert.That(Damage, Is.EqualTo(damageBefore).Within(0.0001f));
-        Assert.That(MaxHpValue, Is.EqualTo(maxHpBefore).Within(0.0001f));
+        Assert.That(_progression.PendingLevelUps, Is.EqualTo(2));
+        Assert.That(Damage, Is.EqualTo(damage));
+        Assert.That(MaxHpValue, Is.EqualTo(hp));
+        Assert.That(flow.HasOffer, Is.False);
+        Assert.That(_events.Count<OfferPresented>(), Is.Zero);
     }
 
     // ---- The boundary (rule 15) ------------------------------------------------------------------
@@ -639,7 +406,7 @@ public sealed class LevelUpFlowTests
         Assert.That(flow, Is.Not.Null, "RunState.LevelUp has gone — this pin needs rewriting, not deleting.");
         Assert.That(flow.GetMethod.IsPublic, Is.False, "the flow itself must stay internal (AR §18.2).");
 
-        foreach (string read in new[] { "HasOffer", "Offer", "IsLevelUpPending", "OverflowLevels" })
+        foreach (string read in new[] { "HasOffer", "Offer", "IsLevelUpPending" })
         {
             PropertyInfo property = typeof(RunState).GetProperty(read, BindingFlags.Instance | BindingFlags.Public);
 
@@ -683,22 +450,18 @@ public sealed class LevelUpFlowTests
         SkillTree tree = FullTree();
 
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(null, _progression, _runner, _registry, _events, Overflow(), _veilrot));
+            () => new LevelUpFlow(null, _progression, _runner, _registry, _events, _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, null, _runner, _registry, _events, Overflow(), _veilrot));
+            () => new LevelUpFlow(tree, null, _runner, _registry, _events, _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, null, _registry, _events, Overflow(), _veilrot));
+            () => new LevelUpFlow(tree, _progression, null, _registry, _events, _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, _runner, null, _events, Overflow(), _veilrot));
+            () => new LevelUpFlow(tree, _progression, _runner, null, _events, _veilrot));
         Assert.Throws<ArgumentNullException>(
-            () => new LevelUpFlow(tree, _progression, _runner, _registry, null, Overflow(), _veilrot));
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, null, _veilrot));
 
-        // And the sixth argument has no null row, because it cannot be one: an OverflowSpec is a
-        // struct, its zeroed form is legal content (a mode whose spare levels are worth nothing),
-        // and every value that is not passes its own constructor. Overflow_AZeroedModeGrantsNothing
-        // is what the missing row would have been.
-        Assert.DoesNotThrow(
-            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, default, _veilrot));
+        Assert.Throws<ArgumentNullException>(
+            () => new LevelUpFlow(tree, _progression, _runner, _registry, _events, null));
     }
 
     [Test]
@@ -749,7 +512,6 @@ public sealed class LevelUpFlowTests
         AllocationAssert.None(() =>
         {
             _ = flow.HasOffer;
-            _ = flow.OverflowLevels;
 
             IReadOnlyList<ContentId> offer = flow.Offer;
 
@@ -788,7 +550,7 @@ public sealed class LevelUpFlowTests
 
         SkillTree tree = WideTree(10);
         var veilrot = new Veilrot(stats, combat, combat.Blackboard, events);
-        var flow = new LevelUpFlow(tree, progression, runner, registry, events, Overflow(), veilrot);
+        var flow = new LevelUpFlow(tree, progression, runner, registry, events, veilrot);
 
         IRandomStream offers = new FixedRandom(99).Offers;
 
@@ -901,7 +663,7 @@ public sealed class LevelUpFlowTests
     }
 
     [Test]
-    public void Reroll_OnAnOverflowLevelSpendsNothing()
+    public void Reroll_FullTreeSpendsNothing()
     {
         SkillTree tree = FullTree();
         TakeEverything(tree);
@@ -913,8 +675,8 @@ public sealed class LevelUpFlowTests
         flow.Open(Offers());
 
         // Open spends a charge only on a draw that found something; a full tree draws nothing, so
-        // the pick becomes Overflow and the charge waits for a tree that can offer again.
-        Assert.That(_events.Count<OverflowGranted>(), Is.EqualTo(1));
+        // the point and charge stay banked for a tree that can offer again.
+        Assert.That(_progression.PendingLevelUps, Is.EqualTo(1));
         Assert.That(flow.RerollsSpent, Is.Zero);
         Assert.That(flow.RerollCharges, Is.EqualTo(1));
     }
@@ -933,39 +695,8 @@ public sealed class LevelUpFlowTests
         method.Invoke(flow, null);
     }
 
-    private LevelUpFlow Flow(SkillTree tree) => Flow(tree, Overflow());
-
-    private LevelUpFlow Flow(SkillTree tree, OverflowSpec overflow) =>
-        new LevelUpFlow(tree, _progression, _runner, _registry, _events, overflow, _veilrot);
-
-    /// <summary><c>Descent.asset</c>'s pair, as a spec — see <see cref="OverflowPerLevel"/>.</summary>
-    private static OverflowSpec Overflow() =>
-        new OverflowSpec(OverflowPerLevel, OverflowPerLevel);
-
-    /// <summary><c>GrantOverflow</c> is internal; this assembly has no access, so it goes through the port's own route.</summary>
-    /// <remarks>
-    /// Reflection rather than <c>InternalsVisibleTo</c>, which AR §18.2 says <c>Soulvail.Tests.Core</c>
-    /// does not have and never will. The resume path itself is covered end to end in
-    /// <c>RunSessionResumeTests</c>; this is only so the three rows above can reach the silent grant
-    /// without standing up a whole run.
-    /// </remarks>
-    private static void Grant(LevelUpFlow flow, int times)
-    {
-        MethodInfo method = typeof(LevelUpFlow).GetMethod(
-            "GrantOverflow",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
-        Assert.That(method, Is.Not.Null, "LevelUpFlow.GrantOverflow has gone.");
-
-        try
-        {
-            method.Invoke(flow, new object[] { times });
-        }
-        catch (TargetInvocationException e)
-        {
-            throw e.InnerException!;
-        }
-    }
+    private LevelUpFlow Flow(SkillTree tree) =>
+        new LevelUpFlow(tree, _progression, _runner, _registry, _events, _veilrot);
 
     /// <summary>Banks exactly <paramref name="count"/> picks, a unit of XP at a time so it cannot overshoot.</summary>
     private void BankPicks(int count)

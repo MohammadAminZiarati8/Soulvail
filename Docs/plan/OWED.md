@@ -247,3 +247,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## LV-02b — 2026-11-05
 
 - **[Editor]** Play Jungle to a level-up: the skill-point badge counts correctly; spend a point and check it decreases. No Overflow toast and no Console error. The normal LEVEL UP toast remains.
+
+
+## LV-02c — Overflow leaves core and the modes (2026-11-05)
+
+- [ ] Play a full-tree Ranger run: earning spare points keeps them banked, opens no empty offer and adds no extra stat bonus beyond normal level growth.
+- [ ] Continue a legacy run that spent Overflow levels: nodes/pending points remain, only growth/node bonuses return, and saved HP above the new maximum clamps to it. No PlayMode run was performed for LV-02c.

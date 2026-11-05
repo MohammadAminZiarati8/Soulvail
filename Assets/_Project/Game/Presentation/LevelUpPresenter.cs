@@ -85,7 +85,7 @@ namespace Soulvail.Game.Presentation
         /// and deliberately so: this button sits over three offer cards and the pause panel's sits
         /// over a stopped fight, so one may grow a count or a hint the other does not — and a merge
         /// M6-10 would have to undo costs more than a second row in the table. Authored here rather
-        /// than on the prefab, <c>OverflowToast.ToastKey</c>'s reason; the prefab keeps the key as
+        /// than on the prefab; the prefab keeps the key as
         /// its placeholder text, which is <c>SkillsPresenter.EmptyKey</c>'s pattern.
         /// </remarks>
         private static readonly LocKey ViewTreeKey = new LocKey("ui.levelup.tree");

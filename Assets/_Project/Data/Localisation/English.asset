@@ -114,8 +114,6 @@ MonoBehaviour:
     _text: Nearest enemy distance (m) at least
   - _key: ui.hint.firstActive
     _text: "Skills can be set to Manual: Pause \u2192 Skills"
-  - _key: ui.overflow.granted
-    _text: Overflow
   - _key: ui.xp.max
     _text: MAX
   - _key: ui.skills.empty

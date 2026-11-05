@@ -967,7 +967,6 @@ MonoBehaviour:
   _runEndPresenter: {fileID: 1819475267}
   _xpBar: {fileID: 2052539131}
   _stageReadout: {fileID: 162361400}
-  _overflowToast: {fileID: 2052539129}
   _levelUpPresenter: {fileID: 529708800}
   _splashPresenter: {fileID: 547251407}
   _sanctumPresenter: {fileID: 922100196}
@@ -1992,17 +1991,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da6ec9068ad5fad42825c2732140a2d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.SkillArc
---- !u!114 &2052539129 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1181075243384630277, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}
-  m_PrefabInstance: {fileID: 2052539124}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ebaed774a6250c4f929a729efed760d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Presentation.OverflowToast
 --- !u!114 &2052539131 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8302277930422076769, guid: 7fda45c33a010024d91ee23de33e813a, type: 3}

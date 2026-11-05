@@ -19,7 +19,7 @@ namespace Soulvail.Tests.Game.Presentation;
 /// <b>The first rows ever to drive the ghost's clock.</b> M1-17's 0.4 s hold and 1.5-a-second drain
 /// shipped with no row watching them, because <c>Update</c> read <c>Time.deltaTime</c> and an EditMode
 /// fixture cannot make time pass. UI-01b split the body into a private <c>Tick</c>, which is
-/// <c>OverflowToast</c>'s and <c>FirstActiveHint</c>'s bargain, so these rows hand it a delta.
+/// <c>FirstActiveHint</c>'s bargain, so these rows hand it a delta.
 /// </para>
 /// <para>
 /// <b>Off the shipped prefab, with no presenter and no run</b> — <c>GrantedShieldTests.BareBar</c>'s

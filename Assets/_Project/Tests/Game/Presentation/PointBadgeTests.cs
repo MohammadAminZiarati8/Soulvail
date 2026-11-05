@@ -31,7 +31,7 @@ namespace Soulvail.Tests.Game.Presentation;
 /// <b>Over a real <c>RunSession</c> and the shipped <c>Hud.prefab</c></b>, <c>XpBarViewTests</c>' shape
 /// and its reasons: the badge is bound by <c>HudPresenter</c>, and a hand-built one would test a screen
 /// that happens to resemble the asset. The hub <em>is</em> the session's <c>IDomainEvents</c>, so
-/// <c>NodeTaken</c> and <c>OverflowGranted</c> are published by core, in core's order — which is what
+/// <c>NodeTaken</c> is published by core, in core's order — which is what
 /// makes <see cref="Badge_FollowsNodeTaken"/> a row about the badge rather than about the fixture:
 /// <c>NodeTaken</c> is published <em>before</em> the point is spent.
 /// </para>
@@ -154,18 +154,22 @@ public sealed class PointBadgeTests
     }
 
     [Test]
-    public void Badge_FollowsOverflow()
+    public void PointBadge_IgnoresNothingItNeeds()
     {
-        // A full tree, two points owed: level 8 is 1 + 5 taken + 2 pending.
-        StartRun(free: true, pending: 2, taken: Nodes);
+        StartRun(free: true, pending: 1);
         BuildHud();
 
-        Assert.That(_badge.Shown, Is.EqualTo(2));
-
-        _session.SettleFullTree();
+        _hub.Publish(new LeveledUp(2, 1));
         Flush();
 
-        Assert.That(_session.State.SkillPoints, Is.Zero, "the fixture's premise: both points became Overflow.");
+        Assert.That(_badge.Shown, Is.EqualTo(1));
+        Assert.That(CountText(), Is.EqualTo("1"));
+        Assert.That(_badge.ToastVisible, Is.True);
+
+        _session.TakeNode(new ContentId(Nodes[0]));
+        Flush();
+
+        Assert.That(_session.State.SkillPoints, Is.Zero);
         Assert.That(_badge.Shown, Is.Zero);
         Assert.That(DiscObject().activeSelf, Is.False);
     }
@@ -183,7 +187,7 @@ public sealed class PointBadgeTests
         // An event that moved nothing, twice: the run still holds 3.
         _hub.Publish(new NodeTaken(new ContentId(Nodes[0]), SkillKind.Passive, 0, 1, 1));
         Flush();
-        _hub.Publish(new OverflowGranted(4, 1));
+        _hub.Publish(new NodeTaken(new ContentId(Nodes[0]), SkillKind.Passive, 0, 1, 1));
         Flush();
 
         Assert.That(Writes(), Is.EqualTo(written), "an unchanged number was written again (UI-01d).");
@@ -333,7 +337,6 @@ public sealed class PointBadgeTests
 
         _hub.Publish(new LeveledUp(3, 2));
         _hub.Publish(new NodeTaken(new ContentId(Nodes[0]), SkillKind.Passive, 0, 1, 1));
-        _hub.Publish(new OverflowGranted(4, 1));
         Flush();
 
         Assert.That(_badge.Shown, Is.Zero, "a drawing run counted points nobody can spend.");

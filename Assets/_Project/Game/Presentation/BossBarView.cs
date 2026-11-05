@@ -406,8 +406,7 @@ namespace Soulvail.Game.Presentation
 
             // A readout is never in the raycast path, in any state: the stick and the Charge button
             // are under this canvas and the fight runs for the whole time the band is up. Written once
-            // rather than per draw, because nothing ever changes it — OverflowToast's rule, made
-            // structural.
+            // rather than per draw, because nothing ever changes it.
             if (_root != null)
             {
                 _root.blocksRaycasts = false;

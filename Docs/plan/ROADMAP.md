@@ -153,6 +153,6 @@ _No milestone. The owner is setting the next direction._
 - [x] **LV-01a** — Every level-up raises max HP and weapon damage: +3 % HP, +2 % damage of base, mode-authored, heals the gain (S)
 - [x] **LV-01b** — Boss HP rises to match level growth: seven bosses re-authored, fight-length probes price the player's level (S)
 - [x] **LV-02a** — Level cap 30, reached at stage 25 (perLevel 5.1); XP strip reads MAX (S)
-- [ ] **[LV-02b](tasks/LV-02b-overflow-toast-out.md)** — The Overflow toast leaves the HUD (S)
+- [x] **LV-02b** — The Overflow toast leaves the HUD (S)
 - [ ] **[LV-02c](tasks/LV-02c-overflow-out-of-core.md)** — Overflow leaves core and the modes; old saves still load (M)
 - [ ] **[LV-02d](tasks/LV-02d-marksman-rank-merge.md)** — Marksman ranks merge to fit 29 points; over-rank saves refunded (S)

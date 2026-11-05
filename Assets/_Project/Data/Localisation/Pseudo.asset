@@ -124,8 +124,6 @@ MonoBehaviour:
   - _key: ui.hint.firstActive
     _text: "[Sk\xEElls \xE7\xE1\xF1 b\xE9 s\xE9t t\xF4 M\xE1\xF1\xFB\xE1l: P\xE1\xFBs\xE9
       \u2192 Sk\xEElls \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
-  - _key: ui.overflow.granted
-    _text: "[\xD4v\xE9rfl\xF4w \xB7\xB7\xB7]"
   - _key: ui.xp.max
     _text: "[MÁX ··]"
   - _key: ui.skills.empty

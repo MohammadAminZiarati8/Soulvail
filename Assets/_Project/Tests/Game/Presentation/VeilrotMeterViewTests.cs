@@ -560,7 +560,6 @@ public sealed class VeilrotMeterViewTests
         Assert.That(prefab.GetComponentInChildren<BossBarView>(true), Is.Not.Null, "BossBarView is gone.");
         Assert.That(prefab.GetComponentInChildren<XpBarView>(true), Is.Not.Null, "XpBarView is gone.");
         Assert.That(prefab.GetComponentInChildren<SkillArc>(true), Is.Not.Null, "SkillArc is gone.");
-        Assert.That(prefab.GetComponentInChildren<OverflowToast>(true), Is.Not.Null, "OverflowToast is gone.");
         Assert.That(prefab.GetComponentInChildren<SkillArc>(true), Is.Not.Null, "SkillArc is gone.");
     }
 

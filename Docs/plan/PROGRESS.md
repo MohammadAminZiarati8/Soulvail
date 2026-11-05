@@ -2,24 +2,23 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, LV-02a._
+_2026-11-05, LV-02b._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **LV-02a**: level cap 30 at stage 25 (perLevel 5.1); XP strip reads MAX. |
-| **Next task** | LV-02b: the Overflow toast leaves the HUD (then LV-02c, LV-02d). |
-| **Verified** | EditMode 5681: 5680 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **LV-02b**: Overflow toast, HUD wiring and localisation key removed; badge follows levels/nodes. |
+| **Next task** | LV-02c: Overflow leaves core and the modes; old saves still load (then LV-02d). |
+| **Verified** | EditMode 5677: 5676 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
-Scripted 1–14, 16–19, 21–24, 26–29; 30 Apex; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
-Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
-Amber heart/pod rings; 14→11 m band; warned vines.
+Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
+Thornheart (20): spokes, pods, slam, heart ×2; warned vines.
 Mother: shields, lobs, spray, pod. Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther) replace.
 Stalker (22+): lurks, hides, hit reveals, strikes; shimmer, flash.
@@ -49,7 +48,7 @@ Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 ## Known issues
 
 1. ArenaView zero-spawn reload warning; TimeManager reserialises.
-2. ContactDamage ruling pending. Invalid tree saves strand Continue; Overflow still live (LV-02b/c).
+2. ContactDamage ruling pending. Invalid tree saves strand Continue; Core Overflow still live (LV-02c).
 3. Boundary non-binding bolts leave bodies; pooled Bind/Move snap with autoSyncTransforms off.
 4. Sanctum draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
 5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; bosses unprofiled.

@@ -243,3 +243,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] **Editor, owner:** Play the Jungle as the Ranger to stage 25 clearing everything: level 30 arrives with Gravemaw's death, not before stage 25. The XP strip then sits full and reads MAX; further kills add nothing.
 - [ ] **Editor, owner:** Continue a save from before this change: it loads, the level is ≤ 30, and the strip reads MAX only at 30.
+
+## LV-02b — 2026-11-05
+
+- **[Editor]** Play Jungle to a level-up: the skill-point badge counts correctly; spend a point and check it decreases. No Overflow toast and no Console error. The normal LEVEL UP toast remains.

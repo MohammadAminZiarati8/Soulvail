@@ -133,11 +133,6 @@ namespace Soulvail.Game.Composition
                  "which one it is or how many are left.")]
         [SerializeField] private StageReadout _stageReadout;
 
-        [Tooltip("The Overflow announcement, on the HUD. Optional on the HUD's terms — a scene " +
-                 "without one grants CH §5.2's Overflow silently, which by stage 30 is more than " +
-                 "half the power the player has gained (ledger row 1).")]
-        [SerializeField] private OverflowToast _overflowToast;
-
         [Tooltip("The level-up screen: three cards and a header, on its own canvas above the HUD. " +
                  "Optional on the HUD's terms — but read its registration below before leaving it " +
                  "empty, because what its absence costs is not what the HUD's costs.")]
@@ -487,11 +482,6 @@ namespace Soulvail.Game.Composition
             if (_stageReadout != null)
             {
                 builder.RegisterComponent(_stageReadout);
-            }
-
-            if (_overflowToast != null)
-            {
-                builder.RegisterComponent(_overflowToast);
             }
 
             // Optional on the HUD's terms — the undressed Run scene is the fastest iteration loop

@@ -170,7 +170,7 @@ public sealed class BossBarViewTests
 
         // **And it takes no touches, in any state.** The stick and the Charge button are under this
         // canvas and the fight runs for the whole time a boss is alive, so a full-width band in the
-        // raycast path would eat a third of the screen's input — OverflowToast's rule, on a wider
+        // raycast path would eat a third of the screen's input — the HUD readout rule, on a wider
         // element.
         Assert.That(Root().blocksRaycasts, Is.False);
         Assert.That(Root().interactable, Is.False);
@@ -1039,7 +1039,6 @@ public sealed class BossBarViewTests
         // touch the one asset every screen in the game sorts against.
         Assert.That(prefab.GetComponentInChildren<XpBarView>(true), Is.Not.Null, "XpBarView is gone.");
         Assert.That(prefab.GetComponentInChildren<SkillArc>(true), Is.Not.Null, "SkillArc is gone.");
-        Assert.That(prefab.GetComponentInChildren<OverflowToast>(true), Is.Not.Null, "OverflowToast is gone.");
         Assert.That(
             prefab.GetComponentInChildren<SkillArc>(true),
             Is.Not.Null,

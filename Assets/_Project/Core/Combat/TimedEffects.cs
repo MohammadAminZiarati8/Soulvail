@@ -24,7 +24,7 @@ namespace Soulvail.Core.Combat;
 /// port with one member, <c>DateTimeOffset UtcNow</c>, and AR §18.2 says in as many words that there
 /// is no <c>IClock</c> in the session. A shield deadline taken from a wall clock would drain through
 /// a level-up screen at <c>timeScale</c> 0 and through a backgrounded app — the exact opposite of
-/// <c>OverflowToast</c>'s unscaled dwell, because a shield is simulation and a toast is
+/// a UI toast's unscaled dwell, because a shield is simulation and a toast is
 /// presentation.
 /// </para>
 /// <para>

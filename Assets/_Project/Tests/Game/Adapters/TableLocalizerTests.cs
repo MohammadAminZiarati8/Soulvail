@@ -101,6 +101,17 @@ public sealed class TableLocalizerTests
 
     // ---- The adapter (rules 1, 6) ----------------------------------------------------------------
 
+    [TestCase("English")]
+    [TestCase("Pseudo")]
+    public void Tables_HaveNoOverflowKey(string locale)
+    {
+        var table = AssetDatabase.LoadAssetAtPath<LocalizationTable>(
+            $"Assets/_Project/Data/Localisation/{locale}.asset");
+
+        Assert.That(table, Is.Not.Null);
+        Assert.That(table.ToDictionary().ContainsKey(new LocKey("ui.overflow.granted")), Is.False);
+    }
+
     [Test]
     public void Get_ReturnsTheRow()
     {
@@ -873,12 +884,11 @@ public sealed class TableLocalizerTests
             typeof(OfferCard),
             typeof(SkillRow),
             typeof(FirstActiveHint),
-            typeof(OverflowToast),
         })
         {
             // Ledger row 9's readers, by name (TreeNodeButton left at UI-04c: a tile draws no words). Each must be able to reach the port at all —
-            // through a draw call for the four pooled cells, through [Inject] for the two
-            // components RunScope owns.
+            // through a draw call for the pooled cells, through [Inject] for the hint
+            // component RunScope owns.
             Assert.That(
                 MentionsLocalizer(reader),
                 Is.True,

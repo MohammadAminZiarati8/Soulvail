@@ -26,7 +26,7 @@ namespace Soulvail.Game.Presentation
     /// <b>The events say <em>when</em>; the number is read.</b> <c>NodeTaken</c> is published from
     /// inside <c>SkillTree.Take</c>, <em>before</em> <c>LevelUpFlow.Take</c> spends the point, so a
     /// handler that read <see cref="RunState.SkillPoints"/> there would draw one too many for good.
-    /// The three events therefore only mark the badge stale, and <see cref="LateUpdate"/> writes it
+    /// The level and node events only mark the badge stale, and <see cref="LateUpdate"/> writes it
     /// once, after the call that raised them has returned. That is still event-driven — nothing is
     /// polled into agreement, an unchanged number is not written, and a frame with no event does one
     /// bool test — and it coalesces a grant worth two levels into one write.
@@ -36,9 +36,9 @@ namespace Soulvail.Game.Presentation
     /// a deactivated object receives no <c>Update</c> and the toast's clock is one.
     /// </para>
     /// <para>
-    /// <b>The toast's clock is unscaled and the split into <see cref="Tick"/> is
-    /// <c>OverflowToast</c>'s</b>: a pause lands on top of a level-up often, and a toast counting
-    /// scaled seconds would hang on screen for as long as the screen above it. It blocks no touch —
+    /// <b>The toast's clock is unscaled, with a separate <see cref="Tick"/></b>: a pause often
+    /// lands on top of a level-up, and a toast counting scaled seconds would hang on screen
+    /// for as long as the screen above it. It blocks no touch —
     /// the stick is under it and the fight is running.
     /// </para>
     /// <para>
@@ -80,7 +80,6 @@ namespace Soulvail.Game.Presentation
 
         private IDisposable _leveledSubscription;
         private IDisposable _takenSubscription;
-        private IDisposable _overflowSubscription;
         private IDisposable _endedSubscription;
 
         /// <summary>The number drawn; 0 means the badge is hidden.</summary>
@@ -138,7 +137,6 @@ namespace Soulvail.Game.Presentation
                 _hub = hub;
                 _leveledSubscription = hub.Subscribe<LeveledUp>(OnLeveledUp);
                 _takenSubscription = hub.Subscribe<NodeTaken>(OnNodeTaken);
-                _overflowSubscription = hub.Subscribe<OverflowGranted>(OnOverflowGranted);
                 _endedSubscription = hub.Subscribe<RunEnded>(OnRunEnded);
             }
 
@@ -192,8 +190,8 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>One frame of the toast being up: the dwell, and nothing else.</summary>
         /// <remarks>
-        /// Taking its own delta so a fixture can drive it to its end without a real clock —
-        /// <c>OverflowToast.Tick</c>'s bargain. The delta is trusted; the Inspector's dwell is not.
+        /// Taking its own delta lets a fixture drive it to its end without a real clock.
+        /// The delta is trusted; the Inspector's dwell is not.
         /// </remarks>
         private void Tick(float unscaledDt)
         {
@@ -232,11 +230,6 @@ namespace Soulvail.Game.Presentation
         }
 
         private void OnNodeTaken(NodeTaken evt)
-        {
-            _stale |= IsFree;
-        }
-
-        private void OnOverflowGranted(OverflowGranted evt)
         {
             _stale |= IsFree;
         }
@@ -315,12 +308,10 @@ namespace Soulvail.Game.Presentation
         {
             _leveledSubscription?.Dispose();
             _takenSubscription?.Dispose();
-            _overflowSubscription?.Dispose();
             _endedSubscription?.Dispose();
 
             _leveledSubscription = null;
             _takenSubscription = null;
-            _overflowSubscription = null;
             _endedSubscription = null;
             _hub = null;
         }

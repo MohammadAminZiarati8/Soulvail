@@ -415,7 +415,7 @@ public sealed class PaletteTests
     /// </summary>
     /// <remarks>
     /// <b>The spec's list named <c>_secondsShown</c> and no reader has one.</b> That field is on
-    /// <c>FirstActiveHint</c> and <c>OverflowToast</c>, neither of which ever held a colour, so the
+    /// <c>FirstActiveHint</c>, which never held a colour, so the
     /// list here is the timing and feel fields that actually live on the nine — including the two
     /// alphas, which are feel numbers rather than colour and are exactly what rule 8 says a view
     /// keeps.

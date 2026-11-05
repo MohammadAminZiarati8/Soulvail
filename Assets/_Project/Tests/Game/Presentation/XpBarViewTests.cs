@@ -14,7 +14,6 @@ using Soulvail.Core.Save;
 using Soulvail.Core.Stage;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
-using Soulvail.Game.Composition;
 using Soulvail.Game.Presentation;
 using Soulvail.Tests.Core.Fakes;
 using TMPro;
@@ -26,22 +25,18 @@ using Object = UnityEngine.Object;
 namespace Soulvail.Tests.Game.Presentation;
 
 /// <summary>
-/// The progression row of the HUD: the XP strip along the top edge, the level number beside HP, and
-/// the one announcement Overflow ever gets. GD §16.1, CH §5.2.
+/// The progression row of the HUD: the XP strip along the top edge and the level number beside HP.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>One fixture for three readouts, because the spec makes them one row of the HUD</b> — and
-/// because all three live on the same prefab, which is what lets the two cross-cutting guard rows
-/// (<see cref="Subscribes_FromConstruct"/>, <see cref="Destroy_DropsSubscriptions"/>) cover all
-/// <em>three</em> of this task's components rather than the two this file otherwise owns. The row's
-/// own membership, fills and tints are <c>AutoCastRowTests</c>'.
+/// The strip and level readout share the shipped HUD prefab. Lifetime rows guard the strip
+/// subscriptions; the row's membership, fills and tints are covered by <c>AutoCastRowTests</c>.
 /// </para>
 /// <para>
 /// <b>Over a real <c>RunSession</c> and the shipped <c>Hud.prefab</c></b> — <c>SkillBarPresenterTests</c>'
 /// shape and its reasons. The hub <em>is</em> the session's <c>IDomainEvents</c>, so a resumed run's
-/// <c>RunStarted</c> and a spent pick's <c>OverflowGranted</c> are published by core rather than
-/// staged here; a hand-built HUD would test a second screen that happens to resemble the asset, and
+/// <c>RunStarted</c> is published by core rather than staged here. A hand-built HUD would test a
+/// second screen that happens to resemble the asset, and
 /// the failure Traps §5 describes — a component that deserialises as null with nothing reporting it —
 /// is invisible to a fixture that never loads the asset.
 /// </para>
@@ -85,15 +80,6 @@ public sealed class XpBarViewTests
     /// <summary>GD §16.1's strip height, quoted from the shipped constant rather than a literal.</summary>
     private const float StripDp = XpBarView.HeightDp;
 
-    /// <summary>The key the toast draws until M3-14a gives it words — ledger row 9.</summary>
-    private const string ToastKey = "ui.overflow.granted";
-
-    /// <summary>
-    /// What <see cref="ToastKey"/> resolves to — <c>English.asset</c>'s row, authored here so the
-    /// fixture asserts against a table it built rather than against the shipped one.
-    /// </summary>
-    private const string ToastWord = "Overflow";
-
     /// <summary>Branch a's whole first tier — <c>LevelUpPresenterTests</c>' five-node tree.</summary>
     private const string NodeOne = "skill.test.one";
     private const string NodeTwo = "skill.test.two";
@@ -106,7 +92,6 @@ public sealed class XpBarViewTests
     private static readonly DateTimeOffset Instant = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000L);
 
     private DomainEventHub _hub;
-    private RecordingEvents _spy;
     private FixedRandom _random;
     private FixedClock _clock;
     private ContentCatalog _catalog;
@@ -115,29 +100,18 @@ public sealed class XpBarViewTests
 
     private GameObject _hud;
     private XpBarView _strip;
-    private OverflowToast _toast;
     private HudPresenter _presenter;
 
     private readonly List<GameObject> _spawned = new List<GameObject>();
-    private readonly List<IDisposable> _disposables = new List<IDisposable>();
-    private readonly List<RunPause> _pauses = new List<RunPause>();
-
-    private float _restoreTimeScale;
-
     /// <summary>The test mode's level cap; 0 unless a MAX row sets it (LV-02a).</summary>
     private int _maxLevel;
 
     [SetUp]
     public void CreateWorld()
     {
-        // The Editor's own globals. One row writes timeScale on purpose and RunPause writes both, so
-        // a row that failed part way through would otherwise leave the whole suite after it running
-        // at 0 — PausePresenterTests' argument, made in the teardown rather than in each row.
-        _restoreTimeScale = Time.timeScale;
         _maxLevel = 0;
 
         _hub = new DomainEventHub();
-        _spy = new RecordingEvents();
         _random = new FixedRandom(7, Alternating(8_192));
         _clock = new FixedClock(Instant);
     }
@@ -145,22 +119,6 @@ public sealed class XpBarViewTests
     [TearDown]
     public void DestroyWorld()
     {
-        for (int i = _disposables.Count - 1; i >= 0; i--)
-        {
-            _disposables[i].Dispose();
-        }
-
-        _disposables.Clear();
-
-        foreach (RunPause pause in _pauses)
-        {
-            pause.Dispose();
-        }
-
-        _pauses.Clear();
-
-        Time.timeScale = _restoreTimeScale;
-
         foreach (GameObject go in _spawned)
         {
             if (go != null)
@@ -175,7 +133,6 @@ public sealed class XpBarViewTests
 
         _session = null;
         _strip = null;
-        _toast = null;
         _presenter = null;
     }
 
@@ -401,212 +358,15 @@ public sealed class XpBarViewTests
         Assert.That(Field<TMP_Text>(_presenter, "_levelText").color, Is.EqualTo(Palette.HudText));
     }
 
-    // ---- Overflow (rules 10, 11, 12, 13) ---------------------------------------------------------
-
     [Test]
-    public void Overflow_ToastShowsTheTotal()
+    public void Hud_HoldsNoOverflowToast()
     {
-        StartRun(level: 1);
-        BuildHud();
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
 
-        Assert.That(_toast.IsShown, Is.False, "the prefab ships the toast up.");
-
-        _hub.Publish(new OverflowGranted(30, 14));
-
-        Assert.That(_toast.IsShown, Is.True);
-
-        // **The running total, not the increment** (rule 10). The fourteenth Overflow at stage 30
-        // means "you have +28 % damage"; the increment means "you got 2 % again", which is the
-        // difference between the mechanic feeling cumulative and feeling like a consolation prize.
-        Assert.That(ToastText(), Does.Contain("14"));
-        Assert.That(ToastText(), Does.Not.Contain("30"), "the toast is showing the level, not the total.");
-
-        // **`Toast_DrawsEnglish`** — M3-10b's key row inverted, and ledger row 9's most harmless
-        // reader closing (rule 13): "Overflow ×14" was always mostly the number, and the number
-        // resolved fine all along. What a player gains here is the word rather than the meaning.
-        Assert.That(ToastText(), Does.StartWith(ToastWord));
-        Assert.That(ToastText(), Does.Not.StartWith("ui."));
-        Assert.That(ToastText(), Is.EqualTo(ToastWord + " ×14"));
-    }
-
-    [Test]
-    public void Overflow_ToastHidesOnItsOwn()
-    {
-        StartRun(level: 1);
-        BuildHud();
-
-        _hub.Publish(new OverflowGranted(4, 1));
-
-        SetDwell(2f);
-
-        Tick(1f);
-
-        Assert.That(_toast.IsShown, Is.True, "half the dwell is not the whole of it.");
-
-        Tick(1.01f);
-
-        Assert.That(_toast.IsShown, Is.False, "the toast never came down.");
-    }
-
-    [Test]
-    public void Overflow_ToastSurvivesAPause()
-    {
-        StartRun(level: 1);
-        BuildHud();
-
-        _hub.Publish(new OverflowGranted(4, 1));
-
-        SetDwell(2f);
-
-        // A level-up or a pause can land on top of a toast that is already up — Overflow itself never
-        // pauses (M3-08a rule 7) but the level after it may draw cards (rule 12).
-        Time.timeScale = 0f;
-
-        Tick(1f);
-
-        Assert.That(_toast.IsShown, Is.True, "the fixture's premise: half a dwell.");
-
-        Tick(4f);
-
+        Assert.That(prefab, Is.Not.Null, $"No prefab at {HudPath}.");
         Assert.That(
-            _toast.IsShown,
-            Is.False,
-            "the toast was still up after five seconds of a stopped game, so its dwell froze with "
-                + "the simulation and would resume mid-sentence.");
-
-        Time.timeScale = 1f;
-
-        Assert.That(_toast.IsShown, Is.False, "the toast came back when the game did.");
-
-        // **What the row above cannot show, and this does.** Driving Tick by hand proves the seam
-        // rather than the clock, because an EditMode test cannot make unscaled time pass — so the
-        // claim that the clock is *unscaled* is made against the IL of Update, which is the only
-        // place the delta is chosen.
-        Assert.That(
-            Reads(typeof(OverflowToast), "get_unscaledDeltaTime"),
-            Is.True,
-            "OverflowToast never reads Time.unscaledDeltaTime, so its dwell is not the unscaled one "
-                + "rule 12 asks for.");
-
-        Assert.That(
-            Reads(typeof(OverflowToast), "get_deltaTime"),
-            Is.False,
-            "OverflowToast reads Time.deltaTime, which is 0 while a level-up or a pause is up — so "
-                + "the toast would hang on screen for the length of the screen above it.");
-    }
-
-    [Test]
-    public void Overflow_ToastTakesNoTouches()
-    {
-        StartRun(level: 1);
-        BuildHud();
-
-        _hub.Publish(new OverflowGranted(4, 1));
-
-        CanvasGroup root = Field<CanvasGroup>(_toast, "_root");
-
-        // Rule 12: the stick and the Charge button are under this canvas and the fight is running the
-        // whole time the toast is up, so it must never be in the raycast path.
-        Assert.That(root.alpha, Is.EqualTo(1f), "the fixture's premise.");
-        Assert.That(root.blocksRaycasts, Is.False);
-        Assert.That(root.interactable, Is.False);
-
-        Tick(3f);
-
-        Assert.That(root.alpha, Is.EqualTo(0f));
-        Assert.That(root.blocksRaycasts, Is.False, "a hidden toast is still in the raycast path.");
-    }
-
-    [Test]
-    public void Overflow_NothingPauses()
-    {
-        // Every node taken and a pick still owed. The level accounts for the five nodes and the pick
-        // — M3-08a rule 9's identity refuses a saved run whose level cannot explain what it owns.
-        StartRun(level: 7, pending: 1, taken: new[] { NodeOne, NodeTwo, NodeThree, NodeFour, NodeFive });
-        BuildHud();
-
-        RunPause pause = NewPause();
-
-        Time.timeScale = 1f;
-
-        _session.OpenLevelUp();
-
-        Assert.That(_spy.Count<OverflowGranted>(), Is.EqualTo(1), "the pick was not spent on Overflow.");
-        Assert.That(_spy.Count<OfferPresented>(), Is.Zero, "a full tree drew cards.");
-
-        // **M3-08a rule 7 from this side.** Overflow is silent and instant — no pause, no screen —
-        // and this toast is the whole of the announcement, so it has to be able to appear over a
-        // running fight. The pause here is a real one this component was never handed, which is
-        // LevelUpPresenterTests' inverted-row technique: the claim is enforced rather than recorded.
-        Assert.That(_toast.IsShown, Is.True, "the one announcement Overflow gets did not appear.");
-        Assert.That(pause.IsPaused, Is.False);
-        Assert.That(Time.timeScale, Is.EqualTo(1f), "the game stopped for a level with no choice in it.");
-
-        // Total 1: Level − 1 − TakenNodeCount − PendingLevelUps = 7 − 1 − 5 − 0.
-        Assert.That(ToastText(), Does.Contain("1"));
-        Assert.That(_session.State.OverflowLevels, Is.EqualTo(1));
-    }
-
-    [Test]
-    public void Overflow_RepeatsRetriggerTheToast()
-    {
-        StartRun(level: 1);
-        BuildHud();
-
-        SetDwell(2f);
-
-        // Three in a row is not hypothetical: past level 13 a twelve-node tree is full and every
-        // banked pick is Overflow, so a stage's worth of levels arrives as a run of these.
-        foreach (int total in new[] { 1, 2, 3 })
-        {
-            _hub.Publish(new OverflowGranted(13 + total, total));
-
-            Assert.That(_toast.IsShown, Is.True, $"the toast was not up for Overflow {total}.");
-            Assert.That(
-                ToastText(),
-                Does.Contain(total.ToString()),
-                $"the toast is showing a stale total rather than {total}.");
-
-            // Most of a dwell between them, so the third arrives on a toast that is already up and
-            // nearly gone — which is what makes "one timer, restarted" the thing under test.
-            Tick(1.5f);
-        }
-
-        Assert.That(_toast.IsShown, Is.True, "1.5 s after the third is inside its own two seconds.");
-
-        Tick(0.6f);
-
-        // **One timer, not three queued behind each other** (rule 10): the whole run of three is over
-        // two seconds after the last one rather than six after the first.
-        Assert.That(_toast.IsShown, Is.False);
-    }
-
-    [Test]
-    public void Overflow_IgnoresANonFiniteDwell()
-    {
-        StartRun(level: 1);
-        BuildHud();
-
-        // **A duration takes FirstActiveHint.Dwell's answer, not the layout doors'** — and that split
-        // is the whole of why this row exists beside Strip_IgnoresANonFiniteHeight. A rect has an
-        // authored value to leave alone; a duration does not, and the two failures it answers are
-        // both worse than the default: a NaN never satisfies `>=`, so the toast would sit over the
-        // fight until the run ended, and a zero or negative dwell would take it down on the frame it
-        // went up.
-        foreach (float bad in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity, 0f, -2f })
-        {
-            _hub.Publish(new OverflowGranted(4, 1));
-
-            SetDwell(bad);
-
-            Tick(1.9f);
-
-            Assert.That(_toast.IsShown, Is.True, $"{bad} hid the toast before the two-second default.");
-
-            Tick(0.2f);
-
-            Assert.That(_toast.IsShown, Is.False, $"{bad} never hid the toast at all.");
-        }
+            prefab.GetComponentsInChildren<Transform>(true).Any(child => child.name == "OverflowToast"),
+            Is.False);
     }
 
     // ---- MAX at the level cap (LV-02a rule 7) ------------------------------------------------------
@@ -650,7 +410,7 @@ public sealed class XpBarViewTests
         return label;
     }
 
-    // ---- Lifetime, for all three of this task's components ---------------------------------------
+    // ---- Lifetime, for the XP strip ---------------------------------------
 
     [Test]
     public void Subscribes_FromConstruct()
@@ -663,22 +423,12 @@ public sealed class XpBarViewTests
         GameObject hud = Instantiate();
 
         var strip = hud.GetComponentInChildren<XpBarView>(true);
-        var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub, Passthrough());
-        toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         _hub.Publish(new XpChanged(9f, 3, 0.33f));
 
         Assert.That(strip.Fraction, Is.EqualTo(0.33f).Within(1e-4f), "the strip heard nothing.");
-
-        // The row's own event, and it needs the frame the deferred rebuild happens on — see
-        // AutoCastRow's remarks for why that deferral is mandatory rather than tidy.
-
-
-        _hub.Publish(new OverflowGranted(4, 1));
-
-        Assert.That(toast.IsShown, Is.True, "the toast heard nothing.");
     }
 
     [Test]
@@ -689,20 +439,15 @@ public sealed class XpBarViewTests
         GameObject hud = Instantiate();
 
         var strip = hud.GetComponentInChildren<XpBarView>(true);
-        var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
         strip.Construct(_session, _hub, Passthrough());
-        toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.EqualTo(1), "the fixture's premise.");
-        Assert.That(_hub.SubscriberCount<OverflowGranted>(), Is.EqualTo(1));
 
         // Unity does not call OnDestroy on an object whose Awake never ran, and none did here.
         Invoke(strip, "OnDestroy");
-        Invoke(toast, "OnDestroy");
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.Zero);
-        Assert.That(_hub.SubscriberCount<OverflowGranted>(), Is.Zero);
 
         // A component destroyed before its scope would otherwise be handed an event for an object
         // Unity has killed, which is the failure the explicit disposal exists for.
@@ -710,7 +455,6 @@ public sealed class XpBarViewTests
             () =>
             {
                 _hub.Publish(new XpChanged(1f, 3, 0.5f));
-                _hub.Publish(new OverflowGranted(4, 1));
                 _hub.Publish(new NodeTaken(new ContentId(NodeTwo), SkillKind.Active, 0, 1, 1));
                 _hub.Publish(new SkillAutoCastChanged(new ContentId(NodeTwo), false, 0));
             },
@@ -726,8 +470,6 @@ public sealed class XpBarViewTests
         Assert.Throws<ArgumentNullException>(() => _strip.Construct(null, _hub, Passthrough()));
         Assert.Throws<ArgumentNullException>(() => _strip.Construct(_session, null, Passthrough()));
         Assert.Throws<ArgumentNullException>(() => _strip.Construct(_session, _hub, null));
-        Assert.Throws<ArgumentNullException>(() => _toast.Construct(null, Passthrough()));
-        Assert.Throws<ArgumentNullException>(() => _toast.Construct(_hub, null));
     }
 
     // ---- The asset (Traps §5) --------------------------------------------------------------------
@@ -743,11 +485,9 @@ public sealed class XpBarViewTests
         // component that deserialises as null with nothing reported anywhere, and it is only visible
         // from here.
         var strip = prefab.GetComponentInChildren<XpBarView>(true);
-        var toast = prefab.GetComponentInChildren<OverflowToast>(true);
         var presenter = prefab.GetComponent<HudPresenter>();
 
         Assert.That(strip, Is.Not.Null, "XpBarView did not load off Hud.prefab (Traps §5).");
-        Assert.That(toast, Is.Not.Null, "OverflowToast did not load off Hud.prefab (Traps §5).");
         Assert.That(presenter, Is.Not.Null, "HudPresenter did not load off Hud.prefab (Traps §5).");
 
         // **Read back off the saved asset**, not off an object this fixture just dressed: a prefab
@@ -773,25 +513,17 @@ public sealed class XpBarViewTests
 
         Assert.That(stripSo.FindProperty("_heightDp").floatValue, Is.EqualTo(StripDp));
 
-        var toastSo = new SerializedObject(toast);
-        var toastRoot = toastSo.FindProperty("_root").objectReferenceValue as CanvasGroup;
-
-        Assert.That(toastRoot, Is.Not.Null, "the toast has no CanvasGroup root.");
-        Assert.That(toastSo.FindProperty("_text").objectReferenceValue, Is.Not.Null, "no toast label.");
-        Assert.That(toastRoot.alpha, Is.EqualTo(0f), "the prefab ships the toast up over the arena.");
-        Assert.That(toastRoot.blocksRaycasts, Is.False, "the authored toast is in the raycast path.");
-
         var hudSo = new SerializedObject(presenter);
         var levelLabel = hudSo.FindProperty("_levelText").objectReferenceValue as TMP_Text;
 
         Assert.That(levelLabel, Is.Not.Null, "HudPresenter has no level label.");
         Assert.That(levelLabel.font, Is.Not.Null, "the level label has no font asset (Traps §4).");
 
-        // All three hang under the safe area, like everything else on this prefab. `includeInactive`
+        // The strip hangs under the safe area, like everything else on this prefab. `includeInactive`
         // is mandatory rather than defensive: every object on a prefab *asset* reports
         // `activeInHierarchy` false, because it is in no scene — so the default overload answers null
         // for a correctly dressed prefab, which cost M3-10a a red row.
-        foreach (Component component in new Component[] { strip, toast })
+        foreach (Component component in new Component[] { strip })
         {
             Assert.That(
                 component.GetComponentInParent<Soulvail.Game.Controls.SafeAreaFitter>(includeInactive: true),
@@ -840,16 +572,12 @@ public sealed class XpBarViewTests
             skills,
             new[] { Tree() });
 
-        // The hub is the session's own IDomainEvents, so the screens hear what core published rather
-        // than what the fixture decided to say. The spy rides alongside for counting.
-        var events = new ForkedEvents(_hub, _spy);
-
         _session = new RunSession(
             _catalog,
             _random,
-            events,
+            _hub,
             new RecordingIntents(),
-            new RunRecorder(_random, _clock, events),
+            new RunRecorder(_random, _clock, _hub),
             Capacity,
             DeviceCap,
             ProjectileCapacity);
@@ -914,7 +642,7 @@ public sealed class XpBarViewTests
     }
 
     /// <summary>
-    /// The shipped HUD, with the strip, the toast and the presenter injected and started — the
+    /// The shipped HUD, with the strip and the presenter injected and started — the
     /// screen under test is the asset.
     /// </summary>
     private void BuildHud()
@@ -922,59 +650,23 @@ public sealed class XpBarViewTests
         _hud = Instantiate();
 
         _strip = _hud.GetComponentInChildren<XpBarView>(true);
-        _toast = _hud.GetComponentInChildren<OverflowToast>(true);
         _presenter = _hud.GetComponent<HudPresenter>();
 
         Assert.That(_strip, Is.Not.Null, "XpBarView did not load off Hud.prefab (Traps §5).");
-        Assert.That(_toast, Is.Not.Null, "OverflowToast did not load off Hud.prefab (Traps §5).");
         Assert.That(_presenter, Is.Not.Null, "HudPresenter did not load off Hud.prefab (Traps §5).");
 
         // What RunScope's RegisterComponent does, and then the Start that Unity does not run on an
         // instantiated prefab in EditMode: the placement and the first draw both live there.
         _strip.Construct(_session, _hub, Passthrough());
-        _toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
         _presenter.Construct(_hub, _session, Passthrough());
 
         Invoke(_strip, "Start");
-        Invoke(_toast, "Start");
         Invoke(_presenter, "Start");
     }
 
-    /// <summary>
-    /// <paramref name="unscaledDt"/> of the toast's own clock.
-    /// </summary>
-    /// <remarks>
-    /// <c>Tick</c> rather than <c>Update</c>, because <c>Time.unscaledDeltaTime</c> does not advance
-    /// in EditMode and there is no player loop to give it frame time — <c>FirstActiveHintTests.Tick</c>'s
-    /// bargain, and the reason <c>OverflowToast</c> keeps the split at all.
-    /// </remarks>
-    private void Tick(float unscaledDt) =>
-        typeof(OverflowToast)
-            .GetMethod("Tick", BindingFlags.Instance | BindingFlags.NonPublic)
-            .Invoke(_toast, new object[] { unscaledDt });
-
-    private void SetDwell(float seconds) => SetPrivate(_toast, "_secondsShown", seconds);
-
-    /// <summary>An icon book with no icons, for the row's constructor — this fixture draws none.</summary>
-    private static SkillIconBook NoIcons() => new SkillIconBook(new Dictionary<ContentId, Sprite>());
-
-    /// <summary>A look book with no looks, for the row's constructor.</summary>
-    private static CharacterLookBook NoLooks() => new CharacterLookBook(new Dictionary<ContentId, CharacterLook>());
-
     private Image Fill() => Field<Image>(_strip, "_fill");
 
-    private string ToastText() => Field<TMP_Text>(_toast, "_text").text;
-
     private string LevelText() => Field<TMP_Text>(_presenter, "_levelText").text;
-
-    private RunPause NewPause()
-    {
-        var pause = new RunPause();
-
-        _pauses.Add(pause);
-
-        return pause;
-    }
 
     /// <summary>The rect of the component or label in <paramref name="field"/>.</summary>
     private static RectTransform Rect(object target, string field) =>
@@ -995,78 +687,6 @@ public sealed class XpBarViewTests
     /// </summary>
     private static float PixelsPerDp() =>
         Soulvail.Game.Controls.StickShaper.PixelsPerDp(Screen.dpi);
-
-    /// <summary>
-    /// Whether <paramref name="type"/>, or anything the compiler nested inside it, calls a method
-    /// named <paramref name="member"/> on <see cref="Time"/>.
-    /// </summary>
-    /// <remarks>
-    /// <b>The IL, because the question is which clock was <em>read</em>.</b>
-    /// <c>SkillBarPresenterTests.Calls</c>' technique, narrowed to one declaring type: a behavioural
-    /// row can show that a dwell elapsed, never which clock it elapsed against, and in EditMode
-    /// neither clock advances at all. A token that resolves to nothing is skipped rather than
-    /// believed — a four-byte window after an opcode byte that happened to fall inside an operand is
-    /// not a call, and the resolve is what says so.
-    /// </remarks>
-    private static bool Reads(Type type, string member)
-    {
-        const BindingFlags Everything =
-            BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-            | BindingFlags.DeclaredOnly;
-
-        var types = new List<Type> { type };
-
-        types.AddRange(type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic));
-
-        foreach (Type candidate in types)
-        {
-            foreach (MethodBase method in candidate.GetMethods(Everything).Cast<MethodBase>()
-                         .Concat(candidate.GetConstructors(Everything)))
-            {
-                byte[] il = method.GetMethodBody()?.GetILAsByteArray();
-
-                if (il is null)
-                {
-                    continue;
-                }
-
-                for (int i = 0; i + 4 < il.Length; i++)
-                {
-                    // call (0x28) and callvirt (0x6F). Nothing else reaches a property getter.
-                    if (il[i] != 0x28 && il[i] != 0x6F)
-                    {
-                        continue;
-                    }
-
-                    MethodBase called;
-
-                    try
-                    {
-                        called = candidate.Module.ResolveMethod(BitConverter.ToInt32(il, i + 1));
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-
-                    if (called is not null && called.Name == member && called.DeclaringType == typeof(Time))
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private T Track<T>(T disposable)
-        where T : IDisposable
-    {
-        _disposables.Add(disposable);
-
-        return disposable;
-    }
 
     private static void Invoke(object target, string method) =>
         target.GetType()
@@ -1210,30 +830,6 @@ public sealed class XpBarViewTests
         }
 
         return values;
-    }
-
-    /// <summary>
-    /// Publishes into the run's hub <em>and</em> into a recorder, so a row can both watch a screen
-    /// react and count what core said — <c>LevelUpPresenterTests.ForkedEvents</c>.
-    /// </summary>
-    private sealed class ForkedEvents : IDomainEvents
-    {
-        private readonly IDomainEvents _first;
-        private readonly IDomainEvents _second;
-
-        public ForkedEvents(IDomainEvents first, IDomainEvents second)
-        {
-            _first = first;
-            _second = second;
-        }
-
-        public void Publish<T>(in T evt)
-            where T : struct
-        {
-            // The recorder first, so that a handler which throws still leaves the tally honest.
-            _second.Publish(evt);
-            _first.Publish(evt);
-        }
     }
 
     /// <summary>The real adapter over an empty table: every key resolves to itself.</summary>

@@ -302,3 +302,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **SK-04a** — After SK-04b, playtest Second Wind at level 14. Verify the shorter cooldowns, one guarded hit after a roll, and two back-to-back rolls with sequential recharge at rank 3.
 
 - **SK-04b** — Choose Skirmisher at level 14 and learn Second Wind 3. Roll twice and watch both pips empty and refill one at a time. Roll into a Frog's bite and check that Dodged appears with no HP loss, then the next bite lands.
+
+- **SK-05b [Editor]** Learn Whirlwind on the Skirmisher at level 17. Keep running with three enemies within 6 m. Confirm two upper-body spins, two cyan swirls at the launch positions, and arrows hitting enemies around the Ranger.

@@ -148,6 +148,13 @@ namespace Soulvail.Game.Views
         private IDisposable _placedSubscription;
         private readonly int _placeId = Animator.StringToHash("Place");
         [SerializeField] private KillshotView _killshotPrefab;
+        [SerializeField] private WhirlwindView _whirlwindPrefab;
+        private WhirlwindView _whirlwindView;
+        private GameObject _whirlwindRoot;
+        private readonly int _whirlingId = Animator.StringToHash("Whirling");
+        private readonly int _spinStateId = Animator.StringToHash("Upper Body.Whirlwind");
+        private readonly int _upperIdleId = Animator.StringToHash("Upper Body.Empty");
+        private bool _whirling;
         private KillshotView _killshotView;
         private GameObject _killshotRoot;
         private IDisposable _killshotWind, _killshotFire, _killshotBoundary, _killshotArrived, _killshotEnded;
@@ -233,6 +240,14 @@ namespace Soulvail.Game.Views
                 _rainView = Instantiate(_rainPrefab, _rainRoot.transform, false);
                 _rainView.Construct(hub, session, _bow != null ? _bow.transform : transform);
                 _rainRoot.SetActive(true);
+            }
+            if (_whirlwindPrefab != null)
+            {
+                _whirlwindRoot = new GameObject("Whirlwind (pooled)");
+                _whirlwindRoot.SetActive(false);
+                _whirlwindView = Instantiate(_whirlwindPrefab, _whirlwindRoot.transform, false);
+                _whirlwindView.Construct(hub, ShowWhirlwindSpin);
+                _whirlwindRoot.SetActive(true);
             }
             _placedSubscription = hub.Subscribe<TrapPlaced>(OnTrapPlaced);
             _killshotWind = hub.Subscribe<KillshotWindUp>(OnKillshotWindUp);
@@ -436,7 +451,7 @@ namespace Soulvail.Game.Views
                 && !_killshotWinding && _castUpLeft == 0f && _bindingReleaseLeft == 0f
                 ? Mathf.Clamp01(_shotPoseLeft / RunReleaseFadeSeconds)
                 : 1f;
-            SetUpperWeight(_rolling || _dead ? 0f : upperWeight);
+            SetUpperWeight(_whirling ? 1f : (_rolling || _dead ? 0f : upperWeight));
             PullString();
             WeighFlinch();
         }
@@ -498,6 +513,18 @@ namespace Soulvail.Game.Views
 
         private void OnDestroy()
         {
+            if (_whirlwindRoot != null)
+            {
+                _whirlwindView.Dispose();
+                if (Application.isPlaying)
+                {
+                    Destroy(_whirlwindRoot);
+                }
+                else
+                {
+                    DestroyImmediate(_whirlwindRoot);
+                }
+            }
             _killshotWind?.Dispose();
             _killshotFire?.Dispose();
             _killshotBoundary?.Dispose();
@@ -584,7 +611,40 @@ namespace Soulvail.Game.Views
             }
         }
 
-        private void OnDisable() => CancelKillshot();
+        private void OnDisable()
+        {
+            _whirlwindView?.Clear();
+            CancelKillshot();
+        }
+
+        private void ShowWhirlwindSpin(bool show)
+        {
+            if (_animator == null || (show && (!isActiveAndEnabled || _dead)))
+            {
+                return;
+            }
+
+            int layer = ResolveUpperLayer();
+            if (layer < 0 || !_animator.HasState(layer, _spinStateId))
+            {
+                return;
+            }
+
+            _whirling = show;
+            _animator.SetBool(_whirlingId, show);
+            if (!show)
+            {
+                _animator.Play(_upperIdleId, layer, 0f);
+                SetUpperWeight(0f);
+                return;
+            }
+
+            _shotPoseLeft = 0f;
+            _animator.ResetTrigger(_shootId);
+            _animator.ResetTrigger(_releaseId);
+            SetUpperWeight(1f);
+            _animator.Play(_spinStateId, layer, 0f);
+        }
 
         private void CancelKillshot()
         {
@@ -667,7 +727,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnAttacked(PlayerAttacked evt)
         {
-            if (_castUpLeft > 0f || _killshotWinding || _rolling || _dead)
+            if (_castUpLeft > 0f || _killshotWinding || _whirling || _rolling || _dead)
             {
                 return;
             }
@@ -707,7 +767,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnFired(ProjectileFired evt)
         {
-            if (_animator == null || evt.SourceId != 0 || evt.ChainIndex > 0 || _killshotWinding || _rolling || _dead
+            if (_animator == null || evt.SourceId != 0 || evt.ChainIndex > 0 || _killshotWinding || _whirling || _rolling || _dead
                 || (_castUpLeft > 0f && !evt.IsRicochet))
             {
                 return;
@@ -848,7 +908,7 @@ namespace Soulvail.Game.Views
             _shotPoseLeft = 0f;
             _animator.ResetTrigger(_shootId);
             _animator.ResetTrigger(_releaseId);
-            SetUpperWeight(0f);
+            SetUpperWeight(_whirling ? 1f : 0f);
 
             _animator.SetFloat(_dodgeXId, local.x);
             _animator.SetFloat(_dodgeZId, local.z);
@@ -984,6 +1044,12 @@ namespace Soulvail.Game.Views
             if (_flinchLayer == -2)
             {
                 _flinchLayer = _animator.GetLayerIndex(FlinchLayer.Name);
+            }
+
+            if (_whirling && _flinchLayer >= 0)
+            {
+                _animator.SetLayerWeight(_flinchLayer, 0f);
+                return;
             }
 
             FlinchLayer.Drive(_animator, _flinchLayer, _hitStateId);

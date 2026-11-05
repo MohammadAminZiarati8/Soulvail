@@ -111,11 +111,12 @@ public sealed class WhirlwindHandler : IEffectHandler<Whirlwind>
     private void FireRing(float now, Vector3 origin, int arrows, float angle, float damageOfWeapon)
     {
         float range = _combat.Weapon.Range.Value;
-        if (!(range > 0f) || float.IsInfinity(range) || arrows == 0)
+        if (!(range > 0f) || float.IsInfinity(range) || arrows == 0 || _projectiles.InFlightCount >= _projectiles.Capacity)
         {
             return;
         }
 
+        _events.Publish(new WhirlwindRingFired(origin));
         WeaponSpec weapon = _character.Weapon;
         float step = (2f * MathF.PI) / arrows;
         float damage = damageOfWeapon * _combat.Weapon.Damage.Value * _combat.HitAndRun.DamageMultiplier(now);

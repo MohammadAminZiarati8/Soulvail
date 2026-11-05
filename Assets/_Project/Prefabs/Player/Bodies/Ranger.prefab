@@ -315,6 +315,7 @@ MonoBehaviour:
   _rainPrefab: {fileID: 4060942388007416727, guid: d92663e73134e1543b98f1e5afe0182d, type: 3}
   _snarePrefab: {fileID: 7080111410115603631, guid: fc8cc795333d6284baf1591ba4cdc3d7, type: 3}
   _killshotPrefab: {fileID: 467179600233064026, guid: 11d79f180e4344a4e981e583c2415e84, type: 3}
+  _whirlwindPrefab: {fileID: 3704437296040476722, guid: 3255f06459c65c441903a950ffe8ed9e, type: 3}
 --- !u!114 &839898024975075071
 MonoBehaviour:
   m_ObjectHideFlags: 0

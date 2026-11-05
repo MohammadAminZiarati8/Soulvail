@@ -60,6 +60,10 @@ public sealed class WhirlwindTests
         var fired = _events.Of<ProjectileFired>();
         Assert.That(fired[0].Origin, Is.EqualTo(Vector3.UnitZ));
         Assert.That(fired[12].Origin, Is.EqualTo(Vector3.UnitZ + Vector3.UnitX));
+        var rings = _events.Of<WhirlwindRingFired>();
+        Assert.That(rings, Has.Count.EqualTo(2));
+        Assert.That(rings[0].Origin, Is.EqualTo(fired[0].Origin));
+        Assert.That(rings[1].Origin, Is.EqualTo(fired[12].Origin));
     }
 
     [Test]

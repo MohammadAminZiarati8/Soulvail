@@ -18,3 +18,11 @@ public readonly struct WhirlwindCast
     public int Rings { get; }
     public float Gap { get; }
 }
+
+/// <summary>A ring of Whirlwind arrows launched from the player's position.</summary>
+public readonly struct WhirlwindRingFired
+{
+    public WhirlwindRingFired(Vector3 origin) => Origin = origin;
+
+    public Vector3 Origin { get; }
+}

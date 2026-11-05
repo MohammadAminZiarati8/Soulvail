@@ -740,3 +740,15 @@ MonoBehaviour:
     _text: "Second Wind 3"
   - _key: skill.skirmisher.second-wind-3.description
     _text: "Two roll charges."
+  - _key: skill.skirmisher.whirlwind.name
+    _text: "Whirlwind"
+  - _key: skill.skirmisher.whirlwind.description
+    _text: "Spin and loose two rings of 12 arrows all round."
+  - _key: skill.skirmisher.whirlwind-2.name
+    _text: "Whirlwind 2"
+  - _key: skill.skirmisher.whirlwind-2.description
+    _text: "16 arrows a ring."
+  - _key: skill.skirmisher.whirlwind-3.name
+    _text: "Whirlwind 3"
+  - _key: skill.skirmisher.whirlwind-3.description
+    _text: "Three rings. Cooldown 8 s."

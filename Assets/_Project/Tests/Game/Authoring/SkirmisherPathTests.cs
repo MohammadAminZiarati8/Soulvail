@@ -28,6 +28,7 @@ public sealed class SkirmisherPathTests
     private static readonly ContentId Ricochet = new("skill.skirmisher.ricochet-shot");
     private static readonly ContentId HitAndRunId = new("skill.skirmisher.hit-and-run");
     private static readonly ContentId SecondWind = new("skill.skirmisher.second-wind");
+    private static readonly ContentId WhirlwindId = new("skill.skirmisher.whirlwind");
 
     [Test]
     public void Assets_MatchTheRankTables()
@@ -97,6 +98,48 @@ public sealed class SkirmisherPathTests
     }
 
     [Test]
+    public void Whirlwind_Assets_MatchTheRankTable()
+    {
+        IReadOnlyList<SkillDefinition> ranks = Load<PathDefinition>("Paths/Skirmisher").Skills[4].Ranks;
+        SkillSpec first = ranks[0].ToSpec();
+        Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
+        Assert.That(first.Active.Cooldown, Is.EqualTo(10f));
+        Assert.That(first.Active.Trigger.Clauses.Count, Is.EqualTo(1));
+        TriggerClause trigger = first.Active.Trigger.Clauses[0];
+        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesWithin6m));
+        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
+        Assert.That(trigger.Threshold, Is.EqualTo(3f));
+        Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
+        Assert.That(((Whirlwind)first.Active.OnCast[0]).DamageOfWeapon, Is.EqualTo(0.6f));
+
+        AssertWhirlwindUpgrade(ranks[1].ToSpec(), first.Id, PlayerStat.WhirlwindArrows, 4f, 1);
+        SkillSpec third = ranks[2].ToSpec();
+        AssertWhirlwindUpgrade(third, ranks[1].ToSpec().Id, PlayerStat.WhirlwindRings, 1f, 2);
+        var cooldown = (ModifySkillCooldown)third.Effects[1];
+        Assert.That(cooldown.SkillId, Is.EqualTo(WhirlwindId));
+        Assert.That(cooldown.Kind, Is.EqualTo(ModifierKind.Flat));
+        Assert.That(cooldown.Value, Is.EqualTo(-2f));
+    }
+
+    private static void AssertWhirlwindUpgrade(SkillSpec rank, ContentId parent, PlayerStat stat, float value, int count)
+    {
+        Assert.That(rank.Kind, Is.EqualTo(SkillKind.Upgrade));
+        Assert.That(rank.ParentId, Is.EqualTo(parent));
+        Assert.That(rank.Effects.Count, Is.EqualTo(count));
+        var effect = (ModifyStat)rank.Effects[0];
+        Assert.That(effect.Stat, Is.EqualTo(stat));
+        Assert.That(effect.Target, Is.EqualTo(StatTarget.Player));
+        Assert.That(effect.Kind, Is.EqualTo(ModifierKind.Flat));
+        Assert.That(effect.Value, Is.EqualTo(value));
+    }
+
+    [Test]
+    public void Path_WhirlwindAtSeventeen()
+    {
+        AssertSkill(Spec().Skills[4], WhirlwindId, 3, 17);
+    }
+
+    [Test]
     public void Path_SecondWindAtFourteen()
     {
         AssertSkill(Spec().Skills[3], SecondWind, 3, 14);
@@ -108,8 +151,8 @@ public sealed class SkirmisherPathTests
         PathSpec path = Spec();
         Assert.That(path.Id, Is.EqualTo(Skirmisher));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId("character.ranger")));
-        Assert.That(path.Skills.Count, Is.EqualTo(4));
-        Assert.That(path.NodeCount, Is.EqualTo(14));
+        Assert.That(path.Skills.Count, Is.EqualTo(5));
+        Assert.That(path.NodeCount, Is.EqualTo(17));
         AssertSkill(path.Skills[0], RunningShot, 4, 11);
         AssertSkill(path.Skills[1], Ricochet, 4, 11);
         AssertSkill(path.Skills[2], HitAndRunId, 3, 14);
@@ -134,6 +177,8 @@ public sealed class SkirmisherPathTests
 
     [TestCase(11, false)]
     [TestCase(14, true)]
+    [TestCase(16, true)]
+    [TestCase(17, true)]
     public void Choose_Skirmisher_InstallsPathSkills(int level, bool hitAndRunAvailable)
     {
         using var events = new DomainEventHub();
@@ -146,7 +191,7 @@ public sealed class SkirmisherPathTests
 
         Assert.That(session.State.PathId, Is.EqualTo(Skirmisher));
         Assert.That(session.State.IsPathChoiceOpen, Is.False);
-        Assert.That(session.State.TreeNodeCount, Is.EqualTo(baseNodes + 14));
+        Assert.That(session.State.TreeNodeCount, Is.EqualTo(baseNodes + 17));
         Assert.That(session.State.UnlockLevelOf(Ricochet), Is.EqualTo(11));
         Assert.That(session.State.IsNodeAvailable(Ricochet), Is.True);
         Assert.That(session.State.UnlockLevelOf(RunningShot), Is.EqualTo(11));
@@ -154,6 +199,7 @@ public sealed class SkirmisherPathTests
         Assert.That(session.State.IsNodeAvailable(RunningShot), Is.True);
         Assert.That(session.State.IsNodeAvailable(HitAndRunId), Is.EqualTo(hitAndRunAvailable));
         Assert.That(session.State.IsNodeAvailable(SecondWind), Is.EqualTo(hitAndRunAvailable));
+        Assert.That(session.State.IsNodeAvailable(WhirlwindId), Is.EqualTo(level >= 17));
         session.ChoosePath(Marksman);
         Assert.That(session.State.PathId, Is.EqualTo(Skirmisher));
         session.End();
@@ -204,6 +250,11 @@ public sealed class SkirmisherPathTests
         Assert.That(english[new LocKey("skill.skirmisher.second-wind-2.description")],
             Is.EqualTo("Roll cooldown −1 s. The first hit within 1 s after a roll misses."));
         Assert.That(english[new LocKey("skill.skirmisher.second-wind-3.description")], Is.EqualTo("Two roll charges."));
+        Assert.That(english[new LocKey("skill.skirmisher.whirlwind.name")], Is.EqualTo("Whirlwind"));
+        Assert.That(english[new LocKey("skill.skirmisher.whirlwind.description")],
+            Is.EqualTo("Spin and loose two rings of 12 arrows all round."));
+        Assert.That(english[new LocKey("skill.skirmisher.whirlwind-2.description")], Is.EqualTo("16 arrows a ring."));
+        Assert.That(english[new LocKey("skill.skirmisher.whirlwind-3.description")], Is.EqualTo("Three rings. Cooldown 8 s."));
         Assert.That(english[path.NameKey], Is.EqualTo("Skirmisher"));
         Assert.That(english[path.DescriptionKey], Is.EqualTo("Never stop. Shoot on the run, roll often, strike as you pass."));
     }

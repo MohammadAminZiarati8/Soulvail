@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-06, SK-05a complete._
+_2026-11-06, SK-05b complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **SK-05a** — Whirlwind in core. |
-| **Next task** | **SK-05b** — Whirlwind drawn and authored, awaiting go. |
-| **Verified** | EditMode 5799 (5798 passed, 0 failed, 1 existing inconclusive). Format clean. Compile clean. |
+| **Last merged** | **SK-05b** — Whirlwind drawn and authored. |
+| **Next task** | **SK-06a** — Storm Run in core, awaiting go. |
+| **Verified** | EditMode batch 5806 (5803 passed, 2 baseline DPI failures, 1 inconclusive). Format and compile clean. |
 
 ## What works
 
@@ -39,7 +39,7 @@ Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
-Skirmisher fires on the run. Ricochet at 11. Second Wind at 14 adds roll guard and pips. Whirlwind rings in core.
+Skirmisher shoots on the run. Ricochet at 11. Second Wind at 14 adds roll guard and pips. Whirlwind at 17.
 
 ## Missing
 

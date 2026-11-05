@@ -55,6 +55,21 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-10c** — Killshot pierces frontal guards, keeps boss phase shields, widens to 3 m, and flies as a 4x arrow with wind (M)
 - [x] **MK-11** — The Marksman's look: a path changes the hero's look, data-driven for every later path (M)
 
+**The Skirmisher, the Ranger's second path** (owner, 2026-11-05; design [CH §3.5](../Characters.md)). Each built only on the owner's go, one at a time, in this order. Playtestable from SK-01b on, with DT-01's test start at stage 12+.
+
+- [ ] [**SK-01a**](tasks/SK-01a-running-shot-and-hit-and-run.md) — Running Shot and Hit and Run in core: moving fire rate, aim-facing, speed burst, Momentum (M)
+- [ ] [**SK-01b**](tasks/SK-01b-the-skirmisher-authored.md) — The Skirmisher authored: the Ranger's second path slot, its card, both passives as assets (M)
+- [ ] [**SK-02**](tasks/SK-02-the-ranger-shoots-on-the-run.md) — The Ranger shoots on the run: bow up, strafing legs, upper-body release (M)
+- [ ] [**SK-03a**](tasks/SK-03a-ricochet-shot.md) — Ricochet Shot in core: an arrow chain that bounces to the nearest unhit enemy (M)
+- [ ] [**SK-03b**](tasks/SK-03b-ricochet-shot-drawn.md) — Ricochet Shot drawn and authored: bright trail, bounce sparks (M)
+- [ ] [**SK-04a**](tasks/SK-04a-second-wind.md) — Second Wind in core: roll cooldown, the after-roll guard, two charges (M)
+- [ ] [**SK-04b**](tasks/SK-04b-second-wind-drawn.md) — Second Wind drawn and authored: charge pips on the roll button, the Dodged pop (M)
+- [ ] [**SK-05a**](tasks/SK-05a-whirlwind.md) — Whirlwind in core: rings of arrows all round, 0.3 s apart (M)
+- [ ] [**SK-05b**](tasks/SK-05b-whirlwind-drawn.md) — Whirlwind drawn and authored: the spin and the swirl (M)
+- [ ] [**SK-06a**](tasks/SK-06a-storm-run.md) — Storm Run in core: rolls end in a volley, roll cooldown halved (M)
+- [ ] [**SK-06b**](tasks/SK-06b-storm-run-drawn.md) — Storm Run drawn and authored: the wind aura, the burst ring (M)
+- [ ] [**SK-07**](tasks/SK-07-the-skirmishers-look.md) — The Skirmisher's look: silver-cyan trim and tints, data only (S)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

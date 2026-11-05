@@ -131,26 +131,37 @@ Pleasing synergy worth noting: slow projectiles are normally the hardest thing t
 
 The level cap is **30**. Points from levels 2–10 fill the Ranger tree (9). From level **11** the player chooses **one** of three paths, locked for the run; levels 11–30 (20 points) are spent in it. **The Ranger's skills stay** — the path is added above them.
 
-A path is **a handful of skills, most of them actives, each with 3–5 ranks**, and no "ultimate": its last skill is simply the strongest, unlocking at Lv 20. Skills are level-gated. The Marksman's **22 ranks for 20 points** leave two unbought at level 30. Choosing a path costs no point; the choice opens at level 11 whether or not the Ranger tree is full.
+A path is **a handful of skills, most of them actives, each with 3–5 ranks**, and no "ultimate": its last skill is simply the strongest, unlocking at Lv 20. Skills are level-gated. A path holds **exactly 20 ranks for its 20 points**, so level 30 buys everything (LV-02d). Choosing a path costs no point; the choice opens at level 11 whether or not the Ranger tree is full.
 
-Built one at a time: **Marksman first**, playtested, then the next.
+Built one at a time: **Marksman** is built; the **Skirmisher** is next (SK specs); the Echo Archer last.
 
 **Marksman — stand still.** (Owner, 2026-10-31.)
 
 | Lv | Skill | Kind | Ranks | Effect |
 |---|---|---|---|---|
-| 11 | **Steady Aim** | Passive | 5 | Each arrow loosed standing still adds a damage stack (max 5); moving or rolling clears them. Rank 3+: the first arrow after stopping crits ×2. Rank 5: −20% damage taken at 5 stacks. |
+| 11 | **Steady Aim** | Passive | 4 | Each arrow loosed standing still adds a damage stack (max 5); moving or rolling clears them. Rank 2+: the first arrow after stopping crits ×2. Rank 4: −20% damage taken at 5 stacks. |
 | 11 | **Rain of Arrows** | Active | 4 | Arrows fall on a 3 m circle for 2 s at the densest group. Ranks: damage, cooldown; rank 3: wider and slows. |
-| 14 | **Binding Shot** | Active | 4 | Chains the target to an enemy, stone, tree or wall within 4 m behind it: both stunned 2–3 s. Nothing behind: 0.75 s. Bosses: half. |
+| 14 | **Binding Shot** | Active | 3 | Chains the target to an enemy, stone, tree or wall within 4 m behind it: both stunned 2–3 s. Nothing behind: 0.75 s. Bosses: half. |
 | 14 | **Eagle Eye** | Passive | 3 | +1/2/3 m range; +10/20/30% damage to targets farther than 6 m. |
 | 17 | **Hunter's Snare** | Active | 3 | A trap at your feet when an enemy closes in; the first to step on it is rooted and hurt. |
-| 20 | **Killshot** | Active | 3 | Kneel and draw 0.7 s, then one arrow across the arena down the most crowded line, losing damage per enemy; non-bosses under 15/20/25% HP die outright. |
+| 20 | **Killshot** | Active | 3 | Kneel and draw 0.7 s, then one arrow across the arena down the most crowded line, losing damage per enemy; non-bosses under 15/20/25% HP die outright. The line is 3 m wide and pierces frontal guards, not a boss's phase shield; the Ranger is immune while drawing. |
 
 Every active auto-casts on its own trigger (densest group · nearest threat · an enemy closing in · the longest line), and no two auto-casts fire within 0.5 s of each other. Each skill has its own effect and animation; a chosen path changes the hero's look.
 
-*Recorded, not specced* — 8-skill drafts, to be reshaped like the Marksman before their turn:
+**Skirmisher — never stop.** (Owner, 2026-11-05: Caltrop Roll cut, Ricochet Shot in its place; Momentum folded into Hit and Run, Untouchable into Second Wind, Storm Run made the Lv-20 active.)
 
-**Skirmisher — never stop.** Running Shot (P 11: fire while moving at 40/55/70% rate) · **Caltrop Roll** (A 11: roll leaves slowing spikes) · Hit and Run (P 15: hits give a speed burst) · Momentum (P 15: damage from distance moved in 2 s) · **Whirlwind** (A 20: spin, arrows all round) · Second Wind (P 20: roll cooldown; rank 3 two charges) · Untouchable (P 25: first hit within 1 s of a roll misses) · *Storm Run* (U 28/30: every roll fires a Volley).
+| Lv | Skill | Kind | Ranks | Effect |
+|---|---|---|---|---|
+| 11 | **Running Shot** | Passive | 4 | The Ranger fires while moving, at 40/55/70/85% of the standing rate. Standing still fires at the full rate. |
+| 11 | **Ricochet Shot** | Active | 4 | One arrow that bounces to the nearest enemy it has not hit within 5 m: 3 hits, 1× weapon each. Ranks: 4 hits; +25% damage; 5 hits and cooldown 8 → 6 s. |
+| 14 | **Hit and Run** | Passive | 3 | Every arrow that hits gives +15/20/25% move speed for 1.5 s (refreshes). Rank 2+: **Momentum** — +2/3% damage per metre moved in the last 2 s, counting up to 8 m. |
+| 14 | **Second Wind** | Passive | 3 | Roll cooldown −0.5/−1.0 s. Rank 2+: the first hit within 1 s after a roll ends misses. Rank 3: two roll charges. |
+| 17 | **Whirlwind** | Active | 3 | A spin on the run: a ring of 12 arrows outward, twice 0.3 s apart, 0.6× weapon each. Ranks: 16 arrows a ring; a third ring and cooldown 10 → 8 s. |
+| 20 | **Storm Run** | Active | 3 | For 6 s every roll ends in a Volley (one arrow at each enemy in range) and the roll cooldown is halved. Ranks: 8 s; Volley arrows +30% damage. |
+
+Triggers: Ricochet — at least 3 enemies in range · Whirlwind — at least 3 within 6 m · Storm Run — at least 5 in range, cooldown 30 s. The Skirmisher's tint is a pale silver-cyan, apart from the Marksman's trim and from every enemy's lime.
+
+*Recorded, not specced* — an 8-skill draft, to be reshaped to 20 ranks like the Marksman before its turn:
 
 **Echo Archer — copies shoot for you.** Echo Arrow (P 11: every 4th/3rd/2nd arrow repeated by a shadow) · **Mirror Image** (A 11: 1–3 clones shoot for 5 s) · Decoy Roll (P 15: roll leaves a clone enemies target) · Shared Volley (P 15: clones Volley with you) · **Shadow Swap** (A 20: swap with farthest clone; auto at low HP) · Fading Burst (P 20: clones explode on expiry) · Umbral Link (P 25: clones take part of your damage) · *Twin Shadow* (U 28/30: one permanent clone).
 

@@ -2,15 +2,15 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, FX-05._
+_2026-11-05, Skirmisher specced._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **FX-05** — Killshot wind-up grants immunity. |
-| **Next task** | None named; owner selects the next task. |
+| **Last merged** | **FX-05** — Killshot wind-up grants immunity. Then docs: Skirmisher specs SK-01a–SK-07. |
+| **Next task** | **SK-01a** — Running Shot and Hit and Run in core, on the owner's go. |
 | **Verified** | EditMode 5704 (5703 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
 
 ## What works

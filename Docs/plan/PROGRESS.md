@@ -10,7 +10,7 @@ _2026-11-05, LV-02d._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **LV-02d**: Marksman 20 ranks + Ranger 9 = 29; removed saved path ranks refund pending points. |
-| **Next task** | None named; owner selects the next task. |
+| **Next task** | FX-01 → FX-04 specced (playtest fixes); owner says go. |
 | **Verified** | EditMode 5676: 5675 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
 
 ## What works

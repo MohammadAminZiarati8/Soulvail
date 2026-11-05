@@ -156,3 +156,10 @@ _No milestone. The owner is setting the next direction._
 - [x] **LV-02b** — The Overflow toast leaves the HUD (S)
 - [x] **LV-02c** — Overflow leaves core and the modes; old saves still load (M)
 - [x] **LV-02d** — Marksman ranks merge to fit 29 points; over-rank saves refunded (S)
+
+**Playtest fixes** (owner, 2026-11-05). Any order; each its own commit.
+
+- [ ] **[FX-01](tasks/FX-01.md)** — No banked points past the level budget on resume (S)
+- [ ] **[FX-02](tasks/FX-02.md)** — Killshot fires on whatever is left in reach (S)
+- [ ] **[FX-03](tasks/FX-03.md)** — Auto-aim skips enemies behind cover (M)
+- [ ] **[FX-04](tasks/FX-04.md)** — Ground warnings stay above the floor (S)

@@ -149,6 +149,8 @@ public sealed class ModifyStatTests
                 PlayerStat.RicochetDamage => stats.RicochetDamage,
                 PlayerStat.MovementSkillCharges => combat.Charge.BonusCharges,
                 PlayerStat.RollGuardSeconds => combat.Charge.RollGuardSeconds,
+                PlayerStat.WhirlwindArrows => stats.WhirlwindArrows,
+                PlayerStat.WhirlwindRings => stats.WhirlwindRings,
                 _ => null,
             };
 
@@ -176,7 +178,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(39), "Forty members after SK-04a, one named exception.");
+        Assert.That(answered, Is.EqualTo(41), "Forty-two members with one enemy-only address.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

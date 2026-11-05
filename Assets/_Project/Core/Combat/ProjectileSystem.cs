@@ -412,7 +412,10 @@ public sealed class ProjectileSystem
     internal int FireRicochet(in Projectile shot, int hits, float now) =>
         Fire(shot, now, new RicochetChain(hits, RicochetShot.BounceReach));
 
-    private int Fire(in Projectile shot, float now, in RicochetChain chain)
+    internal int FireWhirlwind(in Projectile shot, float now, float farMultiplier) =>
+        Fire(shot, now, default, farMultiplier);
+
+    private int Fire(in Projectile shot, float now, in RicochetChain chain, float? whirlwindFarMultiplier = null)
     {
         RequireFinite(now);
 
@@ -428,7 +431,7 @@ public sealed class ProjectileSystem
         int id = _nextId;
         _nextId++;
 
-        _shots[_count] = new InFlight(id, now, now + flightTime, shot, chain);
+        _shots[_count] = new InFlight(id, now, now + flightTime, shot, chain, whirlwindFarMultiplier);
         _count++;
 
         _events.Publish(new ProjectileFired(
@@ -737,6 +740,27 @@ public sealed class ProjectileSystem
             return false;
         }
 
+        if (flight.WhirlwindFarMultiplier is float farMultiplier)
+        {
+            // The ray has no target at launch. Use the first body's distance from the ring origin
+            // and the Eagle Eye bonus captured when the arrow left.
+            if (!enemies.Registry.TryGet(contactId, out EnemyAgent target) || !target.IsAlive)
+            {
+                return false;
+            }
+
+            Vector3 delta = target.Position - shot.Origin;
+            float far = EagleEye.FarDistance;
+            float multiplier = ((delta.X * delta.X) + (delta.Z * delta.Z)) > far * far ? farMultiplier : 1f;
+            float damage = PlayerCombat.ShotDamage(shot.Damage * multiplier);
+            if (enemies.ApplyDamage(target.Id, damage, now, player).Applied > 0f)
+            {
+                player.HitAndRun.OnHit(now);
+            }
+
+            return true;
+        }
+
         ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
 
         bool hit = false;
@@ -874,7 +898,7 @@ public sealed class ProjectileSystem
     private bool TryStop(in InFlight flight, float now, EnemySystem enemies, out Vector3 contact, out int contactId)
     {
         bool touchedBody = TryContact(flight, now, enemies, out contact, out contactId);
-        if (flight.Chain.IsActive)
+        if (flight.Chain.IsActive || flight.WhirlwindFarMultiplier.HasValue)
         {
             Vector3 start = flight.PositionAt(flight.SweptTo);
             Vector3 end = touchedBody ? contact : flight.PositionAt(MathF.Min(now, flight.ArrivesAt));
@@ -1080,8 +1104,9 @@ public sealed class ProjectileSystem
     /// <summary>One shot and the things the store knows about it that the shot does not.</summary>
     private readonly struct InFlight
     {
-        public InFlight(int id, float firedAt, float arrivesAt, in Projectile shot, in RicochetChain chain)
-            : this(id, firedAt, arrivesAt, firedAt, shot, shot.Target, NoContact, chain)
+        public InFlight(int id, float firedAt, float arrivesAt, in Projectile shot, in RicochetChain chain,
+            float? whirlwindFarMultiplier)
+            : this(id, firedAt, arrivesAt, firedAt, shot, shot.Target, NoContact, chain, whirlwindFarMultiplier)
         {
         }
 
@@ -1093,7 +1118,8 @@ public sealed class ProjectileSystem
             in Projectile shot,
             Vector3 impact,
             int contactId,
-            in RicochetChain chain)
+            in RicochetChain chain,
+            float? whirlwindFarMultiplier)
         {
             Id = id;
             FiredAt = firedAt;
@@ -1103,6 +1129,7 @@ public sealed class ProjectileSystem
             Impact = impact;
             ContactId = contactId;
             Chain = chain;
+            WhirlwindFarMultiplier = whirlwindFarMultiplier;
         }
 
         /// <summary>When it left, in simulated run seconds.</summary>
@@ -1110,6 +1137,8 @@ public sealed class ProjectileSystem
 
         /// <summary>How far along its flight contact has already been tested, in run seconds.</summary>
         public float SweptTo { get; }
+
+        public float? WhirlwindFarMultiplier { get; }
 
         /// <summary>Where it stops: the edge of the body it touched, or <see cref="Projectile.Target"/>.</summary>
         public Vector3 Impact { get; }
@@ -1134,11 +1163,11 @@ public sealed class ProjectileSystem
 
         /// <summary>This shot, tested for contact up to <paramref name="time"/>.</summary>
         public InFlight SweptUntil(float time) =>
-            new(Id, FiredAt, ArrivesAt, time, Shot, Impact, ContactId, Chain);
+            new(Id, FiredAt, ArrivesAt, time, Shot, Impact, ContactId, Chain, WhirlwindFarMultiplier);
 
         /// <summary>This shot, stopping at <paramref name="impact"/>.</summary>
         public InFlight LandingAt(Vector3 impact, int contactId) =>
-            new(Id, FiredAt, ArrivesAt, SweptTo, Shot, impact, contactId, Chain);
+            new(Id, FiredAt, ArrivesAt, SweptTo, Shot, impact, contactId, Chain, WhirlwindFarMultiplier);
 
         /// <summary>The run-stable id, issued from 1 and never reused within a run.</summary>
         public int Id { get; }

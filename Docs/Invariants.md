@@ -45,6 +45,8 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
 - `SkillRunner.PrepareVolley` before combat gates the shot-driven Volley; its casts are recorded by the runner. Auto casts wait 0.5 s after any cast; manual requests bypass the gap.
 - `SkillRunner.Tick` after combat, before behaviours and projectiles — HP triggers and Bulwark read
   this tick's state.
+- Whirlwind's pending rings tick after the runner and before projectiles, using the snapshot's
+  player position. Stage boundaries and death discard pending rings.
 - `TimedEffects.Tick` right after the runner, on `SimulatedClock` (never `IClock`); `ZoneSystem.Tick`
   right after it; within a zone, pulses before retirement; zones spawn at
   `CombatBlackboard.PlayerPosition` unless a cast supplies a fixed point (Rain of Arrows).

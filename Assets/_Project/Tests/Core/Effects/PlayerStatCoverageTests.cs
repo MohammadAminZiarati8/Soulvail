@@ -66,6 +66,17 @@ public sealed class PlayerStatCoverageTests
     }
 
     [Test]
+    public void WhirlwindStats_ResolveToTheirOwnersWithRankOneDefaults()
+    {
+        PlayerStats stats = Stats(Combat());
+
+        Assert.That(stats.Resolve(PlayerStat.WhirlwindArrows), Is.SameAs(stats.WhirlwindArrows));
+        Assert.That(stats.Resolve(PlayerStat.WhirlwindRings), Is.SameAs(stats.WhirlwindRings));
+        Assert.That(stats.WhirlwindArrows.Value, Is.EqualTo(12f));
+        Assert.That(stats.WhirlwindRings.Value, Is.EqualTo(2f));
+    }
+
+    [Test]
     public void RicochetStats_ResolveToTheirOwnersWithRankOneDefaults()
     {
         PlayerStats stats = Stats(Combat());
@@ -314,14 +325,14 @@ public sealed class PlayerStatCoverageTests
 
         Assert.That(
             values.Length,
-            Is.EqualTo(40),
+            Is.EqualTo(42),
             "Six from M3-05, M3-12a's five, M4-01a's ContactDamage — the first member no "
                 + "player has, added because IStatBlock made this one shared address space rather "
                 + "than two enums — M6-08's four Kindling and pool numbers, RS-03a's "
                 + "FireWhileMoving, RS-03b's three volley numbers, MK-02a's five aim/range numbers "
                 + "and MK-07a's three Rain numbers, MK-08a's BindStun, MK-09a's SnareRoot/SnareDamage "
                 + "MK-10a's KillshotExecute/KillshotDamage, SK-01a's three Skirmisher stats and SK-03a's "
-                + "two Ricochet Shot stats and SK-04a's two Second Wind stats.");
+                + "two Ricochet Shot stats, SK-04a's two Second Wind stats and SK-05a's two Whirlwind stats.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

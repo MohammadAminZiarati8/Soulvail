@@ -1944,8 +1944,7 @@ public sealed class PlayerCombat
     /// </remarks>
     private void QueueShot(Vector3 origin, Vector3 target, Vector3 targetPosition, float damage, bool isVolley)
     {
-        bool isCrit = false;
-        float standing = _isStanding ? SteadyAim.OnLoose(out isCrit) : 1f;
+        float standing = ArrowAimMultiplier(out bool isCrit);
         float dx = targetPosition.X - origin.X;
         float dz = targetPosition.Z - origin.Z;
         damage = ShotDamage(damage * standing * EagleEye.MultiplierAt(MathF.Sqrt((dx * dx) + (dz * dz))));
@@ -1963,6 +1962,12 @@ public sealed class PlayerCombat
             isCrit);
 
         _shotCount++;
+    }
+
+    internal float ArrowAimMultiplier(out bool isCrit)
+    {
+        isCrit = false;
+        return _isStanding ? SteadyAim.OnLoose(out isCrit) : 1f;
     }
 
     /// <summary>Empties the shot queue, leaving nothing for <see cref="TryTakeShot"/>.</summary>
@@ -1999,7 +2004,7 @@ public sealed class PlayerCombat
     /// which is documented never to manufacture a NaN from finite inputs.
     /// </para>
     /// </remarks>
-    private static float ShotDamage(float damage)
+    internal static float ShotDamage(float damage)
     {
         // The negated comparison, so NaN lands on zero rather than falling through — the spelling
         // ConeAngle uses, for its reason.

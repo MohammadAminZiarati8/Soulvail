@@ -111,6 +111,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     /// </remarks>
     private TimedEffects _timed;
     private KillshotHandler _killshot;
+    private WhirlwindHandler _whirlwind;
 
     private TrapSystem _traps;
 
@@ -665,6 +666,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         effects.Register<SpawnBurnZone>(new SpawnBurnZoneHandler(zones, _clock));
         effects.Register<RainOfArrows>(new RainOfArrowsHandler(zones, _clock, enemies, playerStats, combat.Blackboard, _events));
         effects.Register<RicochetShot>(new RicochetShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
+        _whirlwind = new WhirlwindHandler(projectiles, combat, motor, playerStats, character, _clock, _events);
+        effects.Register<Whirlwind>(_whirlwind);
         effects.Register<BindingShot>(new BindingShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
@@ -1340,6 +1343,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // At most one cast per tick, and the walk stops on it (rule 6).
         State.Skills.Tick(snapshot.Dt, State.Time);
         _killshot.Tick(State.Time);
+        _whirlwind.Tick(State.Time, State.PlayerPosition);
 
         // **Immediately after the runner and above the projectile step, and both halves are the
         // mechanic's** (M3-11a-ii rule 3, AR §18.1). *After the runner*, because it may cast this
@@ -1560,6 +1564,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (stageCleared || (phaseBefore != StagePhase.Transition && _flow.Phase == StagePhase.Transition))
             {
                 State.Projectiles.ClearRicochets();
+                _whirlwind.Clear();
             }
 
             if (stageCleared)
@@ -1573,6 +1578,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (State.StageIndex != _flow.Stage)
             {
                 State.Projectiles.ClearRicochets();
+                _whirlwind.Clear();
                 _traps.Clear();
                 _killshot.Clear();
 
@@ -2140,6 +2146,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         }
 
         _killshot.Clear();
+        _whirlwind.Clear();
         _events.Publish(new RunEnded(State.Time));
 
         IsRunning = false;

@@ -217,6 +217,8 @@ public enum PlayerStat
     RicochetDamage,
     MovementSkillCharges,
     RollGuardSeconds,
+    WhirlwindArrows,
+    WhirlwindRings,
 }
 
 /// <summary>
@@ -278,6 +280,9 @@ public sealed class PlayerStats : IStatBlock
 
     public Stat RicochetHits { get; } = new(3f);
     public Stat RicochetDamage { get; } = new(0f);
+
+    public Stat WhirlwindArrows { get; } = new(12f);
+    public Stat WhirlwindRings { get; } = new(2f);
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -359,6 +364,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MomentumPerMetre => HitAndRun.MomentumPerMetre,
             PlayerStat.RicochetHits => RicochetHits,
             PlayerStat.RicochetDamage => RicochetDamage,
+            PlayerStat.WhirlwindArrows => WhirlwindArrows,
+            PlayerStat.WhirlwindRings => WhirlwindRings,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
             PlayerStat.VolleyArrows => RequireVolley(stat).Arrows,
             PlayerStat.VolleyDamage => RequireVolley(stat).Damage,
@@ -428,6 +435,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MomentumPerMetre => true,
             PlayerStat.RicochetHits => true,
             PlayerStat.RicochetDamage => true,
+            PlayerStat.WhirlwindArrows => true,
+            PlayerStat.WhirlwindRings => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,
             PlayerStat.VolleyArrows => _combat.Volley is not null,
             PlayerStat.VolleyDamage => _combat.Volley is not null,

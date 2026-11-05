@@ -2049,9 +2049,9 @@ public sealed class PlayerCombat
         {
             EnemyAgent agent = enemies[i];
 
-            // JG-22a rule 5: a hidden stalker is left out rather than marked invulnerable — the
-            // targeter holds facing on an invulnerable nearest (CC §3.6), which would point at it.
-            if (agent.IsHidden)
+            // The targeter can hold facing on an invulnerable enemy (CC §3.6). Leave hidden
+            // and covered enemies out of the candidates so auto-aim never points at them.
+            if (agent.IsHidden || agent.Blackboard.IsBehindCover)
             {
                 continue;
             }

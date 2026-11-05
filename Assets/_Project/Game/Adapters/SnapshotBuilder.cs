@@ -323,6 +323,7 @@ public sealed class SnapshotBuilder
                     _elapsed,
                     snapshot.EnemyCount,
                     snapshot.Dt);
+            sense.BehindCover = _sight is not null && !sense.HasLineOfSight;
         }
     }
 }

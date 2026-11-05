@@ -29,4 +29,7 @@ public struct EnemySense
     public Vector2 PathDirectionToPlayer;
 
     public bool HasLineOfSight;
+
+    /// <summary>Whether cover blocks sight between this enemy and the player.</summary>
+    public bool BehindCover;
 }

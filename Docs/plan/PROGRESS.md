@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, FX-02._
+_2026-11-05, FX-03._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **FX-02** — Killshot fires when its best line holds three enemies or every enemy in reach. |
-| **Next task** | FX-03 |
-| **Verified** | EditMode 5689: 5688 pass, 0 failed, 1 existing inconclusive. 0 compile errors/new analyzer warnings; format clean. |
+| **Last merged** | **FX-03** — Auto-aim skips enemies behind cover. |
+| **Next task** | FX-04 |
+| **Verified** | EditMode 5696 (5695 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
 
 ## What works
 

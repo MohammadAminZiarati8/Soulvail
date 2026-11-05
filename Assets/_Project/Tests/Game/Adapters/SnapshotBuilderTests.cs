@@ -430,6 +430,23 @@ public sealed class SnapshotBuilderTests : InputTestFixture
             Is.False,
             "A pillar between the body and the player has to reach core as a sense, because core "
                 + "holds no walls and never will (AR §18.2, ledger row 13).");
+        Assert.That(FindEnemy(1).BehindCover, Is.True);
+    }
+
+    [Test]
+    public void SnapshotBuilder_NoSight_NothingCovered()
+    {
+        var builder = new SnapshotBuilder(_player, _input, _enemyViews, null, _paths, _arenas, null, null);
+        _hub.Publish(new EnemySpawned(1, HuskId, new System.Numerics.Vector3(0f, 0f, 3f)));
+        _hub.Publish(new EnemySpawned(2, HuskId, new System.Numerics.Vector3(0f, 0f, 5f)));
+        _snapshot.Enemies[0].BehindCover = true;
+        _snapshot.Enemies[1].BehindCover = true;
+
+        builder.Build(_snapshot, 0.016f);
+
+        Assert.That(_snapshot.EnemyCount, Is.EqualTo(2));
+        Assert.That(FindEnemy(1).BehindCover, Is.False);
+        Assert.That(FindEnemy(2).BehindCover, Is.False);
     }
 
     [Test]

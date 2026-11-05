@@ -1145,6 +1145,7 @@ public sealed class EnemySystem
             // as "no path" and falls back to the straight line.
             agent.Blackboard.PathDirectionToPlayer = sense.PathDirectionToPlayer;
             agent.Blackboard.HasLineOfSight = sense.HasLineOfSight;
+            agent.Blackboard.IsBehindCover = sense.BehindCover;
         }
 
         // Kept for Tick's spawn-safety check, which runs after this in the same frame — see the

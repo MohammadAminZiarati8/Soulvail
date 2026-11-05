@@ -77,6 +77,9 @@ public sealed class EnemyBlackboard
     /// <summary>Whether the player is visible from here.</summary>
     public bool HasLineOfSight;
 
+    /// <summary>Whether cover blocks the player's auto-aim at this enemy.</summary>
+    public bool IsBehindCover;
+
     /// <summary>
     /// Whether the four fields above describe a <em>corpse decoy</em> rather than the player
     /// themselves. False for every enemy in the arena except while a Shroudstep's decoy stands.
@@ -197,6 +200,7 @@ public sealed class EnemyBlackboard
         DirectionToPlayer = Vector2.Zero;
         PathDirectionToPlayer = Vector2.Zero;
         HasLineOfSight = false;
+        IsBehindCover = false;
         QuarryIsADecoy = false;
         AlliesNearby = 0;
         HpFraction = 0f;

@@ -267,3 +267,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** A stage with 1–2 Mossguards left: Killshot auto-fires once it is off cooldown.
 2. **[Editor]** An early dense wave: Killshot waits for a 3-body line.
+
+
+## FX-03 — Auto-aim skips enemies behind cover
+
+1. **[Editor]** Stand so a rock hides an enemy: the Ranger turns to the visible enemy, or holds fire if none.
+2. **[Editor]** Step clear: firing resumes within a beat.

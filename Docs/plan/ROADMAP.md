@@ -161,5 +161,5 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **FX-01** — No banked points past the level budget on resume (S)
 - [x] **FX-02** — Killshot fires on whatever is left in reach (S)
-- [ ] **[FX-03](tasks/FX-03.md)** — Auto-aim skips enemies behind cover (M)
+- [x] **FX-03** — Auto-aim skips enemies behind cover (M)
 - [ ] **[FX-04](tasks/FX-04.md)** — Ground warnings stay above the floor (S)

@@ -100,7 +100,7 @@ Runs at **10 Hz**, not per-frame. With 28 enemies this is meaningful CPU on a mi
 
 ```
 1. GATHER    enemies within acquireRange
-2. FILTER    alive, damageable-right-now, (optional) line of sight
+2. FILTER    alive, damageable-right-now, line of sight
 3. SCORE     each candidate
 4. SELECT    highest score, subject to hysteresis
 ```
@@ -109,7 +109,7 @@ Runs at **10 Hz**, not per-frame. With 28 enemies this is meaningful CPU on a mi
 |---|---|
 | `acquireRange` | **12 m** (weapon range × 1.5) |
 | Loop rate | 10 Hz |
-| Line-of-sight check | Skip for V1. Revisit when Bone Orchard cover arrives. |
+| Line-of-sight check | Auto-aim skips enemies behind cover. |
 
 ### 3.2 Scoring
 

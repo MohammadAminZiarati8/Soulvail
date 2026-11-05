@@ -233,3 +233,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **Device, deferred (no reference phone):** Judge silhouette and wind against Jungle ground on a real phone; check frame time during repeated casts (wind capped at 128 particles).
 
 540x960 offscreen renders at the game camera's 57-degree pitch, 16 m distance and portrait FOV were inspected for side/forward/diagonal flight beside the normal arrow. These do not replace the owner's integrated Play/device checks. Full EditMode: 5655 total, 5654 passed, 0 failed, 1 existing inconclusive; no PlayMode run.
+
+## LV-01a — Level growth (2026-11-05)
+
+- [ ] **Editor, owner:** Play the Jungle as the Ranger and level up: the toast reads "LEVEL UP!" over a smaller "+3% HP · +2% DMG"; the HP bar's maximum rises ~2.7 and current HP rises by the same. Check the two-line toast reads in portrait (placeholder UI).
+- [ ] **Editor, owner:** Quit mid-run at level ≥ 5 and Continue: max HP is 90 × (1 + 0.03 × (level − 1)), current HP is what was saved.

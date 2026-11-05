@@ -67,6 +67,10 @@ namespace Soulvail.Game.Authoring
                  "finished — so it lives beside it (GD §4.5).")]
         [SerializeField] private OverflowBlock _overflow = new OverflowBlock();
 
+        [Tooltip("LV-01a: what every level gained adds to base max HP and weapon damage, " +
+                 "pooled with every other percentage. Gaining max HP heals the same amount.")]
+        [SerializeField] private LevelGrowthBlock _levelGrowth = new LevelGrowthBlock();
+
         [Tooltip("GD §15's income for this mode: what a stage clear, an Elite and a boss pay in " +
                  "Essence. What a mode pays is the mode's own statement (GD §4.5) — a Boss Rush " +
                  "would pay per boss and nothing per stage.")]
@@ -181,7 +185,8 @@ namespace Soulvail.Game.Authoring
                     _hasFreePick,
                     string.IsNullOrEmpty(_unlockedBy) ? default : new ContentId(_unlockedBy),
                     _isListed,
-                    BuildScriptedStages());
+                    BuildScriptedStages(),
+                    BuildLevelGrowth());
             }
             catch (ArgumentException inner)
             {
@@ -262,6 +267,24 @@ namespace Soulvail.Game.Authoring
             }
 
             return _overflow.ToSpec();
+        }
+
+        /// <summary>
+        /// Turns the authored growth block into the <see cref="LevelGrowthSpec"/> core consumes.
+        /// A missing block is refused for <see cref="BuildOverflow"/>'s reason; a block saying zero
+        /// is a mode whose levels grow nothing, and legal.
+        /// </summary>
+        private LevelGrowthSpec BuildLevelGrowth()
+        {
+            if (_levelGrowth is null)
+            {
+                throw new ArgumentException(
+                    "its level growth block is missing. LV-01a's growth is not optional — a mode "
+                        + "without one would level a player and give them nothing, silently.",
+                    nameof(_levelGrowth));
+            }
+
+            return _levelGrowth.ToSpec();
         }
 
         /// <summary>
@@ -618,6 +641,27 @@ namespace Soulvail.Game.Authoring
 
             /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
             public OverflowSpec ToSpec() => new OverflowSpec(_damage, _maxHp);
+        }
+
+        /// <summary>
+        /// LV-01a's per-level growth as a designer tunes it. <b>Initialisers are zero on purpose</b>
+        /// (Traps §7): the Jungle authors 0.03 and 0.02, so
+        /// <c>ModeDefinitionTests.Jungle_CarriesItsLevelGrowth</c> can tell a bound key from a
+        /// dropped one, and a mode that never mentions growth grows nothing.
+        /// </summary>
+        [Serializable]
+        private sealed class LevelGrowthBlock
+        {
+            [Header("Level growth — LV-01a: every level gained")]
+            [Tooltip("Fraction of base max HP one level adds, pooled with every other " +
+                     "percentage — 0.03 is +3 %, thirty levels ×1.87 (ADR-0008).")]
+            [SerializeField, Min(0f)] private float _maxHp;
+
+            [Tooltip("Fraction of base weapon damage one level adds, on the same terms.")]
+            [SerializeField, Min(0f)] private float _damage;
+
+            /// <summary>Builds the immutable spec, letting it refuse a bad number.</summary>
+            public LevelGrowthSpec ToSpec() => new LevelGrowthSpec(_maxHp, _damage);
         }
 
         /// <summary>

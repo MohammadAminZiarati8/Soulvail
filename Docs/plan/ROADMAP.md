@@ -150,4 +150,5 @@ _No milestone. The owner is setting the next direction._
 
 **Levelling growth** (owner, 2026-11-05).
 
+- [x] **LV-01a** — Every level-up raises max HP and weapon damage: +3 % HP, +2 % damage of base, mode-authored, heals the gain (S)
 - [x] **LV-01b** — Boss HP rises to match level growth: seven bosses re-authored, fight-length probes price the player's level (S)

@@ -259,6 +259,32 @@ public sealed class PointBadgeTests
     }
 
     [Test]
+    public void Toast_AddsTheGrowthLine()
+    {
+        // LV-01a rule 8. Passthrough resolves a key to itself, so the line is the key the code asked
+        // for, formatted (it has no placeholders to fill).
+        StartRun(free: true, pending: 1, growth: new LevelGrowthSpec(0.03f, 0.02f));
+        BuildHud();
+
+        _hub.Publish(new LeveledUp(2, 1));
+
+        Assert.That(
+            _badge.Toast.GetComponent<TMPro.TMP_Text>().text,
+            Is.EqualTo("ui.hud.levelup\n<size=60%>ui.hud.levelup.growth</size>"));
+    }
+
+    [Test]
+    public void Toast_NoGrowthKeepsTheWordAlone()
+    {
+        StartRun(free: true, pending: 1);
+        BuildHud();
+
+        _hub.Publish(new LeveledUp(2, 1));
+
+        Assert.That(_badge.Toast.GetComponent<TMPro.TMP_Text>().text, Is.EqualTo("ui.hud.levelup"));
+    }
+
+    [Test]
     public void Toast_SaysTheLocalisedWord()
     {
         StartRun(free: true, pending: 1);
@@ -350,22 +376,22 @@ public sealed class PointBadgeTests
 
     // ---- Fixture ----------------------------------------------------------------------------------
 
-    private void StartRun(bool free, int pending, string[] taken = null)
+    private void StartRun(bool free, int pending, string[] taken = null, LevelGrowthSpec growth = default)
     {
-        CreateRun(free, pending, taken);
+        CreateRun(free, pending, taken, growth);
 
         _session.Start(_config);
     }
 
     /// <summary>A resumed run, not started — <c>XpBarViewTests.CreateRun</c>'s shape.</summary>
-    private void CreateRun(bool free, int pending, string[] taken = null)
+    private void CreateRun(bool free, int pending, string[] taken = null, LevelGrowthSpec growth = default)
     {
         IReadOnlyList<SkillSpec> skills = Nodes.Select(Node).ToArray();
 
         var catalog = new ContentCatalog(
             new[] { Oathbound() },
             new[] { Husk() },
-            new[] { Mode(free) },
+            new[] { Mode(free, growth) },
             skills,
             new[] { Tree() });
 
@@ -519,7 +545,7 @@ public sealed class PointBadgeTests
         aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
 
-    private static ModeSpec Mode(bool free)
+    private static ModeSpec Mode(bool free, LevelGrowthSpec growth = default)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(20f, 6f, 0.04f),
@@ -540,7 +566,8 @@ public sealed class PointBadgeTests
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ArenaEntry(new ContentId(ArenaId)) },
             overflow: new OverflowSpec(0.02f, 0.02f),
-            hasFreePick: free);
+            hasFreePick: free,
+            levelGrowth: growth);
     }
 
     private static float[] Alternating(int count)

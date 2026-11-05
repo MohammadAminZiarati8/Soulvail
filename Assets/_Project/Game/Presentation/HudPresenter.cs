@@ -145,6 +145,9 @@ namespace Soulvail.Game.Presentation
         /// <summary>The toast that says a level happened in a mode that banks its points (UI-03b).</summary>
         private static readonly LocKey LevelUpKey = new LocKey("ui.hud.levelup");
 
+        /// <summary>LV-01a's second toast line: what the level just added, in percent.</summary>
+        private static readonly LocKey LevelGrowthKey = new LocKey("ui.hud.levelup.growth");
+
         /// <summary>The meter's caption, under it.</summary>
         private static readonly LocKey VeilrotKey = new LocKey("ui.hud.veilrot");
 
@@ -691,6 +694,43 @@ namespace Soulvail.Game.Presentation
         private void OnLeveledUp(LeveledUp evt)
         {
             WriteLevel(evt.Level);
+            WriteGrowth();
+        }
+
+        /// <summary>
+        /// LV-01a rule 8: a growing mode's toast adds what the level gave, and the level's heal and
+        /// new maximum are drawn now — core grew both before this event was published.
+        /// </summary>
+        /// <remarks>
+        /// Placeholder UI (the HUD is to be redone): a smaller second line on the same label. The
+        /// numbers go through TMP's <c>SetText</c> format overload rather than
+        /// <c>ILocalizer.Format</c>, which this frame-adjacent type may not call
+        /// (<c>TableLocalizerTests.Localizer_TheFrameAdjacentCallersDoNotFormat</c>).
+        /// </remarks>
+        private void WriteGrowth()
+        {
+            RunState state = _session?.State;
+
+            if (state is null)
+            {
+                return;
+            }
+
+            _hp.Set(state.PlayerHpFraction);
+            WriteHp();
+
+            LevelGrowthSpec growth = state.LevelGrowth;
+            TMP_Text label = _badge == null ? null : _badge.ToastLabel;
+
+            if (label == null || !growth.Grows)
+            {
+                return;
+            }
+
+            string word = _localizer is null ? LevelUpKey.ToString() : _localizer.Get(LevelUpKey);
+            string line = _localizer is null ? LevelGrowthKey.ToString() : _localizer.Get(LevelGrowthKey);
+
+            label.SetText(word + "\n<size=60%>" + line + "</size>", growth.MaxHp * 100f, growth.Damage * 100f);
         }
 
         /// <remarks>

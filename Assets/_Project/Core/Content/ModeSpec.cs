@@ -787,6 +787,10 @@ public sealed class ModeSpec
     /// archetype not in <paramref name="roster"/>, or one has more waves than the wave curve's
     /// maximum — the run's one <c>WavePlan</c> is sized to that.
     /// </param>
+    /// <param name="levelGrowth">
+    /// What every level gained adds (LV-01a). Optional and last, for <paramref name="overflow"/>'s
+    /// reason; omitted, a level grows nothing.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// <paramref name="unlockedBy"/> names <paramref name="id"/> itself;
     /// <paramref name="id"/> is <c>default(ContentId)</c>; an entry is <c>default(RosterEntry)</c>
@@ -833,7 +837,8 @@ public sealed class ModeSpec
         bool hasFreePick = false,
         ContentId unlockedBy = default,
         bool isListed = true,
-        IReadOnlyList<ScriptedStage> scriptedStages = null)
+        IReadOnlyList<ScriptedStage> scriptedStages = null,
+        LevelGrowthSpec levelGrowth = default)
     {
         if (id.Value is null)
         {
@@ -906,6 +911,10 @@ public sealed class ModeSpec
         // account of what a legal one is, and its zeroed form satisfies that account — see the
         // remarks on that type for why AR §18.3's both-ends rule does not reach it.
         Overflow = overflow;
+
+        // No second look, for Overflow's reason: LevelGrowthSpec's constructor is the door, and its
+        // zeroed form is a mode whose levels grow nothing (LV-01a).
+        LevelGrowth = levelGrowth;
 
         // No second look either, for the line above's reason: EssenceSpec's own constructor is the
         // single account of what a legal income table is, and its zeroed form satisfies that
@@ -1008,6 +1017,12 @@ public sealed class ModeSpec
     /// sentence: one says what a level costs, the other what a level is worth once the tree is full.
     /// </remarks>
     public OverflowSpec Overflow { get; }
+
+    /// <summary>
+    /// What every level gained adds to base max HP and weapon damage (LV-01a) — 3 % and 2 % in the
+    /// Jungle. Read by <c>RunSession.Start</c>, which hands it to the run's <c>LevelGrowth</c>.
+    /// </summary>
+    public LevelGrowthSpec LevelGrowth { get; }
 
     /// <summary>
     /// GD §15's income for this mode — 20 + 4·n a stage, 15 an Elite and 60 a boss in Descent.

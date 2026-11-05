@@ -160,10 +160,32 @@ public sealed class LevelTracker
             Level++;
             PendingLevelUps++;
 
+            // Before the publish, so a handler reading the player's maximum sees the grown one
+            // (LV-01a rule 4) — NodeTaken's "announce the settled state" rule.
+            Growth?.Grow();
+
             _events.Publish(new LeveledUp(Level, PendingLevelUps));
         }
 
         _events.Publish(new XpChanged(amount, Level, XpFraction));
+    }
+
+    /// <summary>
+    /// The run's per-level growth (LV-01a), or null in a run that has none wired. Set once, by
+    /// <see cref="LevelGrowth"/>'s constructor.
+    /// </summary>
+    internal LevelGrowth Growth { get; private set; }
+
+    /// <summary>Attaches the run's one <see cref="LevelGrowth"/>; a second is refused.</summary>
+    /// <exception cref="InvalidOperationException">One is already attached.</exception>
+    internal void Attach(LevelGrowth growth)
+    {
+        if (Growth is not null)
+        {
+            throw new InvalidOperationException("A run has one LevelGrowth; this tracker already has it.");
+        }
+
+        Growth = growth;
     }
 
     /// <summary>

@@ -853,6 +853,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // Vigil's count (M6-06b rule 5) — optional on the constructor and never absent here.
         PathFlow path = tree is null ? null : new PathFlow(tree, _catalog, character, _events);
 
+        // **LV-01a's per-level growth, in every run, tree or none.** It attaches itself to the
+        // tracker, which grows it before each LeveledUp; the registry already knows ModifyStat.
+        var growth = new LevelGrowth(mode.LevelGrowth, progression, effects, combat.Health);
+
         LevelUpFlow levelUp = tree is null
             ? null
             : new LevelUpFlow(
@@ -990,6 +994,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // the stat before Health.Restore's clamp for the reason every other take is.
             // Settle the saved level before replaying takes: path ranks use that level's gate.
             progression.Restore(resumed.Level, resumed.Xp, resumed.PendingLevelUps);
+
+            // Every level above 1 grown again, silently and above Health.Restore for the raising
+            // writers' reason below (LV-01a rule 5). Derived from the level: no save field.
+            growth.Restore(progression.Level);
             tree?.SyncLevel(progression.Level);
             tree?.Restore(resumed.TakenNodeIds, resumed.PactedNodeIds);
 

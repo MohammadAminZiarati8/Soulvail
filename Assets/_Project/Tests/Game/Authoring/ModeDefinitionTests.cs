@@ -336,6 +336,18 @@ public sealed class ModeDefinitionTests
     }
 
     [Test]
+    public void Jungle_CarriesItsLevelGrowth()
+    {
+        // LV-01a rule 7. The block's initialisers are zero (Traps §7), so these two literals can
+        // tell a bound key from a dropped one. LV-01b's boss probes assume the 0.02.
+        LevelGrowthSpec growth = AssetDatabase.LoadAssetAtPath<ModeDefinition>(
+            "Assets/_Project/Data/Modes/Jungle.asset").ToSpec().LevelGrowth;
+
+        Assert.That(growth.MaxHp, Is.EqualTo(0.03f).Within(1e-7f));
+        Assert.That(growth.Damage, Is.EqualTo(0.02f).Within(1e-7f));
+    }
+
+    [Test]
     public void Jungle_IsFiniteAt30_Listed_Open()
     {
         // UI-11b rule 5: a place ends on a boss kill, so its final stage is a boss stage.

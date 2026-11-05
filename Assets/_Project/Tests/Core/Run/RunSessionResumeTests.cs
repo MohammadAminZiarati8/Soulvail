@@ -689,6 +689,23 @@ public sealed class RunSessionResumeTests
         AssertNothingStands();
     }
 
+    // ---- LV-01a: level growth is derived from the saved level (rule 5) ----------------------------
+
+    [Test]
+    public void Resume_RestoresLevelGrowth()
+    {
+        Build(seed: 7, new LevelGrowthSpec(0.03f, 0.02f));
+
+        // Saved at level 11 and at 110 HP — above the ungrown 100 on purpose: grow after
+        // Health.Restore and 110 is clamped to 100. No save field, no heal, no LeveledUp.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 11, pendingLevelUps: 10, playerHp: 110f));
+
+        Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(MaxHp * 1.30f).Within(0.01f));
+        Assert.That(_session.State.PlayerHp, Is.EqualTo(110f).Within(0.01f));
+        Assert.That(_session.State.LevelGrowth.MaxHp, Is.EqualTo(0.03f));
+        Assert.That(_events.Count<LeveledUp>(), Is.EqualTo(0));
+    }
+
     [Test]
     public void NoTree_BanksTheLevel()
     {
@@ -1593,7 +1610,7 @@ public sealed class RunSessionResumeTests
     // ---- Fixture --------------------------------------------------------------------------------
 
     /// <summary>A catalog, a generator, a clock and a session, all over one seed.</summary>
-    private void Build(int seed)
+    private void Build(int seed, LevelGrowthSpec levelGrowth = default)
     {
         _events = new RecordingEvents();
 
@@ -1601,7 +1618,7 @@ public sealed class RunSessionResumeTests
         // 0.5f, which would make every position after that point stop moving.
         _random = new FixedRandom(seed, Alternating(8_192));
         _clock = new FixedClock(Instant);
-        _mode = Mode();
+        _mode = Mode(levelGrowth);
 
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { _mode });
 
@@ -1955,7 +1972,7 @@ public sealed class RunSessionResumeTests
     /// GD §12's curves as the game ships them, so stage 4 is several bodies of a real composition:
     /// two runs agreeing about one Husk would not be evidence that a stream was restored.
     /// </summary>
-    private static ModeSpec Mode()
+    private static ModeSpec Mode(LevelGrowthSpec levelGrowth = default)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(20f, 6f, 0.04f),
@@ -1985,7 +2002,10 @@ public sealed class RunSessionResumeTests
 
             // GD §13.3's shop at Descent's prices, for the M6-02b rows: nothing else here buys, and
             // the mode pays no Essence, so every other row is untouched by it.
-            sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f));
+            sanctum: new SanctumSpec(25, 40, 40, 30f, 60, 15f),
+
+            // Zero in every row but LV-01a's, so no other row's maximum moves.
+            levelGrowth: levelGrowth);
     }
 
     /// <summary>

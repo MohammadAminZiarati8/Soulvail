@@ -421,6 +421,8 @@ MonoBehaviour:
     _text: Wave {0:0}/{1:0}
   - _key: ui.hud.levelup
     _text: LEVEL UP!
+  - _key: ui.hud.levelup.growth
+    _text: "+{0:0}% HP \xB7 +{1:0}% DMG"
   - _key: skill.oathbound.keen-censer.pact.description
     _text: +45% censer damage, but -25 maximum health.
   - _key: skill.oathbound.zealotry.pact.description

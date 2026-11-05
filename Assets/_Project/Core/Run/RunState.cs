@@ -762,6 +762,12 @@ public sealed class RunState
     public int OverflowLevels => LevelUp is null ? 0 : LevelUp.OverflowLevels;
 
     /// <summary>
+    /// What every level gained adds in this run (LV-01a) — a value, not the live object, so a view
+    /// can word the level-up toast. <c>default</c> when the run has no growth wired.
+    /// </summary>
+    public LevelGrowthSpec LevelGrowth => Progression.Growth?.Spec ?? default;
+
+    /// <summary>
     /// CH §5.4's half-tree moment, or null for a class with no tree — the same runs
     /// <see cref="LevelUp"/> is null in.
     /// </summary>

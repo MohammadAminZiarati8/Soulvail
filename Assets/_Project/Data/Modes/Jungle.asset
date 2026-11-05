@@ -49,6 +49,9 @@ MonoBehaviour:
   _overflow:
     _damage: 0.02
     _maxHp: 0.02
+  _levelGrowth:
+    _maxHp: 0.03
+    _damage: 0.02
   _essence:
     _perStageBase: 20
     _perStageDepth: 4

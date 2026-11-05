@@ -541,7 +541,7 @@ public sealed class RunEndPresenterTests
             .Select(field => ((LocKey)field.GetValue(null)).Key)
             .ToArray();
 
-        Assert.That(keys, Is.EquivalentTo(new[] { "ui.hud.essence", "ui.hud.veilrot", "ui.hud.claimed", "ui.hud.levelup" }));
+        Assert.That(keys, Is.EquivalentTo(new[] { "ui.hud.essence", "ui.hud.veilrot", "ui.hud.claimed", "ui.hud.levelup", "ui.hud.levelup.growth" }));
 
         AssertNothingHandles(typeof(HudPresenter), typeof(PlayerDied));
 

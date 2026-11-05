@@ -99,7 +99,13 @@ public sealed class LevelTracker
     /// How far into the current level the player is, in <c>[0, 1)</c> — what M3-10b's XP strip
     /// fills to.
     /// </summary>
-    public float XpFraction => Xp / XpToNext;
+    public float XpFraction => IsMaxLevel ? 1f : Xp / XpToNext;
+
+    /// <summary>The mode's level cap, or 0 for none (LV-02a).</summary>
+    public int MaxLevel => _curve.MaxLevel;
+
+    /// <summary>Whether the player stands at the cap: no experience accrues there (LV-02a rule 2).</summary>
+    public bool IsMaxLevel => MaxLevel > 0 && Level >= MaxLevel;
 
     /// <summary>
     /// How many picks the player has earned and not yet been given. Zero for most of a run, and
@@ -142,6 +148,12 @@ public sealed class LevelTracker
         // Floored, not clamped to a range: there is no ceiling a mode could not legitimately want,
         // and MathF.Max carries a NaN through on purpose so the guard below is the one place a
         // non-number is turned away.
+        // LV-02a rule 4: nothing changes at the cap, so nothing is published.
+        if (IsMaxLevel)
+        {
+            return;
+        }
+
         float amount = baseXp * MathF.Max(0f, XpGain.Value);
 
         if (!(amount > 0f) || float.IsInfinity(amount))
@@ -153,8 +165,8 @@ public sealed class LevelTracker
 
         // Recomputed each step rather than hoisted: crossing a threshold changes what the next one
         // costs, so a cached XpToNext would let one enormous grant walk up the curve at the price
-        // of its first level.
-        while (Xp >= XpToNext)
+        // of its first level. The cap ends the walk (LV-02a rule 3).
+        while (!IsMaxLevel && Xp >= XpToNext)
         {
             Xp -= XpToNext;
             Level++;
@@ -165,6 +177,12 @@ public sealed class LevelTracker
             Growth?.Grow();
 
             _events.Publish(new LeveledUp(Level, PendingLevelUps));
+        }
+
+        // LV-02a rule 3: the grant that reaches the cap discards the rest.
+        if (IsMaxLevel)
+        {
+            Xp = 0f;
         }
 
         _events.Publish(new XpChanged(amount, Level, XpFraction));
@@ -223,15 +241,21 @@ public sealed class LevelTracker
     /// </remarks>
     internal void Restore(int level, float xp, int pendingLevelUps)
     {
-        Level = level;
+        // LV-02a rule 6: a save above the cap comes back at it, its points kept.
+        Level = MaxLevel > 0 && level > MaxLevel ? MaxLevel : level;
         Xp = xp;
         PendingLevelUps = pendingLevelUps;
 
-        while (Xp >= XpToNext)
+        while (!IsMaxLevel && Xp >= XpToNext)
         {
             Xp -= XpToNext;
             Level++;
             PendingLevelUps++;
+        }
+
+        if (IsMaxLevel)
+        {
+            Xp = 0f;
         }
     }
 

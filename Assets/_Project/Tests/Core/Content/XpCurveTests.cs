@@ -97,6 +97,16 @@ public sealed class XpCurveTests
     }
 
     [Test]
+    public void Curve_MaxLevelGuards()
+    {
+        // LV-02a rule 1: 0 is uncapped; a cap of 1 never levels.
+        Assert.Throws<ArgumentOutOfRangeException>(() => new XpCurve(Base, PerLevel, Exponent, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new XpCurve(Base, PerLevel, Exponent, 1));
+        Assert.That(new XpCurve(Base, PerLevel, Exponent).MaxLevel, Is.EqualTo(0));
+        Assert.That(new XpCurve(Base, PerLevel, Exponent, 30).MaxLevel, Is.EqualTo(30));
+    }
+
+    [Test]
     public void Curve_DefaultIsUnauthored()
     {
         // A struct always has a zeroed form that carried no guard, and this one's consequence is

@@ -124,6 +124,9 @@ public sealed class XpBarViewTests
 
     private float _restoreTimeScale;
 
+    /// <summary>The test mode's level cap; 0 unless a MAX row sets it (LV-02a).</summary>
+    private int _maxLevel;
+
     [SetUp]
     public void CreateWorld()
     {
@@ -131,6 +134,7 @@ public sealed class XpBarViewTests
         // a row that failed part way through would otherwise leave the whole suite after it running
         // at 0 — PausePresenterTests' argument, made in the teardown rather than in each row.
         _restoreTimeScale = Time.timeScale;
+        _maxLevel = 0;
 
         _hub = new DomainEventHub();
         _spy = new RecordingEvents();
@@ -605,6 +609,47 @@ public sealed class XpBarViewTests
         }
     }
 
+    // ---- MAX at the level cap (LV-02a rule 7) ------------------------------------------------------
+
+    [Test]
+    public void Max_ShowsAtTheCap()
+    {
+        _maxLevel = 4;
+        StartRun(level: 4);
+        BuildHud();
+
+        TMP_Text label = MaxLabel();
+
+        Assert.That(_strip.ShowsMax, Is.True);
+        Assert.That(label.gameObject.activeSelf, Is.True);
+        Assert.That(label.text, Is.EqualTo("ui.xp.max"), "the key, resolved through the localizer.");
+        Assert.That(_strip.Fraction, Is.EqualTo(1f), "a full strip at the cap.");
+    }
+
+    [Test]
+    public void Max_HiddenBelowTheCap()
+    {
+        _maxLevel = 4;
+        StartRun(level: 3);
+        BuildHud();
+
+        Assert.That(_strip.ShowsMax, Is.False);
+        Assert.That(MaxLabel().gameObject.activeSelf, Is.False);
+
+        _hub.Publish(new XpChanged(9f, 3, 0.4f));
+
+        Assert.That(MaxLabel().gameObject.activeSelf, Is.False, "below the cap XpChanged keeps it hidden.");
+    }
+
+    private TMP_Text MaxLabel()
+    {
+        var label = new SerializedObject(_strip).FindProperty("_maxLabel").objectReferenceValue as TMP_Text;
+
+        Assert.That(label, Is.Not.Null, "the strip's MAX label is not wired on Hud.prefab.");
+
+        return label;
+    }
+
     // ---- Lifetime, for all three of this task's components ---------------------------------------
 
     [Test]
@@ -620,7 +665,7 @@ public sealed class XpBarViewTests
         var strip = hud.GetComponentInChildren<XpBarView>(true);
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
-        strip.Construct(_session, _hub);
+        strip.Construct(_session, _hub, Passthrough());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         _hub.Publish(new XpChanged(9f, 3, 0.33f));
@@ -646,7 +691,7 @@ public sealed class XpBarViewTests
         var strip = hud.GetComponentInChildren<XpBarView>(true);
         var toast = hud.GetComponentInChildren<OverflowToast>(true);
 
-        strip.Construct(_session, _hub);
+        strip.Construct(_session, _hub, Passthrough());
         toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
 
         Assert.That(_hub.SubscriberCount<XpChanged>(), Is.EqualTo(1), "the fixture's premise.");
@@ -678,8 +723,9 @@ public sealed class XpBarViewTests
         StartRun(level: 1);
         BuildHud();
 
-        Assert.Throws<ArgumentNullException>(() => _strip.Construct(null, _hub));
-        Assert.Throws<ArgumentNullException>(() => _strip.Construct(_session, null));
+        Assert.Throws<ArgumentNullException>(() => _strip.Construct(null, _hub, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _strip.Construct(_session, null, Passthrough()));
+        Assert.Throws<ArgumentNullException>(() => _strip.Construct(_session, _hub, null));
         Assert.Throws<ArgumentNullException>(() => _toast.Construct(null, Passthrough()));
         Assert.Throws<ArgumentNullException>(() => _toast.Construct(_hub, null));
     }
@@ -790,7 +836,7 @@ public sealed class XpBarViewTests
         _catalog = new ContentCatalog(
             new[] { Oathbound() },
             new[] { Husk() },
-            new[] { Mode() },
+            new[] { Mode(_maxLevel) },
             skills,
             new[] { Tree() });
 
@@ -885,7 +931,7 @@ public sealed class XpBarViewTests
 
         // What RunScope's RegisterComponent does, and then the Start that Unity does not run on an
         // instantiated prefab in EditMode: the placement and the first draw both live there.
-        _strip.Construct(_session, _hub);
+        _strip.Construct(_session, _hub, Passthrough());
         _toast.Construct(_hub, new DictionaryLocalizer(ToastKey, ToastWord));
         _presenter.Construct(_hub, _session, Passthrough());
 
@@ -1130,7 +1176,7 @@ public sealed class XpBarViewTests
         aggroRange: 30f,
         behaviour: EnemyBehaviourKind.Static);
 
-    private static ModeSpec Mode()
+    private static ModeSpec Mode(int maxLevel = 0)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(20f, 6f, 0.04f),
@@ -1149,7 +1195,7 @@ public sealed class XpBarViewTests
             scaling,
 
             // CH §5.2's shipped levelling curve, ToReach(N) = 20 + 12·N^1.4.
-            new XpCurve(20f, 12f, 1.4f),
+            new XpCurve(20f, 12f, 1.4f, maxLevel),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ArenaEntry(new ContentId(ArenaId)) });
     }

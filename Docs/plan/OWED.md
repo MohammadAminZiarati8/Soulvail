@@ -238,3 +238,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] **Editor, owner:** Play the Jungle as the Ranger and level up: the toast reads "LEVEL UP!" over a smaller "+3% HP · +2% DMG"; the HP bar's maximum rises ~2.7 and current HP rises by the same. Check the two-line toast reads in portrait (placeholder UI).
 - [ ] **Editor, owner:** Quit mid-run at level ≥ 5 and Continue: max HP is 90 × (1 + 0.03 × (level − 1)), current HP is what was saved.
+
+## LV-02a — Level cap 30 (2026-11-05)
+
+- [ ] **Editor, owner:** Play the Jungle as the Ranger to stage 25 clearing everything: level 30 arrives with Gravemaw's death, not before stage 25. The XP strip then sits full and reads MAX; further kills add nothing.
+- [ ] **Editor, owner:** Continue a save from before this change: it loads, the level is ≤ 30, and the strip reads MAX only at 30.

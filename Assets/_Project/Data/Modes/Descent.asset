@@ -46,6 +46,7 @@ MonoBehaviour:
     _base: 20
     _perLevel: 12
     _exponent: 1.4
+    _maxLevel: 0
   _overflow:
     _damage: 0.02
     _maxHp: 0.02

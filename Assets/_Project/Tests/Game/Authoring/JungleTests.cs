@@ -119,7 +119,7 @@ public sealed class JungleTests
     /// </remarks>
     private static readonly string[] SharedBlocks =
     {
-        "_startingStage", "_scaling", "_xp", "_overflow", "_essence",
+        "_startingStage", "_scaling", "_overflow", "_essence",
         "_sanctum", "_ordeals",
     };
 
@@ -816,6 +816,75 @@ public sealed class JungleTests
             Assert.That(Flatten(jungle.FindProperty(block)), Is.EqualTo(Flatten(descent.FindProperty(block))),
                 $"The Jungle's {block} is not Descent's.");
         }
+    }
+
+    /// <summary>
+    /// LV-02a rule 8: the Jungle's curve is 20 + 5.1·N^1.4 capped at 30, so level 30 costs more than
+    /// a perfect clear through stage 24 and no more than one through stage 25. A perfect clear is
+    /// every scripted spawn plus the boss body; summons pay nothing.
+    /// </summary>
+    [Test]
+    public void Jungle_LevelThirty_ArrivesWithStageTwentyFive()
+    {
+        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
+
+        Assert.That(jungle.Xp.MaxLevel, Is.EqualTo(30));
+        Assert.That(jungle.Xp.ToReach(30), Is.EqualTo(20f + (5.1f * System.MathF.Pow(30f, 1.4f))).Within(0.01f));
+
+        var xp = new Dictionary<string, float>();
+        var bossBody = new Dictionary<string, string>();
+
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { "Assets/_Project/Data/Enemies" }))
+        {
+            EnemySpec spec = Load<EnemyDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
+            xp[spec.Id.Value] = spec.XpValue;
+        }
+
+        foreach (string guid in AssetDatabase.FindAssets("t:BossDefinition", new[] { "Assets/_Project/Data/Enemies" }))
+        {
+            BossSpec spec = Load<BossDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
+            bossBody[spec.Id.Value] = spec.EnemySpecId.Value;
+        }
+
+        float cleared = 0f;
+        float throughTwentyFour = 0f;
+
+        for (int stage = 1; stage <= 25; stage++)
+        {
+            bool scripted = jungle.TryGetScriptedStage(stage, out ScriptedStage script);
+            bool boss = jungle.TryGetBossFor(stage, out ContentId bossId);
+
+            Assert.That(scripted || boss, Is.True, $"Stage {stage} is neither scripted nor a boss, so a perfect clear is undefined.");
+
+            if (scripted)
+            {
+                foreach (ScriptedSpawn spawn in script.Spawns)
+                {
+                    cleared += xp[spawn.SpecId.Value] * spawn.Count;
+                }
+            }
+
+            if (boss)
+            {
+                cleared += xp[bossBody[bossId.Value]];
+            }
+
+            if (stage == 24)
+            {
+                throughTwentyFour = cleared;
+            }
+        }
+
+        float toThirty = 0f;
+
+        for (int level = 2; level <= 30; level++)
+        {
+            toThirty += jungle.Xp.ToReach(level);
+        }
+
+        Assert.That(cleared, Is.EqualTo(8593f).Within(0.5f), "A perfect clear through stage 25 moved.");
+        Assert.That(toThirty, Is.GreaterThan(throughTwentyFour), "Level 30 arrives before stage 25 is done.");
+        Assert.That(toThirty, Is.LessThanOrEqualTo(cleared), "Level 30 is out of reach at stage 25.");
     }
 
     [Test]

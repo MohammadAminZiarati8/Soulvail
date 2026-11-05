@@ -1148,7 +1148,7 @@ public sealed class BossBarViewTests
         // is deliberately *not* constructed — nothing injects it, which is the whole of why RunScope
         // registers nothing new.
         _presenter.Construct(_hub, _session, Passthrough());
-        _strip.Construct(_session, _hub);
+        _strip.Construct(_session, _hub, new TableLocalizer(ScriptableObject.CreateInstance<LocalizationTable>()));
 
         if (seams)
         {

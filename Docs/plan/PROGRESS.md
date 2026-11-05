@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, LV-01a._
+_2026-11-05, LV-02a._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **LV-01a**: level growth +3 % HP/+2 % damage, mode-authored. |
-| **Next task** | None planned. |
-| **Verified** | EditMode 5672: 5671 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
+| **Last merged** | **LV-02a**: level cap 30 at stage 25 (perLevel 5.1); XP strip reads MAX. |
+| **Next task** | LV-02b: the Overflow toast leaves the HUD (then LV-02c, LV-02d). |
+| **Verified** | EditMode 5681: 5680 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 errors/new warnings; format clean. |
 
 ## What works
 
@@ -22,23 +22,23 @@ Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring 
 Amber heart/pod rings; 14→11 m band; warned vines.
 Mother: shields, lobs, spray, pod. Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
 From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther) replace.
-Stalker (22+): lurks behind, hides still, hit reveals, strikes; shimmer, warn flash.
+Stalker (22+): lurks, hides, hit reveals, strikes; shimmer, flash.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 986 HP, 2.8 m/s, 4 pillars.
 Apex (30): eye tell/feint, streak, +15% window; 1580 HP. Four stones; 2 panthers at 66%, cleared at 33%; win.
-Stone-stopped dash/rake. Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
+Stone-stops dash/rake. Pack: 3 s cd. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
-Shaman: noncombat, guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m;
+Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m;
 flees <4 m. Strongest haste refreshes, stacks with slow. Lime staff/glow/ring.
 17–19: healer/guards, wall, gate; XP 32, priority 8.
-Per level +3 % HP (heals)/+2 % dmg. Banked points; paused free-pick tree, rank pips, Learn; 22 Marksman ranks. Death pays Shards.
-Save v5/legacy load; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
+Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points; paused free-pick tree, rank pips, Learn; 22 Marksman ranks. Death pays Shards.
+Save v5; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles; 0.5 s gap; mirrored. Legacy saves expand to six.
 Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
-Killshot: 3 m, event-aligned 4x arrow, wind particles/path trail; pause/clear. Pierces guards; phases block.
+Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 
 ## Missing
 
@@ -49,7 +49,7 @@ Killshot: 3 m, event-aligned 4x arrow, wind particles/path trail; pause/clear. P
 ## Known issues
 
 1. ArenaView zero-spawn reload warning; TimeManager reserialises.
-2. ContactDamage ruling pending. Invalid tree saves strand Continue; XP 1e38 hangs levelling.
+2. ContactDamage ruling pending. Invalid tree saves strand Continue; Overflow still live (LV-02b/c).
 3. Boundary non-binding bolts leave bodies; pooled Bind/Move snap with autoSyncTransforms off.
 4. Sanctum draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
 5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; bosses unprofiled.

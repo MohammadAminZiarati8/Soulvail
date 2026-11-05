@@ -234,6 +234,60 @@ public sealed class LevelTrackerTests
         Assert.That(_events.All.Count, Is.EqualTo(0));
     }
 
+    // ---- The cap (LV-02a rules 2–5) ---------------------------------------------------------------
+
+    [Test]
+    public void Grant_StopsAtTheCap()
+    {
+        LevelTracker tracker = Capped(3);
+
+        tracker.Grant(1_000f);
+
+        Assert.That((tracker.Level, tracker.Xp, tracker.PendingLevelUps), Is.EqualTo((3, 0f, 2)));
+        Assert.That(tracker.IsMaxLevel, Is.True);
+        Assert.That(_events.Count<LeveledUp>(), Is.EqualTo(2));
+        Assert.That(_events.Count<XpChanged>(), Is.EqualTo(1), "The grant that reaches the cap still reports.");
+        Assert.That(_events.Single<XpChanged>().Fraction, Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void Grant_AtTheCap_DoesNothing()
+    {
+        LevelTracker tracker = Capped(3);
+        tracker.Grant(1_000f);
+        _events.Clear();
+
+        tracker.Grant(500f);
+
+        Assert.That((tracker.Level, tracker.Xp), Is.EqualTo((3, 0f)));
+        Assert.That(_events.All.Count, Is.EqualTo(0), "Nothing changed at the cap, so nothing is said.");
+    }
+
+    [Test]
+    public void XpFraction_IsOneAtTheCap()
+    {
+        LevelTracker tracker = Capped(2);
+
+        Assert.That(tracker.XpFraction, Is.LessThan(1f));
+
+        tracker.Grant(1_000f);
+
+        Assert.That(tracker.XpFraction, Is.EqualTo(1f));
+        Assert.That(tracker.MaxLevel, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Uncapped_LevelsPastThirty()
+    {
+        LevelTracker tracker = Tracker();
+
+        tracker.Grant(100_000f);
+
+        Assert.That(tracker.Level, Is.GreaterThan(30));
+        Assert.That(tracker.IsMaxLevel, Is.False);
+        Assert.That(tracker.MaxLevel, Is.EqualTo(0));
+    }
+
     [Test]
     public void Spend_DecrementsPending()
     {
@@ -530,6 +584,9 @@ public sealed class LevelTrackerTests
 
     /// <summary>A fresh tracker on CH §5.2's curve, publishing into this fixture's recorder.</summary>
     private LevelTracker Tracker() => new LevelTracker(Scalings.Xp(), _events);
+
+    private LevelTracker Capped(int maxLevel) =>
+        new LevelTracker(new XpCurve(20f, 12f, 1.4f, maxLevel), _events);
 
     /// <summary>
     /// Asserts that the named event types appear in <paramref name="types"/>' order, ignoring

@@ -63,7 +63,7 @@ public readonly struct XpCurve
     /// <paramref name="perLevel"/> and <paramref name="exponent"/> is not a finite number greater
     /// than zero.
     /// </exception>
-    public XpCurve(float @base, float perLevel, float exponent)
+    public XpCurve(float @base, float perLevel, float exponent, int maxLevel = 0)
     {
         // CurveGuard for two of the three and not for the first, deliberately: its Positive is
         // exactly this question and its message is generic, while its NonNegative's message is
@@ -83,7 +83,21 @@ public readonly struct XpCurve
         _base = @base;
         _perLevel = CurveGuard.Positive(perLevel, nameof(perLevel));
         _exponent = CurveGuard.Positive(exponent, nameof(exponent));
+
+        // LV-02a rule 1: 0 is uncapped; a cap of 1 would grant no level at all.
+        if (maxLevel < 0 || maxLevel == 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxLevel),
+                maxLevel,
+                "maxLevel must be 0 (no cap) or 2 or more. A cap of 1 is a mode that never levels.");
+        }
+
+        MaxLevel = maxLevel;
     }
+
+    /// <summary>The highest level this curve reaches, or 0 for none (LV-02a).</summary>
+    public int MaxLevel { get; }
 
     /// <summary>
     /// Whether this came from the constructor rather than from <c>default</c>.

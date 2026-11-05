@@ -707,6 +707,20 @@ public sealed class RunSessionResumeTests
     }
 
     [Test]
+    public void Resume_ClampsToTheCap()
+    {
+        // LV-02a rule 6: a save above the cap comes back at it, points kept, experience gone.
+        Build(seed: 7, xp: new XpCurve(20f, 12f, 1.4f, 3));
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 5, xp: 40f, pendingLevelUps: 2));
+
+        Assert.That((_session.State.Level, _session.State.Xp, _session.State.PendingLevelUps),
+            Is.EqualTo((3, 0f, 2)));
+        Assert.That(_session.State.IsMaxLevel, Is.True);
+        Assert.That(_session.State.XpFraction, Is.EqualTo(1f));
+    }
+
+    [Test]
     public void NoTree_BanksTheLevel()
     {
         // **The shipped shape, and the one this whole milestone runs on until M3-12** (M3-08a
@@ -1610,7 +1624,7 @@ public sealed class RunSessionResumeTests
     // ---- Fixture --------------------------------------------------------------------------------
 
     /// <summary>A catalog, a generator, a clock and a session, all over one seed.</summary>
-    private void Build(int seed, LevelGrowthSpec levelGrowth = default)
+    private void Build(int seed, LevelGrowthSpec levelGrowth = default, XpCurve? xp = null)
     {
         _events = new RecordingEvents();
 
@@ -1618,7 +1632,7 @@ public sealed class RunSessionResumeTests
         // 0.5f, which would make every position after that point stop moving.
         _random = new FixedRandom(seed, Alternating(8_192));
         _clock = new FixedClock(Instant);
-        _mode = Mode(levelGrowth);
+        _mode = Mode(levelGrowth, xp);
 
         _catalog = new ContentCatalog(new[] { Oathbound() }, new[] { Husk() }, new[] { _mode });
 
@@ -1972,7 +1986,7 @@ public sealed class RunSessionResumeTests
     /// GD §12's curves as the game ships them, so stage 4 is several bodies of a real composition:
     /// two runs agreeing about one Husk would not be evidence that a stream was restored.
     /// </summary>
-    private static ModeSpec Mode(LevelGrowthSpec levelGrowth = default)
+    private static ModeSpec Mode(LevelGrowthSpec levelGrowth = default, XpCurve? xp = null)
     {
         var scaling = new ScalingSpec(
             new BudgetCurve(20f, 6f, 0.04f),
@@ -1989,7 +2003,7 @@ public sealed class RunSessionResumeTests
             isEndless: true,
             finalStage: 0,
             scaling,
-            Scalings.Xp(),
+            xp ?? Scalings.Xp(),
             new[] { new RosterEntry(new ContentId(HuskId), 1) },
             new[] { new ArenaEntry(new ContentId(FirstArenaId)), new ArenaEntry(new ContentId(SecondArenaId)) },
             bossRoster: null,

@@ -1,9 +1,11 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Controls;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -85,6 +87,9 @@ namespace Soulvail.Game.Presentation
         /// <summary>How far the well sits in from the track's top and bottom, as a fraction of its height.</summary>
         private const float WellEdgeInset = 0.24f;
 
+        /// <summary>What the strip reads at the level cap (LV-02a rule 7).</summary>
+        private static readonly LocKey MaxKey = new LocKey("ui.xp.max");
+
         [Tooltip("The fill: a sliced Fill_BarThin in the well. Its right-hand anchor is the " +
                  "fraction, and its colour is the only other thing written to it.")]
         [SerializeField] private Image _fill;
@@ -102,7 +107,12 @@ namespace Soulvail.Game.Presentation
                  "(ledger row 4).")]
         [SerializeField] private float _heightDp = HeightDp;
 
+        [Tooltip("The MAX word over the strip, shown only at the level cap (LV-02a). Optional.")]
+        [SerializeField] private TMP_Text _maxLabel;
+
         private IRunSession _session;
+        private ILocalizer _localizer;
+        private bool? _shownMax;
 
         private IDisposable _startedSubscription;
         private IDisposable _xpSubscription;
@@ -129,9 +139,10 @@ namespace Soulvail.Game.Presentation
         /// those, so an <c>OnEnable</c> subscription reaches for a hub that may not exist yet.
         /// </remarks>
         [Inject]
-        public void Construct(IRunSession session, DomainEventHub hub)
+        public void Construct(IRunSession session, DomainEventHub hub, ILocalizer localizer)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _localizer = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
             if (hub is null)
             {
@@ -211,6 +222,28 @@ namespace Soulvail.Game.Presentation
         private void OnXpChanged(XpChanged evt)
         {
             Draw(evt.Fraction);
+            DrawMax(_session?.State is { IsMaxLevel: true });
+        }
+
+        /// <summary>Whether the MAX label is up — what a test reads.</summary>
+        public bool ShowsMax => _shownMax == true;
+
+        /// <summary>Shows or hides the MAX label, writing only on a change (LV-02a rule 7).</summary>
+        private void DrawMax(bool atCap)
+        {
+            if (_maxLabel == null || _shownMax == atCap)
+            {
+                return;
+            }
+
+            _shownMax = atCap;
+
+            if (atCap && _localizer is not null)
+            {
+                _maxLabel.text = _localizer.Get(MaxKey);
+            }
+
+            _maxLabel.gameObject.SetActive(atCap);
         }
 
         /// <remarks>
@@ -228,6 +261,7 @@ namespace Soulvail.Game.Presentation
             }
 
             Draw(state.XpFraction);
+            DrawMax(state.IsMaxLevel);
         }
 
         /// <summary>Writes <paramref name="fraction"/> to the strip, if it changed.</summary>

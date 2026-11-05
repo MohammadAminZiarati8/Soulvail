@@ -600,8 +600,11 @@ namespace Soulvail.Game.Authoring
                      "costs more than the last by more than a constant.")]
             [SerializeField, Min(0.01f)] private float _exponent = 1.4f;
 
+            [Tooltip("The highest level; 0 for no cap. The Jungle's is 30 (LV-02a).")]
+            [SerializeField, Min(0)] private int _maxLevel;
+
             /// <summary>Builds the immutable curve, letting it refuse a bad number.</summary>
-            public XpCurve ToCurve() => new XpCurve(_base, _perLevel, _exponent);
+            public XpCurve ToCurve() => new XpCurve(_base, _perLevel, _exponent, _maxLevel);
         }
 
         /// <summary>

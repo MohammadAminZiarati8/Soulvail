@@ -206,7 +206,10 @@ public sealed class GravemawStageTests
     public void StageTwentyFive_DoorOpens_WhenBossFalls_FrogsFallWithIt()
     {
         float arrow = Load<CharacterDefinition>(RangerPath).ToSpec().Weapon.Damage;
-        ContentCatalog catalog = Catalog(scaledHp: 1.5f * arrow);
+        ContentCatalog catalog = Catalog(scaledHp: 2.5f * arrow);
+
+        // 2.5 base arrows: LV-02a's curve starts stage 25 near level 29, whose +2 %/level arrow is
+        // ×1.56 — so two arrows, the first crossing 50 %, as 1.5 was before the curve moved.
         var events = new RecordingEvents();
         var intents = new RecordingIntents();
         RunSession session = Start(catalog, events, intents);

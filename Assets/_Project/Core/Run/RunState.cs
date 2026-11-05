@@ -1032,6 +1032,9 @@ public sealed class RunState
     /// </summary>
     public float XpFraction => Progression.XpFraction;
 
+    /// <summary>Whether the player is at the mode's level cap (LV-02a).</summary>
+    public bool IsMaxLevel => Progression.IsMaxLevel;
+
     /// <summary>
     /// Experience into the current level in absolute points — what a save writes down.
     /// </summary>

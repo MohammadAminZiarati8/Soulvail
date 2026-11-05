@@ -86,7 +86,7 @@ public sealed class KillshotViewTests
     }
 
     [Test]
-    public void BlockedHitDuringWindUp_ShowsLocalizedImmunePopOverRanger()
+    public void KillshotBlock_StillImmune()
     {
         GameObject body = Ranger(out RangerAnimatorView pose, out Animator animator);
         try
@@ -95,7 +95,7 @@ public sealed class KillshotViewTests
             pose.Construct(_hub, localizer: new TableLocalizer(table));
             animator.Rebind();
             animator.Update(0f);
-            var pop = pose.transform.Find("Killshot Immune").GetComponent<TextMeshPro>();
+            var pop = pose.GetComponentInChildren<TextMeshPro>(true);
             var blocked = new PlayerDamaged(0f, 0f, 1f, 0f, blocked: true);
 
             _hub.Publish(blocked);

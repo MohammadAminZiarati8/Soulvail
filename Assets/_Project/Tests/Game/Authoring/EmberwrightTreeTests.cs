@@ -1086,7 +1086,7 @@ public sealed class EmberwrightTreeTests
             skills.Add(Load<SkillDefinition>(path).ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(76), "Three twelve-node classes, Ranger's nine, and 31 Ranger path ranks.");
+        Assert.That(skills, Has.Count.EqualTo(79), "Three twelve-node classes, Ranger's nine, and 34 Ranger path ranks.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

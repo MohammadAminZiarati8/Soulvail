@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, SK-04a complete._
+_2026-11-06, SK-04b complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **SK-04a** — Second Wind in core. |
-| **Next task** | **SK-04b** — Second Wind assets and HUD, on the owner’s go. |
-| **Verified** | EditMode 5778 (5777 passed, 0 failed, 1 existing inconclusive). Format clean. Compile clean. |
+| **Last merged** | **SK-04b** — Second Wind drawn and authored. |
+| **Next task** | **SK-05a** — Whirlwind in core, on the owner’s go. |
+| **Verified** | EditMode 5784 (5783 passed, 0 failed, 1 existing inconclusive). Format clean. Compile clean. |
 
 ## What works
 
@@ -39,7 +39,7 @@ Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
-Skirmisher passives and run-and-shoot are live. Ricochet Shot unlocks at 11 with a bright arrow and bounce sparks.
+Skirmisher shoots on the run. Ricochet unlocks at 11. Second Wind at 14 adds a guard, Dodged pop and roll pips.
 
 ## Missing
 

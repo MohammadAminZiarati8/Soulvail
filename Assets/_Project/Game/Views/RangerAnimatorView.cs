@@ -152,10 +152,12 @@ namespace Soulvail.Game.Views
         private GameObject _killshotRoot;
         private IDisposable _killshotWind, _killshotFire, _killshotBoundary, _killshotArrived, _killshotEnded;
         private IDisposable _killshotStageCleared;
-        private const float ImmunePopSeconds = 0.5f;
-        private TextMeshPro _immunePop;
-        private Camera _immuneCamera;
-        private float _immuneLeft;
+        private const float BlockPopSeconds = 0.5f;
+        private TextMeshPro _blockPop;
+        private string _immuneText;
+        private string _dodgedText;
+        private Camera _blockPopCamera;
+        private float _blockPopLeft;
         private bool _killshotWinding;
         private Vector3 _killshotDirection;
 
@@ -241,15 +243,16 @@ namespace Soulvail.Game.Views
             _killshotStageCleared = hub.Subscribe<StageCleared>(_ => CancelKillshot());
             if (localizer is not null)
             {
-                var pop = new GameObject("Killshot Immune");
+                var pop = new GameObject("Blocked Hit Pop");
                 pop.SetActive(false);
                 pop.transform.SetParent(transform, false);
-                _immunePop = pop.AddComponent<TextMeshPro>();
-                _immunePop.text = localizer.Get(new LocKey("ui.combat.immune"));
-                _immunePop.fontSize = 3.2f;
-                _immunePop.alignment = TextAlignmentOptions.Center;
-                _immunePop.color = Palette.Wind;
-                _immuneCamera = Camera.main;
+                _blockPop = pop.AddComponent<TextMeshPro>();
+                _immuneText = localizer.Get(new LocKey("ui.combat.immune"));
+                _dodgedText = localizer.Get(new LocKey("ui.combat.dodged"));
+                _blockPop.fontSize = 3.2f;
+                _blockPop.alignment = TextAlignmentOptions.Center;
+                _blockPop.color = Palette.Wind;
+                _blockPopCamera = Camera.main;
             }
             if (_killshotPrefab != null)
             {
@@ -387,11 +390,11 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
-            if (_immuneLeft > 0f)
+            if (_blockPopLeft > 0f)
             {
-                _immuneLeft = Mathf.Max(0f, _immuneLeft - dt);
-                _immunePop.alpha = _immuneLeft / ImmunePopSeconds;
-                _immunePop.gameObject.SetActive(_immuneLeft > 0f);
+                _blockPopLeft = Mathf.Max(0f, _blockPopLeft - dt);
+                _blockPop.alpha = _blockPopLeft / BlockPopSeconds;
+                _blockPop.gameObject.SetActive(_blockPopLeft > 0f);
             }
             _castUpLeft = Mathf.Max(0f, _castUpLeft - dt);
             if (_bindingReleaseLeft > 0f)
@@ -575,9 +578,9 @@ namespace Soulvail.Game.Views
                 // Only the visual body turns; core still owns the motor and its release.
                 transform.rotation = Quaternion.LookRotation(_killshotDirection, Vector3.up);
             }
-            if (_immuneLeft > 0f)
+            if (_blockPopLeft > 0f)
             {
-                PlaceImmunePop();
+                PlaceBlockPop();
             }
         }
 
@@ -587,18 +590,18 @@ namespace Soulvail.Game.Views
         {
             EndKillshot(false);
             _killshotView?.Clear();
-            _immuneLeft = 0f;
-            if (_immunePop != null)
+            _blockPopLeft = 0f;
+            if (_blockPop != null)
             {
-                _immunePop.gameObject.SetActive(false);
+                _blockPop.gameObject.SetActive(false);
             }
         }
 
-        private void PlaceImmunePop()
+        private void PlaceBlockPop()
         {
-            float rise = (1f - _immuneLeft / ImmunePopSeconds) * 0.35f;
-            _immunePop.transform.SetPositionAndRotation(transform.position + Vector3.up * (1.5f + rise),
-                _immuneCamera != null ? _immuneCamera.transform.rotation : Quaternion.identity);
+            float rise = (1f - _blockPopLeft / BlockPopSeconds) * 0.35f;
+            _blockPop.transform.SetPositionAndRotation(transform.position + Vector3.up * (1.5f + rise),
+                _blockPopCamera != null ? _blockPopCamera.transform.rotation : Quaternion.identity);
         }
 
         private void OnKillshotWindUp(KillshotWindUp evt)
@@ -872,12 +875,13 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnDamaged(PlayerDamaged evt)
         {
-            if (evt.Blocked && _killshotWinding && _immunePop != null && isActiveAndEnabled)
+            if (evt.Blocked && (evt.Guarded || _killshotWinding) && _blockPop != null && isActiveAndEnabled)
             {
-                _immuneLeft = ImmunePopSeconds;
-                _immunePop.alpha = 1f;
-                PlaceImmunePop();
-                _immunePop.gameObject.SetActive(true);
+                _blockPop.text = evt.Guarded ? _dodgedText : _immuneText;
+                _blockPopLeft = BlockPopSeconds;
+                _blockPop.alpha = 1f;
+                PlaceBlockPop();
+                _blockPop.gameObject.SetActive(true);
             }
 
             if (_animator == null || _dead || _rolling || _killshotWinding || evt.Blocked || !(evt.ToHp > 0f) || !(evt.HpFraction > 0f))

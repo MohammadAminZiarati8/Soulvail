@@ -139,13 +139,17 @@ public readonly struct PlayerDamaged
     /// <summary>Nothing was applied: hit i-frames were running, or a Charge had raised the flag.</summary>
     public readonly bool Blocked;
 
-    public PlayerDamaged(float toShield, float toHp, float hpFraction, float shieldFraction, bool blocked)
+    /// <summary>Second Wind's after-roll guard turned this hit away.</summary>
+    public readonly bool Guarded;
+
+    public PlayerDamaged(float toShield, float toHp, float hpFraction, float shieldFraction, bool blocked, bool guarded = false)
     {
         ToShield = toShield;
         ToHp = toHp;
         HpFraction = hpFraction;
         ShieldFraction = shieldFraction;
         Blocked = blocked;
+        Guarded = guarded;
     }
 }
 

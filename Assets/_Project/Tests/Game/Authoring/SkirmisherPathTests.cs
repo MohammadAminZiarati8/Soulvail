@@ -27,6 +27,7 @@ public sealed class SkirmisherPathTests
     private static readonly ContentId RunningShot = new("skill.skirmisher.running-shot");
     private static readonly ContentId Ricochet = new("skill.skirmisher.ricochet-shot");
     private static readonly ContentId HitAndRunId = new("skill.skirmisher.hit-and-run");
+    private static readonly ContentId SecondWind = new("skill.skirmisher.second-wind");
 
     [Test]
     public void Assets_MatchTheRankTables()
@@ -84,13 +85,31 @@ public sealed class SkirmisherPathTests
     }
 
     [Test]
+    public void SecondWind_Assets_MatchTheRankTable()
+    {
+        IReadOnlyList<SkillDefinition> ranks = Load<PathDefinition>("Paths/Skirmisher").Skills[3].Ranks;
+        AssertRanks(ranks, new[]
+        {
+            new[] { (PlayerStat.MovementSkillCooldown, -0.5f) },
+            new[] { (PlayerStat.MovementSkillCooldown, -0.5f), (PlayerStat.RollGuardSeconds, 1f) },
+            new[] { (PlayerStat.MovementSkillCharges, 1f) },
+        });
+    }
+
+    [Test]
+    public void Path_SecondWindAtFourteen()
+    {
+        AssertSkill(Spec().Skills[3], SecondWind, 3, 14);
+    }
+
+    [Test]
     public void Path_RicochetIsSecondAtEleven()
     {
         PathSpec path = Spec();
         Assert.That(path.Id, Is.EqualTo(Skirmisher));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId("character.ranger")));
-        Assert.That(path.Skills.Count, Is.EqualTo(3));
-        Assert.That(path.NodeCount, Is.EqualTo(11));
+        Assert.That(path.Skills.Count, Is.EqualTo(4));
+        Assert.That(path.NodeCount, Is.EqualTo(14));
         AssertSkill(path.Skills[0], RunningShot, 4, 11);
         AssertSkill(path.Skills[1], Ricochet, 4, 11);
         AssertSkill(path.Skills[2], HitAndRunId, 3, 14);
@@ -117,27 +136,8 @@ public sealed class SkirmisherPathTests
     [TestCase(14, true)]
     public void Choose_Skirmisher_InstallsPathSkills(int level, bool hitAndRunAvailable)
     {
-        using IObjectResolver boot = Boot();
-        var authored = boot.Resolve<ContentCatalog>();
-        CharacterSpec ranger = authored.Characters[0];
-        EnemySpec enemy = Load<EnemyDefinition>("Enemies/Husk").ToSpec();
-        var mode = new ModeSpec(new ContentId("mode.test.skirmisher"), new LocKey("mode.test.name"),
-            1, true, 0, new ScalingSpec(new BudgetCurve(4f, 0f, 0f),
-                new WaveCurve(1, 1000, 1, 1), new ConcurrencyCurve(8, 1000),
-                new StatCurve(0.06f, 4f, 1, 1), new StatCurve(0.035f, 3f, 1, 1),
-                new StatCurve(0.02f, 1.3f, 5, 0)), new XpCurve(20f, 12f, 1.4f),
-            new[] { new RosterEntry(enemy.Id, 1) }, hasFreePick: true);
-        var catalog = new ContentCatalog(authored.Characters, new[] { enemy }, new[] { mode },
-            authored.Skills, authored.Trees, paths: authored.Paths);
-        var random = new FixedRandom(7);
-        var events = new DomainEventHub();
-        var session = new RunSession(catalog, random, events, new RecordingIntents(),
-            new RunRecorder(random, new FixedClock(default), events), 64, 8, 64);
-        var saved = new RunSnapshot(RunSnapshot.CurrentVersion, mode.Id, ranger.Id, 7, 1,
-            new RandomState(101, 102, 103, 104, 105), ranger.MaxHp, 0f, 0f, default, level, 0f, level - 1,
-            Array.Empty<ContentId>(), new ContentId[SkillRunner.MaxManualSlots], default,
-            Array.Empty<ContentId>(), Array.Empty<ContentId>(), Array.Empty<ContentId>());
-        session.Start(new RunConfig(mode.Id, ranger.Id, 7, 1, SpawnPlan.Empty, saved));
+        using var events = new DomainEventHub();
+        RunSession session = StartRanger(level, events);
 
         Assert.That(session.State.IsPathChoiceOpen, Is.True);
         Assert.That(session.State.PathCandidates, Is.EqualTo(new[] { Marksman, Skirmisher }));
@@ -146,13 +146,14 @@ public sealed class SkirmisherPathTests
 
         Assert.That(session.State.PathId, Is.EqualTo(Skirmisher));
         Assert.That(session.State.IsPathChoiceOpen, Is.False);
-        Assert.That(session.State.TreeNodeCount, Is.EqualTo(baseNodes + 11));
+        Assert.That(session.State.TreeNodeCount, Is.EqualTo(baseNodes + 14));
         Assert.That(session.State.UnlockLevelOf(Ricochet), Is.EqualTo(11));
         Assert.That(session.State.IsNodeAvailable(Ricochet), Is.True);
         Assert.That(session.State.UnlockLevelOf(RunningShot), Is.EqualTo(11));
         Assert.That(session.State.UnlockLevelOf(HitAndRunId), Is.EqualTo(14));
         Assert.That(session.State.IsNodeAvailable(RunningShot), Is.True);
         Assert.That(session.State.IsNodeAvailable(HitAndRunId), Is.EqualTo(hitAndRunAvailable));
+        Assert.That(session.State.IsNodeAvailable(SecondWind), Is.EqualTo(hitAndRunAvailable));
         session.ChoosePath(Marksman);
         Assert.That(session.State.PathId, Is.EqualTo(Skirmisher));
         session.End();
@@ -170,7 +171,7 @@ public sealed class SkirmisherPathTests
     public void Loc_Keys()
     {
         PathSpec path = Spec();
-        var keys = new List<LocKey> { path.NameKey, path.DescriptionKey };
+        var keys = new List<LocKey> { path.NameKey, path.DescriptionKey, new LocKey("ui.combat.dodged") };
         foreach (PathDefinition.SkillField skill in Load<PathDefinition>("Paths/Skirmisher").Skills)
         {
             foreach (SkillDefinition rank in skill.Ranks)
@@ -197,6 +198,12 @@ public sealed class SkirmisherPathTests
         Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot-2.description")], Is.EqualTo("Bounces between 4 enemies."));
         Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot-3.description")], Is.EqualTo("+25% damage."));
         Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot-4.description")], Is.EqualTo("Bounces between 5. Cooldown 6 s."));
+        Assert.That(english[new LocKey("ui.combat.dodged")], Is.EqualTo("Dodged"));
+        Assert.That(english[new LocKey("skill.skirmisher.second-wind.name")], Is.EqualTo("Second Wind"));
+        Assert.That(english[new LocKey("skill.skirmisher.second-wind.description")], Is.EqualTo("Roll cooldown −0.5 s."));
+        Assert.That(english[new LocKey("skill.skirmisher.second-wind-2.description")],
+            Is.EqualTo("Roll cooldown −1 s. The first hit within 1 s after a roll misses."));
+        Assert.That(english[new LocKey("skill.skirmisher.second-wind-3.description")], Is.EqualTo("Two roll charges."));
         Assert.That(english[path.NameKey], Is.EqualTo("Skirmisher"));
         Assert.That(english[path.DescriptionKey], Is.EqualTo("Never stop. Shoot on the run, roll often, strike as you pass."));
     }
@@ -220,6 +227,36 @@ public sealed class SkirmisherPathTests
         Sprite buff = statusIcons.For(new ContentId(HitAndRun.StatusKey));
         Assert.That(buff, Is.EqualTo(icons.For(HitAndRunId)));
         Assert.That(buff, Is.Not.EqualTo(statusIcons.For(default)));
+        Sprite guard = statusIcons.For(new ContentId("status.second-wind"));
+        Assert.That(guard, Is.EqualTo(icons.For(SecondWind)));
+        Assert.That(guard, Is.Not.EqualTo(statusIcons.For(default)));
+    }
+
+    internal static RunSession StartRanger(int level, DomainEventHub events)
+    {
+        using IObjectResolver boot = Boot();
+        var authored = boot.Resolve<ContentCatalog>();
+        CharacterSpec ranger = authored.Characters[0];
+        EnemySpec enemy = Load<EnemyDefinition>("Enemies/Husk").ToSpec();
+        var mode = new ModeSpec(new ContentId("mode.test.skirmisher"), new LocKey("mode.test.name"),
+            1, true, 0, new ScalingSpec(new BudgetCurve(4f, 0f, 0f),
+                new WaveCurve(1, 1000, 1, 1), new ConcurrencyCurve(8, 1000),
+                new StatCurve(0.06f, 4f, 1, 1), new StatCurve(0.035f, 3f, 1, 1),
+                new StatCurve(0.02f, 1.3f, 5, 0)), new XpCurve(20f, 12f, 1.4f),
+            new[] { new RosterEntry(enemy.Id, 1) }, hasFreePick: true);
+        var catalog = new ContentCatalog(authored.Characters, new[] { enemy }, new[] { mode },
+            authored.Skills, authored.Trees, paths: authored.Paths);
+        var random = new FixedRandom(7);
+
+        var session = new RunSession(catalog, random, events, new RecordingIntents(),
+            new RunRecorder(random, new FixedClock(default), events), 64, 8, 64);
+        var saved = new RunSnapshot(RunSnapshot.CurrentVersion, mode.Id, ranger.Id, 7, 1,
+            new RandomState(101, 102, 103, 104, 105), ranger.MaxHp, 0f, 0f, default, level, 0f, level - 1,
+            Array.Empty<ContentId>(), new ContentId[SkillRunner.MaxManualSlots], default,
+            Array.Empty<ContentId>(), Array.Empty<ContentId>(), Array.Empty<ContentId>());
+        session.Start(new RunConfig(mode.Id, ranger.Id, 7, 1, SpawnPlan.Empty, saved));
+
+        return session;
     }
 
     private static void AssertRanks(

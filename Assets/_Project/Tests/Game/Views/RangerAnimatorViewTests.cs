@@ -4,6 +4,8 @@ using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
+using Soulvail.Tests.Core.Fakes;
+using TMPro;
 using UnityEditor.Animations;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -504,6 +506,22 @@ public sealed class RangerAnimatorViewTests
         _hub.Publish(new PlayerDamaged(6f, 0f, 0.8f, 0.4f, false));
 
         Assert.That(_animator.GetBool(HitId), Is.False);
+    }
+
+    [Test]
+    public void GuardBlock_PopsDodged()
+    {
+        _view.Construct(_hub, localizer: new DictionaryLocalizer("ui.combat.dodged", "Dodged"));
+        var pop = _view.GetComponentInChildren<TextMeshPro>(true);
+
+        _hub.Publish(new PlayerDamaged(0f, 0f, 1f, 0f, blocked: true));
+        Assert.That(pop.gameObject.activeSelf, Is.False, "Ordinary i-frames have no pop.");
+
+        _hub.Publish(new PlayerDamaged(0f, 0f, 1f, 0f, blocked: true, guarded: true));
+        Assert.That(pop.gameObject.activeSelf, Is.True);
+        Assert.That(pop.text, Is.EqualTo("Dodged"));
+        _view.Step(0.5f);
+        Assert.That(pop.gameObject.activeSelf, Is.False);
     }
 
     [Test]

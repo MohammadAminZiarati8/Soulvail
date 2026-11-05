@@ -21,6 +21,7 @@ MonoBehaviour:
   - status.enemy.hasted
   - status.enemy.poisoned
   - status.hit-and-run
+  - status.second-wind
   _icons:
   - {fileID: 21300000, guid: 5fd6f60adec18a442a1a52a17a998509, type: 3}
   - {fileID: 21300000, guid: 5fd6f60adec18a442a1a52a17a998509, type: 3}
@@ -30,4 +31,5 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 41d6679b966f40b99d928e961ad58626, type: 3}
   - {fileID: 21300000, guid: 17d59c707d6363f4dbf4e3bbdd1aa2e9, type: 3}
   - {fileID: 21300000, guid: af72b975880b23b48afb2bf722a720fd, type: 3}
+  - {fileID: 21300000, guid: 0e7d82889abd1334f91e04dccaf71ed1, type: 3}
   _fallback: {fileID: 21300000, guid: 5fd6f60adec18a442a1a52a17a998509, type: 3}

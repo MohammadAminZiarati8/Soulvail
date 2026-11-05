@@ -300,3 +300,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **SK-03b [Editor]** Stage 12, Skirmisher, Ricochet taken. Cast on a group of at least three enemies. Confirm the Ranger releases while moving, the bright arrow hits three enemies with two cyan-white bounce sparks and an ordinary final impact, and a separate enemy 6 m from the group is skipped.
 
 - **SK-04a** — After SK-04b, playtest Second Wind at level 14. Verify the shorter cooldowns, one guarded hit after a roll, and two back-to-back rolls with sequential recharge at rank 3.
+
+- **SK-04b** — Choose Skirmisher at level 14 and learn Second Wind 3. Roll twice and watch both pips empty and refill one at a time. Roll into a Frog's bite and check that Dodged appears with no HP loss, then the next bite lands.

@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -37,7 +38,7 @@ namespace Soulvail.Game.Controls
     /// tap made too soon.
     /// </para>
     /// <para>
-    /// <b>It reads one number per frame and holds none.</b> The fill comes from
+    /// <b>It samples the recharge and ready charges each frame.</b> The fill comes from
     /// <see cref="RunState.MovementSkillCooldownFraction"/>, sampled in <c>Update</c> rather than
     /// driven by an event, because a fill slides continuously for two and a half seconds — an event
     /// carrying it would be an event per frame. Everything about <em>when</em> a dash may happen
@@ -90,6 +91,9 @@ namespace Soulvail.Game.Controls
         [SerializeField] private Vector2 _marginDp = new Vector2(96f, 96f);
 
         private IRunSession _session;
+        private Image[] _chargePips;
+        private int _shownCapacity = 1;
+        private int _shownReady = -1;
 
         /// <summary>Whether the button is currently pressed down.</summary>
         private bool _isPressed;
@@ -104,7 +108,7 @@ namespace Soulvail.Game.Controls
         private bool _hidden;
 
         /// <param name="session">
-        /// The run, read for one number a frame. Not <c>IPlayerCommands</c>: this button sends
+        /// The run, read for the recharge and ready charges. Not <c>IPlayerCommands</c>: this button sends
         /// nothing — the press goes through the Input System, as the class remarks explain.
         /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="session"/> is null.</exception>
@@ -256,10 +260,11 @@ namespace Soulvail.Game.Controls
                 // Shown again: raycasts back on, and the next Draw forced to write.
                 _hidden = false;
                 _group.blocksRaycasts = true;
-                _shownFraction = -1f;
+                _shownReady = -1;
             }
 
-            Draw(state is null ? 0f : state.MovementSkillCooldownFraction);
+            Draw(state?.MovementSkillCooldownFraction ?? 0f,
+                state?.MovementSkillReadyCharges ?? 1, state?.MovementSkillMaxCharges ?? 1);
         }
 
         /// <summary>Rule 9: invisible, and no longer in the way of a thumb.</summary>
@@ -275,43 +280,70 @@ namespace Soulvail.Game.Controls
             _group.blocksRaycasts = false;
         }
 
-        /// <summary>
-        /// Rule 5: the fill is <c>1 − fraction</c> — empty the instant a dash starts, full when the
-        /// button is live again — and the whole button dims while it is cooling.
-        /// </summary>
-        /// <remarks>
-        /// The fraction is clamped rather than trusted. Core guarantees <c>[0, 1]</c> and there is
-        /// no path by which it would not, but a <c>fillAmount</c> outside the range is the kind of
-        /// thing uGUI renders as an empty or a full ring rather than as an error — and a Charge
-        /// button that reads "ready" while it is not is the most misleading thing on the screen.
-        /// </remarks>
-        private void Draw(float fraction)
+        private void Draw(float fraction, int ready, int capacity)
         {
             float clamped = Mathf.Clamp01(fraction);
+            if (!Mathf.Approximately(clamped, _shownFraction))
+            {
+                _shownFraction = clamped;
+                _radialFill.fillAmount = 1f - clamped;
+            }
 
-            // Not merely an optimisation: assigning fillAmount marks the graphic dirty and queues a
-            // canvas rebuild, so writing an unchanged value would rebuild the HUD every frame of
-            // the two and a half seconds in every three that nothing is happening.
-            if (Mathf.Approximately(clamped, _shownFraction))
+            if (ready == _shownReady && capacity == _shownCapacity)
             {
                 return;
             }
 
-            _shownFraction = clamped;
+            _shownReady = ready;
+            _shownCapacity = capacity;
+            DrawChargePips(ready, capacity);
 
-            _radialFill.fillAmount = 1f - clamped;
-
-            // Alpha only. blocksRaycasts and interactable are deliberately untouched, so an early
-            // tap still reaches core and the input buffer keeps working — see the class remarks.
-            _group.alpha = clamped > 0f ? CoolingAlpha : 1f;
-
+            // Keep the raycast target live so early presses reach the core input buffer.
+            _group.alpha = ready > 0 ? 1f : CoolingAlpha;
             UpdateFrameSprite();
         }
 
-        /// <summary>
-        /// Rules 1–3: the frame wears Pressed while a thumb is on it, Cooling while the fraction
-        /// is above zero, and Ready otherwise. Called on a fraction change and on a press or release.
-        /// </summary>
+        private void DrawChargePips(int ready, int capacity)
+        {
+            int count = capacity > 1 ? capacity : 0;
+            if (_chargePips == null && count == 0)
+            {
+                return;
+            }
+
+            int existing = _chargePips?.Length ?? 0;
+            if (existing < count)
+            {
+                Array.Resize(ref _chargePips, count);
+                for (int i = existing; i < count; i++)
+                {
+                    var pip = new GameObject($"Roll Charge {i + 1}", typeof(RectTransform));
+                    pip.transform.SetParent(transform, false);
+                    Image image = pip.AddComponent<Image>();
+                    image.raycastTarget = false;
+                    image.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                    _chargePips[i] = image;
+                }
+            }
+
+            for (int i = 0; i < _chargePips.Length; i++)
+            {
+                Image pip = _chargePips[i];
+                pip.gameObject.SetActive(i < count);
+                if (i < count)
+                {
+                    // Place the diamonds along the lower rim, proportional to the button's size.
+                    float x = (i - (count - 1) * 0.5f) * Mathf.Min(0.16f, 0.6f / count);
+                    var anchor = new Vector2(0.5f + x, 0.09f + x * x);
+                    RectTransform rect = pip.rectTransform;
+                    rect.anchorMin = anchor - Vector2.one * 0.035f;
+                    rect.anchorMax = anchor + Vector2.one * 0.035f;
+                    rect.sizeDelta = Vector2.zero;
+                    pip.color = i < ready ? Palette.Wind : Palette.Ink;
+                }
+            }
+        }
+
         private void UpdateFrameSprite()
         {
             Sprite target;
@@ -319,7 +351,7 @@ namespace Soulvail.Game.Controls
             {
                 target = _pressedSprite;
             }
-            else if (_shownFraction > 0f && _coolingSprite != null)
+            else if (_shownReady == 0 && _coolingSprite != null)
             {
                 target = _coolingSprite;
             }

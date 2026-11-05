@@ -1200,6 +1200,12 @@ public sealed class RunState
     /// </remarks>
     public float MovementSkillCooldownFraction => Combat.Charge.CooldownFraction;
 
+    /// <summary>The movement skill's current charge capacity.</summary>
+    public int MovementSkillMaxCharges => Combat.Charge.MaxCharges;
+
+    /// <summary>Charges ready to spend on the movement skill.</summary>
+    public int MovementSkillReadyCharges => Combat.Charge.ReadyCharges;
+
     /// <summary>
     /// Seconds of simulated run time, summed from each tick's <c>Dt</c>.
     /// </summary>

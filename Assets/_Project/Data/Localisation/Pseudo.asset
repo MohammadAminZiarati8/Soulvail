@@ -125,7 +125,7 @@ MonoBehaviour:
     _text: "[Sk\xEElls \xE7\xE1\xF1 b\xE9 s\xE9t t\xF4 M\xE1\xF1\xFB\xE1l: P\xE1\xFBs\xE9
       \u2192 Sk\xEElls \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.xp.max
-    _text: "[MÁX ··]"
+    _text: "[M\xC1X \xB7\xB7]"
   - _key: ui.skills.empty
     _text: "[\xDD\xF4\xFB \xF4w\xF1 \xF1\xF4 \xE1\xE7t\xEEv\xE9 sk\xEElls \xFD\xE9t.
       \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
@@ -603,11 +603,11 @@ MonoBehaviour:
   - _key: enemy.mossguard_warlord.name
     _text: "[M\xF4ssg\xFB\xE1rd W\xE1rl\xF4rd \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.thornheart.name
-    _text: "[Thôrñhéárt ····]"
+    _text: "[Th\xF4r\xF1h\xE9\xE1rt \xB7\xB7\xB7\xB7]"
   - _key: enemy.gravemaw.name
-    _text: "[Grávémáw ···]"
+    _text: "[Gr\xE1v\xE9m\xE1w \xB7\xB7\xB7]"
   - _key: enemy.thorn_pod.name
-    _text: "[Thôrñ Pôd ····]"
+    _text: "[Th\xF4r\xF1 P\xF4d \xB7\xB7\xB7\xB7]"
   - _key: path.ranger.marksman.name
     _text: "[M\xE1rksm\xE1\xF1 \xB7\xB7\xB7]"
   - _key: path.ranger.marksman.description
@@ -623,15 +623,22 @@ MonoBehaviour:
   - _key: skill.marksman.steady-aim-2.name
     _text: "[St\xE9\xE1d\xFD \xC1\xEEm 2 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.steady-aim-2.description
-    _text: "[Stáñdîñg árrôws ádd 14% dámágé pér stáçk, ûp tô 5 stáçks. Thé fîrst árrôw áftér stôppîñg déáls dôûblé dámágé. Môvîñg ôr rôllîñg réséts stáçks. ··················································]"
+    _text: "[St\xE1\xF1d\xEE\xF1g \xE1rr\xF4ws \xE1dd 14% d\xE1m\xE1g\xE9 p\xE9r
+      st\xE1\xE7k, \xFBp t\xF4 5 st\xE1\xE7ks. Th\xE9 f\xEErst \xE1rr\xF4w \xE1ft\xE9r
+      st\xF4pp\xEE\xF1g d\xE9\xE1ls d\xF4\xFBbl\xE9 d\xE1m\xE1g\xE9. M\xF4v\xEE\xF1g
+      \xF4r r\xF4ll\xEE\xF1g r\xE9s\xE9ts st\xE1\xE7ks. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.steady-aim-3.name
     _text: "[St\xE9\xE1d\xFD \xC1\xEEm 3 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.steady-aim-3.description
-    _text: "[Stáñdîñg árrôws ádd 16% dámágé pér stáçk, ûp tô 5 stáçks. Thé fîrst árrôw áftér stôppîñg stîll déáls dôûblé dámágé. ·········································]"
+    _text: "[St\xE1\xF1d\xEE\xF1g \xE1rr\xF4ws \xE1dd 16% d\xE1m\xE1g\xE9 p\xE9r
+      st\xE1\xE7k, \xFBp t\xF4 5 st\xE1\xE7ks. Th\xE9 f\xEErst \xE1rr\xF4w \xE1ft\xE9r
+      st\xF4pp\xEE\xF1g st\xEEll d\xE9\xE1ls d\xF4\xFBbl\xE9 d\xE1m\xE1g\xE9. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.steady-aim-4.name
     _text: "[St\xE9\xE1d\xFD \xC1\xEEm 4 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.steady-aim-4.description
-    _text: "[Át 5 stáñdîñg-árrôw stáçks, táké 20% léss dámágé. Môvîñg ôr rôllîñg réséts thé stáçks. ·······························]"
+    _text: "[\xC1t 5 st\xE1\xF1d\xEE\xF1g-\xE1rr\xF4w st\xE1\xE7ks, t\xE1k\xE9 20%
+      l\xE9ss d\xE1m\xE1g\xE9. M\xF4v\xEE\xF1g \xF4r r\xF4ll\xEE\xF1g r\xE9s\xE9ts
+      th\xE9 st\xE1\xE7ks. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.eagle-eye.name
     _text: "[\xC9\xE1gl\xE9 \xC9\xFD\xE9 1 \xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.eagle-eye.description
@@ -687,11 +694,12 @@ MonoBehaviour:
   - _key: skill.marksman.binding-shot-2.name
     _text: "[B\xEE\xF1d\xEE\xF1g Sh\xF4t 2 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.binding-shot-2.description
-    _text: "[Bôûñd stûñ lásts 1.0 s lôñgér. ···········]"
+    _text: "[B\xF4\xFB\xF1d st\xFB\xF1 l\xE1sts 1.0 s l\xF4\xF1g\xE9r. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.binding-shot-3.name
     _text: "[B\xEE\xF1d\xEE\xF1g Sh\xF4t 3 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.binding-shot-3.description
-    _text: "[Bîñdîñg Shôt çôôldôwñ îs rédûçéd bý 3 s. ··············]"
+    _text: "[B\xEE\xF1d\xEE\xF1g Sh\xF4t \xE7\xF4\xF4ld\xF4w\xF1 \xEEs r\xE9d\xFB\xE7\xE9d
+      b\xFD 3 s. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.hunters-snare.name
     _text: "[H\xFB\xF1t\xE9r's S\xF1\xE1r\xE9 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.marksman.hunters-snare.description
@@ -743,7 +751,7 @@ MonoBehaviour:
   - _key: enemy.thornweaver.name
     _text: "[Th\xF4r\xF1w\xE9\xE1v\xE9r \xB7\xB7\xB7\xB7]"
   - _key: enemy.apex.name
-    _text: '[Thé Ápéx ···]'
+    _text: "[Th\xE9 \xC1p\xE9x \xB7\xB7\xB7]"
   - _key: ui.combat.immune
     _text: "[\xCEmm\xFB\xF1\xE9 \xB7\xB7\xB7]"
   - _key: path.ranger.skirmisher.name
@@ -800,3 +808,18 @@ MonoBehaviour:
     _text: "[H\xEEt \xE1\xF1d R\xFB\xF1 3 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.hit-and-run-3.description
     _text: "[+25% sp\xE9\xE9d; +3% p\xE9r m\xE9tr\xE9. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.combat.dodged
+    _text: "[D\xF4dg\xE9d \xB7\xB7\xB7]"
+  - _key: skill.skirmisher.second-wind.name
+    _text: "[S\xE9\xE7\xF4\xF1d W\xEE\xF1d \xB7\xB7\xB7\xB7]"
+  - _key: skill.skirmisher.second-wind.description
+    _text: "[R\xF4ll \xE7\xF4\xF4ld\xF4w\xF1 \u22120.5 s. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: skill.skirmisher.second-wind-2.name
+    _text: "[S\xE9\xE7\xF4\xF1d W\xEE\xF1d 2 \xB7\xB7\xB7\xB7\xB7]"
+  - _key: skill.skirmisher.second-wind-2.description
+    _text: "[R\xF4ll \xE7\xF4\xF4ld\xF4w\xF1 \u22121 s. Th\xE9 f\xEErst h\xEEt w\xEEth\xEE\xF1
+      1 s \xE1ft\xE9r \xE1 r\xF4ll m\xEEss\xE9s. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: skill.skirmisher.second-wind-3.name
+    _text: "[S\xE9\xE7\xF4\xF1d W\xEE\xF1d 3 \xB7\xB7\xB7\xB7\xB7]"
+  - _key: skill.skirmisher.second-wind-3.description
+    _text: "[Tw\xF4 r\xF4ll \xE7h\xE1rg\xE9s. \xB7\xB7\xB7\xB7\xB7\xB7]"

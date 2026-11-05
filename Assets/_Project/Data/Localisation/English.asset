@@ -726,3 +726,17 @@ MonoBehaviour:
     _text: Hit and Run 3
   - _key: skill.skirmisher.hit-and-run-3.description
     _text: +25% speed; +3% per metre.
+  - _key: ui.combat.dodged
+    _text: "Dodged"
+  - _key: skill.skirmisher.second-wind.name
+    _text: "Second Wind"
+  - _key: skill.skirmisher.second-wind.description
+    _text: "Roll cooldown \u22120.5 s."
+  - _key: skill.skirmisher.second-wind-2.name
+    _text: "Second Wind 2"
+  - _key: skill.skirmisher.second-wind-2.description
+    _text: "Roll cooldown \u22121 s. The first hit within 1 s after a roll misses."
+  - _key: skill.skirmisher.second-wind-3.name
+    _text: "Second Wind 3"
+  - _key: skill.skirmisher.second-wind-3.description
+    _text: "Two roll charges."

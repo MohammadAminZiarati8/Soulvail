@@ -63,7 +63,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **SK-03a** — Ricochet Shot in core: an arrow chain that bounces to the nearest unhit enemy (M)
 - [x] **SK-03b** — Ricochet Shot drawn and authored: bright trail, bounce sparks (M)
 - [x] **SK-04a** — Second Wind in core: roll cooldown, the after-roll guard, two charges (M)
-- [ ] [**SK-04b**](tasks/SK-04b-second-wind-drawn.md) — Second Wind drawn and authored: charge pips on the roll button, the Dodged pop (M)
+- [x] **SK-04b** — Second Wind drawn and authored: charge pips on the roll button, the Dodged pop (M)
 - [ ] [**SK-05a**](tasks/SK-05a-whirlwind.md) — Whirlwind in core: rings of arrows all round, 0.3 s apart (M)
 - [ ] [**SK-05b**](tasks/SK-05b-whirlwind-drawn.md) — Whirlwind drawn and authored: the spin and the swirl (M)
 - [ ] [**SK-06a**](tasks/SK-06a-storm-run.md) — Storm Run in core: rolls end in a volley, roll cooldown halved (M)

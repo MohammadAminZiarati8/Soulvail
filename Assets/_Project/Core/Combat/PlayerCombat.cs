@@ -849,7 +849,8 @@ public sealed class PlayerCombat
                 result.ToHp,
                 Health.Fraction,
                 Health.ShieldFraction,
-                result.Blocked));
+                result.Blocked,
+                guarded));
         }
         finally
         {

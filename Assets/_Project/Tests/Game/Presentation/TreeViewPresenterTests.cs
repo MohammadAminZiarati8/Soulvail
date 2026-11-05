@@ -1252,7 +1252,7 @@ public sealed class TreeViewPresenterTests
         Assert.That(strip.childCount, Is.EqualTo(6));
         Assert.That(strip.GetComponentsInChildren<Image>().All(i => i.sprite != null), Is.True);
         Transform skirmisherStrip = PathCards().Card(1).transform.Find("SkillStrip");
-        Assert.That(skirmisherStrip.childCount, Is.EqualTo(3));
+        Assert.That(skirmisherStrip.childCount, Is.EqualTo(4));
         Assert.That(skirmisherStrip.GetComponentsInChildren<Image>().All(i => i.sprite != null), Is.True);
     }
 

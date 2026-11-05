@@ -94,7 +94,7 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
         _pending = effect;
         _firesAt = _clock.Now + effect.WindUp;
         _motor.Hold(effect.WindUp);
-        _player.IsHeld = true;
+        _player.SetKillshotWindUp(true);
         _events.Publish(new KillshotWindUp(_direction, effect.WindUp));
     }
 
@@ -102,9 +102,14 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
 
     public void Clear()
     {
+        if (!IsWindingUp)
+        {
+            return;
+        }
+
         _pending = null;
         _motor.ClearHold();
-        _player.IsHeld = false;
+        _player.SetKillshotWindUp(false);
     }
 
     public void Tick(float now)

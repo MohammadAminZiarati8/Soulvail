@@ -642,7 +642,25 @@ public sealed class PlayerCombat
     /// <summary>The player's HP has reached zero.</summary>
     public bool IsDead => Health.IsDead;
 
-    public bool IsHeld { get; internal set; }
+    private StatusBoard _status;
+
+    public bool IsHeld { get; private set; }
+
+    public void AttachStatus(StatusBoard status)
+    {
+        _status = status;
+        SteadyAim.AttachStatus(status);
+    }
+
+    internal void SetKillshotWindUp(bool active)
+    {
+        IsHeld = active;
+        Health.SetExternalInvulnerable(active || Charge.IsInvulnerable);
+        if (_status is not null)
+        {
+            _status.RejectDebuffs = active;
+        }
+    }
 
     /// <summary>
     /// A unit vector on the ground plane pointing at the current target, or <see langword="null"/>
@@ -848,7 +866,7 @@ public sealed class PlayerCombat
         }
 
         _deathAnnounced = true;
-
+        SetKillshotWindUp(false);
         _events.Publish(new PlayerDied(now));
     }
 
@@ -1286,10 +1304,7 @@ public sealed class PlayerCombat
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
         // counted as another tick of standing still.
-        if (!IsHeld)
-        {
-            TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
-        }
+        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1396,7 +1411,7 @@ public sealed class PlayerCombat
     /// </remarks>
     public void Reset()
     {
-        IsHeld = false;
+        SetKillshotWindUp(false);
         SteadyAim.OnMoved();
         Health.Reset();
         Targeter.Reset();
@@ -1503,7 +1518,7 @@ public sealed class PlayerCombat
         // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
         // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
         // turn, for the reason TickWeapon's is: combat runs before the motor.
-        bool started = Charge.Tick(dt, now, stickXZ, new Vector2(bodyFacing.X, bodyFacing.Z));
+        bool started = Charge.Tick(dt, now, stickXZ, new Vector2(bodyFacing.X, bodyFacing.Z), allowStart: !IsHeld);
         bool invulnerable = Charge.IsInvulnerable;
 
         if (started)
@@ -1562,7 +1577,7 @@ public sealed class PlayerCombat
         }
         else if (_wasChargeInvulnerable && !invulnerable)
         {
-            Health.SetExternalInvulnerable(false);
+            Health.SetExternalInvulnerable(IsHeld);
 
             _events.Publish(new ChargeEnded());
         }

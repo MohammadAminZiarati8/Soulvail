@@ -16,6 +16,8 @@ public sealed class StatusBoard
 
     public int Count { get; private set; }
 
+    internal bool RejectDebuffs { get; set; }
+
     /// <summary>True once a post has been refused for capacity; the view logs it once.</summary>
     public bool HasRefused { get; private set; }
 
@@ -39,6 +41,11 @@ public sealed class StatusBoard
         if (stacks < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(stacks), stacks, "Stacks must be at least 1.");
+        }
+
+        if (!isBuff && RejectDebuffs)
+        {
+            return;
         }
 
         var entry = new StatusEntry(id, isBuff, seconds, seconds, stacks);

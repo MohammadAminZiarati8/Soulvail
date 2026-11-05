@@ -242,14 +242,113 @@ public sealed class KillshotTests
     }
 
     [Test]
-    public void WindUp_DamageDoesNotCancel()
+    public void Immunity_StartsWithWindUp_AndEndsAtRelease()
+    {
+        Spawn(3f);
+        Assert.That(_player.ApplyDamage(10f, -1f).ToHp, Is.EqualTo(10f));
+        Cast();
+        Assert.That(_player.ApplyDamage(10f, 0f).Blocked, Is.True);
+        _handler.Tick(0.699f);
+        Assert.That(_player.ApplyDamage(10f, 0.699f).Blocked, Is.True);
+        Fire();
+        Assert.That(_events.Count<KillshotFired>(), Is.EqualTo(1));
+        Assert.That(_player.ApplyDamage(10f, 0.7f).ToHp, Is.EqualTo(10f));
+    }
+
+    [Test]
+    public void Immunity_BlocksMeleeProjectilesBossAttacksAndHazards()
+    {
+        EnemyAgent attacker = Spawn(3f);
+        Cast();
+        Assert.That(_player.ApplyDamage(attacker.ContactDamage.Value, 0.2f).Blocked, Is.True);
+
+        var projectiles = new ProjectileSystem(_events, Capacity);
+        projectiles.Fire(new Projectile(attacker.Spec.Id, attacker.Id, Vector3.UnitX, Vector3.Zero,
+            10f, 0.1f, 20f, ShotSide.AtPlayer), 0.2f);
+        projectiles.Tick(0.4f, Vector3.Zero, _player, _enemies);
+
+        var bossAttack = new ShockwaveSystem(_events);
+        bossAttack.Emit(Vector3.UnitX, 10f, 5f, 20f, 1f, 0.4f);
+        bossAttack.Tick(0.5f, Vector3.Zero, _player);
+
+        var hazard = new FissureSystem(_events);
+        hazard.Open(Vector3.Zero, 1f, 0.05f, 1f, 20f, 0.5f);
+        hazard.Tick(0.6f, Vector3.Zero, _player);
+
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(4));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+    }
+
+    [Test]
+    public void Immunity_RejectsNewDebuffsAndRefreshes_WhileAllowingBuffs()
+    {
+        var status = new StatusBoard();
+        _player.AttachStatus(status);
+        var stun = new ContentId(EnemyStatuses.StunnedKey);
+        var slow = new ContentId(EnemyStatuses.SlowedKey);
+        var root = new ContentId(EnemyStatuses.RootedKey);
+        var poison = new ContentId(EnemyStatuses.PoisonedKey);
+        var buff = new ContentId("status.test-buff");
+        status.Post(poison, false, 2f, 1);
+
+        Spawn(3f);
+        Cast();
+        status.Post(stun, false, 5f, 1);
+        status.Post(slow, false, 5f, 1);
+        status.Post(root, false, 5f, 1);
+        status.Post(poison, false, 5f, 2);
+        status.Post(buff, true, 5f, 1);
+
+        Assert.That(status.Count, Is.EqualTo(2));
+        Assert.That(status[0].Id, Is.EqualTo(poison));
+        Assert.That(status[0].Remaining, Is.EqualTo(2f));
+        Assert.That(status[0].Stacks, Is.EqualTo(1));
+        Assert.That(status[1].Id, Is.EqualTo(buff));
+        Fire();
+        status.Post(stun, false, 5f, 1);
+        Assert.That(status.Count, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Immunity_ReusesBlockedPlayerDamageEvent()
     {
         Spawn(3f);
         Cast();
-        _player.ApplyDamage(20f, 0.3f);
-        Fire();
-        Assert.That(_player.Health.Current, Is.EqualTo(80f));
-        Assert.That(_events.Count<KillshotFired>(), Is.EqualTo(1));
+        _player.ApplyDamage(10f, 0.2f);
+        PlayerDamaged blocked = _events.Single<PlayerDamaged>();
+        Assert.That(blocked.Blocked, Is.True);
+        Assert.That(blocked.ToHp, Is.Zero);
+        Assert.That(blocked.ToShield, Is.Zero);
+    }
+
+    [Test]
+    public void Immunity_CombinesWithRollProtection()
+    {
+        var snapshot = new WorldSnapshot(Capacity) { Dt = 0.01f };
+        _player.Charge.Request(0f);
+        _player.Tick(0.01f, 0f, snapshot, _enemies.Registry.Alive, Vector3.UnitX);
+        Assert.That(_player.Charge.IsInvulnerable, Is.True);
+        Spawn(3f);
+        _handler.Apply(Shot(), this);
+        Assert.That(_handler.IsWindingUp, Is.False);
+        _handler.Clear();
+        Assert.That(_player.Health.IsInvulnerable, Is.True);
+
+        _player.Tick(0.01f, 0.51f, snapshot, _enemies.Registry.Alive, Vector3.UnitX);
+        Assert.That(_player.Charge.IsActive, Is.False);
+        Assert.That(_player.Charge.IsInvulnerable, Is.True);
+        _clock.Now = 0.51f;
+        _handler.Apply(Shot(), this);
+        Assert.That(_handler.IsWindingUp, Is.True);
+        _handler.Clear();
+        Assert.That(_player.Health.IsInvulnerable, Is.True, "Clearing Killshot preserves the roll trail.");
+
+        _handler.Apply(Shot(), this);
+        _player.Tick(0.1f, 0.61f, snapshot, _enemies.Registry.Alive, Vector3.UnitX);
+        Assert.That(_player.Charge.IsInvulnerable, Is.False);
+        Assert.That(_player.Health.IsInvulnerable, Is.True, "The roll trail can expire during Killshot.");
+        _handler.Tick(1.22f);
+        Assert.That(_player.Health.IsInvulnerable, Is.False);
     }
 
     [Test]
@@ -474,7 +573,9 @@ public sealed class KillshotTests
     {
         Spawn(3f);
         Cast();
-        _player.ApplyDamage(100f, 0.3f);
+        _player.Health.MaxHp.Base = 0f;
+        _player.AnnounceDeath(0.3f);
+        Assert.That(_player.Health.IsInvulnerable, Is.False);
         _handler.Tick(0.3f);
         Fire();
         Assert.That(_handler.IsWindingUp, Is.False);
@@ -509,6 +610,14 @@ public sealed class KillshotTests
         Assert.That(_events.Count<ProjectileFired>(), Is.GreaterThan(0));
         session.CastSkillNow(SkillId);
         Assert.That(_events.Count<KillshotWindUp>(), Is.EqualTo(1));
+        snapshot.MoveInput = Vector2.UnitX;
+        for (int i = 0; i < 180 && _events.Count<StageCleared>() == 0; i++)
+        {
+            session.Tick(snapshot);
+        }
+        Assert.That(_events.Count<StageCleared>(), Is.EqualTo(1));
+        Assert.That(session.State.StageIndex, Is.EqualTo(1));
+        Assert.That(_intents.LastPlayerMove.Velocity.Length(), Is.GreaterThan(0f));
         for (int i = 0; i < 180 && session.State.StageIndex == 1; i++)
         {
             session.Tick(snapshot);
@@ -525,6 +634,18 @@ public sealed class KillshotTests
         Assert.That(_events.Count<KillshotFired>(), Is.Zero);
         Assert.That(_intents.LastPlayerMove.Velocity.Length(), Is.GreaterThan(0f));
         session.End();
+    }
+
+    [Test]
+    public void Clear_CancelsWindUpAndDropsImmunity()
+    {
+        Spawn(3f);
+        Cast();
+        Assert.That(_player.Health.IsInvulnerable, Is.True);
+        _handler.Clear();
+        Assert.That(_player.Health.IsInvulnerable, Is.False);
+        Fire();
+        Assert.That(_events.Count<KillshotFired>(), Is.Zero);
     }
 
     [Test]

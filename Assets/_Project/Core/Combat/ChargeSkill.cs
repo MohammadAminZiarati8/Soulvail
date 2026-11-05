@@ -258,11 +258,11 @@ public sealed class ChargeSkill
     /// makes a dash with no stick a step forward rather than a dash to nowhere.
     /// </param>
     /// <returns><see langword="true"/> on the tick a dash starts, and only then.</returns>
-    public bool Tick(float dt, float now, Vector2 stickXZ, Vector2 facingXZ)
+    public bool Tick(float dt, float now, Vector2 stickXZ, Vector2 facingXZ, bool allowStart = true)
     {
         _now = now;
 
-        if (!_hasPress)
+        if (!allowStart || !_hasPress)
         {
             return false;
         }

@@ -918,7 +918,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             mode.HasSanctum);
 
         // MK-05: Steady Aim's stacks and guard are the row's first statuses.
-        combat.SteadyAim.AttachStatus(State.Status);
+        combat.AttachStatus(State.Status);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -1556,6 +1556,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             StagePhase phaseBefore = _flow.Phase;
 
             _flow.Tick(State.Time, snapshot, _random.Spawn);
+            bool stageCleared = phaseBefore != StagePhase.Clear && _flow.Phase == StagePhase.Clear;
+            if (stageCleared)
+            {
+                _killshot.Clear();
+            }
 
             // Copied rather than owned, because the two numbers answer different questions: the
             // flow's is what the stage machine is running, and this is what the run reports and
@@ -1615,7 +1620,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // just cleared its final stage is a run that is over, and a snapshot of it would be a
             // resume into a stage the mode does not have. Inert while Descent is endless, and
             // written anyway for M2-10 rule 14's reason.
-            if (phaseBefore != StagePhase.Clear && _flow.Phase == StagePhase.Clear)
+            if (stageCleared)
             {
                 State.Combat.SteadyAim.OnMoved();
                 State.Status.Reset();
@@ -2125,6 +2130,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             return;
         }
 
+        _killshot.Clear();
         _events.Publish(new RunEnded(State.Time));
 
         IsRunning = false;
@@ -2148,7 +2154,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // sentence: there is nothing left to take it off, and an expiry announced here would reach a
         // view that is being destroyed (M3-11a-ii rule 8).
         _timed.Clear();
-        _killshot.Clear();
         State.Status.Reset();
 
         // And the ground a cast put down, forgotten in the same silence and for the same sentence.

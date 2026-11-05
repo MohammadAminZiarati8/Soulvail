@@ -2,8 +2,10 @@ using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Authoring;
 using Soulvail.Game.Views;
 using Soulvail.Game.Presentation;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -76,6 +78,39 @@ public sealed class KillshotViewTests
             animator.Update(0.24f);
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Locomotion"), Is.True);
             Assert.That(animator.IsInTransition(0), Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(body);
+        }
+    }
+
+    [Test]
+    public void BlockedHitDuringWindUp_ShowsLocalizedImmunePopOverRanger()
+    {
+        GameObject body = Ranger(out RangerAnimatorView pose, out Animator animator);
+        try
+        {
+            var table = AssetDatabase.LoadAssetAtPath<LocalizationTable>(LocalisationSweepTests.EnglishPath);
+            pose.Construct(_hub, localizer: new TableLocalizer(table));
+            animator.Rebind();
+            animator.Update(0f);
+            var pop = pose.transform.Find("Killshot Immune").GetComponent<TextMeshPro>();
+            var blocked = new PlayerDamaged(0f, 0f, 1f, 0f, blocked: true);
+
+            _hub.Publish(blocked);
+            Assert.That(pop.gameObject.activeSelf, Is.False);
+            _hub.Publish(new KillshotWindUp(V3.UnitX, 0.7f));
+            Assert.That(pop.gameObject.activeSelf, Is.False);
+            _hub.Publish(blocked);
+            Assert.That(pop.gameObject.activeSelf, Is.True);
+            Assert.That(pop.text, Is.EqualTo("Immune"));
+            Assert.That(pop.transform.position.y, Is.GreaterThan(pose.transform.position.y));
+
+            _hub.Publish(new KillshotFired(V3.Zero, V3.UnitX, 30f, 0));
+            pose.Step(0.6f);
+            _hub.Publish(blocked);
+            Assert.That(pop.gameObject.activeSelf, Is.False);
         }
         finally
         {

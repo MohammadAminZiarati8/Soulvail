@@ -163,3 +163,4 @@ _No milestone. The owner is setting the next direction._
 - [x] **FX-02** — Killshot fires on whatever is left in reach (S)
 - [x] **FX-03** — Auto-aim skips enemies behind cover (M)
 - [x] **FX-04** — Ground warnings stay above the floor (S)
+- [x] **FX-05** — Killshot wind-up grants immunity (M)

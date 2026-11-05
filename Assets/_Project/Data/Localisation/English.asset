@@ -676,3 +676,5 @@ MonoBehaviour:
     _text: 'Thornweaver'
   - _key: enemy.apex.name
     _text: 'The Apex'
+  - _key: ui.combat.immune
+    _text: Immune

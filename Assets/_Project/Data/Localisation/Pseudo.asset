@@ -744,3 +744,5 @@ MonoBehaviour:
     _text: "[Th\xF4r\xF1w\xE9\xE1v\xE9r \xB7\xB7\xB7\xB7]"
   - _key: enemy.apex.name
     _text: '[Thé Ápéx ···]'
+  - _key: ui.combat.immune
+    _text: "[\xCEmm\xFB\xF1\xE9 \xB7\xB7\xB7]"

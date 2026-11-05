@@ -1,7 +1,10 @@
 using System;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Presentation;
+using TMPro;
 using UnityEngine;
 using VContainer;
 
@@ -144,6 +147,11 @@ namespace Soulvail.Game.Views
         private KillshotView _killshotView;
         private GameObject _killshotRoot;
         private IDisposable _killshotWind, _killshotFire, _killshotBoundary, _killshotArrived, _killshotEnded;
+        private IDisposable _killshotStageCleared;
+        private const float ImmunePopSeconds = 0.5f;
+        private TextMeshPro _immunePop;
+        private Camera _immuneCamera;
+        private float _immuneLeft;
         private bool _killshotWinding;
         private Vector3 _killshotDirection;
 
@@ -189,7 +197,8 @@ namespace Soulvail.Game.Views
         /// <param name="hub">The scope's event hub. Subscribed for this component's life.</param>
         /// <exception cref="ArgumentNullException"><paramref name="hub"/> is null.</exception>
         [Inject]
-        public void Construct(DomainEventHub hub, IRunSession session = null, EnemyViews enemies = null)
+        public void Construct(DomainEventHub hub, IRunSession session = null, EnemyViews enemies = null,
+            ILocalizer localizer = null)
         {
             if (hub is null)
             {
@@ -221,9 +230,22 @@ namespace Soulvail.Game.Views
             _placedSubscription = hub.Subscribe<TrapPlaced>(OnTrapPlaced);
             _killshotWind = hub.Subscribe<KillshotWindUp>(OnKillshotWindUp);
             _killshotFire = hub.Subscribe<KillshotFired>(_ => EndKillshot(true));
-            _killshotBoundary = hub.Subscribe<StageTransitionStarted>(_ => EndKillshot(false));
-            _killshotArrived = hub.Subscribe<StageArrived>(_ => EndKillshot(false));
-            _killshotEnded = hub.Subscribe<RunEnded>(_ => EndKillshot(false));
+            _killshotBoundary = hub.Subscribe<StageTransitionStarted>(_ => CancelKillshot());
+            _killshotArrived = hub.Subscribe<StageArrived>(_ => CancelKillshot());
+            _killshotEnded = hub.Subscribe<RunEnded>(_ => CancelKillshot());
+            _killshotStageCleared = hub.Subscribe<StageCleared>(_ => CancelKillshot());
+            if (localizer is not null)
+            {
+                var pop = new GameObject("Killshot Immune");
+                pop.SetActive(false);
+                pop.transform.SetParent(transform, false);
+                _immunePop = pop.AddComponent<TextMeshPro>();
+                _immunePop.text = localizer.Get(new LocKey("ui.combat.immune"));
+                _immunePop.fontSize = 3.2f;
+                _immunePop.alignment = TextAlignmentOptions.Center;
+                _immunePop.color = Palette.Wind;
+                _immuneCamera = Camera.main;
+            }
             if (_killshotPrefab != null)
             {
                 _killshotRoot = new GameObject("Killshot (pooled)");
@@ -360,6 +382,12 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
+            if (_immuneLeft > 0f)
+            {
+                _immuneLeft = Mathf.Max(0f, _immuneLeft - dt);
+                _immunePop.alpha = _immuneLeft / ImmunePopSeconds;
+                _immunePop.gameObject.SetActive(_immuneLeft > 0f);
+            }
             _castUpLeft = Mathf.Max(0f, _castUpLeft - dt);
             if (_bindingReleaseLeft > 0f)
             {
@@ -459,6 +487,7 @@ namespace Soulvail.Game.Views
             _killshotBoundary?.Dispose();
             _killshotArrived?.Dispose();
             _killshotEnded?.Dispose();
+            _killshotStageCleared?.Dispose();
             if (_killshotRoot != null)
             {
                 _killshotView.Dispose();
@@ -533,12 +562,30 @@ namespace Soulvail.Game.Views
                 // Only the visual body turns; core still owns the motor and its release.
                 transform.rotation = Quaternion.LookRotation(_killshotDirection, Vector3.up);
             }
+            if (_immuneLeft > 0f)
+            {
+                PlaceImmunePop();
+            }
         }
 
-        private void OnDisable()
+        private void OnDisable() => CancelKillshot();
+
+        private void CancelKillshot()
         {
             EndKillshot(false);
             _killshotView?.Clear();
+            _immuneLeft = 0f;
+            if (_immunePop != null)
+            {
+                _immunePop.gameObject.SetActive(false);
+            }
+        }
+
+        private void PlaceImmunePop()
+        {
+            float rise = (1f - _immuneLeft / ImmunePopSeconds) * 0.35f;
+            _immunePop.transform.SetPositionAndRotation(transform.position + Vector3.up * (1.5f + rise),
+                _immuneCamera != null ? _immuneCamera.transform.rotation : Quaternion.identity);
         }
 
         private void OnKillshotWindUp(KillshotWindUp evt)
@@ -775,6 +822,14 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnDamaged(PlayerDamaged evt)
         {
+            if (evt.Blocked && _killshotWinding && _immunePop != null && isActiveAndEnabled)
+            {
+                _immuneLeft = ImmunePopSeconds;
+                _immunePop.alpha = 1f;
+                PlaceImmunePop();
+                _immunePop.gameObject.SetActive(true);
+            }
+
             if (_animator == null || _dead || _rolling || _killshotWinding || evt.Blocked || !(evt.ToHp > 0f) || !(evt.HpFraction > 0f))
             {
                 return;
@@ -789,7 +844,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnDied(PlayerDied evt)
         {
-            EndKillshot(false);
+            CancelKillshot();
             _dead = true;
 
             if (_volleyGlow != null)

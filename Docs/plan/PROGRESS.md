@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, FX-04._
+_2026-11-05, FX-05._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **FX-04** — Ground warnings stay above the floor. |
+| **Last merged** | **FX-05** — Killshot wind-up grants immunity. |
 | **Next task** | None named; owner selects the next task. |
-| **Verified** | EditMode 5698 (5697 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
+| **Verified** | EditMode 5704 (5703 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
 
 ## What works
 
@@ -38,6 +38,7 @@ Save v5; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
 Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
+Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
 
 ## Missing
 

@@ -1239,19 +1239,21 @@ public sealed class TreeViewPresenterTests
     }
 
     [Test]
-    public void Cards_ThreeSlots_TwoComingSoon()
+    public void Cards_ThreeSlots_OneComingSoon()
     {
         RankedRun();
         Assert.That(PathCards().CardText(0), Is.EqualTo("Marksman"));
-        for (int i = 1; i < 3; i++)
-        {
-            Assert.That(PathCards().CardText(i), Is.EqualTo("Coming soon"));
-            Assert.That(PathCards().Card(i).interactable, Is.False);
-        }
+        Assert.That(PathCards().CardText(1), Is.EqualTo("Skirmisher"));
+        Assert.That(PathCards().Card(1).interactable, Is.True);
+        Assert.That(PathCards().CardText(2), Is.EqualTo("Coming soon"));
+        Assert.That(PathCards().Card(2).interactable, Is.False);
         Assert.That(ShownCells().Length, Is.EqualTo(3));
         Transform strip = PathCards().Card(0).transform.Find("SkillStrip");
         Assert.That(strip.childCount, Is.EqualTo(6));
         Assert.That(strip.GetComponentsInChildren<Image>().All(i => i.sprite != null), Is.True);
+        Transform skirmisherStrip = PathCards().Card(1).transform.Find("SkillStrip");
+        Assert.That(skirmisherStrip.childCount, Is.EqualTo(2));
+        Assert.That(skirmisherStrip.GetComponentsInChildren<Image>().All(i => i.sprite != null), Is.True);
     }
 
     [Test]
@@ -1347,12 +1349,17 @@ public sealed class TreeViewPresenterTests
         CharacterSpec character = AssetDatabase.LoadAssetAtPath<CharacterDefinition>("Assets/_Project/Data/Characters/Ranger.asset").ToSpec();
         _tree = AssetDatabase.LoadAssetAtPath<SkillTreeDefinition>("Assets/_Project/Data/Trees/Ranger.asset").ToSpec();
         PathSpec path = AssetDatabase.LoadAssetAtPath<PathDefinition>("Assets/_Project/Data/Paths/Marksman.asset").ToSpec(character.Id);
+        PathSpec skirmisher = AssetDatabase.LoadAssetAtPath<PathDefinition>("Assets/_Project/Data/Paths/Skirmisher.asset").ToSpec(character.Id);
         var skills = new List<SkillSpec>();
         foreach (string guid in AssetDatabase.FindAssets("t:SkillDefinition", new[] { "Assets/_Project/Data/Skills" }))
         {
             SkillSpec skill = AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
-            if (skill.Id.Value.StartsWith("skill.ranger.", StringComparison.Ordinal) || skill.Id.Value.StartsWith("skill.marksman.", StringComparison.Ordinal))
+            if (skill.Id.Value.StartsWith("skill.ranger.", StringComparison.Ordinal)
+                || skill.Id.Value.StartsWith("skill.marksman.", StringComparison.Ordinal)
+                || skill.Id.Value.StartsWith("skill.skirmisher.", StringComparison.Ordinal))
+            {
                 skills.Add(skill);
+            }
         }
         if (futureRows)
         {
@@ -1365,7 +1372,7 @@ public sealed class TreeViewPresenterTests
             }
             path = new PathSpec(path.Id, path.CharacterId, path.NameKey, path.DescriptionKey, pathSkills);
         }
-        _catalog = new ContentCatalog(new[] { character }, new[] { Husk() }, new[] { Mode(free: true) }, skills, new[] { _tree }, paths: new[] { path });
+        _catalog = new ContentCatalog(new[] { character }, new[] { Husk() }, new[] { Mode(free: true) }, skills, new[] { _tree }, paths: new[] { path, skirmisher });
         _session = new RunSession(_catalog, _random, _hub, new RecordingIntents(), new RunRecorder(_random, _clock, _hub), Capacity, DeviceCap, ProjectileCapacity);
         var snapshot = new RunSnapshot(RunSnapshot.CurrentVersion, new ContentId(ModeId), character.Id, _random.Seed, 1,
             new RandomState(101, 102, 103, 104, 105), 90f, 0f, 120f, Instant, level, 0f, points,

@@ -678,3 +678,35 @@ MonoBehaviour:
     _text: 'The Apex'
   - _key: ui.combat.immune
     _text: Immune
+  - _key: path.ranger.skirmisher.name
+    _text: Skirmisher
+  - _key: path.ranger.skirmisher.description
+    _text: Never stop. Shoot on the run, roll often, strike as you pass.
+  - _key: skill.skirmisher.running-shot.name
+    _text: Running Shot
+  - _key: skill.skirmisher.running-shot.description
+    _text: Fire while moving, at 40% of your standing rate.
+  - _key: skill.skirmisher.running-shot-2.name
+    _text: Running Shot 2
+  - _key: skill.skirmisher.running-shot-2.description
+    _text: 55%
+  - _key: skill.skirmisher.running-shot-3.name
+    _text: Running Shot 3
+  - _key: skill.skirmisher.running-shot-3.description
+    _text: 70%
+  - _key: skill.skirmisher.running-shot-4.name
+    _text: Running Shot 4
+  - _key: skill.skirmisher.running-shot-4.description
+    _text: 85%
+  - _key: skill.skirmisher.hit-and-run.name
+    _text: Hit and Run
+  - _key: skill.skirmisher.hit-and-run.description
+    _text: Hits give +15% move speed for 1.5 s.
+  - _key: skill.skirmisher.hit-and-run-2.name
+    _text: Hit and Run 2
+  - _key: skill.skirmisher.hit-and-run-2.description
+    _text: '+20% speed. Momentum: +2% damage per metre moved in the last 2 s, up to 8 m.'
+  - _key: skill.skirmisher.hit-and-run-3.name
+    _text: Hit and Run 3
+  - _key: skill.skirmisher.hit-and-run-3.description
+    _text: +25% speed; +3% per metre.

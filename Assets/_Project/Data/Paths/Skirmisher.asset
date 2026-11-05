@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0b38c48bc8f4d54787009501aa08b5d, type: 3}
+  m_Name: Skirmisher
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.PathDefinition
+  _id: path.ranger.skirmisher
+  _nameKey: path.ranger.skirmisher.name
+  _descriptionKey: path.ranger.skirmisher.description
+  _skills:
+  - _ranks:
+    - {fileID: 11400000, guid: 8c370afd23a4478398caf90e46cc2b85, type: 2}
+    - {fileID: 11400000, guid: 7cec43d00bfd451c9d35ddf6fa6cf50c, type: 2}
+    - {fileID: 11400000, guid: 22a60d51a74e478f846ba485d525db4f, type: 2}
+    - {fileID: 11400000, guid: e7a20c2f93114f16be6a6696e16b9192, type: 2}
+    _unlockLevel: 11
+  - _ranks:
+    - {fileID: 11400000, guid: 6d37662c1fbe4d4aac2cc70bfe76b33b, type: 2}
+    - {fileID: 11400000, guid: 61330163c8574e41872e8a25d5c091e5, type: 2}
+    - {fileID: 11400000, guid: 33be507fca314c32af339502242ea9d8, type: 2}
+    _unlockLevel: 14
+  _look: {fileID: 0}

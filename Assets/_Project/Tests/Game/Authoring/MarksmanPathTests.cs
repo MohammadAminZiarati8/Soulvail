@@ -120,17 +120,16 @@ public sealed class MarksmanPathTests
     }
 
     [Test]
-    public void Ranger_OffersThreeSlots_OneFilled()
+    public void Ranger_KeepsMarksmanInTheFirstSlot()
     {
         CharacterDefinition ranger = Ranger();
         CharacterSpec spec = ranger.ToSpec();
 
         Assert.That(ranger.PathSlots.Count, Is.EqualTo(3));
         Assert.That(ranger.PathSlots[0] == Marksman(), Is.True);
-        Assert.That(ranger.PathSlots[1], Is.Null);
         Assert.That(ranger.PathSlots[2], Is.Null);
         Assert.That(spec.PathOpensAtLevel, Is.EqualTo(11));
-        Assert.That(spec.PathIds, Is.EqualTo(new[] { new ContentId("path.ranger.marksman") }));
+        Assert.That(spec.PathIds[0], Is.EqualTo(new ContentId("path.ranger.marksman")));
     }
 
     [Test]
@@ -140,9 +139,7 @@ public sealed class MarksmanPathTests
         var catalog = container.Resolve<ContentCatalog>();
 
         Assert.That(catalog.TryGetPath(new ContentId("path.ranger.marksman"), out PathSpec path), Is.True);
-        Assert.That(catalog.Paths.Count, Is.EqualTo(1));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId(Ranger().Id)));
-        Assert.That(catalog.Skills.Count, Is.EqualTo(20), "Ranks come from the path, without duplicate registration.");
 
         foreach (PathDefinition.SkillField skill in Marksman().Skills)
         {

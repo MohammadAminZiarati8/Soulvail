@@ -58,7 +58,7 @@ _No milestone. The owner is setting the next direction._
 **The Skirmisher, the Ranger's second path** (owner, 2026-11-05; design [CH §3.5](../Characters.md)). Each built only on the owner's go, one at a time, in this order. Playtestable from SK-01b on, with DT-01's test start at stage 12+.
 
 - [x] **SK-01a** — Running Shot and Hit and Run in core: moving fire rate, aim-facing, speed burst, Momentum (M)
-- [ ] [**SK-01b**](tasks/SK-01b-the-skirmisher-authored.md) — The Skirmisher authored: the Ranger's second path slot, its card, both passives as assets (M)
+- [x] **SK-01b** — The Skirmisher authored: the Ranger's second path slot, its card, both passives as assets (M)
 - [ ] [**SK-02**](tasks/SK-02-the-ranger-shoots-on-the-run.md) — The Ranger shoots on the run: bow up, strafing legs, upper-body release (M)
 - [ ] [**SK-03a**](tasks/SK-03a-ricochet-shot.md) — Ricochet Shot in core: an arrow chain that bounces to the nearest unhit enemy (M)
 - [ ] [**SK-03b**](tasks/SK-03b-ricochet-shot-drawn.md) — Ricochet Shot drawn and authored: bright trail, bounce sparks (M)

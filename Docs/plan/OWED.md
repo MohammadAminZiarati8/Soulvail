@@ -287,3 +287,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SK-01a — Core passives, after SK-01b
 
 - Compare the Ranger's moving and standing cadence, then land arrows while walking and rolling. Check that repeat hits refresh the speed buff, and that a stage transition clears it.
+
+
+## SK-01b — Skirmisher path
+
+- In the Editor, use DT-01 at stage 12. Check that Marksman and Skirmisher both show at level 11, then choose Skirmisher. Learn Running Shot and compare moving and standing cadence. At level 14, learn Hit and Run, land a hit, and check the speed burst and cyan-rimmed status icon.

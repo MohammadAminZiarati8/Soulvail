@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: HitAndRun2
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.skirmisher.hit-and-run-2
+  _nameKey: skill.skirmisher.hit-and-run-2.name
+  _descriptionKey: skill.skirmisher.hit-and-run-2.description
+  _kind: 2
+  _effects:
+  - {fileID: 11400000, guid: 6a6f22331bf34955820ee0245c427252, type: 2}
+  - {fileID: 11400000, guid: c1fed1b7bc0b4fd0a7d7564435e7eb4e, type: 2}
+  _cooldown: 8
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 11400000, guid: 6d37662c1fbe4d4aac2cc70bfe76b33b, type: 2}
+  _icon: {fileID: 21300000, guid: af72b975880b23b48afb2bf722a720fd, type: 3}
+  _hasPact: 0
+  _pactEffects: []
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.new.pact.description

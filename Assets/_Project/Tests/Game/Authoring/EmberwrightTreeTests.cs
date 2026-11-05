@@ -605,7 +605,7 @@ public sealed class EmberwrightTreeTests
         // PlayerStat's own rule: every shipped asset stores `_stat` as a raw ordinal, so each one
         // must still name the member it named before M6-08 appended four. The Ranger's effects
         // (RS-03c) were written after M6-08, and three name RS-03b's VolleyEvery, so they are skipped
-        // with the Emberwright's. Marksman effects likewise postdate this ordinal snapshot.
+        // with the Emberwright's. Ranger path effects likewise postdate this ordinal snapshot.
         for (int i = 0; i < OrdinalsBeforeM608.Length; i++)
         {
             Assert.That(((PlayerStat)i).ToString(), Is.EqualTo(OrdinalsBeforeM608[i]), $"ordinal {i} moved.");
@@ -617,7 +617,8 @@ public sealed class EmberwrightTreeTests
         {
             if (path.StartsWith(EffectDir, StringComparison.Ordinal)
                 || path.StartsWith(RangerEffectDir, StringComparison.Ordinal)
-                || path.StartsWith("Assets/_Project/Data/Skills/Marksman/", StringComparison.Ordinal))
+                || path.StartsWith("Assets/_Project/Data/Skills/Marksman/", StringComparison.Ordinal)
+                || path.StartsWith("Assets/_Project/Data/Skills/Skirmisher/", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -1085,7 +1086,7 @@ public sealed class EmberwrightTreeTests
             skills.Add(Load<SkillDefinition>(path).ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(65), "Three twelve-node classes, Ranger's nine, and twenty Marksman ranks.");
+        Assert.That(skills, Has.Count.EqualTo(72), "Three twelve-node classes, Ranger's nine, and 27 Ranger path ranks.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

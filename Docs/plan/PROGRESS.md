@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, FX-03._
+_2026-11-05, FX-04._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **FX-03** — Auto-aim skips enemies behind cover. |
-| **Next task** | FX-04 |
-| **Verified** | EditMode 5696 (5695 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
+| **Last merged** | **FX-04** — Ground warnings stay above the floor. |
+| **Next task** | None named; owner selects the next task. |
+| **Verified** | EditMode 5698 (5697 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
 
 ## What works
 

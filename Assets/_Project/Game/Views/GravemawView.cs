@@ -62,8 +62,6 @@ namespace Soulvail.Game.Views
         /// <summary>The body's faint warm rim while the window is open.</summary>
         public const float BodyIntensity = 0.35f;
 
-        private const float RingHeight = 0.05f;
-        private const float CrackHeight = 0.06f;
 
         [Tooltip("The Model child: its renderers are hidden while Gravemaw is underground.")]
         [SerializeField] private GameObject _model;
@@ -224,7 +222,7 @@ namespace Soulvail.Game.Views
                 if (_rings[i].Go != null)
                 {
                     _rings[i].Elapsed += dt;
-                    Place(ref _rings[i], RingHeight);
+                    Place(ref _rings[i]);
                 }
             }
 
@@ -243,7 +241,7 @@ namespace Soulvail.Game.Views
                     continue;
                 }
 
-                Place(ref _cracks[i], CrackHeight);
+                Place(ref _cracks[i]);
             }
         }
 
@@ -621,13 +619,13 @@ namespace Soulvail.Game.Views
             mark.Radius = radius;
             mark.Seconds = seconds;
             mark.Elapsed = 0f;
-            Place(ref mark, ReferenceEquals(prefab, _crackPrefab) ? CrackHeight : RingHeight);
+            Place(ref mark);
         }
 
-        private void Place(ref Mark mark, float height)
+        private void Place(ref Mark mark)
         {
             HoldLiveAtWorldScale();
-            mark.Go.transform.SetPositionAndRotation(new Vector3(mark.At.x, transform.position.y + height, mark.At.z), Flat);
+            mark.Go.transform.SetPositionAndRotation(new Vector3(mark.At.x, transform.position.y + GroundLift.Height, mark.At.z), Flat);
             float diameter = mark.Radius * 2f;
 
             if (mark.Rim != null)

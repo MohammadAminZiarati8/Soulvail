@@ -42,7 +42,6 @@ namespace Soulvail.Game.Views
         public const int MoteCount = 3;
 
         private const int WedgeRays = 25;
-        private const float WedgeHeight = 0.03f;
         private const float MoteSpinDegPerSecond = 300f;
 
         [Tooltip("The model's Animator, on AC_MossguardWarlord.")]
@@ -372,7 +371,7 @@ namespace Soulvail.Game.Views
             {
                 float deg = Mathf.Lerp(-_shownArc, _shownArc, i / (float)(WedgeRays - 1));
                 float rad = deg * Mathf.Deg2Rad;
-                _vertices[i + 1] = new Vector3(Mathf.Sin(rad) * WedgeRadius, WedgeHeight, Mathf.Cos(rad) * WedgeRadius);
+                _vertices[i + 1] = new Vector3(Mathf.Sin(rad) * WedgeRadius, GroundLift.Height, Mathf.Cos(rad) * WedgeRadius);
             }
 
             _mesh.vertices = _vertices;
@@ -397,7 +396,7 @@ namespace Soulvail.Game.Views
                 _colours[i] = colour;
             }
 
-            _vertices[0] = new Vector3(0f, WedgeHeight, 0f);
+            _vertices[0] = new Vector3(0f, GroundLift.Height, 0f);
             _mesh.vertices = _vertices;
             _mesh.colors = _colours;
 

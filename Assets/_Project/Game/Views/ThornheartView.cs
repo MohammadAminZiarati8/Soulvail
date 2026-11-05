@@ -79,8 +79,6 @@ namespace Soulvail.Game.Views
         public const int PodCapacity = ThornheartBehaviour.PhaseThreeMaxAdds / ThornheartBehaviour.RootlingsPerPod;
 
         private const int BandSegments = 64;
-        private const float BandHeight = 0.04f;
-        private const float RipenHeight = 0.06f;
 
         [Tooltip("The model's Animator, on AC_Thornheart; Exposed is set here.")]
         [SerializeField] private Animator _animator;
@@ -372,8 +370,9 @@ namespace Soulvail.Game.Views
                 pod.Ring = Rent(_ripenPrefab, ref pod.Idle);
                 pod.Rim = Quad(pod.Ring, "Rim");
                 pod.Fill = Quad(pod.Ring, "Fill");
-                Paint(pod.Rim, RimAlpha);
-                Paint(pod.Fill, FillAlpha);
+                // Draw the pod over the coplanar strangle band, then draw its fill over its rim.
+                Paint(pod.Rim, RimAlpha, 1);
+                Paint(pod.Fill, FillAlpha, 2);
             }
 
             pod.Id = evt.PodId;
@@ -487,7 +486,7 @@ namespace Soulvail.Game.Views
         private void PlacePod(ref Pod pod)
         {
             HoldLiveAtWorldScale();
-            pod.Ring.transform.SetPositionAndRotation(new Vector3(pod.At.x, transform.position.y + RipenHeight, pod.At.z), Flat);
+            pod.Ring.transform.SetPositionAndRotation(new Vector3(pod.At.x, transform.position.y + GroundLift.Height, pod.At.z), Flat);
 
             if (pod.Rim != null)
             {
@@ -511,7 +510,7 @@ namespace Soulvail.Game.Views
         {
             HoldLiveAtWorldScale();
             Vector3 at = transform.position;
-            _ring.transform.SetPositionAndRotation(new Vector3(at.x, at.y + BandHeight, at.z), Flat);
+            _ring.transform.SetPositionAndRotation(new Vector3(at.x, at.y + GroundLift.Height, at.z), Flat);
 
             float radius = CurrentRadius();
             bool clipped = TryFloor(out Rect floor);
@@ -713,7 +712,7 @@ namespace Soulvail.Game.Views
             _heart.SetPropertyBlock(_properties);
         }
 
-        private void Paint(Transform quad, float alpha)
+        private void Paint(Transform quad, float alpha, int sortingOrder)
         {
             Renderer renderer = quad != null ? quad.GetComponent<Renderer>() : null;
 
@@ -726,6 +725,7 @@ namespace Soulvail.Game.Views
             _properties.Clear();
             Color danger = Palette.Danger;
             _properties.SetColor(_baseColorId, new Color(danger.r, danger.g, danger.b, alpha));
+            renderer.sortingOrder = sortingOrder;
             renderer.SetPropertyBlock(_properties);
             _properties.Clear();
         }

@@ -21,7 +21,6 @@ namespace Soulvail.Game.Views
     public sealed class ThornweaverView : MonoBehaviour
     {
         // Over the warned strip (ThornWallView lays it at 0.02) so the root reads on top of it.
-        private const float Lift = 0.03f;
         private const int RootPoints = 8;
 
         [SerializeField] private Animator _animator;
@@ -178,7 +177,7 @@ namespace Soulvail.Game.Views
             float half = evt.Length * 0.5f;
             _rootEnd = new Vector3(
                 evt.Origin.X + (evt.Direction.X * half),
-                evt.Origin.Y + Lift,
+                evt.Origin.Y + GroundLift.Height,
                 evt.Origin.Z + (evt.Direction.Y * half));
             _rootStart = Feet();
             if (_root != null)
@@ -223,7 +222,7 @@ namespace Soulvail.Game.Views
         private Vector3 Feet()
         {
             Vector3 feet = transform.position;
-            feet.y += Lift;
+            feet.y += GroundLift.Height;
             return feet;
         }
 

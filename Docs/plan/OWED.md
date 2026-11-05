@@ -273,3 +273,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Stand so a rock hides an enemy: the Ranger turns to the visible enemy, or holds fire if none.
 2. **[Editor]** Step clear: firing resumes within a beat.
+
+
+## FX-04 — Ground warnings stay above the floor
+
+1. **[Editor]** Stage 20 Thornheart: the strangle band, pod rings and spokes stay visible across the whole arena, rocks included.
+2. **[Editor]** Stages 15, 24, 25: the Warlord wedge, Thornweaver walls and Gravemaw rings/cracks are visible over the rocks.
+3. **[device]** The same three bosses read at a glance on a phone.

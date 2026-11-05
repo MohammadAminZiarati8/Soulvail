@@ -14,13 +14,12 @@ namespace Soulvail.Game.Views
         public const float FadeSeconds = 0.4f;
         public const float AimLength = 30f;
         public const float ArrowFlightSeconds = 0.2f;
-        private const float ArrowLength = 5.4f;
         [SerializeField] private Light _charge;
         [SerializeField] private Transform _chargeGlow;
         [SerializeField] private LineRenderer _aim;
-        [SerializeField] private LineRenderer _streak;
+        [SerializeField] private TrailRenderer _trail;
         [SerializeField] private Transform _arrow;
-        [SerializeField] private LineRenderer[] _windStreaks;
+        [SerializeField] private ParticleSystem _windLines;
         [SerializeField] private ParticleSystem _sparks;
         [SerializeField] private ParticleSystem _bursts;
 
@@ -30,7 +29,7 @@ namespace Soulvail.Game.Views
         private int _lastHitId = -1;
         private Vector3 _lastHitAt;
         private Vector3 _direction, _fireOrigin;
-        private float _fireLength;
+        private float _fireLength, _arrowTip, _arrowTail;
         private float _windSeconds, _windAge, _fireAge, _clock;
         private bool _fired;
         private IDisposable _wind, _fire, _hit, _execute, _died, _boundary, _arrived, _ended;
@@ -43,6 +42,9 @@ namespace Soulvail.Game.Views
             {
                 throw new ArgumentNullException(nameof(hub));
             }
+            Bounds bounds = _arrow.GetComponent<MeshFilter>().sharedMesh.bounds;
+            _arrowTip = bounds.max.z * _arrow.localScale.z;
+            _arrowTail = bounds.min.z * _arrow.localScale.z;
             _session = session;
             _bow = bow;
             _shake = shake;
@@ -111,7 +113,11 @@ namespace Soulvail.Game.Views
             _chargeGlow.gameObject.SetActive(false);
             _aim.enabled = false;
             _direction = evt.Direction.ToUnity();
-            _fireOrigin = _bow != null ? ArrowTip : evt.Origin.ToUnity() + Vector3.up * 0.7f;
+            // Core owns the XZ lane. The animated bow supplies only the cosmetic height.
+            _fireOrigin = evt.Origin.ToUnity();
+            _fireOrigin.y = _bow != null ? _bow.position.y : _fireOrigin.y + 0.7f;
+            _trail.Clear();
+            _windLines.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             _fireLength = evt.Length;
             _fireAge = 0f;
             _fired = true;
@@ -121,31 +127,41 @@ namespace Soulvail.Game.Views
 
         private void DrawFlight(float alpha)
         {
-            float head = Mathf.Lerp(Mathf.Min(ArrowLength, _fireLength), _fireLength,
+            float length = _arrowTip - _arrowTail;
+            float head = Mathf.Lerp(Mathf.Min(length, _fireLength), _fireLength,
                 Mathf.Clamp01(_fireAge / ArrowFlightSeconds));
             _arrow.gameObject.SetActive(_fireAge < ArrowFlightSeconds);
-            _arrow.SetPositionAndRotation(_fireOrigin + _direction * (head - ArrowLength * 0.5f),
+            _arrow.SetPositionAndRotation(_fireOrigin + _direction * (head - _arrowTip),
                 Quaternion.LookRotation(_direction));
-            float tail = Mathf.Max(0f, head - ArrowLength);
+            float tail = Mathf.Max(0f, head - length);
+            Vector3 at = _fireOrigin + _direction * tail;
+            _trail.enabled = true;
             Color wind = Palette.Wind;
-            wind.a = alpha * 0.7f;
-            _streak.enabled = true;
-            _streak.startColor = _streak.endColor = wind;
-            _streak.SetPosition(0, _fireOrigin + _direction * Mathf.Max(0f, tail - 10f));
-            _streak.SetPosition(1, _fireOrigin + _direction * tail);
-            Vector3 side = Vector3.Cross(Vector3.up, _direction);
-            for (int i = 0; i < _windStreaks.Length; i++)
+            _trail.startColor = new Color(wind.r, wind.g, wind.b, 0.18f * alpha);
+            _trail.endColor = new Color(wind.r, wind.g, wind.b, 0f);
+            // Automatic trail aging/emission uses wall time. Explicit positions and colour fading
+            // keep this reusable, short path on the same pause-aware clock as the particles.
+            if (_trail.positionCount == 0 ||
+                Vector3.SqrMagnitude(_trail.GetPosition(_trail.positionCount - 1) - at) > 0.0001f)
             {
-                LineRenderer line = _windStreaks[i];
-                float offset = (i % 2 == 0 ? 1f : -1f) * (0.4f + i * 0.18f);
-                float end = Mathf.Max(0f, head - 1.5f - i * 0.7f);
-                float start = Mathf.Max(0f, end - 7f - i * 1.4f);
-                line.enabled = true;
-                line.startColor = new Color(wind.r, wind.g, wind.b, 0f);
-                line.endColor = wind;
-                line.SetPosition(0, _fireOrigin + _direction * start + side * offset * 1.5f);
-                line.SetPosition(1, _fireOrigin + _direction * Mathf.Lerp(start, end, 0.55f) + side * offset);
-                line.SetPosition(2, _fireOrigin + _direction * end + side * offset * 0.55f);
+                _trail.AddPosition(at);
+            }
+            if (_fireAge > 0f && _fireAge <= ArrowFlightSeconds)
+            {
+                _windLines.Play();
+                _windLines.Pause();
+                Vector3 side = Vector3.Cross(Vector3.up, _direction);
+                for (int i = 0; i < 4; i++)
+                {
+                    float offset = (i % 2 == 0 ? 1f : -1f) * (0.45f + i / 2 * 0.45f);
+                    var particle = new ParticleSystem.EmitParams
+                    {
+                        position = _fireOrigin + _direction * Mathf.Max(0f, tail - 0.5f - i * 0.6f)
+                            + side * offset,
+                        velocity = -_direction * 8f,
+                    };
+                    _windLines.Emit(particle, 1);
+                }
             }
         }
 
@@ -177,6 +193,7 @@ namespace Soulvail.Game.Views
                 // Fire/cancel facts own the lifetime, rather than a second wind-up timer.
                 DrawCharge();
             }
+            _windLines.Simulate(dt, true, false, false);
             if (_fired)
             {
                 _fireAge += dt;
@@ -220,17 +237,12 @@ namespace Soulvail.Game.Views
             {
                 _arrow.gameObject.SetActive(false);
             }
-            if (_streak != null)
+            if (_trail != null)
             {
-                _streak.enabled = false;
+                _trail.Clear();
+                _trail.enabled = false;
             }
-            if (_windStreaks != null)
-            {
-                for (int i = 0; i < _windStreaks.Length; i++)
-                {
-                    _windStreaks[i].enabled = false;
-                }
-            }
+            _windLines?.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         private void LateUpdate()

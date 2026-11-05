@@ -1,23 +1,23 @@
 # Soulvail — Progress
 
-Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
+History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, MK-10c._
+_2026-11-05, JG-31b._
 
-## Current State
+## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **MK-10c**: Killshot guards, 3 m, 4x arrow/wind. |
+| **Last merged** | **JG-31b**: 4x Killshot arrow, wind particles/trail. |
 | **Next task** | None planned. |
-| **Verified** | EditMode 5639: 5638 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
+| **Verified** | EditMode 5655: 5654 pass, 0 failed, 1 existing inconclusive. Portrait renders checked. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
-Stages 1–14, 16–19, 21–24, 26–29 scripted; 30 Apex; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
+Scripted 1–14, 16–19, 21–24, 26–29; 30 Apex; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Amber heart/pod rings; 14→11 m band; warned vines.
 Mother: shields, lobs, spray, pod. Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
@@ -38,9 +38,9 @@ Save v5/legacy load; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles; 0.5 s gap; mirrored. Legacy saves expand to six.
 Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
-Killshot: 3 m, 4x arrow/wind, pierces guards; phases block.
+Killshot: 3 m, event-aligned 4x arrow, wind particles/path trail; pause/clear. Pierces guards; phases block.
 
-## What does not work yet
+## Missing
 
 1. Balance: Gravecaller over, Emberwright under; Warden passes 120 s near stage 33; no natural run past 19.
 2. Sanctum plays as zero; a Pact is ~1 offer in 62.

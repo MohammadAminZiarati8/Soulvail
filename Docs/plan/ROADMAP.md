@@ -143,3 +143,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **JG-30d** — The Apex's model on `Rig_Panther` (M)
 - [x] **JG-30e** — The Apex drawn: eyes, feint, dash streak, window, roar (M)
 - [x] **JG-30f** — Stage 30 is the Apex's; the Jungle is done (M)
+
+**Killshot presentation** (owner, 2026-11-05).
+
+- [x] **JG-31b** — Killshot reads as a giant arrow: 4x existing arrow, streaky wind particles and faint path trail; view only (S)

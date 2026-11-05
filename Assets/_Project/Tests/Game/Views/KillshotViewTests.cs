@@ -93,6 +93,8 @@ public sealed class KillshotViewTests
             "Assets/_Project/Prefabs/Projectiles/Arrow.prefab").transform.Find("Mesh");
         Assert.That(arrow.localScale, Is.EqualTo(ordinary.localScale * 4f));
         Assert.That(arrow.GetComponent<MeshFilter>().sharedMesh, Is.EqualTo(ordinary.GetComponent<MeshFilter>().sharedMesh));
+        Assert.That(arrow.GetComponent<MeshRenderer>().sharedMaterials,
+            Is.EqualTo(ordinary.GetComponent<MeshRenderer>().sharedMaterials));
         Assert.That(arrow.gameObject.activeSelf, Is.True);
         Assert.That(Vector3.Dot(arrow.forward, Vector3.right), Is.GreaterThan(0.999f));
         Vector3 initial = arrow.position;
@@ -103,30 +105,117 @@ public sealed class KillshotViewTests
         _view.Step(0.1f);
         Assert.That(arrow.position.x, Is.GreaterThan(initial.x + 10f));
         Assert.That(arrow.position.y, Is.EqualTo(_bow.transform.position.y));
-        var streak = Child<LineRenderer>("Streak");
-        Assert.That(streak.enabled, Is.True);
-        Assert.That(streak.sharedMaterial.GetFloat("_Surface"), Is.EqualTo(1f));
-        Assert.That(streak.sharedMaterial.GetFloat("_ZWrite"), Is.Zero);
-        Assert.That(Vector4.Distance(streak.endColor, new Color(Palette.Wind.r, Palette.Wind.g, Palette.Wind.b, 0.7f)),
+        var trail = Child<TrailRenderer>("Wind Trail");
+        Assert.That(trail.enabled, Is.True);
+        Assert.That(trail.sharedMaterial.GetFloat("_Surface"), Is.EqualTo(1f));
+        Assert.That(trail.sharedMaterial.GetFloat("_ZWrite"), Is.Zero);
+        Assert.That(Vector4.Distance(trail.startColor, new Color(Palette.Wind.r, Palette.Wind.g, Palette.Wind.b, 0.18f)),
             Is.LessThan(0.005f));
-        for (int i = 0; i < 3; i++)
-        {
-            var wind = Child<LineRenderer>("Wind Streak " + i);
-            Assert.That(wind.enabled, Is.True);
-            Assert.That(wind.GetPosition(2).x, Is.GreaterThan(wind.GetPosition(0).x));
-            Assert.That(wind.GetPosition(2).x, Is.LessThan(arrow.position.x + 2.7f));
-            Assert.That(wind.startColor.a, Is.Zero);
-        }
         _view.Step(0.2f);
         Assert.That(arrow.gameObject.activeSelf, Is.False);
-        Assert.That(arrow.position.x + 2.7f,
-            Is.EqualTo(_bow.transform.position.x + 0.25f + 30f).Within(0.001f));
-        Assert.That(streak.endColor.a, Is.EqualTo(0.35f).Within(0.003f));
+        float tip = arrow.GetComponent<MeshFilter>().sharedMesh.bounds.max.z * arrow.localScale.z;
+        Assert.That(arrow.position.x + tip, Is.EqualTo(30f).Within(0.001f));
+        Assert.That(trail.startColor.a, Is.EqualTo(0.09f).Within(0.003f));
         _view.Step(0.201f);
-        Assert.That(streak.enabled, Is.False);
-        for (int i = 0; i < 3; i++)
+        Assert.That(trail.enabled, Is.False);
+        Assert.That(trail.positionCount, Is.Zero);
+        Assert.That(Child<ParticleSystem>("Wind Lines").particleCount, Is.Zero);
+    }
+
+    [TestCase(1f, 0f)]
+    [TestCase(0f, 1f)]
+    [TestCase(-1f, 0f)]
+    [TestCase(0f, -1f)]
+    [TestCase(1f, 1f)]
+    public void Flight_EventLaneAndMeshBounds_PinTipAndTail(float x, float z)
+    {
+        var origin = new V3(-4f, 0f, -5f);
+        V3 direction = V3.Normalize(new V3(x, 0f, z));
+        var forward = new Vector3(direction.X, 0f, direction.Z);
+        var start = new Vector3(origin.X, _bow.transform.position.y, origin.Z);
+        _hub.Publish(new KillshotFired(origin, direction, 30f, 0));
+        Transform arrow = _view.transform.Find("Killshot Arrow");
+        Bounds bounds = arrow.GetComponent<MeshFilter>().sharedMesh.bounds;
+        float tip = bounds.max.z * arrow.localScale.z;
+        float tail = bounds.min.z * arrow.localScale.z;
+        Assert.That(Vector3.Distance(arrow.position + forward * tail, start), Is.LessThan(0.001f));
+        for (int i = 0; i < 4; i++)
         {
-            Assert.That(Child<LineRenderer>("Wind Streak " + i).enabled, Is.False);
+            _view.Step(0.05f);
+            Vector3 travel = arrow.position - start;
+            Assert.That(Vector3.Cross(travel, forward).magnitude, Is.LessThan(0.001f),
+                "Animated bow offset must never shift the core's lane.");
+        }
+        Assert.That(Vector3.Distance(arrow.position + forward * tip, start + forward * 30f), Is.LessThan(0.001f));
+    }
+
+    [TestCase(1f, 0f)]
+    [TestCase(0f, 1f)]
+    [TestCase(1f, 1f)]
+    public void Flight_WindParticlesAndTrail_StayBehindArrowInLane(float x, float z)
+    {
+        V3 direction = V3.Normalize(new V3(x, 0f, z));
+        var forward = new Vector3(direction.X, 0f, direction.Z);
+        Vector3 side = Vector3.Cross(Vector3.up, forward);
+        _hub.Publish(new KillshotFired(V3.Zero, direction, 30f, 0));
+        var wind = Child<ParticleSystem>("Wind Lines");
+        var renderer = wind.GetComponent<ParticleSystemRenderer>();
+        Assert.That(renderer.renderMode, Is.EqualTo(ParticleSystemRenderMode.Stretch));
+        Assert.That(wind.main.simulationSpace, Is.EqualTo(ParticleSystemSimulationSpace.World));
+        Assert.That(wind.main.maxParticles, Is.LessThanOrEqualTo(128));
+        var trail = Child<TrailRenderer>("Wind Trail");
+        Assert.That(trail.emitting, Is.False, "Only the run clock may add trail positions.");
+        Assert.That(trail.time, Is.EqualTo(float.MaxValue), "Only Step may age the trail.");
+        Transform arrow = _view.transform.Find("Killshot Arrow");
+        Bounds bounds = arrow.GetComponent<MeshFilter>().sharedMesh.bounds;
+        var particles = new ParticleSystem.Particle[128];
+        for (int step = 0; step < 4; step++)
+        {
+            _view.Step(0.04f);
+            float tail = Vector3.Dot(arrow.position, forward) + bounds.min.z * arrow.localScale.z;
+            int count = wind.GetParticles(particles);
+            Assert.That(count, Is.GreaterThan(0));
+            for (int i = 0; i < count; i++)
+            {
+                Assert.That(Mathf.Abs(Vector3.Dot(particles[i].position, side)) + particles[i].startSize,
+                    Is.LessThan(1.5f), "Particle width stays inside the existing 3 m lane.");
+                Assert.That(Vector3.Dot(particles[i].position, forward), Is.LessThan(tail + 0.001f));
+                Assert.That(Vector3.Dot(particles[i].velocity, forward), Is.LessThan(0f));
+            }
+            Assert.That(Vector3.Dot(trail.GetPosition(trail.positionCount - 1), forward),
+                Is.EqualTo(tail).Within(0.001f));
+        }
+        Assert.That(trail.positionCount, Is.GreaterThanOrEqualTo(5));
+        Assert.That(Vector3.Dot(trail.GetPosition(0), forward), Is.EqualTo(0f).Within(0.001f));
+        Assert.That(trail.startColor.a, Is.LessThan(0.2f));
+        Assert.That(trail.endColor.a, Is.Zero);
+    }
+
+    [TestCase(0f)]
+    [TestCase(-1f)]
+    [TestCase(float.NaN)]
+    [TestCase(float.PositiveInfinity)]
+    [TestCase(float.NegativeInfinity)]
+    public void Flight_InvalidStep_FreezesAllVisuals(float dt)
+    {
+        _hub.Publish(new KillshotFired(V3.Zero, V3.UnitX, 30f, 0));
+        _view.Step(0.08f);
+        Transform arrow = _view.transform.Find("Killshot Arrow");
+        Vector3 at = arrow.position;
+        var trail = Child<TrailRenderer>("Wind Trail");
+        int vertices = trail.positionCount;
+        var wind = Child<ParticleSystem>("Wind Lines");
+        var before = new ParticleSystem.Particle[128];
+        int count = wind.GetParticles(before);
+        _view.Step(dt);
+        Assert.That(arrow.position, Is.EqualTo(at));
+        Assert.That(trail.positionCount, Is.EqualTo(vertices));
+        var after = new ParticleSystem.Particle[128];
+        Assert.That(wind.GetParticles(after), Is.EqualTo(count));
+        for (int i = 0; i < count; i++)
+        {
+            Assert.That(after[i].position, Is.EqualTo(before[i].position));
+            Assert.That(after[i].remainingLifetime, Is.EqualTo(before[i].remainingLifetime));
         }
     }
 
@@ -134,6 +223,9 @@ public sealed class KillshotViewTests
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(3)]
+    [TestCase(4)]
+    [TestCase(5)]
+    [TestCase(6)]
     public void Flight_CancellationClearsArrowAndWind_ThenReuses(int cause)
     {
         _hub.Publish(new KillshotFired(V3.Zero, V3.UnitX, 30f, 0));
@@ -144,22 +236,37 @@ public sealed class KillshotViewTests
         { _hub.Publish(new StageTransitionStarted(1, 2)); }
         else if (cause == 2)
         { _hub.Publish(new RunEnded(0.2f)); }
-        else
+        else if (cause == 3)
         { _hub.Publish(new StageArrived(2, new Soulvail.Core.Content.ContentId("arena.test"))); }
+        else if (cause == 4)
+        { _view.Clear(); }
+        else if (cause == 5)
+        {
+            // EditMode does not dispatch lifecycle callbacks on a dormant MonoBehaviour.
+            typeof(KillshotView).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(_view, null);
+            _view.gameObject.SetActive(false);
+        }
+        else
+        { _view.Dispose(); }
         Transform arrow = _view.transform.Find("Killshot Arrow");
         Assert.That(arrow.gameObject.activeSelf, Is.False);
-        Assert.That(Child<LineRenderer>("Streak").enabled, Is.False);
-        for (int i = 0; i < 3; i++)
+        Assert.That(Child<TrailRenderer>("Wind Trail").enabled, Is.False);
+        Assert.That(Child<TrailRenderer>("Wind Trail").positionCount, Is.Zero);
+        Assert.That(Child<ParticleSystem>("Wind Lines").particleCount, Is.Zero);
+        if (cause == 6)
         {
-            Assert.That(Child<LineRenderer>("Wind Streak " + i).enabled, Is.False);
+            _view.Construct(_hub, null, _bow.transform, _shake);
         }
+        _view.gameObject.SetActive(true);
         _bow.transform.position = new Vector3(-12f, 1f, -8f);
-        _hub.Publish(new KillshotFired(V3.Zero, V3.UnitZ, 30f, 0));
+        _hub.Publish(new KillshotFired(new V3(-7f, 0f, -9f), V3.UnitZ, 30f, 0));
         Assert.That(arrow.gameObject.activeSelf, Is.True);
-        Assert.That(arrow.position.x, Is.EqualTo(-12f));
+        Assert.That(arrow.position.x, Is.EqualTo(-7f));
         Assert.That(Vector3.Dot(arrow.forward, Vector3.forward), Is.GreaterThan(0.999f));
-        Assert.That(Child<LineRenderer>("Streak").GetPosition(0),
-            Is.EqualTo(_bow.transform.position + Vector3.forward * 0.25f));
+        Assert.That(Child<TrailRenderer>("Wind Trail").positionCount, Is.EqualTo(1));
+        Assert.That(Vector3.Distance(Child<TrailRenderer>("Wind Trail").GetPosition(0),
+            new Vector3(-7f, 1f, -9f)), Is.LessThan(0.001f));
     }
 
     [Test]
@@ -227,7 +334,7 @@ public sealed class KillshotViewTests
             Assert.That(_view.IsWindingUp, Is.False);
             Assert.That(Child<Light>("Charge Light").enabled, Is.False);
             Assert.That(Child<LineRenderer>("Aim Line").enabled, Is.False);
-            Assert.That(Child<LineRenderer>("Streak").enabled, Is.False);
+            Assert.That(Child<TrailRenderer>("Wind Trail").enabled, Is.False);
             Assert.That(pose.transform.localRotation, Is.EqualTo(Quaternion.identity));
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Kneel"), Is.False);
         }

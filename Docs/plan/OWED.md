@@ -225,3 +225,11 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **Device:** Play stage 30 on a phone. Check all four kit stones read as stones at phone zoom, gaps stay traversable, and eye/feint/pounce/chain tells remain readable. Note anything unclear.
 
 - 2026-11-05 MK-10c: playtest Killshot's 3 m corridor against a facing Mossguard and Warlord; ordinary arrows still block, phase shields still protect. Check the 4x arrow and wind trail at portrait gameplay zoom, including pause and stage/death cancellation.
+
+## JG-31b — Killshot reads as a giant arrow (2026-11-05)
+
+- [ ] **Editor, owner:** In a phone-sized portrait Game view on Jungle ground, fire Killshot through several enemies along its existing 3 m lane. Judge whether the 4x existing arrow model reads at first glance, with streaky wind behind it and a faint path trail; try horizontal, forward/back and diagonal shots. Damage remains instantaneous/event-owned; the flight is cosmetic.
+- [ ] **Editor, owner:** Pause mid-flight and resume: arrow, wind particles and trail freeze together. Die/change stage during the effect, then cast elsewhere: no remaining wind or trail joining the two casts. Ordinary attacks, charge/kneel, hit/execute effects and guard/phase-shield rules retain their previous behaviour.
+- [ ] **Device, deferred (no reference phone):** Judge silhouette and wind against Jungle ground on a real phone; check frame time during repeated casts (wind capped at 128 particles).
+
+540x960 offscreen renders at the game camera's 57-degree pitch, 16 m distance and portrait FOV were inspected for side/forward/diagonal flight beside the normal arrow. These do not replace the owner's integrated Play/device checks. Full EditMode: 5655 total, 5654 passed, 0 failed, 1 existing inconclusive; no PlayMode run.

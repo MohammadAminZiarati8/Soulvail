@@ -65,6 +65,7 @@ namespace Soulvail.Game.Views
         [Tooltip("What a hit by this shot looks like where it lands (RS-06b), or none. The census " +
                  "pools it beside this shot's own bodies and plays it on a hit, never on a miss.")]
         [SerializeField] private ImpactView _impact;
+        [SerializeField] private ImpactView _ricochetSpark;
 
         [Tooltip("A trail drawn behind this shot (JG-02), or none. Cleared whenever the body is " +
                  "placed at a new flight's start or returned to the pool, so a reused shot never " +
@@ -119,6 +120,8 @@ namespace Soulvail.Game.Views
 
         /// <summary>The impact a hit by this shot plays, or null for none (RS-06b).</summary>
         public ImpactView Impact => _impact;
+
+        public ImpactView RicochetSpark => _ricochetSpark;
 
         /// <summary>
         /// The flight, origin to target, in world metres: which way the shot was going when it

@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, SK-03a complete._
+_2026-11-05, SK-03b complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **SK-03a** — Ricochet Shot in core. |
-| **Next task** | **SK-03b** — Ricochet Shot assets and VFX, on the owner's go. |
-| **Verified** | EditMode 5758 (5757 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
+| **Last merged** | **SK-03b** — Ricochet Shot authored and drawn. |
+| **Next task** | **SK-04a** — Second Wind in core, on the owner’s go. |
+| **Verified** | EditMode 5763 (5762 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. Stage 12 visual check owed. |
 
 ## What works
 
@@ -39,7 +39,7 @@ Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
-Skirmisher passives and run-and-shoot are live. Ricochet core supports 3–5 hits.
+Skirmisher passives and run-and-shoot are live. Ricochet Shot unlocks at 11 with a bright arrow and bounce sparks.
 
 ## Missing
 

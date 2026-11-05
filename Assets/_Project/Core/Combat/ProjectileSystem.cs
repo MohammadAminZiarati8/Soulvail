@@ -641,19 +641,20 @@ public sealed class ProjectileSystem
             player.Kindling?.OnWeaponHitLanded();
         }
 
-        // After the damage, so a listener handling this has already seen the PlayerDamaged — or the
-        // EnemyDamaged and EnemyDied — that the same arrival caused.
-        _events.Publish(new ProjectileImpacted(flight.Id, flight.Impact, hit));
-
-        if (damagedId != NoContact && flight.Chain.HitsLeft > 1)
+        RicochetChain chain = default;
+        EnemyAgent bounceTarget = null;
+        if (damagedId != NoContact && flight.Chain.HitsLeft > 1 && _count < Capacity)
         {
-            RicochetChain chain = flight.Chain.AfterHit(damagedId);
-            EnemyAgent target = PickRicochetTarget(enemies, flight.Impact, chain.Reach, NoContact, chain);
-            if (target != null)
-            {
-                Fire(new Projectile(shot.SpecId, shot.SourceId, flight.Impact, target.Position,
-                    shot.Speed, shot.Radius, shot.Damage, ShotSide.AtEnemies), now, chain);
-            }
+            chain = flight.Chain.AfterHit(damagedId);
+            bounceTarget = PickRicochetTarget(enemies, flight.Impact, chain.Reach, NoContact, chain);
+        }
+
+        // The damage events have already run. Release the arriving view before the next leg rents one.
+        _events.Publish(new ProjectileImpacted(flight.Id, flight.Impact, hit, bounceTarget != null));
+        if (bounceTarget != null)
+        {
+            Fire(new Projectile(shot.SpecId, shot.SourceId, flight.Impact, bounceTarget.Position,
+                shot.Speed, shot.Radius, shot.Damage, ShotSide.AtEnemies), now, chain);
         }
     }
 

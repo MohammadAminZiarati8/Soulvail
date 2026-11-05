@@ -232,7 +232,9 @@ public sealed class RicochetShotTests
         var fired = _events.Of<ProjectileFired>();
         Assert.That(fired.Select(arrow => arrow.IsRicochet), Is.EqualTo(new[] { true, true, true, false }));
         Assert.That(fired.Select(arrow => arrow.ChainIndex), Is.EqualTo(new[] { 0, 1, 2, 0 }));
-        Assert.That(fired[1].Origin, Is.EqualTo(_events.Of<ProjectileImpacted>()[0].Position));
+        var impacts = _events.Of<ProjectileImpacted>();
+        Assert.That(impacts.Select(impact => impact.Bounces), Is.EqualTo(new[] { true, true, false }));
+        Assert.That(fired[1].Origin, Is.EqualTo(impacts[0].Position));
     }
 
     [TestCase(1, 3, 8f, TestName = "Rank1_ThreeHits_EightSeconds")]

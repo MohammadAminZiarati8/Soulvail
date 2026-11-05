@@ -158,10 +158,14 @@ public readonly struct ProjectileImpacted
     /// </summary>
     public readonly bool Hit;
 
-    public ProjectileImpacted(int id, Vector3 position, bool hit)
+    /// <summary>A Ricochet Shot continues from this point with another leg.</summary>
+    public readonly bool Bounces;
+
+    public ProjectileImpacted(int id, Vector3 position, bool hit, bool bounces = false)
     {
         Id = id;
         Position = position;
         Hit = hit;
+        Bounces = bounces;
     }
 }

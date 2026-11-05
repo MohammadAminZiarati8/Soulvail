@@ -296,3 +296,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SK-02 — The Ranger shoots on the run
 
 - [ ] **Editor:** Take Running Shot on the Skirmisher. With a target to the side, strafe and check that the Ranger aims and releases while its legs keep running. Run away and check the backpedal shot. With no target, check the normal bow-carry run.
+
+- **SK-03b [Editor]** Stage 12, Skirmisher, Ricochet taken. Cast on a group of at least three enemies. Confirm the Ranger releases while moving, the bright arrow hits three enemies with two cyan-white bounce sparks and an ordinary final impact, and a separate enemy 6 m from the group is skipped.

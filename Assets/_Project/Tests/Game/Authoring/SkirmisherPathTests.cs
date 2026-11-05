@@ -25,6 +25,7 @@ public sealed class SkirmisherPathTests
     private static readonly ContentId Marksman = new("path.ranger.marksman");
     private static readonly ContentId Skirmisher = new("path.ranger.skirmisher");
     private static readonly ContentId RunningShot = new("skill.skirmisher.running-shot");
+    private static readonly ContentId Ricochet = new("skill.skirmisher.ricochet-shot");
     private static readonly ContentId HitAndRunId = new("skill.skirmisher.hit-and-run");
 
     [Test]
@@ -38,7 +39,7 @@ public sealed class SkirmisherPathTests
             new[] { (PlayerStat.MovingFireRate, 0.15f) },
             new[] { (PlayerStat.MovingFireRate, 0.15f) },
         });
-        AssertRanks(path.Skills[1].Ranks, new[]
+        AssertRanks(path.Skills[2].Ranks, new[]
         {
             new[] { (PlayerStat.HitSpeedBurst, 0.15f) },
             new[] { (PlayerStat.HitSpeedBurst, 0.05f), (PlayerStat.MomentumPerMetre, 0.02f) },
@@ -47,15 +48,52 @@ public sealed class SkirmisherPathTests
     }
 
     [Test]
-    public void Path_OrderAndUnlockLevels()
+    public void Assets_MatchTheRankTable()
+    {
+        IReadOnlyList<SkillDefinition> ranks = Load<PathDefinition>("Paths/Skirmisher").Skills[1].Ranks;
+        SkillSpec first = ranks[0].ToSpec();
+        Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
+        Assert.That(first.Active.Cooldown, Is.EqualTo(8f));
+        Assert.That(first.Active.Trigger.Clauses.Count, Is.EqualTo(1));
+        TriggerClause trigger = first.Active.Trigger.Clauses[0];
+        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
+        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
+        Assert.That(trigger.Threshold, Is.EqualTo(3f));
+        Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
+        Assert.That(((RicochetShot)first.Active.OnCast[0]).DamageOfWeapon, Is.EqualTo(1f));
+
+        var stats = new[] { PlayerStat.RicochetHits, PlayerStat.RicochetDamage, PlayerStat.RicochetHits };
+        var values = new[] { 1f, 0.25f, 1f };
+        for (int i = 1; i < ranks.Count; i++)
+        {
+            SkillSpec rank = ranks[i].ToSpec();
+            Assert.That(rank.Kind, Is.EqualTo(SkillKind.Upgrade));
+            Assert.That(rank.ParentId, Is.EqualTo(new ContentId(ranks[i - 1].Id)));
+            Assert.That(rank.Effects.Count, Is.EqualTo(i == 3 ? 2 : 1));
+            var stat = (ModifyStat)rank.Effects[0];
+            Assert.That(stat.Stat, Is.EqualTo(stats[i - 1]));
+            Assert.That(stat.Target, Is.EqualTo(StatTarget.Player));
+            Assert.That(stat.Kind, Is.EqualTo(ModifierKind.Flat));
+            Assert.That(stat.Value, Is.EqualTo(values[i - 1]));
+        }
+
+        var cooldown = (ModifySkillCooldown)ranks[3].ToSpec().Effects[1];
+        Assert.That(cooldown.SkillId, Is.EqualTo(Ricochet));
+        Assert.That(cooldown.Kind, Is.EqualTo(ModifierKind.Flat));
+        Assert.That(cooldown.Value, Is.EqualTo(-2f));
+    }
+
+    [Test]
+    public void Path_RicochetIsSecondAtEleven()
     {
         PathSpec path = Spec();
         Assert.That(path.Id, Is.EqualTo(Skirmisher));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId("character.ranger")));
-        Assert.That(path.Skills.Count, Is.EqualTo(2));
-        Assert.That(path.NodeCount, Is.EqualTo(7));
+        Assert.That(path.Skills.Count, Is.EqualTo(3));
+        Assert.That(path.NodeCount, Is.EqualTo(11));
         AssertSkill(path.Skills[0], RunningShot, 4, 11);
-        AssertSkill(path.Skills[1], HitAndRunId, 3, 14);
+        AssertSkill(path.Skills[1], Ricochet, 4, 11);
+        AssertSkill(path.Skills[2], HitAndRunId, 3, 14);
     }
 
     [Test]
@@ -77,7 +115,7 @@ public sealed class SkirmisherPathTests
 
     [TestCase(11, false)]
     [TestCase(14, true)]
-    public void Choose_Skirmisher_InstallsBothSkills(int level, bool hitAndRunAvailable)
+    public void Choose_Skirmisher_InstallsPathSkills(int level, bool hitAndRunAvailable)
     {
         using IObjectResolver boot = Boot();
         var authored = boot.Resolve<ContentCatalog>();
@@ -108,7 +146,9 @@ public sealed class SkirmisherPathTests
 
         Assert.That(session.State.PathId, Is.EqualTo(Skirmisher));
         Assert.That(session.State.IsPathChoiceOpen, Is.False);
-        Assert.That(session.State.TreeNodeCount, Is.EqualTo(baseNodes + 7));
+        Assert.That(session.State.TreeNodeCount, Is.EqualTo(baseNodes + 11));
+        Assert.That(session.State.UnlockLevelOf(Ricochet), Is.EqualTo(11));
+        Assert.That(session.State.IsNodeAvailable(Ricochet), Is.True);
         Assert.That(session.State.UnlockLevelOf(RunningShot), Is.EqualTo(11));
         Assert.That(session.State.UnlockLevelOf(HitAndRunId), Is.EqualTo(14));
         Assert.That(session.State.IsNodeAvailable(RunningShot), Is.True);
@@ -152,12 +192,17 @@ public sealed class SkirmisherPathTests
             Assert.That(pseudo[key], Is.Not.EqualTo(english[key]), key.Key);
         }
 
+        Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot.name")], Is.EqualTo("Ricochet Shot"));
+        Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot.description")], Is.EqualTo("An arrow that bounces between 3 enemies within 5 m."));
+        Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot-2.description")], Is.EqualTo("Bounces between 4 enemies."));
+        Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot-3.description")], Is.EqualTo("+25% damage."));
+        Assert.That(english[new LocKey("skill.skirmisher.ricochet-shot-4.description")], Is.EqualTo("Bounces between 5. Cooldown 6 s."));
         Assert.That(english[path.NameKey], Is.EqualTo("Skirmisher"));
         Assert.That(english[path.DescriptionKey], Is.EqualTo("Never stop. Shoot on the run, roll often, strike as you pass."));
     }
 
     [Test]
-    public void Icons_AreRegisteredForBothSkillsAndTheBuff()
+    public void Icons_AreRegisteredForPathSkillsAndTheBuff()
     {
         using IObjectResolver boot = Boot();
         var icons = boot.Resolve<SkillIconBook>();

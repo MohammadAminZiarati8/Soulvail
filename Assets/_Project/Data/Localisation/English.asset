@@ -698,6 +698,22 @@ MonoBehaviour:
     _text: Running Shot 4
   - _key: skill.skirmisher.running-shot-4.description
     _text: 85%
+  - _key: skill.skirmisher.ricochet-shot.name
+    _text: "Ricochet Shot"
+  - _key: skill.skirmisher.ricochet-shot.description
+    _text: "An arrow that bounces between 3 enemies within 5 m."
+  - _key: skill.skirmisher.ricochet-shot-2.name
+    _text: "Ricochet Shot 2"
+  - _key: skill.skirmisher.ricochet-shot-2.description
+    _text: "Bounces between 4 enemies."
+  - _key: skill.skirmisher.ricochet-shot-3.name
+    _text: "Ricochet Shot 3"
+  - _key: skill.skirmisher.ricochet-shot-3.description
+    _text: "+25% damage."
+  - _key: skill.skirmisher.ricochet-shot-4.name
+    _text: "Ricochet Shot 4"
+  - _key: skill.skirmisher.ricochet-shot-4.description
+    _text: "Bounces between 5. Cooldown 6 s."
   - _key: skill.skirmisher.hit-and-run.name
     _text: Hit and Run
   - _key: skill.skirmisher.hit-and-run.description

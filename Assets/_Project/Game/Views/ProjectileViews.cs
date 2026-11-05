@@ -60,6 +60,8 @@ public sealed class ProjectileViews : IDisposable
     private int _lastPlayerShot;
     private readonly Dictionary<ProjectileView, TrailLook> _trailLooks = new();
     private PathLook _playerPathLook;
+    private readonly RicochetShotView _ricochetLook = new();
+    private readonly IDisposable _ricochetArrivedSubscription;
 
     /// <summary>Only ordinary player arrows inherit a path tint; pooled enemy and Volley shots reset.</summary>
     public PathLook PlayerPathLook
@@ -203,7 +205,7 @@ public sealed class ProjectileViews : IDisposable
         _classPrewarm = classPrewarm;
         _viewer = viewer == null ? null : viewer;
 
-        _default = new ShotKind(defaultPool, ImpactPoolFor(prefab.Impact));
+        _default = new ShotKind(defaultPool, ImpactPoolFor(prefab.Impact), ImpactPoolFor(prefab.RicochetSpark));
         _kinds = new Dictionary<ProjectileView, ShotKind> { [prefab] = _default };
 
         // Rule 3: every class's shot is built now, while the scene loads, rather than on the first
@@ -236,8 +238,9 @@ public sealed class ProjectileViews : IDisposable
         _firedSubscription = hub.Subscribe<ProjectileFired>(OnFired);
         _impactedSubscription = hub.Subscribe<ProjectileImpacted>(OnImpacted);
         _bindCastSubscription = hub.Subscribe<SkillCast>(OnBindingCast);
-        _bindBoundarySubscription = hub.Subscribe<StageTransitionStarted>(_ => ClearBindingArrows());
-        _bindEndedSubscription = hub.Subscribe<RunEnded>(_ => ClearBindingArrows());
+        _bindBoundarySubscription = hub.Subscribe<StageTransitionStarted>(_ => ClearBoundaryEffects());
+        _ricochetArrivedSubscription = hub.Subscribe<StageArrived>(_ => ClearRicochetSparks());
+        _bindEndedSubscription = hub.Subscribe<RunEnded>(_ => ClearBoundaryEffects());
     }
 
     /// <summary>How many bolts are currently drawn in the arena.</summary>
@@ -400,6 +403,7 @@ public sealed class ProjectileViews : IDisposable
         _impactedSubscription.Dispose();
         _bindCastSubscription.Dispose();
         _bindBoundarySubscription.Dispose();
+        _ricochetArrivedSubscription.Dispose();
         _bindEndedSubscription.Dispose();
         ClearBindingArrows();
 
@@ -442,14 +446,25 @@ public sealed class ProjectileViews : IDisposable
         if (!_trailLooks.TryGetValue(view, out TrailLook trailLook))
         {
             var trail = view.GetComponentInChildren<TrailRenderer>(true);
-            trailLook = new TrailLook { Trail = trail, Gradient = trail != null ? trail.colorGradient : null };
+            trailLook = new TrailLook
+            {
+                Trail = trail,
+                Gradient = trail != null ? trail.colorGradient : null,
+                Time = trail != null ? trail.time : 0f,
+                Width = trail != null ? trail.widthMultiplier : 0f,
+            };
             _trailLooks.Add(view, trailLook);
         }
         trailLook.Player = evt.SourceId == 0 && !evt.IsVolley;
+        trailLook.Ricochet = evt.IsRicochet;
         PaintPathTrail(trailLook);
 
         _byId[evt.Id] = new Rental(view, kind);
-        if (evt.SourceId == 0)
+        if (evt.IsRicochet && evt.ChainIndex > 0 && kind.Sparks != null)
+        {
+            PlayImpact(kind.Sparks, evt.Origin.ToUnity(), view.Travel, evt.Id, ricochetSpark: true);
+        }
+        if (evt.SourceId == 0 && evt.ChainIndex == 0)
         {
             _lastPlayerShot = evt.Id;
         }
@@ -464,10 +479,30 @@ public sealed class ProjectileViews : IDisposable
 
     private void PaintPathTrail(TrailLook trail)
     {
-        Color tint = trail.Player && _playerPathLook != null ? _playerPathLook.ArrowTrailTint : Color.clear;
-        if (trail.Trail == null || trail.Tint == tint)
+        if (trail.Trail == null)
         {
             return;
+        }
+        if (trail.Ricochet)
+        {
+            if (!trail.Bright)
+            {
+                _ricochetLook.Brighten(trail.Trail, trail.Time, trail.Width);
+                trail.Bright = true;
+            }
+            return;
+        }
+
+        Color tint = trail.Player && _playerPathLook != null ? _playerPathLook.ArrowTrailTint : Color.clear;
+        if (!trail.Bright && trail.Tint == tint)
+        {
+            return;
+        }
+        if (trail.Bright)
+        {
+            trail.Trail.time = trail.Time;
+            trail.Trail.widthMultiplier = trail.Width;
+            trail.Bright = false;
         }
         trail.Tint = tint;
         if (tint.a > 0f)
@@ -488,6 +523,10 @@ public sealed class ProjectileViews : IDisposable
         public Gradient Gradient;
         public Color Tint;
         public bool Player;
+        public bool Ricochet;
+        public bool Bright;
+        public float Time;
+        public float Width;
     }
 
     private void OnImpacted(ProjectileImpacted evt)
@@ -505,18 +544,40 @@ public sealed class ProjectileViews : IDisposable
 
         // RS-06b rule 2: a hit plays the shot's impact, a miss plays nothing. The travel is read
         // before the release, which forgets the flight.
-        if (evt.Hit && rental.Kind.Impacts != null)
+        if (evt.Hit && !evt.Bounces && rental.Kind.Impacts != null)
         {
             Vector3 travel = rental.View != null ? rental.View.Travel : Vector3.zero;
-            Quaternion viewer = _viewer != null ? _viewer.rotation : ImpactView.Overhead;
-            ImpactView impact = rental.Kind.Impacts.Get();
-
-            impact.Play(evt.Position.ToUnity(), travel, viewer, evt.Id);
-
-            _impacts.Add(new LiveImpact(impact, rental.Kind.Impacts));
+            PlayImpact(rental.Kind.Impacts, evt.Position.ToUnity(), travel, evt.Id);
         }
 
         rental.Kind.Shots.Release(rental.View);
+    }
+
+    private void PlayImpact(ViewPool<ImpactView> pool, Vector3 position, Vector3 travel, int id, bool ricochetSpark = false)
+    {
+        Quaternion viewer = _viewer != null ? _viewer.rotation : ImpactView.Overhead;
+        ImpactView impact = pool.Get();
+        impact.Play(position, travel, viewer, id);
+        _impacts.Add(new LiveImpact(impact, pool, ricochetSpark));
+    }
+
+    private void ClearBoundaryEffects()
+    {
+        ClearBindingArrows();
+        ClearRicochetSparks();
+    }
+
+    private void ClearRicochetSparks()
+    {
+        for (int i = _impacts.Count - 1; i >= 0; i--)
+        {
+            LiveImpact impact = _impacts[i];
+            if (impact.IsRicochetSpark)
+            {
+                impact.Pool.Release(impact.View);
+                _impacts.RemoveAt(i);
+            }
+        }
     }
 
     private void OnBindingCast(SkillCast cast)
@@ -639,7 +700,8 @@ public sealed class ProjectileViews : IDisposable
         {
             kind = new ShotKind(
                 new ViewPool<ProjectileView>(_resolver, prefab, _parent, _classPrewarm),
-                ImpactPoolFor(prefab.Impact));
+                ImpactPoolFor(prefab.Impact),
+                ImpactPoolFor(prefab.RicochetSpark));
 
             _kinds.Add(prefab, kind);
         }
@@ -669,15 +731,18 @@ public sealed class ProjectileViews : IDisposable
     /// <summary>A shot prefab's bodies, and the impact it names, or null.</summary>
     private sealed class ShotKind
     {
-        public ShotKind(ViewPool<ProjectileView> shots, ViewPool<ImpactView> impacts)
+        public ShotKind(ViewPool<ProjectileView> shots, ViewPool<ImpactView> impacts, ViewPool<ImpactView> sparks)
         {
             Shots = shots;
             Impacts = impacts;
+            Sparks = sparks;
         }
 
         public ViewPool<ProjectileView> Shots { get; }
 
         public ViewPool<ImpactView> Impacts { get; }
+
+        public ViewPool<ImpactView> Sparks { get; }
     }
 
     /// <summary>A body in the air, and the pools it came from (RS-02c rule 3).</summary>
@@ -697,14 +762,17 @@ public sealed class ProjectileViews : IDisposable
     /// <summary>An impact going out, and the pool it goes back to.</summary>
     private readonly struct LiveImpact
     {
-        public LiveImpact(ImpactView view, ViewPool<ImpactView> pool)
+        public LiveImpact(ImpactView view, ViewPool<ImpactView> pool, bool isRicochetSpark)
         {
             View = view;
             Pool = pool;
+            IsRicochetSpark = isRicochetSpark;
         }
 
         public ImpactView View { get; }
 
         public ViewPool<ImpactView> Pool { get; }
+
+        public bool IsRicochetSpark { get; }
     }
 }

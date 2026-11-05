@@ -704,7 +704,8 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnFired(ProjectileFired evt)
         {
-            if (_animator == null || evt.SourceId != 0 || _castUpLeft > 0f || _killshotWinding || _rolling || _dead)
+            if (_animator == null || evt.SourceId != 0 || evt.ChainIndex > 0 || _killshotWinding || _rolling || _dead
+                || (_castUpLeft > 0f && !evt.IsRicochet))
             {
                 return;
             }
@@ -712,6 +713,17 @@ namespace Soulvail.Game.Views
             _shotPoseLeft = RunReleaseFadeSeconds;
             SetUpperWeight(1f);
             _animator.ResetTrigger(_shootId);
+            if (evt.IsRicochet)
+            {
+                _castUpLeft = 0f;
+                _bindingReleaseLeft = 0f;
+                _animator.ResetTrigger(_castUpId);
+                _animator.ResetTrigger(_releaseId);
+                _animator.SetFloat(_shotSpeedId, MaxShotSpeed);
+                _animator.Play("Release", _animator.GetLayerIndex(UpperBodyLayer), 0f);
+                return;
+            }
+
             _animator.SetTrigger(_releaseId);
         }
 

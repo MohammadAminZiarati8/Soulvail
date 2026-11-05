@@ -664,6 +664,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // lend the Emberwright's Ash and Arcana to any class. RaiseMinions below is the opposite call.
         effects.Register<SpawnBurnZone>(new SpawnBurnZoneHandler(zones, _clock));
         effects.Register<RainOfArrows>(new RainOfArrowsHandler(zones, _clock, enemies, playerStats, combat.Blackboard, _events));
+        effects.Register<RicochetShot>(new RicochetShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
         effects.Register<BindingShot>(new BindingShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
@@ -1232,6 +1233,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // The decoys go in with it, because perception is the one site that writes the four fields
         // a decoy redirects and no behaviour is touched (M5-03 rule 2).
         State.Enemies.Ingest(snapshot, State.Lures);
+        State.Projectiles.TraceCover = snapshot.TraceCover;
 
         // **With the enemies, and that is the half of rule 8 nobody would guess** (M5-04a rule 8,
         // AR §18.1). Perception is one phase: the Wights are bodies that report where they are
@@ -1555,6 +1557,11 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
             _flow.Tick(State.Time, snapshot, _random.Spawn);
             bool stageCleared = phaseBefore != StagePhase.Clear && _flow.Phase == StagePhase.Clear;
+            if (stageCleared || (phaseBefore != StagePhase.Transition && _flow.Phase == StagePhase.Transition))
+            {
+                State.Projectiles.ClearRicochets();
+            }
+
             if (stageCleared)
             {
                 _killshot.Clear();
@@ -1565,7 +1572,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // saves (M2-13). They agree because this is the one line that moves the second one.
             if (State.StageIndex != _flow.Stage)
             {
-                // Like projectiles, traps cannot cross into the freshly composed arena.
+                State.Projectiles.ClearRicochets();
                 _traps.Clear();
                 _killshot.Clear();
 

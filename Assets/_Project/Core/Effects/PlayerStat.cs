@@ -212,6 +212,9 @@ public enum PlayerStat
 
     /// <summary>Fractional arrow damage bonus per recent metre travelled.</summary>
     MomentumPerMetre,
+
+    RicochetHits,
+    RicochetDamage,
 }
 
 /// <summary>
@@ -270,6 +273,9 @@ public sealed class PlayerStats : IStatBlock
 
     public Stat KillshotExecute { get; } = new(0f);
     public Stat KillshotDamage { get; } = new(0f);
+
+    public Stat RicochetHits { get; } = new(3f);
+    public Stat RicochetDamage { get; } = new(0f);
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -347,6 +353,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MovingFireRate => _combat.MovingFireRate,
             PlayerStat.HitSpeedBurst => HitAndRun.HitSpeedBurst,
             PlayerStat.MomentumPerMetre => HitAndRun.MomentumPerMetre,
+            PlayerStat.RicochetHits => RicochetHits,
+            PlayerStat.RicochetDamage => RicochetDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
             PlayerStat.VolleyArrows => RequireVolley(stat).Arrows,
             PlayerStat.VolleyDamage => RequireVolley(stat).Damage,
@@ -412,6 +420,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MovingFireRate => true,
             PlayerStat.HitSpeedBurst => true,
             PlayerStat.MomentumPerMetre => true,
+            PlayerStat.RicochetHits => true,
+            PlayerStat.RicochetDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,
             PlayerStat.VolleyArrows => _combat.Volley is not null,
             PlayerStat.VolleyDamage => _combat.Volley is not null,

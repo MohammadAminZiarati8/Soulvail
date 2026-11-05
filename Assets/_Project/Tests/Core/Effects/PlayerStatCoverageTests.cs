@@ -65,6 +65,17 @@ public sealed class PlayerStatCoverageTests
         _intents = new RecordingIntents();
     }
 
+    [Test]
+    public void RicochetStats_ResolveToTheirOwnersWithRankOneDefaults()
+    {
+        PlayerStats stats = Stats(Combat());
+
+        Assert.That(stats.Resolve(PlayerStat.RicochetHits), Is.SameAs(stats.RicochetHits));
+        Assert.That(stats.Resolve(PlayerStat.RicochetDamage), Is.SameAs(stats.RicochetDamage));
+        Assert.That(stats.RicochetHits.Value, Is.EqualTo(3f));
+        Assert.That(stats.RicochetDamage.Value, Is.Zero);
+    }
+
     // ---- Rule 1: the five, each reaching the instance its owner holds -----------------------------
 
     [Test]
@@ -303,14 +314,14 @@ public sealed class PlayerStatCoverageTests
 
         Assert.That(
             values.Length,
-            Is.EqualTo(36),
+            Is.EqualTo(38),
             "Six from M3-05, M3-12a's five, M4-01a's ContactDamage — the first member no "
                 + "player has, added because IStatBlock made this one shared address space rather "
                 + "than two enums — M6-08's four Kindling and pool numbers, RS-03a's "
                 + "FireWhileMoving, RS-03b's three volley numbers, MK-02a's five aim/range numbers "
                 + "and MK-07a's three Rain numbers, MK-08a's BindStun, MK-09a's SnareRoot/SnareDamage "
-                + "MK-10a's KillshotExecute/KillshotDamage, and SK-01a's three Skirmisher stats. A member arriving without a "
-                + "spec is what this catches; update the number and say which task added it.");
+                + "MK-10a's KillshotExecute/KillshotDamage, SK-01a's three Skirmisher stats and SK-03a's "
+                + "two Ricochet Shot stats. Update the number and say which task added each member.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

@@ -359,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(33), "Thirty-three of thirty-six are player numbers after SK-01a.");
+        Assert.That(refused, Is.EqualTo(35), "Thirty-five of thirty-eight are player numbers after SK-03a.");
     }
 
     [Test]
@@ -466,11 +466,12 @@ public sealed class StatBlockTests
             nameof(PlayerStat.MovingFireRate),
             nameof(PlayerStat.HitSpeedBurst),
             nameof(PlayerStat.MomentumPerMetre),
+            nameof(PlayerStat.RicochetHits),
+            nameof(PlayerStat.RicochetDamage),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
             + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three, MK-08a's BindStun, "
-            + "MK-09a's SnareRoot/SnareDamage, MK-10a's KillshotExecute/KillshotDamage and SK-01a's three stats. "
-            + "A new member goes *after* MomentumPerMetre and updates this "
-            + "row saying which task added it.");
+            + "MK-09a's SnareRoot/SnareDamage, MK-10a's KillshotExecute/KillshotDamage, SK-01a's three stats "
+            + "and SK-03a's two Ricochet Shot stats. Append each new member and record which task added it.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------

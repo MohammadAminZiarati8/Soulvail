@@ -436,6 +436,19 @@ public sealed class LineOfSightSense
         }
     }
 
+    /// <summary>First cover contact along an uncached segment, in the caller's coordinates.</summary>
+    internal System.Numerics.Vector3? TraceCover(System.Numerics.Vector3 from, System.Numerics.Vector3 to)
+    {
+        if (!IsBlocked(from.ToUnity(), to.ToUnity()))
+        {
+            return null;
+        }
+
+        Vector3 contact = _hit.point;
+        contact.y -= EyeHeight;
+        return contact.ToNum();
+    }
+
     /// <summary>
     /// Whether anything on the cover mask stands between the two points, at eye height on both ends.
     /// </summary>

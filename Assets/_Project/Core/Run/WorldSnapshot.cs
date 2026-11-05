@@ -35,6 +35,9 @@ public sealed class WorldSnapshot
     /// <summary>Seconds since the previous tick. Variable, not fixed — see ADR-0003 §4.4.</summary>
     public float Dt;
 
+    /// <summary>Queries the first cover contact on a segment in the current arena.</summary>
+    public Func<Vector3, Vector3, Vector3?> TraceCover;
+
     /// <summary>
     /// The move stick, already deadzoned and shaped by the input layer, so <c>|v| &lt;= 1</c>.
     /// Core reads intent from it and never re-shapes it.
@@ -240,6 +243,7 @@ public sealed class WorldSnapshot
     /// </remarks>
     public void Clear()
     {
+        TraceCover = null;
         Dt = 0f;
         MoveInput = Vector2.Zero;
         PlayerPosition = Vector3.Zero;

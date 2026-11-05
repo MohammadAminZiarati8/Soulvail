@@ -77,6 +77,7 @@ public sealed class SnapshotBuilder
     /// census knows only where its own bodies are.
     /// </remarks>
     private readonly LineOfSightSense _sight;
+    private readonly System.Func<System.Numerics.Vector3, System.Numerics.Vector3, System.Numerics.Vector3?> _traceCover;
     private readonly OpenGroundSense _openGround;
 
     /// <summary>
@@ -164,6 +165,7 @@ public sealed class SnapshotBuilder
         _paths = paths;
         _arenas = arenas;
         _sight = sight;
+        _traceCover = sight is null ? null : sight.TraceCover;
         _openGround = openGround;
     }
 
@@ -200,6 +202,7 @@ public sealed class SnapshotBuilder
         // ended up, which core records and never overrides.
         snapshot.PlayerPosition = _player.Position.ToNum();
         snapshot.PlayerVelocity = _player.Velocity.ToNum();
+        snapshot.TraceCover = _traceCover;
 
         // Reported every frame rather than once at composition, and the `!= null` is Unity's
         // lifetime check rather than C#'s: an arena destroyed mid-run is a null the operator catches

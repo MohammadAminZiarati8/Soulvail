@@ -305,6 +305,10 @@ public sealed class ProjectileSystem
 
     /// <summary>A landing that touched no body on the way. Enemy ids are issued from 1.</summary>
     private const int NoContact = 0;
+    private const int CoverContact = -1;
+    internal const int MaxRicochetHits = 5;
+
+    internal Func<Vector3, Vector3, Vector3?> TraceCover { get; set; }
 
     private readonly IDomainEvents _events;
     private readonly BindResolver _binds;
@@ -346,9 +350,11 @@ public sealed class ProjectileSystem
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="events"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is not positive.</exception>
-    public ProjectileSystem(IDomainEvents events, int capacity, BindResolver binds = null)
+    public ProjectileSystem(IDomainEvents events, int capacity, BindResolver binds = null,
+        Func<Vector3, Vector3, Vector3?> traceCover = null)
     {
         _binds = binds;
+        TraceCover = traceCover;
         _events = events ?? throw new ArgumentNullException(nameof(events));
 
         if (capacity <= 0)
@@ -401,7 +407,12 @@ public sealed class ProjectileSystem
     /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock.</param>
     /// <returns>Its id, or <see cref="NoProjectile"/> when the shot was refused.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="now"/> is not finite.</exception>
-    public int Fire(in Projectile shot, float now)
+    public int Fire(in Projectile shot, float now) => Fire(shot, now, default);
+
+    internal int FireRicochet(in Projectile shot, int hits, float now) =>
+        Fire(shot, now, new RicochetChain(hits, RicochetShot.BounceReach));
+
+    private int Fire(in Projectile shot, float now, in RicochetChain chain)
     {
         RequireFinite(now);
 
@@ -417,7 +428,7 @@ public sealed class ProjectileSystem
         int id = _nextId;
         _nextId++;
 
-        _shots[_count] = new InFlight(id, now, now + flightTime, shot);
+        _shots[_count] = new InFlight(id, now, now + flightTime, shot, chain);
         _count++;
 
         _events.Publish(new ProjectileFired(
@@ -429,7 +440,9 @@ public sealed class ProjectileSystem
             flightTime,
             shot.IsVolley,
             shot.Radius,
-            shot.IsCrit));
+            shot.IsCrit,
+            chain.IsActive,
+            chain.Index));
 
         return id;
     }
@@ -504,7 +517,7 @@ public sealed class ProjectileSystem
             // A player's shot that touched a body on this tick's stretch of its path stops there.
             // It only reads the registry, so the bookkeeping-first rule above still holds.
             if (flight.Shot.Side == ShotSide.AtEnemies
-                && TryContact(flight, now, enemies, out Vector3 contact, out int contactId))
+                && TryStop(flight, now, enemies, out Vector3 contact, out int contactId))
             {
                 _landing[landingCount] = flight.LandingAt(contact, contactId);
                 landingCount++;
@@ -568,6 +581,33 @@ public sealed class ProjectileSystem
         _nextId = FirstId;
     }
 
+    /// <summary>Ends only ricochets at a stage boundary, retiring their views as misses.</summary>
+    public void ClearRicochets()
+    {
+        int count = _count;
+        int write = 0;
+        int cancelled = 0;
+        for (int read = 0; read < count; read++)
+        {
+            InFlight flight = _shots[read];
+            if (flight.Chain.IsActive)
+            {
+                _landing[cancelled++] = flight;
+            }
+            else
+            {
+                _shots[write++] = flight;
+            }
+        }
+
+        _count = write;
+        for (int i = 0; i < cancelled; i++)
+        {
+            InFlight flight = _landing[i];
+            _events.Publish(new ProjectileImpacted(flight.Id, flight.PositionAt(flight.SweptTo), false));
+        }
+    }
+
     /// <summary>
     /// Resolves one arrival: the side's hit test, the damage, and the event that says it is over.
     /// </summary>
@@ -586,8 +626,9 @@ public sealed class ProjectileSystem
     {
         Projectile shot = flight.Shot;
 
+        int damagedId = NoContact;
         bool hit = shot.Side == ShotSide.AtEnemies
-            ? LandOnEnemies(shot, flight.Impact, flight.ContactId, now, player, enemies)
+            ? LandOnEnemies(flight, now, player, enemies, out damagedId)
             : LandOnPlayer(shot, now, playerPosition, player);
 
         // **One orb is one Kindling stack however many it caught, and a miss is nothing** (M6-07a
@@ -603,6 +644,17 @@ public sealed class ProjectileSystem
         // After the damage, so a listener handling this has already seen the PlayerDamaged — or the
         // EnemyDamaged and EnemyDied — that the same arrival caused.
         _events.Publish(new ProjectileImpacted(flight.Id, flight.Impact, hit));
+
+        if (damagedId != NoContact && flight.Chain.HitsLeft > 1)
+        {
+            RicochetChain chain = flight.Chain.AfterHit(damagedId);
+            EnemyAgent target = PickRicochetTarget(enemies, flight.Impact, chain.Reach, NoContact, chain);
+            if (target != null)
+            {
+                Fire(new Projectile(shot.SpecId, shot.SourceId, flight.Impact, target.Position,
+                    shot.Speed, shot.Radius, shot.Damage, ShotSide.AtEnemies), now, chain);
+            }
+        }
     }
 
     /// <summary>
@@ -669,20 +721,28 @@ public sealed class ProjectileSystem
     /// </para>
     /// </remarks>
     private bool LandOnEnemies(
-        in Projectile shot,
-        Vector3 impact,
-        int contactId,
+        in InFlight flight,
         float now,
         PlayerCombat player,
-        EnemySystem enemies)
+        EnemySystem enemies,
+        out int damagedId)
     {
+        Projectile shot = flight.Shot;
+        Vector3 impact = flight.Impact;
+        int contactId = flight.ContactId;
+        damagedId = NoContact;
+        if (contactId == CoverContact)
+        {
+            return false;
+        }
+
         ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
 
         bool hit = false;
 
-        if (shot.Bind != null)
+        if (shot.Bind != null || flight.Chain.IsActive)
         {
-            // Binding arrows stop on one body; an ordinary orb may still splash every neighbour.
+            // Binding and ricochet arrows stop on one body.
             EnemyAgent target = null;
             float best = float.PositiveInfinity;
             for (int i = 0; i < agents.Length; i++)
@@ -691,7 +751,8 @@ public sealed class ProjectileSystem
                 Vector3 delta = agent.Position - impact;
                 float distance = delta.X * delta.X + delta.Z * delta.Z;
                 float reach = shot.Radius + agent.Spec.BodyRadius;
-                if (!agent.IsAlive || (agent.Id != contactId && !(distance <= reach * reach)))
+                if (!agent.IsAlive || flight.Chain.HasHit(agent.Id)
+                    || (agent.Id != contactId && !(distance <= reach * reach)))
                 {
                     continue;
                 }
@@ -702,7 +763,8 @@ public sealed class ProjectileSystem
                     break;
                 }
 
-                if (target == null || distance < best || (distance == best && agent.Id < target.Id))
+                if ((target == null || distance < best || (distance == best && agent.Id < target.Id))
+                    && (!flight.Chain.IsActive || !TraceCoverBetween(impact, agent.Position).HasValue))
                 {
                     target = agent;
                     best = distance;
@@ -717,9 +779,17 @@ public sealed class ProjectileSystem
             if (enemies.ApplyDamage(target.Id, shot.Damage, now, player).Applied > 0f)
             {
                 player.HitAndRun.OnHit(now);
+                if (flight.Chain.IsActive)
+                {
+                    damagedId = target.Id;
+                }
             }
 
-            _binds?.Hit(target.Id, shot.Bind);
+            if (shot.Bind != null)
+            {
+                _binds?.Hit(target.Id, shot.Bind);
+            }
+
             return true;
         }
 
@@ -763,6 +833,61 @@ public sealed class ProjectileSystem
         return hit;
     }
 
+    internal EnemyAgent PickRicochetTarget(EnemySystem enemies, Vector3 origin, float range, int preferredId) =>
+        PickRicochetTarget(enemies, origin, range, preferredId, default);
+
+    private EnemyAgent PickRicochetTarget(EnemySystem enemies, Vector3 origin, float range, int preferredId,
+        in RicochetChain chain)
+    {
+        EnemyAgent nearest = null;
+        float best = range * range;
+        ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
+        for (int i = 0; i < agents.Length; i++)
+        {
+            EnemyAgent agent = agents[i];
+            Vector3 delta = agent.Position - origin;
+            float distance = delta.X * delta.X + delta.Z * delta.Z;
+            bool preferred = agent.Id == preferredId;
+            if (!agent.IsAlive || chain.HasHit(agent.Id) || !(distance <= range * range)
+                || ((!chain.IsActive || TraceCover == null) && agent.Blackboard.IsBehindCover)
+                || (!preferred && nearest != null && (distance > best || (distance == best && agent.Id > nearest.Id)))
+                || TraceCoverBetween(origin, agent.Position).HasValue)
+            {
+                continue;
+            }
+
+            if (preferred)
+            {
+                return agent;
+            }
+
+            nearest = agent;
+            best = distance;
+        }
+
+        return nearest;
+    }
+
+    private Vector3? TraceCoverBetween(Vector3 from, Vector3 to) => TraceCover?.Invoke(from, to);
+
+    private bool TryStop(in InFlight flight, float now, EnemySystem enemies, out Vector3 contact, out int contactId)
+    {
+        bool touchedBody = TryContact(flight, now, enemies, out contact, out contactId);
+        if (flight.Chain.IsActive)
+        {
+            Vector3 start = flight.PositionAt(flight.SweptTo);
+            Vector3 end = touchedBody ? contact : flight.PositionAt(MathF.Min(now, flight.ArrivesAt));
+            if (TraceCoverBetween(start, end) is Vector3 cover)
+            {
+                contact = cover;
+                contactId = CoverContact;
+                return true;
+            }
+        }
+
+        return touchedBody;
+    }
+
     /// <summary>
     /// Whether <paramref name="flight"/> touched a living body on its path from
     /// <see cref="InFlight.SweptTo"/> to this tick, and if so the first body and the point.
@@ -794,7 +919,7 @@ public sealed class ProjectileSystem
         {
             EnemyAgent agent = agents[i];
 
-            if (!agent.IsAlive)
+            if (!agent.IsAlive || flight.Chain.HasHit(agent.Id))
             {
                 continue;
             }
@@ -804,7 +929,7 @@ public sealed class ProjectileSystem
             // The body alone: the shot is a line, and its radius is the blast where it stops — a
             // contact reach that included it would set an orb off on the first body it came near.
             if (FirstTouch(start - bodyAtStart, end - bodyAtEnd, agent.Spec.BodyRadius, out float along)
-                && along < first)
+                && (along < first || (flight.Chain.IsActive && along == first && agent.Id < contactId)))
             {
                 first = along;
                 contactId = agent.Id;
@@ -901,11 +1026,61 @@ public sealed class ProjectileSystem
         }
     }
 
+    private struct RicochetChain
+    {
+        private int _first;
+        private int _second;
+        private int _third;
+        private int _fourth;
+        private int _fifth;
+
+        public RicochetChain(int hits, float reach) : this()
+        {
+            HitsLeft = hits;
+            Reach = reach;
+        }
+
+        public int HitsLeft { get; private set; }
+        public float Reach { get; }
+        public int Index { get; private set; }
+        public bool IsActive => HitsLeft > 0;
+
+        public bool HasHit(int id) =>
+            id == _first || id == _second || id == _third || id == _fourth || id == _fifth;
+
+        public readonly RicochetChain AfterHit(int id)
+        {
+            RicochetChain next = this;
+            switch (Index)
+            {
+                case 0:
+                    next._first = id;
+                    break;
+                case 1:
+                    next._second = id;
+                    break;
+                case 2:
+                    next._third = id;
+                    break;
+                case 3:
+                    next._fourth = id;
+                    break;
+                case 4:
+                    next._fifth = id;
+                    break;
+            }
+
+            next.Index++;
+            next.HitsLeft--;
+            return next;
+        }
+    }
+
     /// <summary>One shot and the things the store knows about it that the shot does not.</summary>
     private readonly struct InFlight
     {
-        public InFlight(int id, float firedAt, float arrivesAt, in Projectile shot)
-            : this(id, firedAt, arrivesAt, firedAt, shot, shot.Target, NoContact)
+        public InFlight(int id, float firedAt, float arrivesAt, in Projectile shot, in RicochetChain chain)
+            : this(id, firedAt, arrivesAt, firedAt, shot, shot.Target, NoContact, chain)
         {
         }
 
@@ -916,7 +1091,8 @@ public sealed class ProjectileSystem
             float sweptTo,
             in Projectile shot,
             Vector3 impact,
-            int contactId)
+            int contactId,
+            in RicochetChain chain)
         {
             Id = id;
             FiredAt = firedAt;
@@ -925,6 +1101,7 @@ public sealed class ProjectileSystem
             Shot = shot;
             Impact = impact;
             ContactId = contactId;
+            Chain = chain;
         }
 
         /// <summary>When it left, in simulated run seconds.</summary>
@@ -956,11 +1133,11 @@ public sealed class ProjectileSystem
 
         /// <summary>This shot, tested for contact up to <paramref name="time"/>.</summary>
         public InFlight SweptUntil(float time) =>
-            new(Id, FiredAt, ArrivesAt, time, Shot, Impact, ContactId);
+            new(Id, FiredAt, ArrivesAt, time, Shot, Impact, ContactId, Chain);
 
         /// <summary>This shot, stopping at <paramref name="impact"/>.</summary>
         public InFlight LandingAt(Vector3 impact, int contactId) =>
-            new(Id, FiredAt, ArrivesAt, SweptTo, Shot, impact, contactId);
+            new(Id, FiredAt, ArrivesAt, SweptTo, Shot, impact, contactId, Chain);
 
         /// <summary>The run-stable id, issued from 1 and never reused within a run.</summary>
         public int Id { get; }
@@ -972,5 +1149,6 @@ public sealed class ProjectileSystem
         public float ArrivesAt { get; }
 
         public Projectile Shot { get; }
+        public RicochetChain Chain { get; }
     }
 }

@@ -79,6 +79,11 @@ public readonly struct ProjectileFired
 
     public readonly bool IsCrit;
 
+    public readonly bool IsRicochet;
+
+    /// <summary>Zero for the opening arrow, then one per bounce.</summary>
+    public readonly int ChainIndex;
+
     /// <summary>The impact radius in metres, copied from the accepted shot.</summary>
     public readonly float Radius;
 
@@ -90,7 +95,7 @@ public readonly struct ProjectileFired
         Vector3 target,
         float flightTime,
         bool isVolley = false,
-        float radius = 0f, bool isCrit = false)
+        float radius = 0f, bool isCrit = false, bool isRicochet = false, int chainIndex = 0)
     {
         Id = id;
         SpecId = specId;
@@ -100,6 +105,8 @@ public readonly struct ProjectileFired
         FlightTime = flightTime;
         IsVolley = isVolley;
         IsCrit = isCrit;
+        IsRicochet = isRicochet;
+        ChainIndex = chainIndex;
         Radius = radius;
     }
 }

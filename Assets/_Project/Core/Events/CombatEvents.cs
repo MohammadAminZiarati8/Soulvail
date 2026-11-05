@@ -379,7 +379,7 @@ public readonly struct ChargeStarted
 }
 
 /// <summary>
-/// The dash is over and the character can be hurt again. Published by <c>PlayerCombat.Tick</c> once
+/// The dash's i-frames have ended. Published by <c>PlayerCombat.Tick</c> once
 /// per <see cref="ChargeStarted"/>.
 /// </summary>
 /// <remarks>
@@ -399,6 +399,19 @@ public readonly struct ChargeStarted
 /// </remarks>
 public readonly struct ChargeEnded
 {
+}
+
+/// <summary>The number of ready movement charges or their capacity changed.</summary>
+public readonly struct ChargeChargesChanged
+{
+    public readonly int Ready;
+    public readonly int Max;
+
+    public ChargeChargesChanged(int ready, int max)
+    {
+        Ready = ready;
+        Max = max;
+    }
 }
 
 /// <summary>

@@ -1284,6 +1284,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // on the start edge, from this snapshot's position (M6-07b rule 3). The step writes one, and
         // State.Zones.Tick below is still the only thing that pulses it.
         State.Skills.PrepareVolley(State.Time);
+        // Age existing statuses before combat can open a fresh roll guard.
+        State.Status.Tick(snapshot.Dt);
         State.Combat.Tick(
             snapshot.Dt,
             State.Time,
@@ -1337,8 +1339,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // At most one cast per tick, and the walk stops on it (rule 6).
         State.Skills.Tick(snapshot.Dt, State.Time);
-        // Age existing statuses before any arrow can land and post a fresh burst.
-        State.Status.Tick(snapshot.Dt);
         _killshot.Tick(State.Time);
 
         // **Immediately after the runner and above the projectile step, and both halves are the
@@ -1580,6 +1580,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 _thorns.Clear();
                 State.Combat.SteadyAim.OnMoved();
                 State.Combat.HitAndRun.Reset();
+                State.Combat.ResetSecondWind();
                 State.Status.Reset();
             }
 
@@ -1630,6 +1631,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             {
                 State.Combat.SteadyAim.OnMoved();
                 State.Combat.HitAndRun.Reset();
+                State.Combat.ResetSecondWind();
                 State.Status.Reset();
                 _recorder.Take(State, _flow.Stage + 1);
             }

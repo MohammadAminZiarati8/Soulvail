@@ -215,6 +215,8 @@ public enum PlayerStat
 
     RicochetHits,
     RicochetDamage,
+    MovementSkillCharges,
+    RollGuardSeconds,
 }
 
 /// <summary>
@@ -339,6 +341,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.FireRate => _combat.Weapon.FireRate,
             PlayerStat.MoveSpeed => _motor.Speed,
             PlayerStat.MovementSkillCooldown => _combat.Charge.Cooldown,
+            PlayerStat.MovementSkillCharges => _combat.Charge.BonusCharges,
+            PlayerStat.RollGuardSeconds => _combat.Charge.RollGuardSeconds,
             PlayerStat.XpGain => _progression.XpGain,
             PlayerStat.WeaponRange => _combat.Weapon.Range,
             PlayerStat.WeaponConeAngle => _combat.Weapon.ConeAngleDeg,
@@ -406,6 +410,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.FireRate => true,
             PlayerStat.MoveSpeed => true,
             PlayerStat.MovementSkillCooldown => true,
+            PlayerStat.MovementSkillCharges => true,
+            PlayerStat.RollGuardSeconds => true,
             PlayerStat.XpGain => true,
             PlayerStat.WeaponRange => true,
             PlayerStat.WeaponConeAngle => true,

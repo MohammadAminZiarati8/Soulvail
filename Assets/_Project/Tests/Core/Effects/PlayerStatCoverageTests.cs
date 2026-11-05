@@ -314,14 +314,14 @@ public sealed class PlayerStatCoverageTests
 
         Assert.That(
             values.Length,
-            Is.EqualTo(38),
+            Is.EqualTo(40),
             "Six from M3-05, M3-12a's five, M4-01a's ContactDamage — the first member no "
                 + "player has, added because IStatBlock made this one shared address space rather "
                 + "than two enums — M6-08's four Kindling and pool numbers, RS-03a's "
                 + "FireWhileMoving, RS-03b's three volley numbers, MK-02a's five aim/range numbers "
                 + "and MK-07a's three Rain numbers, MK-08a's BindStun, MK-09a's SnareRoot/SnareDamage "
                 + "MK-10a's KillshotExecute/KillshotDamage, SK-01a's three Skirmisher stats and SK-03a's "
-                + "two Ricochet Shot stats. Update the number and say which task added each member.");
+                + "two Ricochet Shot stats and SK-04a's two Second Wind stats.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

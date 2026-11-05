@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, SK-03b complete._
+_2026-11-05, SK-04a complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **SK-03b** — Ricochet Shot authored and drawn. |
-| **Next task** | **SK-04a** — Second Wind in core, on the owner’s go. |
-| **Verified** | EditMode 5763 (5762 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. Stage 12 visual check owed. |
+| **Last merged** | **SK-04a** — Second Wind in core. |
+| **Next task** | **SK-04b** — Second Wind assets and HUD, on the owner’s go. |
+| **Verified** | EditMode 5778 (5777 passed, 0 failed, 1 existing inconclusive). Format clean. Compile clean. |
 
 ## What works
 

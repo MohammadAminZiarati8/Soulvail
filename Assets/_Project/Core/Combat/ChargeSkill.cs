@@ -1,6 +1,8 @@
 using System;
 using System.Numerics;
 using Soulvail.Core.Content;
+using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
 
 namespace Soulvail.Core.Combat;
 
@@ -32,7 +34,7 @@ namespace Soulvail.Core.Combat;
 /// are all read off the last time <see cref="Tick"/> was given rather than counted down.
 /// </para>
 /// <para>
-/// <b>The cooldown is sampled at the start of the dash and held.</b> A modifier that lands
+/// <b>The cooldown is sampled when a charge starts refilling and held.</b> A modifier that lands
 /// mid-cooldown changes the <em>next</em> one, which is the same promise <c>Weapon</c> makes about
 /// its swing interval: the wait you are watching finishes at the length it began at, rather than
 /// snapping shorter under a buff and leaving the button's fill sliding backwards.
@@ -41,6 +43,11 @@ namespace Soulvail.Core.Combat;
 public sealed class ChargeSkill
 {
     private readonly MovementSkillSpec _spec;
+    private readonly IDomainEvents _events;
+    private int _maxCharges = 1;
+    private int _spentCharges;
+    private bool _guardPending;
+    private float _guardUntil;
 
     /// <summary>
     /// The last time <see cref="Tick"/> was given. Every state property is read against this rather
@@ -55,8 +62,7 @@ public sealed class ChargeSkill
     private float _invulnUntil;
 
     /// <summary>
-    /// The earliest time the next dash may begin. Zero at rest, so the first press of a run fires on
-    /// the tick it arrives rather than waiting out a cooldown nobody spent.
+    /// When the next spent charge refills. Zero when every charge is ready.
     /// </summary>
     private float _readyAt;
 
@@ -68,8 +74,15 @@ public sealed class ChargeSkill
     /// <param name="spec">The class's authored movement skill. Seeds the cooldown stat and is read every tick.</param>
     /// <exception cref="ArgumentNullException"><paramref name="spec"/> is null.</exception>
     public ChargeSkill(MovementSkillSpec spec)
+        : this(spec, null)
+    {
+    }
+
+    internal ChargeSkill(MovementSkillSpec spec, IDomainEvents events)
     {
         _spec = spec ?? throw new ArgumentNullException(nameof(spec));
+        _events = events;
+        BonusCharges.Changed += OnBonusChargesChanged;
 
         // A fresh Stat rather than the spec's raw number, because this is the live value M3-12's
         // tree nodes and a future Pact apply a modifier to (ADR-0008). The spec stays what a
@@ -93,6 +106,31 @@ public sealed class ChargeSkill
     /// Seconds between dashes, live. Where "−15 % dash cooldown" goes, under M3-06's 40 % floor.
     /// </summary>
     public Stat Cooldown { get; }
+
+    public Stat BonusCharges { get; } = new(0f);
+
+    public Stat RollGuardSeconds { get; } = new(0f);
+
+    public int MaxCharges => _maxCharges;
+
+    public int ReadyCharges => MaxCharges - _spentCharges;
+
+    public bool IsGuarding => IsGuardingAt(_now);
+
+    internal float GuardRemaining => _guardUntil - _now;
+
+    internal bool IsGuardingAt(float now) => _guardUntil > 0f && now < _guardUntil;
+
+    internal bool ConsumeGuard()
+    {
+        if (!IsGuarding)
+        {
+            return false;
+        }
+
+        _guardUntil = 0f;
+        return true;
+    }
 
     /// <summary>
     /// What one pass-through of the dash is worth, live. Where "+50 % Charge damage" goes.
@@ -152,12 +190,11 @@ public sealed class ChargeSkill
     /// </remarks>
     public bool IsInvulnerable => _now < _invulnUntil;
 
-    /// <summary>The button is live: the cooldown has elapsed and no dash is in flight.</summary>
-    public bool IsReady => !IsActive && _now >= _readyAt;
+    /// <summary>The button is live when a charge is ready and no dash is in flight.</summary>
+    public bool IsReady => !IsActive && ReadyCharges > 0;
 
     /// <summary>
-    /// How much of the cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the instant a dash
-    /// starts, 0 once the button is live again. What M1-16's radial fill draws.
+    /// The cooldown fraction of the charge currently refilling, or zero when all are ready.
     /// </summary>
     /// <remarks>
     /// Measured against the <em>current</em> <see cref="Cooldown"/> value rather than the one
@@ -169,7 +206,7 @@ public sealed class ChargeSkill
     {
         get
         {
-            float remaining = _readyAt - _now;
+            float remaining = _spentCharges > 0 ? _readyAt - _now : 0f;
 
             // Negated rather than `remaining <= 0f` so a non-finite clock reads as ready rather
             // than as a NaN fraction, which would leave M1-16's radial fill undrawable.
@@ -261,6 +298,16 @@ public sealed class ChargeSkill
     public bool Tick(float dt, float now, Vector2 stickXZ, Vector2 facingXZ, bool allowStart = true)
     {
         _now = now;
+        RefillCharges(now);
+        if (_guardPending && !IsActive)
+        {
+            _guardPending = false;
+            float seconds = RollGuardSeconds.Value;
+            if (seconds > 0f)
+            {
+                _guardUntil = _activeUntil + seconds;
+            }
+        }
 
         if (!allowStart || !_hasPress)
         {
@@ -280,7 +327,7 @@ public sealed class ChargeSkill
 
         // Still early rather than too late: the press stays pending and is re-examined next tick,
         // until either it becomes possible or it goes stale above.
-        if (IsActive || now < _readyAt)
+        if (!IsReady)
         {
             return false;
         }
@@ -290,15 +337,16 @@ public sealed class ChargeSkill
         _activeUntil = now + _spec.Duration;
         _invulnUntil = _activeUntil + _spec.IFrameTrail;
 
-        // Sampled here and held — see the class remarks. **Floored since M3-06**, which is what
-        // the line this replaced promised: a stack can drive Cooldown.Value to zero or below
-        // (Stat clamps nothing, ADR-0008), and CooldownRules is the layer that knows what "too
-        // short" means. The floor is taken from `_spec.Cooldown`, the number a designer typed,
-        // rather than from `Cooldown.Base` — the two are the same today, and the day a node
-        // re-bases a cooldown a floor computed from the raised base would rise with it.
-        _readyAt = now + CooldownRules.Effective(_spec.Cooldown, Cooldown.Value);
+        if (_spentCharges == 0)
+        {
+            _readyAt = now + RechargeSeconds();
+        }
 
+        _spentCharges++;
+        _guardUntil = 0f;
+        _guardPending = true;
         _hasPress = false;
+        PublishChargesChanged();
 
         return true;
     }
@@ -322,12 +370,53 @@ public sealed class ChargeSkill
     {
         _activeUntil = 0f;
         _invulnUntil = 0f;
-        _readyAt = 0f;
         _pressAt = 0f;
         _hasPress = false;
 
         Direction = Vector2.Zero;
+        ResetSecondWind();
     }
+
+    internal void ResetSecondWind()
+    {
+        _guardUntil = 0f;
+        _guardPending = false;
+        _readyAt = 0f;
+        if (_spentCharges > 0)
+        {
+            _spentCharges = 0;
+            PublishChargesChanged();
+        }
+    }
+
+    private void OnBonusChargesChanged(Stat stat)
+    {
+        float bonus = stat.Value;
+        int max = bonus > 0f ? 1 + (int)Math.Min(bonus, int.MaxValue - 1d) : 1;
+        if (max == _maxCharges)
+        {
+            return;
+        }
+
+        _maxCharges = max;
+        _spentCharges = Math.Min(_spentCharges, max);
+        PublishChargesChanged();
+    }
+
+    private void RefillCharges(float now)
+    {
+        while (_spentCharges > 0 && now >= _readyAt)
+        {
+            _spentCharges--;
+            _readyAt = _spentCharges > 0 ? _readyAt + RechargeSeconds() : 0f;
+            PublishChargesChanged();
+        }
+    }
+
+    private float RechargeSeconds() => CooldownRules.Effective(_spec.Cooldown, Cooldown.Value);
+
+    private void PublishChargesChanged() =>
+        _events?.Publish(new ChargeChargesChanged(ReadyCharges, MaxCharges));
 
     /// <summary>
     /// The unit vector along <paramref name="v"/>, or <see langword="false"/> when there is no such

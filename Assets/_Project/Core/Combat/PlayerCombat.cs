@@ -432,7 +432,7 @@ public sealed class PlayerCombat
         // The class's dodge, live. Its Cooldown is a Stat for the reason the weapon's two are, and
         // it is handed the whole spec rather than the cooldown alone because M5-03's Shroudstep and
         // M6-07's Blink are the same clock with a different payload — see MovementSkillKind.
-        Charge = new ChargeSkill(spec.MovementSkill);
+        Charge = new ChargeSkill(spec.MovementSkill, _events);
 
         // Zero, and the only one of M3-12a's five that is new rather than promoted — see the
         // property's own remarks for what a node has to do to move it.
@@ -652,6 +652,7 @@ public sealed class PlayerCombat
     /// <summary>The player's HP has reached zero.</summary>
     public bool IsDead => Health.IsDead;
 
+    private readonly ContentId _secondWindStatus = new("status.second-wind");
     private StatusBoard _status;
 
     public bool IsHeld { get; private set; }
@@ -661,6 +662,7 @@ public sealed class PlayerCombat
         _status = status;
         SteadyAim.AttachStatus(status);
         HitAndRun.AttachStatus(status);
+        SyncSecondWindStatus();
     }
 
     internal void SetKillshotWindUp(bool active)
@@ -669,7 +671,7 @@ public sealed class PlayerCombat
         Health.SetExternalInvulnerable(active || Charge.IsInvulnerable);
         if (_status is not null)
         {
-            _status.RejectDebuffs = active;
+            _status.RejectDebuffs = active || Charge.IsGuarding;
         }
     }
 
@@ -798,10 +800,25 @@ public sealed class PlayerCombat
     /// </remarks>
     /// <param name="amount">Damage to apply. Zero, negative and NaN all do nothing.</param>
     /// <param name="now">Simulated run time, in seconds — <c>RunState.Time</c>, never a wall clock.</param>
-    /// <returns>What <see cref="Health"/> did, unchanged, for a caller that has its own conclusions to draw.</returns>
+    /// <returns>The outcome of the hit, including a block by the roll guard.</returns>
     public DamageResult ApplyDamage(float amount, float now)
     {
-        DamageResult result = Health.ApplyDamage(amount * SteadyAim.IncomingMultiplier, now);
+        amount *= SteadyAim.IncomingMultiplier;
+        bool guarded = false;
+        if (amount > 0f && !IsDead && Charge.IsGuardingAt(now))
+        {
+            // Check ordinary i-frames against this hit's time before spending the guard.
+            Health.Tick(0f, now);
+            guarded = !Health.IsInvulnerable && Charge.ConsumeGuard();
+            if (guarded)
+            {
+                _status?.Clear(_secondWindStatus);
+            }
+        }
+
+        DamageResult result = guarded
+            ? new DamageResult(0f, 0f, blocked: true, killed: false)
+            : Health.ApplyDamage(amount, now);
 
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future
         // DamageResult field cannot quietly change what counts as silence.
@@ -825,12 +842,23 @@ public sealed class PlayerCombat
             Kindling?.OnPlayerDamaged();
         }
 
-        _events.Publish(new PlayerDamaged(
-            result.ToShield,
-            result.ToHp,
-            Health.Fraction,
-            Health.ShieldFraction,
-            result.Blocked));
+        try
+        {
+            _events.Publish(new PlayerDamaged(
+                result.ToShield,
+                result.ToHp,
+                Health.Fraction,
+                Health.ShieldFraction,
+                result.Blocked));
+        }
+        finally
+        {
+            if (guarded)
+            {
+                // Reject this hit's debuffs through its blocked-damage notification.
+                SyncSecondWindStatus();
+            }
+        }
 
         // **Routed through the one publisher rather than publishing here** (M6-04 rule 8). Killed is
         // true only on the call that took HP to zero and every later call finds a dead target and
@@ -1455,6 +1483,7 @@ public sealed class PlayerCombat
         // is what publishes the next ChargeEnded, and the window, so a report from the dash that
         // was interrupted cannot damage enemies the reset has cleared out from under it.
         Charge.Reset();
+        SyncSecondWindStatus();
 
         _wasChargeInvulnerable = false;
         _chargeHitWindowUntil = float.NegativeInfinity;
@@ -1532,7 +1561,13 @@ public sealed class PlayerCombat
         // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
         // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
         // turn, for the reason TickWeapon's is: combat runs before the motor.
+        bool wasGuarding = Charge.IsGuarding;
         bool started = Charge.Tick(dt, now, stickXZ, new Vector2(bodyFacing.X, bodyFacing.Z), allowStart: !IsHeld);
+        if (wasGuarding != Charge.IsGuarding)
+        {
+            SyncSecondWindStatus();
+        }
+
         bool invulnerable = Charge.IsInvulnerable;
 
         if (started)
@@ -1597,6 +1632,31 @@ public sealed class PlayerCombat
         }
 
         _wasChargeInvulnerable = invulnerable;
+    }
+
+    internal void ResetSecondWind()
+    {
+        Charge.ResetSecondWind();
+        SyncSecondWindStatus();
+    }
+
+    private void SyncSecondWindStatus()
+    {
+        if (_status is null)
+        {
+            return;
+        }
+
+        bool guarding = Charge.IsGuarding;
+        _status.RejectDebuffs = IsHeld || guarding;
+        if (guarding)
+        {
+            _status.Post(_secondWindStatus, isBuff: true, Charge.GuardRemaining, stacks: 1);
+        }
+        else
+        {
+            _status.Clear(_secondWindStatus);
+        }
     }
 
     /// <summary>

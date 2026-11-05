@@ -20,6 +20,7 @@ namespace Soulvail.Tests.Core.Combat;
 public sealed class KillshotTests
 {
     private const int Capacity = 32;
+    private const int MinHits = 3;
     private const float Hp = 1_000f;
     private static readonly ContentId SkillId = new("skill.killshot");
     private RecordingEvents _events;
@@ -135,6 +136,66 @@ public sealed class KillshotTests
         Assert.That(_events.Count<KillshotWindUp>(), Is.Zero);
         Spawn(4f);
         Assert.That(_runner.Cast(0, 0f, auto: false), Is.True);
+    }
+
+    [Test]
+    public void CanCast_ThreeInLine_True()
+    {
+        Spawn(4f);
+        Spawn(8f);
+        Spawn(12f, y: 100f);
+        Spawn(0f, 10f);
+        Assert.That(_handler.CanCast(Shot()), Is.True);
+    }
+
+    [Test]
+    public void CanCast_TwoLeftBothInLine_True()
+    {
+        Spawn(4f);
+        Spawn(8f);
+        Assert.That(_handler.CanCast(Shot()), Is.True);
+    }
+
+    [Test]
+    public void CanCast_OneLeft_True()
+    {
+        Guard(false);
+        Assert.That(_handler.CanCast(Shot()), Is.True);
+    }
+
+    [Test]
+    public void CanCast_ThreeInReachBestLineTwo_False()
+    {
+        Spawn(4f);
+        Spawn(8f);
+        Spawn(0f, 10f);
+        Assert.That(_handler.CanCast(Shot()), Is.False);
+    }
+
+    [Test]
+    public void CanCast_FarBodyIgnored_True()
+    {
+        Killshot shot = Shot();
+        Spawn(4f);
+        Spawn(0f, shot.Length + 5f);
+        Assert.That(_handler.CanCast(shot), Is.True);
+    }
+
+    [Test]
+    public void CanCast_DoesNotAllocate()
+    {
+        Killshot shot = Shot();
+        Spawn(4f);
+        Spawn(8f);
+        Assert.That(_handler.CanCast(shot), Is.True);
+        AllocationAssert.None(() => { _handler.CanCast(shot); });
+    }
+
+    [Test]
+    public void Killshot_MinHitsBelowOne_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new Killshot(0.7f, 1.5f, 30f, 8f, 0.15f, 0.4f, 0.15f, 0));
     }
 
     [Test]
@@ -390,13 +451,13 @@ public sealed class KillshotTests
     }
 
     [Test]
-    public void Auto_ThreeInAcquireRange_ThirtySecondCooldown()
+    public void Auto_EnemyInAcquireRange_ThirtySecondCooldown()
     {
         Spawn(3f);
-        _player.Blackboard.EnemiesInAcquireRange = 2;
+        _player.Blackboard.EnemiesInAcquireRange = 0;
         _runner.Tick(0f, 0f);
         Assert.That(_handler.IsWindingUp, Is.False);
-        _player.Blackboard.EnemiesInAcquireRange = 3;
+        _player.Blackboard.EnemiesInAcquireRange = 1;
         _runner.Tick(0f, 0f);
         Assert.That(_handler.IsWindingUp, Is.True);
         Assert.That(_events.Single<SkillCast>().Cooldown, Is.EqualTo(30f));
@@ -526,17 +587,17 @@ public sealed class KillshotTests
     {
         foreach (float bad in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(bad, 0.5f, 30f, 8f, 0.15f, 0.4f, 0.15f));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, bad, 30f, 8f, 0.15f, 0.4f, 0.15f));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, bad, 8f, 0.15f, 0.4f, 0.15f));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, bad, 0.15f, 0.4f, 0.15f));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(bad, 0.5f, 30f, 8f, 0.15f, 0.4f, 0.15f, MinHits));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, bad, 30f, 8f, 0.15f, 0.4f, 0.15f, MinHits));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, bad, 8f, 0.15f, 0.4f, 0.15f, MinHits));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, bad, 0.15f, 0.4f, 0.15f, MinHits));
             Assert.Throws<ArgumentOutOfRangeException>(() => _motor.Hold(bad));
         }
         foreach (float bad in new[] { -1f, float.NaN, 1.01f, float.PositiveInfinity })
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, 8f, bad, 0.4f, 0.15f));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, 8f, 0.15f, bad, 0.15f));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, 8f, 0.15f, 0.4f, bad));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, 8f, bad, 0.4f, 0.15f, MinHits));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, 8f, 0.15f, bad, 0.15f, MinHits));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new Killshot(0.7f, 0.5f, 30f, 8f, 0.15f, 0.4f, bad, MinHits));
         }
         Assert.Throws<ArgumentNullException>(() => _handler.CanCast(null));
         Assert.Throws<ArgumentNullException>(() => _handler.Apply(Shot(), null));
@@ -591,10 +652,10 @@ public sealed class KillshotTests
         return session;
     }
 
-    private static Killshot Shot(float windUp = 0.7f) => new(windUp, 1.5f, 30f, 8f, 0.15f, 0.4f, 0.15f);
+    private static Killshot Shot(float windUp = 0.7f) => new(windUp, 1.5f, 30f, 8f, 0.15f, 0.4f, 0.15f, MinHits);
     private static SkillSpec Skill(float windUp = 0.7f) => new(SkillId, new LocKey("skill.killshot.name"),
         new LocKey("skill.killshot.desc"), SkillKind.Active, Array.Empty<IEffect>(), new ActiveSpec(30f,
-            new TriggerSpec(new[] { new TriggerClause(TriggerField.EnemiesInAcquireRange, TriggerComparison.AtLeast, 3f) }),
+            new TriggerSpec(new[] { new TriggerClause(TriggerField.EnemiesInAcquireRange, TriggerComparison.AtLeast, 1f) }),
             new IEffect[] { Shot(windUp) }));
     private static SkillBranchSpec Branch(ContentId id) => new(new LocKey("branch.test"), new IReadOnlyList<ContentId>[] { new[] { id } });
     private static SkillSpec Passive(string id) => new(new ContentId(id), new LocKey("skill.test.name"),

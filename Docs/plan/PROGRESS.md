@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, FX-01._
+_2026-11-05, FX-02._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **FX-01**: Resume caps banked points at the capped level's budget after tree restore and refunds. |
-| **Next task** | FX-02 |
-| **Verified** | EditMode 5681: 5680 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
+| **Last merged** | **FX-02** — Killshot fires when its best line holds three enemies or every enemy in reach. |
+| **Next task** | FX-03 |
+| **Verified** | EditMode 5689: 5688 pass, 0 failed, 1 existing inconclusive. 0 compile errors/new analyzer warnings; format clean. |
 
 ## What works
 

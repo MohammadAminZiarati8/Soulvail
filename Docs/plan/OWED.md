@@ -262,3 +262,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## FX-01 — No banked points past the level budget
 
 - [ ] **[Editor]** Continue the owner's level-30 save and verify that the point badge shows 0 when the tree is full.
+
+## FX-02 — Killshot fires on whatever is left
+
+1. **[Editor]** A stage with 1–2 Mossguards left: Killshot auto-fires once it is off cooldown.
+2. **[Editor]** An early dense wave: Killshot waits for a 3-body line.

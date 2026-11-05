@@ -19,3 +19,4 @@ MonoBehaviour:
   _falloffPerHit: 0.15
   _minFactor: 0.4
   _executeBelow: 0.15
+  _minHits: 3

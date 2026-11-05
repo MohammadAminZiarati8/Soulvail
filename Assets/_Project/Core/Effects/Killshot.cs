@@ -11,7 +11,7 @@ namespace Soulvail.Core.Effects;
 public sealed class Killshot : IEffect
 {
     public Killshot(float windUp, float halfWidth, float length, float damageOfWeapon,
-        float falloffPerHit, float minFactor, float executeBelow)
+        float falloffPerHit, float minFactor, float executeBelow, int minHits)
     {
         WindUp = Positive(windUp, nameof(windUp));
         HalfWidth = Positive(halfWidth, nameof(halfWidth));
@@ -20,6 +20,7 @@ public sealed class Killshot : IEffect
         FalloffPerHit = Fraction(falloffPerHit, nameof(falloffPerHit));
         MinFactor = Fraction(minFactor, nameof(minFactor));
         ExecuteBelow = Fraction(executeBelow, nameof(executeBelow));
+        MinHits = minHits >= 1 ? minHits : throw new ArgumentOutOfRangeException(nameof(minHits));
     }
 
     public float WindUp { get; }
@@ -29,6 +30,7 @@ public sealed class Killshot : IEffect
     public float FalloffPerHit { get; }
     public float MinFactor { get; }
     public float ExecuteBelow { get; }
+    public int MinHits { get; }
 
     private static float Positive(float value, string name) => value > 0f && float.IsFinite(value)
         ? value : throw new ArgumentOutOfRangeException(name);
@@ -75,21 +77,20 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
             throw new ArgumentNullException(nameof(effect));
         }
 
-        return !IsWindingUp && !_player.IsDead && !_player.Charge.IsActive
-            && KillshotLine.TryPick(Points(), _player.Blackboard.PlayerPosition,
-                effect.HalfWidth, effect.Length, out _);
+        return TryPickCastLine(effect, _player.Blackboard.PlayerPosition, out _);
     }
 
     public void Apply(Killshot effect, object source)
     {
         Require(effect, source);
-        if (!CanCast(effect))
+        Vector3 origin = _player.Blackboard.PlayerPosition;
+        if (!TryPickCastLine(effect, origin, out Vector3 direction))
         {
             return;
         }
 
-        _origin = _player.Blackboard.PlayerPosition;
-        KillshotLine.TryPick(Points(), _origin, effect.HalfWidth, effect.Length, out _direction);
+        _origin = origin;
+        _direction = direction;
         _pending = effect;
         _firesAt = _clock.Now + effect.WindUp;
         _motor.Hold(effect.WindUp);
@@ -153,6 +154,15 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
         }
 
         _events.Publish(new KillshotFired(_origin, _direction, effect.Length, hits));
+    }
+
+    private bool TryPickCastLine(Killshot effect, Vector3 origin, out Vector3 direction)
+    {
+        direction = default;
+        return !IsWindingUp && !_player.IsDead && !_player.Charge.IsActive
+            && KillshotLine.TryPick(Points(), origin, effect.HalfWidth, effect.Length,
+                out direction, out int hits, out int inReach)
+            && hits >= Math.Min(effect.MinHits, inReach);
     }
 
     private ReadOnlySpan<EnemyPoint> Points()

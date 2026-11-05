@@ -14,7 +14,9 @@ namespace Soulvail.Game.Authoring
         [SerializeField] private float _minFactor = 0.4f;
         [SerializeField] private float _executeBelow = 0.15f;
 
+        [SerializeField] private int _minHits = 1;
+
         public override IEffect ToEffect() => new Killshot(
-            _windUp, _halfWidth, _length, _damageOfWeapon, _falloffPerHit, _minFactor, _executeBelow);
+            _windUp, _halfWidth, _length, _damageOfWeapon, _falloffPerHit, _minFactor, _executeBelow, _minHits);
     }
 }

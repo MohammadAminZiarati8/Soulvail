@@ -160,6 +160,6 @@ _No milestone. The owner is setting the next direction._
 **Playtest fixes** (owner, 2026-11-05). Any order; each its own commit.
 
 - [x] **FX-01** — No banked points past the level budget on resume (S)
-- [ ] **[FX-02](tasks/FX-02.md)** — Killshot fires on whatever is left in reach (S)
+- [x] **FX-02** — Killshot fires on whatever is left in reach (S)
 - [ ] **[FX-03](tasks/FX-03.md)** — Auto-aim skips enemies behind cover (M)
 - [ ] **[FX-04](tasks/FX-04.md)** — Ground warnings stay above the floor (S)

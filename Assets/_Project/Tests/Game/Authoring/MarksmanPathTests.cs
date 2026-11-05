@@ -384,6 +384,19 @@ public sealed class MarksmanPathTests
     }
 
     [Test]
+    public void KillshotAsset_TriggerIsAnyEnemyInRange()
+    {
+        SkillSpec skill = Load<SkillDefinition>("Skills/Marksman/Killshot").ToSpec();
+        Assert.That(skill.Active.Trigger.Clauses.Count, Is.EqualTo(1));
+        TriggerClause trigger = skill.Active.Trigger.Clauses[0];
+        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
+        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
+        Assert.That(trigger.Threshold, Is.EqualTo(1f));
+        var shot = (Killshot)Load<KillshotDefinition>("Skills/Marksman/KillshotCast").ToEffect();
+        Assert.That(shot.MinHits, Is.EqualTo(3));
+    }
+
+    [Test]
     public void Killshot_Assets_MatchRankTable()
     {
         IReadOnlyList<SkillDefinition> ranks = Marksman().Skills[5].Ranks;
@@ -391,11 +404,6 @@ public sealed class MarksmanPathTests
         SkillSpec first = ranks[0].ToSpec();
         Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
         Assert.That(first.Active.Cooldown, Is.EqualTo(30f));
-        Assert.That(first.Active.Trigger.Clauses.Count, Is.EqualTo(1));
-        TriggerClause trigger = first.Active.Trigger.Clauses[0];
-        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
-        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
-        Assert.That(trigger.Threshold, Is.EqualTo(3f));
         Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
         var shot = first.Active.OnCast[0] as Killshot;
         Assert.That(shot, Is.Not.Null);

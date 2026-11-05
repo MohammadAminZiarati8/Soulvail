@@ -7,15 +7,21 @@ namespace Soulvail.Core.Combat;
 public static class KillshotLine
 {
     public static bool TryPick(ReadOnlySpan<EnemyPoint> enemies, Vector3 player, float halfWidth,
-        float length, out Vector3 direction)
+        float length, out Vector3 direction) =>
+        TryPick(enemies, player, halfWidth, length, out direction, out _, out _);
+
+    public static bool TryPick(ReadOnlySpan<EnemyPoint> enemies, Vector3 player, float halfWidth,
+        float length, out Vector3 direction, out int hits, out int inReach)
     {
         direction = default;
+        hits = 0;
+        inReach = 0;
         if (!(halfWidth > 0f) || !float.IsFinite(halfWidth) || !(length > 0f) || !float.IsFinite(length))
         {
             return false;
         }
 
-        int bestCount = 0;
+        float reachSquared = length * length;
         float bestFirst = float.PositiveInfinity;
         int bestId = int.MaxValue;
         int bestAimId = int.MaxValue;
@@ -29,6 +35,8 @@ public static class KillshotLine
                 continue;
             }
 
+            inReach++;
+
             // A body exactly at the origin supplies no bearing; +Z is a deterministic fallback.
             Vector3 candidate = distance > 0f ? delta / distance : Vector3.UnitZ;
             int count = 0;
@@ -41,9 +49,14 @@ public static class KillshotLine
                     continue;
                 }
 
-                count++;
                 Vector3 offset = enemies[j].Position - player;
                 float near = offset.X * offset.X + offset.Z * offset.Z;
+                if (!(near <= reachSquared))
+                {
+                    continue;
+                }
+
+                count++;
                 if (near < first || (near == first && enemies[j].Id < firstId))
                 {
                     first = near;
@@ -51,11 +64,11 @@ public static class KillshotLine
                 }
             }
 
-            if (count > bestCount || (count == bestCount && (first < bestFirst
+            if (count > hits || (count == hits && (first < bestFirst
                 || (first == bestFirst && (firstId < bestId
                     || (firstId == bestId && enemies[i].Id < bestAimId))))))
             {
-                bestCount = count;
+                hits = count;
                 bestFirst = first;
                 bestId = firstId;
                 bestAimId = enemies[i].Id;
@@ -63,7 +76,7 @@ public static class KillshotLine
             }
         }
 
-        return bestCount > 0;
+        return hits > 0;
     }
 
     internal static bool Contains(Vector3 point, Vector3 origin, Vector3 direction,

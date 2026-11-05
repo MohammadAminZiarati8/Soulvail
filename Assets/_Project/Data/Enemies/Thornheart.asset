@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.thornheart
   _nameKey: enemy.thornheart.name
-  _maxHp: 1775
+  _maxHp: 2556
   _moveSpeed: 0
   _targetPriority: 2
   _threatCost: 40

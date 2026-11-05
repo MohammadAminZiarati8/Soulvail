@@ -27,6 +27,9 @@ namespace Soulvail.Tests.Game.Authoring;
 [TestFixture]
 public sealed class ThornheartStageTests
 {
+    // LV-01b: the level the player arrives at, and the +2 % weapon damage each level past 1 adds.
+    private const int ArrivalLevel = 23;
+    private const float LevelDamage = 1f + (0.02f * (ArrivalLevel - 1));
     private const string JunglePath = "Assets/_Project/Data/Modes/Jungle.asset";
     private const string ThornheartPath = "Assets/_Project/Data/Enemies/Thornheart.asset";
     private const string ThornheartBossPath = "Assets/_Project/Data/Enemies/ThornheartBoss.asset";
@@ -123,7 +126,7 @@ public sealed class ThornheartStageTests
         float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(Stage);
         // Rule 6: stage-20 Ranger ~33 DPS, always targetable; the heart doubles damage for 3 s of
         // every ~12 s cycle, x1.25 on average. Pods excluded, as the Warlord's guards are.
-        const float EffectiveDps = 33f * 1.25f;
+        const float EffectiveDps = 33f * LevelDamage * 1.25f;
         float seconds = (heart.MaxHp * hpScale / EffectiveDps) + ((boss.Phases.Count - 1) * boss.BeatSeconds);
 
         Assert.That(hpScale, Is.EqualTo(2.14f).Within(1e-5f));

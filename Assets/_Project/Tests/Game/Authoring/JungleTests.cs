@@ -1251,7 +1251,7 @@ public sealed class JungleTests
         Assert.That(mother.NameKey.Key, Is.EqualTo("enemy.mother_pitcher.name"));
         Assert.That(mother.Behaviour, Is.EqualTo(EnemyBehaviourKind.Boss));
         Assert.That((mother.MaxHp, mother.TargetPriority, mother.ThreatCost, mother.XpValue, mother.ContactDamage),
-            Is.EqualTo((750f, 2, 40, 400f, 10f)));
+            Is.EqualTo((915f, 2, 40, 400f, 10f)));
         Assert.That(mother.MoveSpeed, Is.Zero);
         Assert.That(look.BodyScale, Is.EqualTo(2.5f));
         Assert.That(look.Body, Is.SameAs(Load<EnemyView>("Assets/_Project/Prefabs/Enemies/MotherPitcher.prefab")));
@@ -1378,7 +1378,7 @@ public sealed class JungleTests
         BossSpec boss = Load<BossDefinition>(MotherBossPath).ToSpec();
         float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(10);
         // Rule 6: stage-10 Ranger ~27 DPS, standing 60% of the fight. Buds use the same uptime.
-        const float EffectiveDps = 27f * 0.6f;
+        const float EffectiveDps = 27f * (1f + (0.02f * (12 - 1))) * 0.6f; // LV-01b: level 12
         int buds = boss.Phases.Sum(p => p.Summons.Where(a => a.SpecId == bud.Id).Sum(a => a.Count));
         float seconds = ((mother.MaxHp + buds * bud.MaxHp) * hpScale / EffectiveDps)
             + (boss.Phases.Count - 1) * boss.BeatSeconds;
@@ -1466,7 +1466,7 @@ public sealed class JungleTests
         BossSpec boss = Load<BossDefinition>(WarlordBossPath).ToSpec();
         float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(15);
         // Rule 6: stage-15 Ranger ~33 DPS, half of it past the front guard. Guards excluded.
-        const float EffectiveDps = 33f * 0.5f;
+        const float EffectiveDps = 33f * (1f + (0.02f * (17 - 1))) * 0.5f; // LV-01b: level 17
         float seconds = (warlord.MaxHp * hpScale / EffectiveDps) + ((boss.Phases.Count - 1) * boss.BeatSeconds);
 
         Assert.That(hpScale, Is.EqualTo(1.84f).Within(1e-5f));

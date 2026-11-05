@@ -40,6 +40,9 @@ public sealed class GravemawStageTests
     private const string FrogId = "enemy.frog";
 
     private const int Stage = 25;
+    // LV-01b: the level the player arrives at, and the +2 % weapon damage each level past 1 adds.
+    private const int ArrivalLevel = 29;
+    private const float LevelDamage = 1f + (0.02f * (ArrivalLevel - 1));
     private const float Frame = 1f / 30f;
 
     private readonly Dictionary<int, Vector3> _at = new();
@@ -154,7 +157,7 @@ public sealed class GravemawStageTests
         BossSpec boss = Load<BossDefinition>(GravemawBossPath).ToSpec();
         float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(Stage);
         // Rule 6: stage-25 Ranger ~33 DPS, half of it — a 4 s window in an ~8 s cycle. Frogs excluded.
-        const float EffectiveDps = 33f * 0.5f;
+        const float EffectiveDps = 33f * LevelDamage * 0.5f;
         float seconds = (maw.MaxHp * hpScale / EffectiveDps) + ((boss.Phases.Count - 1) * boss.BeatSeconds);
 
         Assert.That(hpScale, Is.EqualTo(2.44f).Within(1e-5f));

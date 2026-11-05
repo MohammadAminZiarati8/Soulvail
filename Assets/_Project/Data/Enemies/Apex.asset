@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.apex
   _nameKey: enemy.apex.name
-  _maxHp: 1000
+  _maxHp: 1580
   _moveSpeed: 5.5
   _targetPriority: 2
   _threatCost: 40

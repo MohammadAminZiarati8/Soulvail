@@ -37,7 +37,8 @@ public sealed class ApexStageTests
     // The existing late-Jungle boss probes use 33 DPS. Calibrate the Ranger's arrow to 30 at
     // her authored 1.1 shots/s. Only durability is inflated to survive deliberately eating hits;
     // no damage is injected, no enemy health is cut and no attacks or phase beats are skipped.
-    private const float ExpectedDps = 33f;
+    private const int ArrivalLevel = 30; // LV-01b: +2 % weapon damage per level past 1
+    private const float ExpectedDps = 33f * (1f + (0.02f * (ArrivalLevel - 1)));
 
     [Test]
     public void Apex_AssetValid_BossKind_Prefab_Scale()
@@ -50,7 +51,7 @@ public sealed class ApexStageTests
         Assert.That(enemy.NameKey.Key, Is.EqualTo("enemy.apex.name"));
         Assert.That(enemy.Behaviour, Is.EqualTo(EnemyBehaviourKind.Boss));
         Assert.That(enemy.MoveSpeed, Is.EqualTo(new ApexStats().RunSpeed.Value), "GD §9.2: the one fast boss.");
-        Assert.That(enemy.MaxHp, Is.GreaterThan(632f));
+        Assert.That(enemy.MaxHp, Is.EqualTo(1580f));
         Assert.That((enemy.ContactDamage, enemy.XpValue), Is.EqualTo((20f, 700f)));
         Assert.That(look.BodyScale, Is.EqualTo(1.6f));
         Assert.That(look.Body == Load<EnemyView>(Root + "Prefabs/Enemies/Apex.prefab"), Is.True);

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.mossguard_warlord
   _nameKey: enemy.mossguard_warlord.name
-  _maxHp: 825
+  _maxHp: 1089
   _moveSpeed: 1.4
   _targetPriority: 2
   _threatCost: 40

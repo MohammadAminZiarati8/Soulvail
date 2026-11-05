@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.gravemaw
   _nameKey: enemy.gravemaw.name
-  _maxHp: 632
+  _maxHp: 986
   _moveSpeed: 2.8
   _targetPriority: 2
   _threatCost: 40

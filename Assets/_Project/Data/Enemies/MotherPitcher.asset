@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.mother_pitcher
   _nameKey: enemy.mother_pitcher.name
-  _maxHp: 750
+  _maxHp: 915
   _moveSpeed: 0
   _targetPriority: 2
   _threatCost: 40

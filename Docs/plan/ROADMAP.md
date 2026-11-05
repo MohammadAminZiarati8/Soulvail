@@ -147,3 +147,7 @@ _No milestone. The owner is setting the next direction._
 **Killshot presentation** (owner, 2026-11-05).
 
 - [x] **JG-31b** — Killshot reads as a giant arrow: 4x existing arrow, streaky wind particles and faint path trail; view only (S)
+
+**Levelling growth** (owner, 2026-11-05).
+
+- [x] **LV-01b** — Boss HP rises to match level growth: seven bosses re-authored, fight-length probes price the player's level (S)

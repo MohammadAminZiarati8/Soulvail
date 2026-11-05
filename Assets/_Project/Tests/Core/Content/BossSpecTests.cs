@@ -67,6 +67,10 @@ public sealed class BossSpecTests
     /// <summary>The depth GD §9 puts the first boss at, and the one the band is judged at.</summary>
     private const int BossStage = 5;
 
+    /// <summary>LV-01b: the level a player reaches the first boss at, and the +2 % weapon damage each level past 1 adds.</summary>
+    private const int ArrivalLevel = 5;
+    private const float LevelDamage = 1f + (0.02f * (ArrivalLevel - 1));
+
     private const float MaxHp = 140f;
     private const float ShieldMax = 30f;
     private const int EnemyCapacity = 8;
@@ -349,7 +353,7 @@ public sealed class BossSpecTests
         // `Warden.asset` has to land inside.
         float dps = PlayerDpsAtTheBossStage();
 
-        Assert.That(dps, Is.EqualTo(50.232f).Within(Tolerance), "13 × 1.15 swung 3 × 1.12 times a second.");
+        Assert.That(dps, Is.EqualTo(54.25056f).Within(Tolerance), "13 × 1.15 swung 3 × 1.12 times a second, × 1.08 for level 5.");
 
         float depth = DepthMultiplierAt(BossStage);
 
@@ -358,8 +362,8 @@ public sealed class BossSpecTests
         float lowest = BandLow * dps / depth;
         float highest = BandHigh * dps / depth;
 
-        Assert.That(lowest, Is.EqualTo(3038.226f).Within(0.01f));
-        Assert.That(highest, Is.EqualTo(4861.161f).Within(0.01f));
+        Assert.That(lowest, Is.EqualTo(3281.284f).Within(0.01f));
+        Assert.That(highest, Is.EqualTo(5250.054f).Within(0.01f));
 
         // The round trip, so the window is not merely two numbers that happen to look right: a boss
         // authored at either edge fights for exactly the band's edge.
@@ -405,7 +409,7 @@ public sealed class BossSpecTests
 
         Assert.That(
             (BandHigh - beats) * dps / depth,
-            Is.EqualTo(4739.632f).Within(0.01f),
+            Is.EqualTo(5118.803f).Within(0.01f),
             "The ceiling with the beats priced in, which is what M4-02 should author under.");
     }
 
@@ -443,7 +447,7 @@ public sealed class BossSpecTests
         effects.Apply(new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, KeenCenser), node);
         effects.Apply(new ModifyStat(PlayerStat.FireRate, ModifierKind.PercentAdd, Zealotry), node);
 
-        return combat.Weapon.Damage.Value * combat.Weapon.FireRate.Value;
+        return combat.Weapon.Damage.Value * combat.Weapon.FireRate.Value * LevelDamage;
     }
 
     /// <summary>

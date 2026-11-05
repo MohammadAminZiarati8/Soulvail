@@ -2,14 +2,14 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, JG-31b._
+_2026-11-05, LV-01b._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-31b**: 4x Killshot arrow, wind particles/trail. |
+| **Last merged** | **LV-01b**: boss HP raised for level growth (Warden 3456 … Apex 1580). |
 | **Next task** | None planned. |
 | **Verified** | EditMode 5655: 5654 pass, 0 failed, 1 existing inconclusive. Portrait renders checked. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
 
@@ -25,8 +25,8 @@ From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther) replace.
 Stalker (22+): lurks behind, hides still, hit reveals, strikes; shimmer, warn flash.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
-past cover, up in the open; trail, rise/dive, lit maw; 632 HP, 2.8 m/s, 4 pillars.
-Apex (30): eye tell/feint, streak, +15% window; 1000 HP. Four stones; 2 panthers at 66%, cleared at 33%; win.
+past cover, up in the open; trail, rise/dive, lit maw; 986 HP, 2.8 m/s, 4 pillars.
+Apex (30): eye tell/feint, streak, +15% window; 1580 HP. Four stones; 2 panthers at 66%, cleared at 33%; win.
 Stone-stopped dash/rake. Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.

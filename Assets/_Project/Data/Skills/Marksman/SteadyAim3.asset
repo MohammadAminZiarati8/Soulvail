@@ -17,7 +17,7 @@ MonoBehaviour:
   _descriptionKey: skill.marksman.steady-aim-3.description
   _kind: 2
   _effects:
-  - {fileID: 11400000, guid: c4d6fe31be9f78d4f94197be00242f02, type: 2}
+  - {fileID: 11400000, guid: c7dd565f66d80244cb934aea35398e0c, type: 2}
   _cooldown: 8
   _trigger: []
   _onCast: []

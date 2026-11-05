@@ -1167,10 +1167,10 @@ public sealed class TreeViewPresenterTests
     {
         RankedRun(chosen: true, ranks: 2);
         Assert.That(ShownCells().Length, Is.EqualTo(9));
-        Assert.That(Steady().RankCount, Is.EqualTo(5));
+        Assert.That(Steady().RankCount, Is.EqualTo(4));
         Assert.That(Steady().FilledPips, Is.EqualTo(2));
         Image[] pips = Steady().GetComponentsInChildren<Image>().Where(i => i.name == "RankPip").ToArray();
-        Assert.That(pips.Length, Is.EqualTo(5));
+        Assert.That(pips.Length, Is.EqualTo(4));
         Assert.That(pips.Count(p => p.color == Palette.Player), Is.EqualTo(2));
     }
 
@@ -1180,7 +1180,7 @@ public sealed class TreeViewPresenterTests
         RankedRun(chosen: true, ranks: 2);
         TapRank(Steady());
         var card = Field<TreeDetailCard>(_presenter, "_card");
-        Assert.That(card.LevelText, Is.EqualTo("Rank 2/5"));
+        Assert.That(card.LevelText, Is.EqualTo("Rank 2/4"));
         Assert.That(card.DescriptionText, Is.EqualTo(Shipped().Get(_catalog.Skill(new ContentId("skill.marksman.steady-aim-3")).DescriptionKey)));
         Field<Button>(card, "_learn").onClick.Invoke();
         Assert.That(_session.State.TakenNodeIds, Does.Contain(new ContentId("skill.marksman.steady-aim-3")));
@@ -1202,12 +1202,12 @@ public sealed class TreeViewPresenterTests
     [Test]
     public void Learn_DisabledWhenMax()
     {
-        RankedRun(chosen: true, ranks: 5);
+        RankedRun(chosen: true, ranks: 4);
         TapRank(Steady());
         var card = Field<TreeDetailCard>(_presenter, "_card");
         Assert.That(card.LearnInteractable, Is.False);
         Assert.That(card.LearnText, Is.EqualTo("MAX"));
-        Assert.That(card.LevelText, Is.EqualTo("Rank 5/5"));
+        Assert.That(card.LevelText, Is.EqualTo("Rank 4/4"));
     }
 
     [Test]

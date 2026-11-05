@@ -991,7 +991,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // writers' reason below (LV-01a rule 5). Derived from the level: no save field.
             growth.Restore(progression.Level);
             tree?.SyncLevel(progression.Level);
-            tree?.Restore(resumed.TakenNodeIds, resumed.PactedNodeIds);
+            int refunded = tree?.Restore(resumed.TakenNodeIds, resumed.PactedNodeIds) ?? 0;
+            if (refunded > 0)
+            {
+                // Keep the saved-pick arithmetic below: removing a rank returns its spent point.
+                progression.Restore(progression.Level, progression.Xp,
+                    checked(progression.PendingLevelUps + refunded));
+            }
 
             // **Immediately after the replay and reading its take order** (M3-06 rule 5). Core
             // pushes a skill into the runner; the runner subscribes to nothing, so a resumed run's

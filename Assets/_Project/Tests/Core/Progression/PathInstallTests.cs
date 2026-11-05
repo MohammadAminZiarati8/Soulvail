@@ -6,6 +6,9 @@ using NUnit.Framework;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
+using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
+using Soulvail.Core.Save;
 using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
 using Soulvail.Tests.Core.Content;
@@ -181,6 +184,112 @@ public sealed class PathInstallTests
             tree.IsAvailable(head);
             tree.IsAvailable(next);
         });
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Restore_RemovedRank_RefundsAPoint(bool bothSkills)
+    {
+        var taken = new List<ContentId>(SteadyRanks());
+        taken.Add(new ContentId("skill.marksman.steady-aim-5"));
+        if (bothSkills)
+        {
+            taken.AddRange(BindingRanks());
+            taken.Add(new ContentId("skill.marksman.binding-shot-4"));
+        }
+
+        var events = new RecordingEvents();
+        RunSession session = ResumeRanks(taken, 2, events);
+        Assert.That(session.State.TakenNodeCount, Is.EqualTo(bothSkills ? 7 : 4));
+        Assert.That(session.State.PendingLevelUps, Is.EqualTo(bothSkills ? 4 : 3));
+        Assert.That(session.State.TakenNodeIds, Has.No.Member(taken[4]));
+        Assert.That(events.Count<NodeTaken>(), Is.Zero);
+        Assert.That(events.Count<PathChosen>(), Is.Zero);
+
+        // Saving the restored order and resuming again must not refund the same point twice.
+        RunSession again = ResumeRanks(session.State.TakenNodeIds, session.State.PendingLevelUps,
+            new RecordingEvents());
+        Assert.That(again.State.PendingLevelUps, Is.EqualTo(session.State.PendingLevelUps));
+        Assert.That(again.State.TakenNodeCount, Is.EqualTo(session.State.TakenNodeCount));
+    }
+
+    [TestCase("skill.foreign-5")]
+    [TestCase("skill.marksman.steady-aim-garbage")]
+    [TestCase("skill.marksman.steady-aim-05")]
+    [TestCase("skill.marksman.steady-aim-0")]
+    [TestCase("skill.marksman.steady-aim-2147483648")]
+    [TestCase("skill.a1-5")]
+    public void Restore_UnknownId_StillRefused(string unknown)
+    {
+        var taken = new List<ContentId>(SteadyRanks()) { new ContentId(unknown) };
+        Assert.Throws<KeyNotFoundException>(() => ResumeRanks(taken, 0, new RecordingEvents()));
+    }
+
+    [Test]
+    public void Restore_RemovedRank_DuplicateStillRefused()
+    {
+        var taken = new List<ContentId>(SteadyRanks())
+        {
+            new ContentId("skill.marksman.steady-aim-5"),
+            new ContentId("skill.marksman.steady-aim-5"),
+        };
+        Assert.Throws<ArgumentException>(() => ResumeRanks(taken, 0, new RecordingEvents()));
+    }
+
+    private static ContentId[] SteadyRanks() => new[]
+    {
+        new ContentId("skill.marksman.steady-aim"), new ContentId("skill.marksman.steady-aim-2"),
+        new ContentId("skill.marksman.steady-aim-3"), new ContentId("skill.marksman.steady-aim-4"),
+    };
+
+    private static ContentId[] BindingRanks() => new[]
+    {
+        new ContentId("skill.marksman.binding-shot"), new ContentId("skill.marksman.binding-shot-2"),
+        new ContentId("skill.marksman.binding-shot-3"),
+    };
+
+    private static RunSession ResumeRanks(IReadOnlyList<ContentId> taken, int pending, RecordingEvents events)
+    {
+        TreeRules baseRules = Rules();
+        var branches = new[] { baseRules.Branch(0), baseRules.Branch(1), baseRules.Branch(2) };
+        var path = Path(
+            new PathSkillSpec(RankBranch(SteadyRanks()), 11),
+            new PathSkillSpec(RankBranch(BindingRanks()), 14));
+        CharacterSpec character = PathSpecTests.Character(new[] { path.Id }, 11);
+        var skills = new List<SkillSpec> { Node("skill.a1"), Node("skill.b1"), Node("skill.c1") };
+        foreach (ContentId[] ranks in new[] { SteadyRanks(), BindingRanks() })
+        {
+            for (int i = 0; i < ranks.Length; i++)
+            {
+                skills.Add(Node(ranks[i].Value, i == 0 ? null : ranks[i - 1].Value));
+            }
+        }
+
+        var mode = new ModeSpec(new ContentId("mode.test"), new LocKey("mode.name"), 1, true, 0,
+            Scalings.Design(), Scalings.Xp(), Array.Empty<RosterEntry>(), hasFreePick: true);
+        var catalog = new ContentCatalog(new[] { character }, modes: new[] { mode }, skills: skills,
+            trees: new[] { new SkillTreeSpec(new ContentId("tree.ranger"), character.Id, branches) },
+            paths: new[] { path });
+        var random = new FixedRandom(1);
+        var instant = new DateTimeOffset(2026, 11, 5, 0, 0, 0, TimeSpan.Zero);
+        var session = new RunSession(catalog, random, events, new RecordingIntents(),
+            new RunRecorder(random, new FixedClock(instant), events), 8, 8, 8);
+        var snapshot = new RunSnapshot(RunSnapshot.CurrentVersion, mode.Id, character.Id, 1, 1,
+            new RandomState(101, 102, 103, 104, 105), 100f, 0f, 0f, instant, 20, 0f,
+            pending, taken, new ContentId[SkillRunner.MaxManualSlots],
+            new RunEconomy(0, 0f, 0, 0), Array.Empty<ContentId>(), Array.Empty<ContentId>(), Array.Empty<ContentId>());
+        session.Start(new RunConfig(mode.Id, character.Id, 1, 1, SpawnPlan.Empty, snapshot));
+        return session;
+    }
+
+    private static SkillBranchSpec RankBranch(ContentId[] ids)
+    {
+        var tiers = new IReadOnlyList<ContentId>[ids.Length];
+        for (int i = 0; i < ids.Length; i++)
+        {
+            tiers[i] = new[] { ids[i] };
+        }
+        return new SkillBranchSpec(new LocKey("branch.ranks"), tiers);
     }
 
     internal static SkillBranchSpec Ranks(string stem, int count)

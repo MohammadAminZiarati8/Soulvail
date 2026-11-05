@@ -17,7 +17,7 @@ MonoBehaviour:
   _descriptionKey: skill.marksman.binding-shot-3.description
   _kind: 2
   _effects:
-  - {fileID: 11400000, guid: df2c6b863ef7bcd43a0dab704fd90d45, type: 2}
+  - {fileID: 11400000, guid: 00bbc0036c0ae9c469ecedf93e0a0502, type: 2}
   _cooldown: 12
   _trigger: []
   _onCast: []

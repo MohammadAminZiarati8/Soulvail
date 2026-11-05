@@ -17,11 +17,11 @@ MonoBehaviour:
   _descriptionKey: skill.marksman.steady-aim-4.description
   _kind: 2
   _effects:
-  - {fileID: 11400000, guid: c7dd565f66d80244cb934aea35398e0c, type: 2}
+  - {fileID: 11400000, guid: 77035230e4bc8364a9e645ce2669e72d, type: 2}
   _cooldown: 8
   _trigger: []
   _onCast: []
-  _parent: {fileID: 11400000, guid: a4624210d20b1a249b24b25637e5027a, type: 2}
+  _parent: {fileID: 11400000, guid: 6baca68d305e92c47a8ea113a5e467ae, type: 2}
   _icon: {fileID: 21300000, guid: 9b48018d2ce53e94cacaa0cc13bad796, type: 3}
   _hasPact: 0
   _pactEffects: []

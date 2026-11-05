@@ -25,10 +25,10 @@ public sealed class MarksmanPathTests
         Assert.That(path.Id, Is.EqualTo(new ContentId("path.ranger.marksman")));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId("character.ranger")));
         Assert.That(path.Skills.Count, Is.EqualTo(6));
-        Assert.That(path.NodeCount, Is.EqualTo(22));
+        Assert.That(path.NodeCount, Is.EqualTo(20));
 
         var stems = new[] { "steady-aim", "rain-of-arrows", "binding-shot", "eagle-eye", "hunters-snare", "killshot" };
-        var counts = new[] { 5, 4, 4, 3, 3, 3 };
+        var counts = new[] { 4, 4, 3, 3, 3, 3 };
         var levels = new[] { 11, 11, 14, 14, 17, 20 };
         for (int skill = 0; skill < 6; skill++)
         {
@@ -46,6 +46,31 @@ public sealed class MarksmanPathTests
                 Assert.That(row.Ranks.Tier(rank), Is.EqualTo(new[] { new ContentId($"skill.marksman.{stem}{suffix}") }));
             }
         }
+    }
+
+    [Test]
+    public void Marksman_TwentyNodes()
+    {
+        PathSpec path = Marksman().ToSpec(new ContentId(Ranger().Id));
+        Assert.That(path.NodeCount, Is.EqualTo(20));
+        Assert.That(path.NodeCount + Load<SkillTreeDefinition>("Trees/Ranger").ToSpec().NodeCount, Is.EqualTo(29));
+    }
+
+    [Test]
+    public void SteadyAim_RankTwo_IsNinePercent()
+    {
+        SkillSpec rank = Marksman().Skills[0].Ranks[1].ToSpec();
+        Assert.That(rank.Effects.Count, Is.EqualTo(2));
+        AssertModifier(rank.Effects[0], PlayerStat.SteadyAimPerStack, 0.09f);
+        AssertModifier(rank.Effects[1], PlayerStat.SteadyAimStopCrit, 2f);
+    }
+
+    [Test]
+    public void BindingShot_RankTwo_IsOneSecond()
+    {
+        SkillSpec rank = Marksman().Skills[2].Ranks[1].ToSpec();
+        Assert.That(rank.Effects.Count, Is.EqualTo(1));
+        AssertModifier(rank.Effects[0], PlayerStat.BindStun, 1f);
     }
 
     [Test]
@@ -70,17 +95,17 @@ public sealed class MarksmanPathTests
     {
         var stats = new[]
         {
-            PlayerStat.SteadyAimPerStack, PlayerStat.SteadyAimPerStack, PlayerStat.SteadyAimStopCrit,
+            PlayerStat.SteadyAimPerStack, PlayerStat.SteadyAimPerStack,
             PlayerStat.SteadyAimPerStack, PlayerStat.SteadyAimGuard,
         };
-        var values = new[] { 0.05f, 0.02f, 2f, 0.02f, 0.2f };
+        var values = new[] { 0.05f, 0.09f, 0.02f, 0.2f };
         PathDefinition path = Marksman();
 
-        for (int rank = 0; rank < 5; rank++)
+        for (int rank = 0; rank < 4; rank++)
         {
             SkillSpec spec = path.Skills[0].Ranks[rank].ToSpec();
 
-            Assert.That(spec.Effects.Count, Is.EqualTo(1));
+            Assert.That(spec.Effects.Count, Is.EqualTo(rank == 1 ? 2 : 1));
             AssertModifier(spec.Effects[0], stats[rank], values[rank]);
         }
 
@@ -117,7 +142,7 @@ public sealed class MarksmanPathTests
         Assert.That(catalog.TryGetPath(new ContentId("path.ranger.marksman"), out PathSpec path), Is.True);
         Assert.That(catalog.Paths.Count, Is.EqualTo(1));
         Assert.That(path.CharacterId, Is.EqualTo(new ContentId(Ranger().Id)));
-        Assert.That(catalog.Skills.Count, Is.EqualTo(22), "Ranks come from the path, without duplicate registration.");
+        Assert.That(catalog.Skills.Count, Is.EqualTo(20), "Ranks come from the path, without duplicate registration.");
 
         foreach (PathDefinition.SkillField skill in Marksman().Skills)
         {
@@ -244,7 +269,7 @@ public sealed class MarksmanPathTests
     public void Assets_MatchRankTable()
     {
         IReadOnlyList<SkillDefinition> ranks = Marksman().Skills[2].Ranks;
-        Assert.That(ranks.Count, Is.EqualTo(4));
+        Assert.That(ranks.Count, Is.EqualTo(3));
         SkillSpec first = ranks[0].ToSpec();
         Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
         Assert.That(first.Active.Cooldown, Is.EqualTo(12f));
@@ -262,11 +287,9 @@ public sealed class MarksmanPathTests
         Assert.That(bind.AloneSeconds, Is.EqualTo(0.75f));
         Assert.That(bind.DamageOfWeapon, Is.EqualTo(2f));
         Assert.That(ranks[1].ToSpec().Effects.Count, Is.EqualTo(1));
-        AssertModifier(ranks[1].ToSpec().Effects[0], PlayerStat.BindStun, 0.4f);
+        AssertModifier(ranks[1].ToSpec().Effects[0], PlayerStat.BindStun, 1f);
         Assert.That(ranks[2].ToSpec().Effects.Count, Is.EqualTo(1));
-        AssertModifier(ranks[2].ToSpec().Effects[0], PlayerStat.BindStun, 0.6f);
-        Assert.That(ranks[3].ToSpec().Effects.Count, Is.EqualTo(1));
-        var cooldown = ranks[3].ToSpec().Effects[0] as ModifySkillCooldown;
+        var cooldown = ranks[2].ToSpec().Effects[0] as ModifySkillCooldown;
         Assert.That(cooldown, Is.Not.Null);
         Assert.That(cooldown.SkillId, Is.EqualTo(first.Id));
         Assert.That(cooldown.Kind, Is.EqualTo(ModifierKind.Flat));
@@ -278,7 +301,7 @@ public sealed class MarksmanPathTests
     {
         PathSkillSpec bind = Marksman().ToSpec(new ContentId(Ranger().Id)).Skills[2];
         Assert.That(bind.UnlockLevel, Is.EqualTo(14));
-        Assert.That(bind.Ranks.TierCount, Is.EqualTo(4));
+        Assert.That(bind.Ranks.TierCount, Is.EqualTo(3));
         Assert.That(bind.Ranks.Tier(1)[0], Is.EqualTo(new ContentId("skill.marksman.binding-shot")));
     }
 

@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, LV-02c._
+_2026-11-05, LV-02d._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **LV-02c**: Overflow removed from core/modes; full-tree points banked; legacy saves load without bonuses. |
-| **Next task** | LV-02d: Marksman ranks merge to fit 29 points; removed saved ranks refunded. |
-| **Verified** | EditMode 5664: 5663 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
+| **Last merged** | **LV-02d**: Marksman 20 ranks + Ranger 9 = 29; removed saved path ranks refund pending points. |
+| **Next task** | None named; owner selects the next task. |
+| **Verified** | EditMode 5676: 5675 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
 
 ## What works
 
@@ -32,7 +32,7 @@ ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m;
 flees <4 m. Strongest haste refreshes, stacks with slow. Lime staff/glow/ring.
 17–19: healer/guards, wall, gate; XP 32, priority 8.
-Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points; paused free-pick tree, rank pips, Learn; 22 Marksman ranks. Death pays Shards.
+Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points; paused free-pick tree, rank pips, Learn; 20 Marksman ranks (Steady Aim 4, Binding Shot 3). Death pays Shards.
 Save v5; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles; 0.5 s gap; mirrored. Legacy saves expand to six.
 Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,

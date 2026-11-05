@@ -253,3 +253,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] Play a full-tree Ranger run: earning spare points keeps them banked, opens no empty offer and adds no extra stat bonus beyond normal level growth.
 - [ ] Continue a legacy run that spent Overflow levels: nodes/pending points remain, only growth/node bonuses return, and saved HP above the new maximum clamps to it. No PlayMode run was performed for LV-02c.
+
+## LV-02d — Marksman rank merge (2026-11-05)
+
+- In the paused Ranger tree, check Steady Aim has 4 pips and Binding Shot 3; all Ranger + Marksman ranks fit 29 points at level 30. Check the merged descriptions and later-rank effects.
+- Continue a pre-merge save holding Steady Aim 5 and/or Binding Shot 4: the missing ranks disappear, one point per rank is banked, and a second save/Continue does not refund again.

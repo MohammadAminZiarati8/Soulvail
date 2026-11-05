@@ -547,9 +547,9 @@ public sealed class SkillTree
     /// <b>The gates are enforced, and an order that breaks one is refused.</b> A save whose own
     /// picks its own rules would not allow is corrupt rather than merely old, and a tree that
     /// disagrees with itself is worse than a refused resume: every later offer would be drawn
-    /// against gating that is already false. A node this build no longer ships throws instead —
-    /// that is content validation's answer at <c>Start</c> and M2-13a rule 10's argument for not
-    /// refusing it down in the DTO, where an unknown id cannot be told from a typo.
+    /// against gating that is already false. An over-rank id of the installed path is skipped and
+    /// its point returned to the caller.
+    /// Other missing nodes still throw: the DTO cannot distinguish stale content from a typo.
     /// </para>
     /// <para>
     /// <b>Public, where the spec drafted it <c>internal</c>.</b> <c>Soulvail.Tests.Core</c> has no
@@ -571,9 +571,10 @@ public sealed class SkillTree
     /// same tree once let through.
     /// </exception>
     /// <exception cref="KeyNotFoundException">
-    /// An entry is not a node of this tree — content this build no longer ships.
+    /// An entry is not a node of this tree or an over-rank id of its installed path.
     /// </exception>
-    public void Restore(IReadOnlyList<ContentId> takenInOrder) =>
+    /// <returns>The points refunded for removed path ranks; no effects or events are replayed for them.</returns>
+    public int Restore(IReadOnlyList<ContentId> takenInOrder) =>
         Restore(takenInOrder, Array.Empty<ContentId>());
 
     /// <summary>
@@ -603,9 +604,10 @@ public sealed class SkillTree
     /// <paramref name="takenInOrder"/> or names a node with no Pact.
     /// </exception>
     /// <exception cref="KeyNotFoundException">
-    /// An entry of <paramref name="takenInOrder"/> is not a node of this tree.
+    /// An entry of <paramref name="takenInOrder"/> is neither a node nor a removed path rank.
     /// </exception>
-    public void Restore(IReadOnlyList<ContentId> takenInOrder, IReadOnlyList<ContentId> pacted)
+    /// <returns>The number of removed path ranks, to bank as pending points.</returns>
+    public int Restore(IReadOnlyList<ContentId> takenInOrder, IReadOnlyList<ContentId> pacted)
     {
         if (takenInOrder is null)
         {
@@ -642,9 +644,20 @@ public sealed class SkillTree
             }
         }
 
+        var refunded = new HashSet<ContentId>();
         for (int i = 0; i < takenInOrder.Count; i++)
         {
             ContentId id = takenInOrder[i];
+
+            if (!_index.ContainsKey(id) && IsRemovedPathRank(id))
+            {
+                if (!refunded.Add(id) || Contains(pacted, id))
+                {
+                    throw new ArgumentException("A removed rank cannot be duplicated or pacted.", nameof(takenInOrder));
+                }
+
+                continue;
+            }
 
             int ordinal = Locate(id);
             Gate gate = Check(ordinal);
@@ -659,6 +672,34 @@ public sealed class SkillTree
 
             Record(ordinal, publish: false, asPact: Contains(pacted, id));
         }
+
+        return refunded.Count;
+    }
+
+    private bool IsRemovedPathRank(ContentId id)
+    {
+        if (Rules.PathId.Value is null || id.Value is null)
+        {
+            return false;
+        }
+
+        for (int branch = SkillTreeSpec.BranchCount; branch < Rules.BranchCount; branch++)
+        {
+            SkillBranchSpec ranks = Rules.Branch(branch);
+            string prefix = ranks.Tier(1)[0].Value + "-";
+            if (!id.Value.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            string suffix = id.Value.Substring(prefix.Length);
+            return int.TryParse(suffix, System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out int rank)
+                && rank > ranks.TierCount
+                && suffix == rank.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return false;
     }
 
     /// <summary>

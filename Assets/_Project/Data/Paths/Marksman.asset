@@ -19,7 +19,6 @@ MonoBehaviour:
   - _ranks:
     - {fileID: 11400000, guid: 7ba02d0596bfb1b4085898892c1d9085, type: 2}
     - {fileID: 11400000, guid: b4d214eef35a6d740b5211d22d76f5f1, type: 2}
-    - {fileID: 11400000, guid: a4624210d20b1a249b24b25637e5027a, type: 2}
     - {fileID: 11400000, guid: 6baca68d305e92c47a8ea113a5e467ae, type: 2}
     - {fileID: 11400000, guid: 886e204903018814ab4867702a2ddedb, type: 2}
     _unlockLevel: 11
@@ -32,7 +31,6 @@ MonoBehaviour:
   - _ranks:
     - {fileID: 11400000, guid: 8fb546fcd38ca6042a68ed4b43fc6e31, type: 2}
     - {fileID: 11400000, guid: c50c707f0bf272445a7346f10cb522aa, type: 2}
-    - {fileID: 11400000, guid: 7ad700421dfa3e946910739c44578069, type: 2}
     - {fileID: 11400000, guid: ddfab7f0b6200fa479a019ffe24f0fc2, type: 2}
     _unlockLevel: 14
   - _ranks:

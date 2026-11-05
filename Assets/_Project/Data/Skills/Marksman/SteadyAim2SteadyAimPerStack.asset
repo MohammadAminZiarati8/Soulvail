@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.ModifyStatDefinition
   _stat: 20
   _kind: 0
-  _value: 0.02
+  _value: 0.09
   _target: 0

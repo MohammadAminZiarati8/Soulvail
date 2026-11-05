@@ -574,23 +574,15 @@ MonoBehaviour:
   - _key: skill.marksman.steady-aim-2.name
     _text: Steady Aim 2
   - _key: skill.marksman.steady-aim-2.description
-    _text: Each standing arrow adds +7% damage, up to 5 times. Moving or rolling
-      resets it.
+    _text: "Standing arrows add 14% damage per stack, up to 5 stacks. The first arrow after stopping deals double damage. Moving or rolling resets stacks."
   - _key: skill.marksman.steady-aim-3.name
     _text: Steady Aim 3
   - _key: skill.marksman.steady-aim-3.description
-    _text: The first arrow after stopping deals double damage. Standing arrows still
-      add +7% damage, up to 5 times.
+    _text: "Standing arrows add 16% damage per stack, up to 5 stacks. The first arrow after stopping still deals double damage."
   - _key: skill.marksman.steady-aim-4.name
     _text: Steady Aim 4
   - _key: skill.marksman.steady-aim-4.description
-    _text: Each standing arrow adds +9% damage, up to 5 times. The first arrow after
-      stopping still deals double damage.
-  - _key: skill.marksman.steady-aim-5.name
-    _text: Steady Aim 5
-  - _key: skill.marksman.steady-aim-5.description
-    _text: At 5 standing-arrow stacks, take 20% less damage. Moving or rolling resets
-      the stacks.
+    _text: "At 5 standing-arrow stacks, take 20% less damage. Moving or rolling resets the stacks."
   - _key: skill.marksman.eagle-eye.name
     _text: Eagle Eye 1
   - _key: skill.marksman.eagle-eye.description
@@ -637,15 +629,11 @@ MonoBehaviour:
   - _key: skill.marksman.binding-shot-2.name
     _text: Binding Shot 2
   - _key: skill.marksman.binding-shot-2.description
-    _text: Bound stun lasts 0.4 s longer.
+    _text: "Bound stun lasts 1.0 s longer."
   - _key: skill.marksman.binding-shot-3.name
     _text: Binding Shot 3
   - _key: skill.marksman.binding-shot-3.description
-    _text: Bound stun lasts another 0.6 s longer.
-  - _key: skill.marksman.binding-shot-4.name
-    _text: Binding Shot 4
-  - _key: skill.marksman.binding-shot-4.description
-    _text: Binding Shot cooldown is reduced by 3 s.
+    _text: "Binding Shot cooldown is reduced by 3 s."
   - _key: skill.marksman.hunters-snare.name
     _text: Hunter's Snare
   - _key: skill.marksman.hunters-snare.description

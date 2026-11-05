@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, SK-01b complete._
+_2026-11-05, SK-02 complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **SK-01b** — Skirmisher path and passives authored. |
-| **Next task** | **SK-02** — Ranger run-and-shoot animation, on the owner's go. |
-| **Verified** | EditMode 5730 (5729 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
+| **Last merged** | **SK-02** — Ranger run-and-shoot animation. |
+| **Next task** | **SK-03a** — Ricochet Shot in core, on the owner's go. |
+| **Verified** | EditMode 5740 (5739 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
 
 ## What works
 
@@ -39,7 +39,7 @@ Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
-Skirmisher path and both passives are live.
+Skirmisher path, both passives and run-and-shoot are live.
 
 ## Missing
 

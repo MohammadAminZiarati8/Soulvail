@@ -112,6 +112,10 @@ namespace Soulvail.Game.Views
         /// </summary>
         private const float VelocityFollowRate = 24f;
 
+        // Ignore the motor's residual slide when choosing between standing and running poses.
+        private const float MovingSpeedSquared = 0.05f * 0.05f;
+        private const float RunReleaseFadeSeconds = 0.15f;
+
         /// <summary><c>bow_withString</c>'s one blend shape: the string pulled back, at weight 100.</summary>
         private const string DrawBlendShape = "Draw";
 
@@ -185,6 +189,7 @@ namespace Soulvail.Game.Views
         private IDisposable _damagedSubscription;
 
         private Vector3 _shownVelocity;
+        private float _shotPoseLeft;
         private int _upperLayer = -2;
         private int _flinchLayer = -2;
         private int _drawShape = -2;
@@ -421,6 +426,14 @@ namespace Soulvail.Game.Views
             _animator.SetFloat(_moveZId, moveZ);
             _animator.SetFloat(_moveSpeedId, playback);
 
+            _shotPoseLeft = Mathf.Max(0f, _shotPoseLeft - dt);
+            // Core's hold fact distinguishes the ordinary Ranger from a bow allowed to shoot
+            // while moving. Between running shots the locomotion clips own the carry pose.
+            float upperWeight = !_holding && target.sqrMagnitude > MovingSpeedSquared
+                && !_killshotWinding && _castUpLeft == 0f && _bindingReleaseLeft == 0f
+                ? Mathf.Clamp01(_shotPoseLeft / RunReleaseFadeSeconds)
+                : 1f;
+            SetUpperWeight(_rolling || _dead ? 0f : upperWeight);
             PullString();
             WeighFlinch();
         }
@@ -595,6 +608,8 @@ namespace Soulvail.Game.Views
                 return;
             }
             _killshotWinding = true;
+            _shotPoseLeft = 0f;
+            SetUpperWeight(1f);
             _killshotDirection = new Vector3(evt.Direction.X, 0f, evt.Direction.Z);
             transform.rotation = Quaternion.LookRotation(_killshotDirection, Vector3.up);
             _castUpLeft = 0f;
@@ -649,7 +664,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnAttacked(PlayerAttacked evt)
         {
-            if (_castUpLeft > 0f || _killshotWinding)
+            if (_castUpLeft > 0f || _killshotWinding || _rolling || _dead)
             {
                 return;
             }
@@ -659,6 +674,19 @@ namespace Soulvail.Game.Views
             }
 
             _animator.SetFloat(_shotSpeedId, ShotSpeed(evt.DrawSeconds));
+            float drawSeconds = evt.DrawSeconds > 0f && !float.IsInfinity(evt.DrawSeconds) ? evt.DrawSeconds : 0f;
+            _shotPoseLeft = drawSeconds + RunReleaseFadeSeconds;
+
+            // An invisible Aim or Draw can be left over from the previous running shot.
+            // Start a fresh draw when bringing that layer back over the carry pose.
+            int layer = ResolveUpperLayer();
+            if (layer >= 0 && _animator.isInitialized && _animator.GetLayerWeight(layer) == 0f)
+            {
+                SetUpperWeight(1f);
+                _animator.ResetTrigger(_shootId);
+                _animator.Play(_drawStateId, layer, 0f);
+                return;
+            }
 
             if (IsDrawingOrDrawn())
             {
@@ -676,11 +704,13 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnFired(ProjectileFired evt)
         {
-            if (_animator == null || evt.SourceId != 0 || _castUpLeft > 0f || _killshotWinding)
+            if (_animator == null || evt.SourceId != 0 || _castUpLeft > 0f || _killshotWinding || _rolling || _dead)
             {
                 return;
             }
 
+            _shotPoseLeft = RunReleaseFadeSeconds;
+            SetUpperWeight(1f);
             _animator.ResetTrigger(_shootId);
             _animator.SetTrigger(_releaseId);
         }
@@ -753,6 +783,10 @@ namespace Soulvail.Game.Views
         private void OnHoldFireChanged(HoldFireChanged evt)
         {
             _holding = evt.IsHolding;
+            if (_holding)
+            {
+                _shotPoseLeft = 0f;
+            }
             Aim();
         }
 
@@ -796,6 +830,10 @@ namespace Soulvail.Game.Views
             local = length > 0f && !float.IsInfinity(length) ? local / length : Vector3.forward;
 
             _rolling = true;
+            _shotPoseLeft = 0f;
+            _animator.ResetTrigger(_shootId);
+            _animator.ResetTrigger(_releaseId);
+            SetUpperWeight(0f);
 
             _animator.SetFloat(_dodgeXId, local.x);
             _animator.SetFloat(_dodgeZId, local.z);
@@ -846,6 +884,8 @@ namespace Soulvail.Game.Views
         {
             CancelKillshot();
             _dead = true;
+            _shotPoseLeft = 0f;
+            SetUpperWeight(0f);
 
             if (_volleyGlow != null)
             {
@@ -914,7 +954,7 @@ namespace Soulvail.Game.Views
                     _animator.GetAnimatorTransitionInfo(_upperLayer).normalizedTime);
             }
 
-            _bow.SetBlendShapeWeight(_drawShape, pull * FullBlendShapeWeight);
+            _bow.SetBlendShapeWeight(_drawShape, pull * _animator.GetLayerWeight(_upperLayer) * FullBlendShapeWeight);
         }
 
         /// <remarks>
@@ -941,15 +981,28 @@ namespace Soulvail.Game.Views
                 state.normalizedTime);
         }
 
-        /// <summary>The upper-body layer is in, or crossfading into, <c>Draw</c> or <c>Aim</c>.</summary>
-        private bool IsDrawingOrDrawn()
+        private int ResolveUpperLayer()
         {
             if (_upperLayer == -2)
             {
                 _upperLayer = _animator.GetLayerIndex(UpperBodyLayer);
             }
 
-            if (_upperLayer < 0 || !_animator.isInitialized)
+            return _upperLayer;
+        }
+
+        private void SetUpperWeight(float weight)
+        {
+            if (_animator != null && ResolveUpperLayer() >= 0)
+            {
+                _animator.SetLayerWeight(_upperLayer, weight);
+            }
+        }
+
+        /// <summary>The upper-body layer is in, or crossfading into, <c>Draw</c> or <c>Aim</c>.</summary>
+        private bool IsDrawingOrDrawn()
+        {
+            if (ResolveUpperLayer() < 0 || !_animator.isInitialized)
             {
                 return false;
             }

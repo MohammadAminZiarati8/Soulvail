@@ -405,7 +405,7 @@ AnimatorController:
   - serializedVersion: 5
     m_Name: Upper Body
     m_StateMachine: {fileID: 2371363545473673572}
-    m_Mask: {fileID: 31900000, guid: 735736b75046b5f4fb757ec3ecd5095a, type: 2}
+    m_Mask: {fileID: 31900000, guid: 69354b67dbb14966a353df245bd51420, type: 2}
     m_Motions: []
     m_Behaviours: []
     m_BlendingMode: 0
@@ -417,7 +417,7 @@ AnimatorController:
   - serializedVersion: 5
     m_Name: Flinch
     m_StateMachine: {fileID: -4033128748130770683}
-    m_Mask: {fileID: 31900000, guid: 735736b75046b5f4fb757ec3ecd5095a, type: 2}
+    m_Mask: {fileID: 31900000, guid: 69354b67dbb14966a353df245bd51420, type: 2}
     m_Motions: []
     m_Behaviours: []
     m_BlendingMode: 0
@@ -639,6 +639,9 @@ AnimatorStateTransition:
   m_Conditions:
   - m_ConditionMode: 1
     m_ConditionEvent: Release
+    m_EventTreshold: 0
+  - m_ConditionMode: 2
+    m_ConditionEvent: Dodging
     m_EventTreshold: 0
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: 1703939541646476959}

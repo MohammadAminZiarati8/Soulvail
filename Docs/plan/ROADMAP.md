@@ -59,7 +59,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **SK-01a** — Running Shot and Hit and Run in core: moving fire rate, aim-facing, speed burst, Momentum (M)
 - [x] **SK-01b** — The Skirmisher authored: the Ranger's second path slot, its card, both passives as assets (M)
-- [ ] [**SK-02**](tasks/SK-02-the-ranger-shoots-on-the-run.md) — The Ranger shoots on the run: bow up, strafing legs, upper-body release (M)
+- [x] **SK-02** — The Ranger shoots on the run: bow up, strafing legs, upper-body release (M)
 - [ ] [**SK-03a**](tasks/SK-03a-ricochet-shot.md) — Ricochet Shot in core: an arrow chain that bounces to the nearest unhit enemy (M)
 - [ ] [**SK-03b**](tasks/SK-03b-ricochet-shot-drawn.md) — Ricochet Shot drawn and authored: bright trail, bounce sparks (M)
 - [ ] [**SK-04a**](tasks/SK-04a-second-wind.md) — Second Wind in core: roll cooldown, the after-roll guard, two charges (M)

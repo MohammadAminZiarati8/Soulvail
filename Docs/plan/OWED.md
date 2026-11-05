@@ -292,3 +292,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SK-01b — Skirmisher path
 
 - In the Editor, use DT-01 at stage 12. Check that Marksman and Skirmisher both show at level 11, then choose Skirmisher. Learn Running Shot and compare moving and standing cadence. At level 14, learn Hit and Run, land a hit, and check the speed burst and cyan-rimmed status icon.
+
+## SK-02 — The Ranger shoots on the run
+
+- [ ] **Editor:** Take Running Shot on the Skirmisher. With a target to the side, strafe and check that the Ranger aims and releases while its legs keep running. Run away and check the backpedal shot. With no target, check the normal bow-carry run.

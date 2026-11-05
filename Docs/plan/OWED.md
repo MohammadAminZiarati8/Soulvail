@@ -258,3 +258,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - In the paused Ranger tree, check Steady Aim has 4 pips and Binding Shot 3; all Ranger + Marksman ranks fit 29 points at level 30. Check the merged descriptions and later-rank effects.
 - Continue a pre-merge save holding Steady Aim 5 and/or Binding Shot 4: the missing ranks disappear, one point per rank is banked, and a second save/Continue does not refund again.
+
+## FX-01 — No banked points past the level budget
+
+- [ ] **[Editor]** Continue the owner's level-30 save and verify that the point badge shows 0 when the tree is full.

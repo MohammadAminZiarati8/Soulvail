@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, LV-02d._
+_2026-11-05, FX-01._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **LV-02d**: Marksman 20 ranks + Ranger 9 = 29; removed saved path ranks refund pending points. |
-| **Next task** | FX-01 → FX-04 specced (playtest fixes); owner says go. |
-| **Verified** | EditMode 5676: 5675 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
+| **Last merged** | **FX-01**: Resume caps banked points at the capped level's budget after tree restore and refunds. |
+| **Next task** | FX-02 |
+| **Verified** | EditMode 5681: 5680 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new warnings; format clean. |
 
 ## What works
 

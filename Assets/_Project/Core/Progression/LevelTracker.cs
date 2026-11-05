@@ -241,7 +241,7 @@ public sealed class LevelTracker
     /// </remarks>
     internal void Restore(int level, float xp, int pendingLevelUps)
     {
-        // LV-02a rule 6: a save above the cap comes back at it, its points kept.
+        // LV-02a rule 6: a save above the cap comes back at it. Resume clamps points after tree restore.
         Level = MaxLevel > 0 && level > MaxLevel ? MaxLevel : level;
         Xp = xp;
         PendingLevelUps = pendingLevelUps;

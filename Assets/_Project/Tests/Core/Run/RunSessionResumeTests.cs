@@ -592,12 +592,8 @@ public sealed class RunSessionResumeTests
     [Test]
     public void Resume_FormerOverflowLevels_GrantNothing()
     {
-        BuildWithTree(seed: 7, fullLegacyTree: true);
-        var taken = new ContentId[20];
-        for (int i = 0; i < taken.Length; i++)
-        {
-            taken[i] = new ContentId($"skill.legacy.n{i}");
-        }
+        BuildWithTree(seed: 7, legacyTreeSize: 20);
+        ContentId[] taken = LegacyNodes(20);
 
         // 30 - 1 - 20 - 2 = 7 levels formerly spent without nodes. Only level growth returns.
         StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 30, pendingLevelUps: 2,
@@ -671,6 +667,74 @@ public sealed class RunSessionResumeTests
         AssertNothingStands();
     }
 
+    // ---- FX-01: banked points on resume --------------------------------------------------------
+
+    [Test]
+    public void Resume_AboveCapWithFullTree_KeepsNoExtraPoints()
+    {
+        BuildWithTree(seed: 7, legacyTreeSize: 29, maxLevel: 30);
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 36, pendingLevelUps: 6,
+            takenNodeIds: LegacyNodes(29)));
+
+        Assert.That((_session.State.Level, _session.State.TakenNodeCount, _session.State.PendingLevelUps),
+            Is.EqualTo((30, 29, 0)));
+    }
+
+    [Test]
+    public void Resume_AboveCapWithRoom_ClampsToRoom()
+    {
+        BuildWithTree(seed: 7, legacyTreeSize: 29, maxLevel: 30);
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 36, pendingLevelUps: 10,
+            takenNodeIds: LegacyNodes(25)));
+
+        Assert.That((_session.State.Level, _session.State.TakenNodeCount, _session.State.PendingLevelUps),
+            Is.EqualTo((30, 25, 4)));
+    }
+
+    [Test]
+    public void Resume_InsideBudget_KeepsPoints()
+    {
+        BuildWithTree(seed: 7, maxLevel: 30);
+        ContentId[] taken = TreeSkills().Select(skill => skill.Id).ToArray();
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 12, pendingLevelUps: 6, takenNodeIds: taken));
+
+        Assert.That((_session.State.Level, _session.State.TakenNodeCount, _session.State.PendingLevelUps),
+            Is.EqualTo((12, 5, 6)));
+    }
+
+    [Test]
+    public void Resume_RefundPastBudget_IsClamped()
+    {
+        const string rank = "skill.test.path-rank";
+        var path = new PathSpec(new ContentId("path.test"), new ContentId(OathboundId),
+            new LocKey("path.test.name"), new LocKey("path.test.desc"),
+            new[] { new PathSkillSpec(Branch('p', new[] { rank }), unlockLevel: 11) });
+        BuildWithTree(seed: 7, maxLevel: 30, path: path);
+        var taken = new[] { new ContentId(rank), new ContentId(rank + "-2") };
+
+        // The saved level earned 30 points. At the cap the remaining rank leaves room for 28.
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 31, pendingLevelUps: 28, takenNodeIds: taken));
+
+        Assert.That((_session.State.Level, _session.State.TakenNodeCount, _session.State.PendingLevelUps),
+            Is.EqualTo((30, 1, 28)));
+    }
+
+    [Test]
+    public void Resume_Clamp_PublishesNothing()
+    {
+        BuildWithTree(seed: 7, legacyTreeSize: 29, maxLevel: 30);
+
+        StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 36, pendingLevelUps: 6,
+            takenNodeIds: LegacyNodes(29)));
+
+        Assert.That(_events.Count<RunStarted>(), Is.EqualTo(1));
+        Assert.That(_events.Count<LeveledUp>(), Is.Zero);
+        Assert.That(_events.Count<XpChanged>(), Is.Zero);
+    }
+
     // ---- LV-01a: level growth is derived from the saved level (rule 5) ----------------------------
 
     [Test]
@@ -691,7 +755,7 @@ public sealed class RunSessionResumeTests
     [Test]
     public void Resume_ClampsToTheCap()
     {
-        // LV-02a rule 6: a save above the cap comes back at it, points kept, experience gone.
+        // Without a tree, a save above the cap keeps its banked points and loses excess experience.
         Build(seed: 7, xp: new XpCurve(20f, 12f, 1.4f, 3));
 
         StartResumed(stage: 4, Snapshot(4, _random.Seed, level: 5, xp: 40f, pendingLevelUps: 2));
@@ -1626,47 +1690,47 @@ public sealed class RunSessionResumeTests
     /// Leaves one of the tree's node ids unauthored, for the row about an authoring mistake being
     /// caught at <c>Start</c>.
     /// </param>
-    private void BuildWithTree(int seed, bool treeNamesAStranger = false, bool fullLegacyTree = false)
+    private void BuildWithTree(int seed, bool treeNamesAStranger = false, int legacyTreeSize = 0,
+        int maxLevel = 0, PathSpec path = null)
     {
         _events = new RecordingEvents();
         _random = new FixedRandom(seed, Alternating(8_192));
         _clock = new FixedClock(Instant);
-        _mode = Mode(fullLegacyTree ? new LevelGrowthSpec(0.03f, 0.02f) : default);
+        _mode = Mode(legacyTreeSize > 0 ? new LevelGrowthSpec(0.03f, 0.02f) : default,
+            new XpCurve(20f, 12f, 1.4f, maxLevel));
 
         IReadOnlyList<SkillSpec> skills = treeNamesAStranger
             ? new[] { Passive(NodeDamage, 0.15f), Passive(NodeB, 0.05f), Passive(NodeC, 0.05f) }
             : TreeSkills();
 
         SkillTreeSpec tree = Tree();
-        if (fullLegacyTree)
+        if (legacyTreeSize > 0)
         {
-            var ids = new string[18];
-            var legacy = new SkillSpec[20];
-            for (int i = 0; i < legacy.Length; i++)
-            {
-                string id = $"skill.legacy.n{i}";
-                legacy[i] = Passive(id, 0f);
-                if (i < ids.Length)
-                {
-                    ids[i] = id;
-                }
-            }
-
+            string[] ids = LegacyNodes(legacyTreeSize).Select(id => id.Value).ToArray();
             tree = new SkillTreeSpec(new ContentId(TreeIdValue), new ContentId(OathboundId),
-                new[] { Branch('a', ids), Branch('b', new[] { "skill.legacy.n18" }),
-                    Branch('c', new[] { "skill.legacy.n19" }) });
-            skills = legacy;
+                new[] { Branch('a', ids[..^2]), Branch('b', new[] { ids[^2] }),
+                    Branch('c', new[] { ids[^1] }) });
+            skills = ids.Select(id => Passive(id, 0f)).ToArray();
+        }
+
+        if (path is not null)
+        {
+            skills = skills.Append(Passive(path.Skills[0].Ranks.Tier(1)[0].Value, 0f)).ToArray();
         }
 
         _catalog = new ContentCatalog(
-            new[] { Oathbound(TreeMaxHp) },
+            new[] { Oathbound(TreeMaxHp, path: path) },
             new[] { Husk() },
             new[] { _mode },
             skills,
-            new[] { tree });
+            new[] { tree },
+            paths: path is null ? null : new[] { path });
 
         _session = SessionOver(_events);
     }
+
+    private static ContentId[] LegacyNodes(int count) =>
+        Enumerable.Range(0, count).Select(i => new ContentId($"skill.legacy.n{i}")).ToArray();
 
     /// <summary>
     /// The same world with a tree whose branch 0 holds <paramref name="actives"/> Actives beside the
@@ -2043,7 +2107,8 @@ public sealed class RunSessionResumeTests
     /// restores to.
     /// </param>
     /// <param name="veilrot">The class's relationship with the Veil; none unless a row says.</param>
-    private static CharacterSpec Oathbound(float maxHp = MaxHp, VeilrotSpec veilrot = null) => new CharacterSpec(
+    private static CharacterSpec Oathbound(float maxHp = MaxHp, VeilrotSpec veilrot = null,
+        PathSpec path = null) => new CharacterSpec(
         new ContentId(OathboundId),
         new LocKey("character.oathbound.name"),
         new LocKey("character.oathbound.description"),
@@ -2057,7 +2122,9 @@ public sealed class RunSessionResumeTests
         new FocusSpec(0.4f, 1f, 1f),
         new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
         new ShieldSpec(ShieldMax, 3f, 1f),
-        veilrot: veilrot);
+        veilrot: veilrot,
+        pathIds: path is null ? null : new[] { path.Id },
+        pathOpensAtLevel: path is null ? 0 : 11);
 
     /// <summary>
     /// A tree of three branches, with three nodes sharing branch 0's only tier so that every one of

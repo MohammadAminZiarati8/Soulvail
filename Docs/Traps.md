@@ -193,6 +193,7 @@ call. A PlayMode run clears the Console — sweep right after the run you mean t
 
 ## 7. Tests, NUnit, allocation
 
+- **Enemy health-bar sizing depends on screen DPI.** Both `EnemyHealthBarTests.Bar_IsSizedInDp` cases pass in the live Editor at 120 DPI and fail in the SK-05b batch runner.
 - **Allocation:** use `AllocationAssert.None` (`Tests/Core/Support/`), never a hand-rolled probe.
   It can't capture a `stackalloc` span (use a heap array). No `RecordingEvents` inside it (boxes);
   grow and `Clear` recording fakes first; invalidate caches inside the measured body; prove the

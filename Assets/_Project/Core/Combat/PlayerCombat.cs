@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -393,7 +394,7 @@ public sealed class PlayerCombat
         _weaponSpec = spec.Weapon;
         HitAndRun = new HitAndRun(moveSpeed);
         _candidates = new TargetCandidate[enemyCapacity];
-        _shots = new Projectile[enemyCapacity];
+        _shots = new Projectile[enemyCapacity + StormRun.MaxArrows];
         _hitIds = new int[enemyCapacity];
         _chargeHitIds = new int[enemyCapacity];
 
@@ -654,8 +655,13 @@ public sealed class PlayerCombat
 
     private readonly ContentId _secondWindStatus = new("status.second-wind");
     private StatusBoard _status;
+    private StormRunHandler _stormRun;
 
     public bool IsHeld { get; private set; }
+
+    internal void AttachStormRun(StormRunHandler stormRun) => _stormRun = stormRun;
+
+    internal void EndStormRun() => _stormRun?.Clear();
 
     public void AttachStatus(StatusBoard status)
     {
@@ -739,7 +745,7 @@ public sealed class PlayerCombat
     /// <para>
     /// <b>A queue since RS-03b, and this is its head.</b> A volley is several shots from one damage
     /// frame, so one slot overwrote all but the last. The queue holds up to
-    /// the enemy capacity, in registry order.
+    /// the enemy capacity in registry order, plus up to eight arrows from a Storm Run roll.
     /// </para>
     /// <para>
     /// <b>A new damage frame still replaces what was not taken</b>, which is
@@ -906,6 +912,7 @@ public sealed class PlayerCombat
         }
 
         _deathAnnounced = true;
+        EndStormRun();
         SetKillshotWindUp(false);
         _events.Publish(new PlayerDied(now));
     }
@@ -1344,7 +1351,8 @@ public sealed class PlayerCombat
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
         // counted as another tick of standing still.
-        TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
+        _stormRun?.ExpireBeforeRoll(now);
+        bool rollEnded = TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1416,15 +1424,21 @@ public sealed class PlayerCombat
             FaceDirection = null;
         }
 
+        bool fireStormVolley = rollEnded && _stormRun?.IsActive == true && !IsDead
+            && _movementSkill.Kind == MovementSkillKind.Charge && _weaponSpec.Kind == WeaponKind.Projectile;
+        if (fireStormVolley)
+        {
+            // A new damage frame replaces stale shots. A weapon shot can share this frame.
+            ClearShots();
+        }
+
         if (IsHeld)
         {
             Volley?.ClearRequest();
-            return;
         }
-
         // A manual Volley uses this frame's target and senses, without waiting for a basic shot.
         // Refuse a targetless/blocked request this tick rather than buffering it into a later cast.
-        if (Volley?.HasRequest == true)
+        else if (Volley?.HasRequest == true)
         {
             if (IsTargetInWeaponRange(count))
             {
@@ -1437,6 +1451,11 @@ public sealed class PlayerCombat
         {
             float rateMultiplier = firesWhileMoving && (stickPushed || !_isStanding) ? MovingFireRate.Value : 1f;
             TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies, rateMultiplier);
+        }
+
+        if (fireStormVolley)
+        {
+            QueueStormVolley(snapshot.PlayerPosition, enemies, now);
         }
     }
 
@@ -1453,6 +1472,7 @@ public sealed class PlayerCombat
     /// </remarks>
     public void Reset()
     {
+        EndStormRun();
         SetKillshotWindUp(false);
         HitAndRun.Reset();
         SteadyAim.OnMoved();
@@ -1550,7 +1570,7 @@ public sealed class PlayerCombat
     /// <see cref="Charge"/>'s own remarks refuse.
     /// </para>
     /// </remarks>
-    private void TickCharge(
+    private bool TickCharge(
         float dt,
         float now,
         Vector2 stickXZ,
@@ -1562,6 +1582,7 @@ public sealed class PlayerCombat
         // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
         // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
         // turn, for the reason TickWeapon's is: combat runs before the motor.
+        bool wasActive = Charge.IsActive;
         bool wasGuarding = Charge.IsGuarding;
         bool started = Charge.Tick(dt, now, stickXZ, new Vector2(bodyFacing.X, bodyFacing.Z), allowStart: !IsHeld);
         if (wasGuarding != Charge.IsGuarding)
@@ -1633,6 +1654,9 @@ public sealed class PlayerCombat
         }
 
         _wasChargeInvulnerable = invulnerable;
+
+        // A buffered roll can start on the same tick the previous roll ends.
+        return wasActive && (started || !Charge.IsActive);
     }
 
     internal void ResetSecondWind()
@@ -1936,10 +1960,71 @@ public sealed class PlayerCombat
         // target with no agent behind it is nothing to shoot at.
     }
 
+    private void QueueStormVolley(Vector3 origin, ReadOnlySpan<EnemyAgent> enemies, float now)
+    {
+        float range = ConeRange(Weapon.Range.Value);
+        if (!(range > 0f))
+        {
+            return;
+        }
+
+        Span<(int Index, float DistanceSquared)> nearest = stackalloc (int, float)[StormRun.MaxArrows];
+        int count = 0;
+        float rangeSquared = range * range;
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            EnemyAgent candidate = enemies[i];
+            if (!candidate.IsAlive || !candidate.IsVulnerable || candidate.IsHidden || candidate.Blackboard.IsBehindCover)
+            {
+                continue;
+            }
+
+            float dx = candidate.Position.X - origin.X;
+            float dz = candidate.Position.Z - origin.Z;
+            float distanceSquared = (dx * dx) + (dz * dz);
+            if (!(distanceSquared <= rangeSquared))
+            {
+                continue;
+            }
+
+            // Keep only the closest eight, with the usual lowest-id tie break.
+            int slot = count;
+            while (slot > 0)
+            {
+                var previous = nearest[slot - 1];
+                if (previous.DistanceSquared < distanceSquared
+                    || (previous.DistanceSquared == distanceSquared && enemies[previous.Index].Id < candidate.Id))
+                {
+                    break;
+                }
+
+                if (slot < nearest.Length)
+                {
+                    nearest[slot] = previous;
+                }
+
+                slot--;
+            }
+
+            if (slot < nearest.Length)
+            {
+                nearest[slot] = (i, distanceSquared);
+                count = Math.Min(count + 1, nearest.Length);
+            }
+        }
+
+        float damage = Weapon.Damage.Value * _stormRun.DamageMultiplier * HitAndRun.DamageMultiplier(now);
+        for (int i = 0; i < count; i++)
+        {
+            EnemyAgent candidate = enemies[nearest[i].Index];
+            Vector3 lead = ProjectileLead.Solve(origin, candidate.Position, candidate.Velocity, _weaponSpec.ShotSpeed);
+            QueueShot(origin, lead, candidate.Position, damage, isVolley: true);
+        }
+    }
+
     /// <summary>One of this class's shots, onto the end of the queue.</summary>
     /// <remarks>
-    /// Cannot overflow: <see cref="OfferShot"/> clears the queue first and writes at most
-    /// one arrow per registry entry, which fits the enemy-capacity queue.
+    /// The weapon writes at most one arrow per registry entry. Storm Run can add eight more.
     /// <paramref name="isVolley"/> marks a volley's arrow for the view (RS-07b) and changes nothing here.
     /// </remarks>
     private void QueueShot(Vector3 origin, Vector3 target, Vector3 targetPosition, float damage, bool isVolley)

@@ -668,6 +668,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         effects.Register<RicochetShot>(new RicochetShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
         _whirlwind = new WhirlwindHandler(projectiles, combat, motor, playerStats, character, _clock, _events);
         effects.Register<Whirlwind>(_whirlwind);
+        var stormRun = new StormRunHandler(combat, playerStats, _timed, _clock, _events);
+        effects.Register<StormRun>(stormRun);
+        combat.AttachStormRun(stormRun);
         effects.Register<BindingShot>(new BindingShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
@@ -922,6 +925,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             mode.HasSanctum);
 
         combat.AttachStatus(State.Status);
+        stormRun.AttachStatus(State.Status);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
         // tick of the next one think it has a motor to stop.
@@ -1565,6 +1569,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             {
                 State.Projectiles.ClearRicochets();
                 _whirlwind.Clear();
+                State.Combat.EndStormRun();
             }
 
             if (stageCleared)
@@ -1579,6 +1584,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             {
                 State.Projectiles.ClearRicochets();
                 _whirlwind.Clear();
+                State.Combat.EndStormRun();
                 _traps.Clear();
                 _killshot.Clear();
 
@@ -2147,6 +2153,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
         _killshot.Clear();
         _whirlwind.Clear();
+        State.Combat.EndStormRun();
         _events.Publish(new RunEnded(State.Time));
 
         IsRunning = false;

@@ -7,7 +7,7 @@ namespace Soulvail.Game.Authoring
     public sealed class KillshotDefinition : EffectDefinition
     {
         [SerializeField] private float _windUp = 0.7f;
-        [SerializeField] private float _halfWidth = 0.5f;
+        [SerializeField] private float _halfWidth = 1.5f;
         [SerializeField] private float _length = 30f;
         [SerializeField] private float _damageOfWeapon = 8f;
         [SerializeField] private float _falloffPerHit = 0.15f;

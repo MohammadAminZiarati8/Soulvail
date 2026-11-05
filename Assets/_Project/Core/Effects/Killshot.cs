@@ -148,7 +148,7 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
             }
             else
             {
-                _enemies.ApplyDamage(agent.Id, damage * factor, now, _player);
+                _enemies.ApplyGuardPiercingDamage(agent.Id, damage * factor, now, _player);
             }
         }
 

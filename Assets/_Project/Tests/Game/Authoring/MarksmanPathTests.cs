@@ -377,7 +377,7 @@ public sealed class MarksmanPathTests
         var shot = first.Active.OnCast[0] as Killshot;
         Assert.That(shot, Is.Not.Null);
         Assert.That(shot.WindUp, Is.EqualTo(0.7f));
-        Assert.That(shot.HalfWidth, Is.EqualTo(0.5f));
+        Assert.That(shot.HalfWidth, Is.EqualTo(1.5f));
         Assert.That(shot.Length, Is.EqualTo(30f));
         Assert.That(shot.DamageOfWeapon, Is.EqualTo(8f));
         Assert.That(shot.FalloffPerHit, Is.EqualTo(0.15f));

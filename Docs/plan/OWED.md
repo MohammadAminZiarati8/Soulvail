@@ -223,3 +223,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] **Editor:** DT-01 start at stage 30 with the Ranger; spend the banked points. Time the full fight; check two Shadow panthers at 66%, none after the 33% beat, faster chained lanes/double pounce, stone-stopped lanes and the final win screen. Automated no-dodge session probe: 87.80 s at 33 expected DPS, base HP 1000 (durability inflated only in the probe).
 - [ ] **Device:** Play stage 30 on a phone. Check all four kit stones read as stones at phone zoom, gaps stay traversable, and eye/feint/pounce/chain tells remain readable. Note anything unclear.
+
+- 2026-11-05 MK-10c: playtest Killshot's 3 m corridor against a facing Mossguard and Warlord; ordinary arrows still block, phase shields still protect. Check the 4x arrow and wind trail at portrait gameplay zoom, including pause and stage/death cancellation.

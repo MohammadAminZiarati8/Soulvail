@@ -77,8 +77,8 @@ public sealed class KillshotTests
     {
         EnemyAgent aim = Spawn(4f);
         Cast();
-        EnemyAgent edge = Spawn(30f, 0.5f, 100f);
-        EnemyAgent outside = Spawn(30f, 0.501f);
+        EnemyAgent edge = Spawn(30f, 1.5f, 100f);
+        EnemyAgent outside = Spawn(30f, 1.501f);
         EnemyAgent beyond = Spawn(30.001f);
         EnemyAgent behind = Spawn(-0.001f);
         Fire();
@@ -227,6 +227,86 @@ public sealed class KillshotTests
         Fire();
         Assert.That(body.Health.Current, Is.EqualTo(Hp - 136f));
     }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Fire_PiercesFrontalGuard_WithoutLoweringIt(bool boss)
+    {
+        EnemyAgent guard = Guard(boss);
+        Assert.That(guard.Health.IsInvulnerable, Is.True);
+        Assert.That(_enemies.ApplyDamage(guard.Id, 17f, 0f, _player).Blocked, Is.True,
+            "Ordinary arrows must still be blocked.");
+        guard.DamageTaken.Base = 0.5f;
+        Cast();
+        Fire();
+        Assert.That(guard.Health.Current, Is.EqualTo(Hp - 68f));
+        Assert.That(guard.Health.IsInvulnerable, Is.True, "Piercing is scoped to this hit.");
+        Assert.That(_enemies.ApplyDamage(guard.Id, 17f, 0.8f, _player).Blocked, Is.True);
+        Assert.That(_events.Count<KillshotExecuted>(), Is.Zero);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Fire_BossPhaseBeatStillBlocks(bool warlord)
+    {
+        EnemyAgent boss = warlord ? Guard(true)
+            : _enemies.SpawnBoss(new ContentId("boss.test"), new Vector3(3f, 0f, 0f));
+        boss.Health.SetExternalInvulnerable(false);
+        _enemies.ApplyDamage(boss.Id, 600f, 0f, _player);
+        boss.Behaviour.Tick(Context());
+        Assert.That(((BossBehaviour)boss.Behaviour).IsInBeat, Is.True);
+        Cast();
+        Fire();
+        Assert.That(boss.Health.Current, Is.EqualTo(400f));
+        Assert.That(boss.Health.IsInvulnerable, Is.True);
+        Assert.That(_events.Count<KillshotExecuted>(), Is.Zero);
+        Assert.That(_events.Of<EnemyDamaged>()[_events.Count<EnemyDamaged>() - 1].Blocked, Is.True);
+    }
+
+    [Test]
+    public void Fire_OtherExternalImmunityStillBlocks()
+    {
+        EnemyAgent body = Spawn(3f);
+        body.Health.SetExternalInvulnerable(true);
+        Cast();
+        Fire();
+        Assert.That(body.Health.Current, Is.EqualTo(Hp));
+        Assert.That(_events.Single<EnemyDamaged>().Blocked, Is.True);
+    }
+
+    [Test]
+    public void Execute_GuardStillPaysRewards_AndConsumesFalloff()
+    {
+        EnemyAgent guard = Guard(false);
+        guard.Health.SetExternalInvulnerable(false);
+        _enemies.ApplyDamage(guard.Id, 850f, 0f, _player);
+        guard.Behaviour.Tick(Context());
+        EnemyAgent behind = Spawn(6f);
+        Cast();
+        Fire();
+        Assert.That(guard.IsAlive, Is.False);
+        Assert.That(_events.Single<KillshotExecuted>().EnemyId, Is.EqualTo(guard.Id));
+        Assert.That(_events.Count<EnemyDied>(), Is.EqualTo(1));
+        Assert.That(_enemies.DrainKills(), Is.EqualTo(1));
+        Assert.That(_enemies.DrainXp(), Is.EqualTo(12f));
+        Assert.That(behind.Health.Current, Is.EqualTo(Hp - 136f * 0.85f).Within(0.001f));
+    }
+
+    private EnemyAgent Guard(bool boss)
+    {
+        EnemyAgent agent = boss
+            ? _enemies.SpawnBoss(new ContentId("boss.warlord"), new Vector3(3f, 0f, 0f))
+            : _enemies.Spawn(GuardBody().Id, new Vector3(3f, 0f, 0f));
+        agent.Blackboard.DirectionToPlayer = -Vector2.UnitX;
+        agent.Blackboard.PathDirectionToPlayer = -Vector2.UnitX;
+        agent.Blackboard.DistanceToPlayer = 3f;
+        agent.Blackboard.SelfPosition = agent.Position;
+        agent.Behaviour.Tick(Context());
+        return agent;
+    }
+
+    private EnemyTickContext Context() => new(0f, 0f, _player, _intents, _events,
+        new ProjectileSystem(_events, Capacity), _enemies);
 
     [Test]
     public void Execute_NonBossBelowThreshold()
@@ -511,7 +591,7 @@ public sealed class KillshotTests
         return session;
     }
 
-    private static Killshot Shot(float windUp = 0.7f) => new(windUp, 0.5f, 30f, 8f, 0.15f, 0.4f, 0.15f);
+    private static Killshot Shot(float windUp = 0.7f) => new(windUp, 1.5f, 30f, 8f, 0.15f, 0.4f, 0.15f);
     private static SkillSpec Skill(float windUp = 0.7f) => new(SkillId, new LocKey("skill.killshot.name"),
         new LocKey("skill.killshot.desc"), SkillKind.Active, Array.Empty<IEffect>(), new ActiveSpec(30f,
             new TriggerSpec(new[] { new TriggerClause(TriggerField.EnemiesInAcquireRange, TriggerComparison.AtLeast, 3f) }),
@@ -520,9 +600,18 @@ public sealed class KillshotTests
     private static SkillSpec Passive(string id) => new(new ContentId(id), new LocKey("skill.test.name"),
         new LocKey("skill.test.desc"), SkillKind.Passive, new IEffect[] { new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, 1f) });
     private static EnemySystem Enemies(IDomainEvents events) => new(new ContentCatalog(new[] { Character() },
-        new[] { Body(), Body(true) }, bosses: new[] { new BossSpec(new ContentId("boss.test"), Body(true).Id,
-            new[] { new BossPhaseSpec(1f), new BossPhaseSpec(0.5f) }, 1.5f) }),
-        events, new FixedRandom(7), new DepthScaling(Scalings.Design()), Capacity);
+        new[] { Body(), Body(true), GuardBody() }, bosses: new[] {
+            new BossSpec(new ContentId("boss.test"), Body(true).Id,
+                new[] { new BossPhaseSpec(1f), new BossPhaseSpec(0.5f) }, 1.5f),
+            new BossSpec(new ContentId("boss.warlord"), Body(true).Id,
+                new[] { new BossPhaseSpec(1f), new BossPhaseSpec(0.5f) }, 1.5f) }),
+        events, new FixedRandom(7), new DepthScaling(Scalings.Design()), Capacity,
+        bossInner: (agent, spec) => spec.Id.Value == "boss.warlord"
+            ? new WarlordBehaviour(agent, new ProjectileSystem(events, Capacity), new FixedRandom(7).Misc, GuardBody().Id)
+            : null);
+    private static EnemySpec GuardBody() => new(new ContentId("enemy.mossguard"), new LocKey("enemy.mossguard.name"),
+        Hp, 2f, 3, 14, 12f, false, 8f, 1.2f, 0.7f, 1.5f, 30f, EnemyBehaviourKind.Bulwark,
+        bulwark: new BulwarkSpec(60f, 75f, 45f));
     private static CharacterSpec Character() => new(new ContentId("character.ranger"), new LocKey("character.ranger.name"),
         new LocKey("character.ranger.desc"), 100f, new MovementSpec(3.4f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

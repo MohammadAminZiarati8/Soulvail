@@ -52,6 +52,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **MK-09b** — Hunter's Snare drawn and authored (M)
 - [x] **MK-10a** — Killshot in core (M)
 - [x] **MK-10b** — Killshot drawn and authored: the kneel, the streak, the jolt (M)
+- [x] **MK-10c** — Killshot pierces frontal guards, keeps boss phase shields, widens to 3 m, and flies as a 4x arrow with wind (M)
 - [x] **MK-11** — The Marksman's look: a path changes the hero's look, data-driven for every later path (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: KillshotCast
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.KillshotDefinition
   _windUp: 0.7
-  _halfWidth: 0.5
+  _halfWidth: 1.5
   _length: 30
   _damageOfWeapon: 8
   _falloffPerHit: 0.15

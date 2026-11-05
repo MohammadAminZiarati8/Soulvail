@@ -2,21 +2,21 @@
 
 Overwritten, never appended; history: `git log`. **Cap 3 500 bytes.** Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, JG-30f._
+_2026-11-05, MK-10c._
 
 ## Current State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **JG-30f**: Apex stage 30; Jungle complete. |
+| **Last merged** | **MK-10c**: Killshot guards, 3 m, 4x arrow/wind. |
 | **Next task** | None planned. |
-| **Verified** | EditMode 5629: 5628 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
+| **Verified** | EditMode 5639: 5638 pass, 0 failed, 1 existing inconclusive. No PlayMode. 0 compile errors/new analyzer warnings; format clean. |
 
 ## What works
 
 Portrait; Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
-Budgeted waves → door; 5th-stage bosses: Warden/Croaker, stage 10 Mother, 15 Warlord, 20 Thornheart.
+Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Stages 1–14, 16–19, 21–24, 26–29 scripted; 30 Apex; 11 bodied enemies; ringed lob. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; pods die to 3 arrows; 66 % ring bites outside, 4 spokes; 33 % faster, 3 pods.
 Amber heart/pod rings; 14→11 m band; warned vines.
@@ -26,7 +26,7 @@ Stalker (22+): lurks behind, hides still, hit reveals, strikes; shimmer, warn fl
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 632 HP, 2.8 m/s, 4 pillars.
-Apex (30): eye tell/feint, streak, +15% window; 1000 HP/87.80 s at 33 DPS. Four stones; 2 panthers at 66%, cleared at 33%; win.
+Apex (30): eye tell/feint, streak, +15% window; 1000 HP. Four stones; 2 panthers at 66%, cleared at 33%; win.
 Stone-stopped dash/rake. Pack: 3 s cooldown. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
@@ -37,7 +37,8 @@ Banked points; paused free-pick tree, rank pips, Learn; 22 Marksman ranks. Death
 Save v5/legacy load; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
 0.45 s hold toggles; 0.5 s gap; mirrored. Legacy saves expand to six.
 Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
-Quiver, lit arrows (~¼ s first), Volley, roll/flinch; silent resume, plain menu.
+Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
+Killshot: 3 m, 4x arrow/wind, pierces guards; phases block.
 
 ## What does not work yet
 

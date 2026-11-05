@@ -835,12 +835,16 @@ public sealed class EnemySystem
     public DamageResult ApplyDamage(int enemyId, float amount, float now, PlayerCombat player)
         => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true);
 
+    /// <summary>Killshot ignores frontal guards, while phase beats and other immunity still block it.</summary>
+    public DamageResult ApplyGuardPiercingDamage(int enemyId, float amount, float now, PlayerCombat player)
+        => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true, pierceGuard: true);
+
     /// <summary>Kill a living non-boss through the same reward and announcement path as damage.</summary>
     public DamageResult Execute(int enemyId, float now, PlayerCombat player)
         => ResolveDamage(enemyId, 0f, now, player, execute: true, explode: true);
 
     private DamageResult ResolveDamage(
-        int enemyId, float amount, float now, PlayerCombat player, bool execute, bool explode)
+        int enemyId, float amount, float now, PlayerCombat player, bool execute, bool explode, bool pierceGuard = false)
     {
         if (player is null)
         {
@@ -867,7 +871,11 @@ public sealed class EnemySystem
         }
         else
         {
-            result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value, now);
+            // A boss wraps its fighting behaviour. Its phase beat owns the same external flag,
+            // so only bypass the Warlord's guard while the wrapper is outside that beat.
+            bool ignoreGuard = pierceGuard && (agent.Behaviour is BulwarkBehaviour
+                || agent.Behaviour is BossBehaviour { IsInBeat: false, Inner: WarlordBehaviour });
+            result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value, now, ignoreGuard);
         }
 
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future

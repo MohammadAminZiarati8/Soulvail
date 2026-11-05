@@ -237,6 +237,9 @@ public sealed class Health
     /// <param name="now">Simulated run time, in seconds.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="now"/> is NaN or infinite.</exception>
     public DamageResult ApplyDamage(float amount, float now)
+        => ApplyDamage(amount, now, ignoreExternalInvulnerability: false);
+
+    internal DamageResult ApplyDamage(float amount, float now, bool ignoreExternalInvulnerability)
     {
         _now = FiniteTime(now);
 
@@ -250,7 +253,7 @@ public sealed class Health
             return DamageResult.None;
         }
 
-        if (IsInvulnerable)
+        if ((_externalInvulnerable && !ignoreExternalInvulnerability) || _now < _iFramesUntil)
         {
             return new DamageResult(0f, 0f, blocked: true, killed: false);
         }

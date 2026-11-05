@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Views;
+using Soulvail.Game.Presentation;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -83,26 +84,82 @@ public sealed class KillshotViewTests
     }
 
     [Test]
-    public void Fire_StreakSpansLength_ThenFades()
+    public void Fire_FourTimesArrow_FliesAlongLine_WithFadingWind()
     {
         _hub.Publish(new KillshotWindUp(V3.UnitX, 0.7f));
         _hub.Publish(new KillshotFired(V3.Zero, V3.UnitX, 30f, 2));
-        var streak = Child<LineRenderer>("Streak");
-        Assert.That(streak.enabled, Is.True);
-        Assert.That(streak.startWidth, Is.GreaterThan(0.2f));
-        Assert.That(streak.GetPosition(0), Is.EqualTo(_bow.transform.position + Vector3.right * 0.25f));
-        Assert.That(streak.GetPosition(1) - streak.GetPosition(0), Is.EqualTo(Vector3.right * 30f));
+        Transform arrow = _view.transform.Find("Killshot Arrow");
+        Transform ordinary = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/_Project/Prefabs/Projectiles/Arrow.prefab").transform.Find("Mesh");
+        Assert.That(arrow.localScale, Is.EqualTo(ordinary.localScale * 4f));
+        Assert.That(arrow.GetComponent<MeshFilter>().sharedMesh, Is.EqualTo(ordinary.GetComponent<MeshFilter>().sharedMesh));
+        Assert.That(arrow.gameObject.activeSelf, Is.True);
+        Assert.That(Vector3.Dot(arrow.forward, Vector3.right), Is.GreaterThan(0.999f));
+        Vector3 initial = arrow.position;
+        _view.Step(0f);
+        Assert.That(arrow.position, Is.EqualTo(initial), "Run pause freezes the arrow.");
         Assert.That(Child<Light>("Charge Light").enabled, Is.False);
         Assert.That(Child<LineRenderer>("Aim Line").enabled, Is.False);
+        _view.Step(0.1f);
+        Assert.That(arrow.position.x, Is.GreaterThan(initial.x + 10f));
+        Assert.That(arrow.position.y, Is.EqualTo(_bow.transform.position.y));
+        var streak = Child<LineRenderer>("Streak");
+        Assert.That(streak.enabled, Is.True);
         Assert.That(streak.sharedMaterial.GetFloat("_Surface"), Is.EqualTo(1f));
         Assert.That(streak.sharedMaterial.GetFloat("_ZWrite"), Is.Zero);
-        Assert.That(Vector4.Distance(streak.startColor, new Color(0.55f, 1f, 1f, 1f)), Is.LessThan(0.005f));
-        _view.Step(0.1f);
-        Assert.That(streak.startColor.a, Is.EqualTo(1f));
+        Assert.That(Vector4.Distance(streak.endColor, new Color(Palette.Wind.r, Palette.Wind.g, Palette.Wind.b, 0.7f)),
+            Is.LessThan(0.005f));
+        for (int i = 0; i < 3; i++)
+        {
+            var wind = Child<LineRenderer>("Wind Streak " + i);
+            Assert.That(wind.enabled, Is.True);
+            Assert.That(wind.GetPosition(2).x, Is.GreaterThan(wind.GetPosition(0).x));
+            Assert.That(wind.GetPosition(2).x, Is.LessThan(arrow.position.x + 2.7f));
+            Assert.That(wind.startColor.a, Is.Zero);
+        }
         _view.Step(0.2f);
-        Assert.That(streak.startColor.a, Is.EqualTo(0.5f).Within(0.003f));
+        Assert.That(arrow.gameObject.activeSelf, Is.False);
+        Assert.That(arrow.position.x + 2.7f,
+            Is.EqualTo(_bow.transform.position.x + 0.25f + 30f).Within(0.001f));
+        Assert.That(streak.endColor.a, Is.EqualTo(0.35f).Within(0.003f));
         _view.Step(0.201f);
         Assert.That(streak.enabled, Is.False);
+        for (int i = 0; i < 3; i++)
+        {
+            Assert.That(Child<LineRenderer>("Wind Streak " + i).enabled, Is.False);
+        }
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(3)]
+    public void Flight_CancellationClearsArrowAndWind_ThenReuses(int cause)
+    {
+        _hub.Publish(new KillshotFired(V3.Zero, V3.UnitX, 30f, 0));
+        _view.Step(0.08f);
+        if (cause == 0)
+        { _hub.Publish(new PlayerDied(0f)); }
+        else if (cause == 1)
+        { _hub.Publish(new StageTransitionStarted(1, 2)); }
+        else if (cause == 2)
+        { _hub.Publish(new RunEnded(0.2f)); }
+        else
+        { _hub.Publish(new StageArrived(2, new Soulvail.Core.Content.ContentId("arena.test"))); }
+        Transform arrow = _view.transform.Find("Killshot Arrow");
+        Assert.That(arrow.gameObject.activeSelf, Is.False);
+        Assert.That(Child<LineRenderer>("Streak").enabled, Is.False);
+        for (int i = 0; i < 3; i++)
+        {
+            Assert.That(Child<LineRenderer>("Wind Streak " + i).enabled, Is.False);
+        }
+        _bow.transform.position = new Vector3(-12f, 1f, -8f);
+        _hub.Publish(new KillshotFired(V3.Zero, V3.UnitZ, 30f, 0));
+        Assert.That(arrow.gameObject.activeSelf, Is.True);
+        Assert.That(arrow.position.x, Is.EqualTo(-12f));
+        Assert.That(Vector3.Dot(arrow.forward, Vector3.forward), Is.GreaterThan(0.999f));
+        Assert.That(Child<LineRenderer>("Streak").GetPosition(0),
+            Is.EqualTo(_bow.transform.position + Vector3.forward * 0.25f));
     }
 
     [Test]

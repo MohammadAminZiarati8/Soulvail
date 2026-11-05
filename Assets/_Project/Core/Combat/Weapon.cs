@@ -182,7 +182,9 @@ public sealed class Weapon
     /// Whether there is something worth swinging at right now. Its owner decides what that means —
     /// for <c>PlayerCombat</c> it is a live, unblocked target inside <see cref="Range"/>.
     /// </param>
-    public WeaponTick Tick(float dt, float now, bool targetInRange)
+    public WeaponTick Tick(float dt, float now, bool targetInRange) => Tick(dt, now, targetInRange, 1f);
+
+    internal WeaponTick Tick(float dt, float now, bool targetInRange, float rateMultiplier)
     {
         bool damageFrame = false;
 
@@ -202,7 +204,7 @@ public sealed class Weapon
 
         bool swingStarted = false;
 
-        if (!IsSwinging && targetInRange && now >= _nextSwingAt && TryGetInterval(out float interval))
+        if (!IsSwinging && targetInRange && now >= _nextSwingAt && TryGetInterval(rateMultiplier, out float interval))
         {
             IsSwinging = true;
             swingStarted = true;
@@ -253,9 +255,9 @@ public sealed class Weapon
     /// swing at all says the same thing and says it reversibly: take the modifier off and the next
     /// tick swings.
     /// </remarks>
-    private bool TryGetInterval(out float interval)
+    private bool TryGetInterval(float rateMultiplier, out float interval)
     {
-        float rate = FireRate.Value;
+        float rate = rateMultiplier > 0f ? FireRate.Value * rateMultiplier : 0f;
 
         if (!(rate > 0f) || float.IsInfinity(rate))
         {

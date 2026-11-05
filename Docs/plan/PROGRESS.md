@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-05, Skirmisher specced._
+_2026-11-05, SK-01a complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **FX-05** — Killshot wind-up grants immunity. Then docs: Skirmisher specs SK-01a–SK-07. |
-| **Next task** | **SK-01a** — Running Shot and Hit and Run in core, on the owner's go. |
-| **Verified** | EditMode 5704 (5703 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
+| **Last merged** | **SK-01a** — Running Shot and Hit and Run in core. |
+| **Next task** | **SK-01b** — Author the Skirmisher path and passives, on the owner's go. |
+| **Verified** | EditMode 5722 (5721 passed, 0 failed, 1 existing inconclusive). Zero compile errors and new analyzer warnings. Format clean. |
 
 ## What works
 
@@ -39,6 +39,7 @@ Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
+Skirmisher core is ready for SK-01b.
 
 ## Missing
 

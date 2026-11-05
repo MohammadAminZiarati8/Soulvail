@@ -203,6 +203,15 @@ public enum PlayerStat
     SnareDamage,
     KillshotExecute,
     KillshotDamage,
+
+    /// <summary>Rate multiplier for an attack started on the move.</summary>
+    MovingFireRate,
+
+    /// <summary>Fractional move speed bonus during Hit and Run.</summary>
+    HitSpeedBurst,
+
+    /// <summary>Fractional arrow damage bonus per recent metre travelled.</summary>
+    MomentumPerMetre,
 }
 
 /// <summary>
@@ -261,6 +270,8 @@ public sealed class PlayerStats : IStatBlock
 
     public Stat KillshotExecute { get; } = new(0f);
     public Stat KillshotDamage { get; } = new(0f);
+
+    internal HitAndRun HitAndRun => _combat.HitAndRun;
 
     /// <summary>Whether this run's movement skill leaves a fire pool — a Blink, and nothing else.</summary>
     /// <remarks>
@@ -333,6 +344,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.PoolDamage => RequirePool(stat).PoolDamagePerPulse,
             PlayerStat.PoolDuration => RequirePool(stat).PoolDuration,
             PlayerStat.FireWhileMoving => _combat.FireWhileMoving,
+            PlayerStat.MovingFireRate => _combat.MovingFireRate,
+            PlayerStat.HitSpeedBurst => HitAndRun.HitSpeedBurst,
+            PlayerStat.MomentumPerMetre => HitAndRun.MomentumPerMetre,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
             PlayerStat.VolleyArrows => RequireVolley(stat).Arrows,
             PlayerStat.VolleyDamage => RequireVolley(stat).Damage,
@@ -395,6 +409,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.PoolDamage => _leavesPool,
             PlayerStat.PoolDuration => _leavesPool,
             PlayerStat.FireWhileMoving => true,
+            PlayerStat.MovingFireRate => true,
+            PlayerStat.HitSpeedBurst => true,
+            PlayerStat.MomentumPerMetre => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,
             PlayerStat.VolleyArrows => _combat.Volley is not null,
             PlayerStat.VolleyDamage => _combat.Volley is not null,

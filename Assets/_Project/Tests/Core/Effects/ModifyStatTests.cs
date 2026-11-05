@@ -124,6 +124,9 @@ public sealed class ModifyStatTests
 
                 // RS-03a's, which every class has.
                 PlayerStat.FireWhileMoving => combat.FireWhileMoving,
+                PlayerStat.MovingFireRate => combat.MovingFireRate,
+                PlayerStat.HitSpeedBurst => combat.HitAndRun.HitSpeedBurst,
+                PlayerStat.MomentumPerMetre => combat.HitAndRun.MomentumPerMetre,
 
                 // RS-03b's three, on the volley.
                 PlayerStat.VolleyEvery => combat.Volley.Every,
@@ -169,7 +172,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(32), "Thirty-three members after MK-10a, one named exception.");
+        Assert.That(answered, Is.EqualTo(35), "Thirty-six members after SK-01a, one named exception.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

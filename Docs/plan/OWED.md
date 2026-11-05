@@ -282,3 +282,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 3. **[device]** The same three bosses read at a glance on a phone.
 
 - [ ] **FX-05** — In the Editor, start Killshot near enemies. Confirm the Ranger loses no HP during the wind-up and an Immune pop appears when a hit is blocked.
+
+
+## SK-01a — Core passives, after SK-01b
+
+- Compare the Ranger's moving and standing cadence, then land arrows while walking and rolling. Check that repeat hits refresh the speed buff, and that a stage transition clears it.

@@ -510,7 +510,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // candidate buffer it preallocates has to be able to hold every enemy the run may spawn.
         // It gets the intent sink because a damage frame is a question for the body, and the
         // question has to leave on the tick that produced it rather than be relayed through here.
-        var combat = new PlayerCombat(character, _events, _intents, _enemyCapacity);
+        var combat = new PlayerCombat(character, _events, _intents, _enemyCapacity, motor.Speed);
 
         // Built before the census below, because the factory it is closed over runs the moment a
         // boss stands up on the director's first tick of a boss stage. One pair per run, like every
@@ -917,7 +917,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ordeals,
             mode.HasSanctum);
 
-        // MK-05: Steady Aim's stacks and guard are the row's first statuses.
         combat.AttachStatus(State.Status);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first
@@ -1336,6 +1335,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // At most one cast per tick, and the walk stops on it (rule 6).
         State.Skills.Tick(snapshot.Dt, State.Time);
+        // Age existing statuses before any arrow can land and post a fresh burst.
+        State.Status.Tick(snapshot.Dt);
         _killshot.Tick(State.Time);
 
         // **Immediately after the runner and above the projectile step, and both halves are the
@@ -1345,9 +1346,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // step*, for the reason the line above sits there — a shield that expired after this tick's
         // bolts were resolved would have absorbed a hit it was no longer entitled to.
         _timed.Tick(State.Time);
-
-        // The HUD's status row counts down with the timed effects it mirrors (MK-05).
-        State.Status.Tick(snapshot.Dt);
 
         // **Immediately after the timed effects, which keeps the whole skills block above the
         // projectile step** (M3-11b rule 3, AR §18.1). *After the runner*, because a zone cast this
@@ -1574,6 +1572,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 // A wall stands for seconds, longer than a boundary's gate (JG-20a rule 6).
                 _thorns.Clear();
                 State.Combat.SteadyAim.OnMoved();
+                State.Combat.HitAndRun.Reset();
                 State.Status.Reset();
             }
 
@@ -1623,6 +1622,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (stageCleared)
             {
                 State.Combat.SteadyAim.OnMoved();
+                State.Combat.HitAndRun.Reset();
                 State.Status.Reset();
                 _recorder.Take(State, _flow.Stage + 1);
             }
@@ -2154,6 +2154,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // sentence: there is nothing left to take it off, and an expiry announced here would reach a
         // view that is being destroyed (M3-11a-ii rule 8).
         _timed.Clear();
+        State.Combat.HitAndRun.Reset();
         State.Status.Reset();
 
         // And the ground a cast put down, forgotten in the same silence and for the same sentence.

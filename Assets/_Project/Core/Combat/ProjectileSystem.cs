@@ -714,7 +714,11 @@ public sealed class ProjectileSystem
                 return false;
             }
 
-            enemies.ApplyDamage(target.Id, shot.Damage, now, player);
+            if (enemies.ApplyDamage(target.Id, shot.Damage, now, player).Applied > 0f)
+            {
+                player.HitAndRun.OnHit(now);
+            }
+
             _binds?.Hit(target.Id, shot.Bind);
             return true;
         }
@@ -749,8 +753,11 @@ public sealed class ProjectileSystem
             // The player is who a resulting blast would catch, for the reason PlayerCombat passes
             // `this` to the same door: a bolt that kills a Bloater is a bolt that set one off, and
             // whether that reaches the player is PlayerCombat.ApplyDamage's question rather than
-            // this method's. The result is deliberately not read — see the remarks on Hit.
-            enemies.ApplyDamage(agent.Id, shot.Damage, now, player);
+            // this method's. Only applied damage refreshes Hit and Run.
+            if (enemies.ApplyDamage(agent.Id, shot.Damage, now, player).Applied > 0f)
+            {
+                player.HitAndRun.OnHit(now);
+            }
         }
 
         return hit;

@@ -56,6 +56,7 @@ public sealed class Stat
     /// </summary>
     private readonly List<Modifier> _modifiers = new();
 
+    private object _reservedSource;
     private float _base;
     private float _value;
 
@@ -172,10 +173,30 @@ public sealed class Stat
 
         float before = ValueBeforeMutation();
 
+        if (_reservedSource != null && !ReferenceEquals(modifier.Source, _reservedSource))
+        {
+            ReserveCapacity(2);
+        }
+
         _modifiers.Add(modifier);
         _isStale = true;
 
         RaiseIfValueChanged(before);
+    }
+
+    // Keep a slot available for a transient modifier whose first application is in a tick.
+    internal void ReserveModifierSlot(object source)
+    {
+        _reservedSource = source;
+        ReserveCapacity(1);
+    }
+
+    private void ReserveCapacity(int slots)
+    {
+        if (_modifiers.Count + slots > _modifiers.Capacity)
+        {
+            _modifiers.Capacity = Math.Max(_modifiers.Count + slots, _modifiers.Capacity * 2);
+        }
     }
 
     /// <summary>

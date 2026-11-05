@@ -359,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(30), "Thirty of thirty-three are player numbers; MK-10a adds KillshotExecute/KillshotDamage.");
+        Assert.That(refused, Is.EqualTo(33), "Thirty-three of thirty-six are player numbers after SK-01a.");
     }
 
     [Test]
@@ -463,10 +463,13 @@ public sealed class StatBlockTests
             // MK-10a, appended: execution and damage upgrades belong to the player.
             nameof(PlayerStat.KillshotExecute),
             nameof(PlayerStat.KillshotDamage),
+            nameof(PlayerStat.MovingFireRate),
+            nameof(PlayerStat.HitSpeedBurst),
+            nameof(PlayerStat.MomentumPerMetre),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
             + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three, MK-08a's BindStun, "
-            + "MK-09a's SnareRoot/SnareDamage and MK-10a's KillshotExecute/KillshotDamage. "
-            + "A new member goes *after* KillshotDamage and updates this "
+            + "MK-09a's SnareRoot/SnareDamage, MK-10a's KillshotExecute/KillshotDamage and SK-01a's three stats. "
+            + "A new member goes *after* MomentumPerMetre and updates this "
             + "row saying which task added it.");
     }
 

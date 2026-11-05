@@ -134,7 +134,7 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
         Clear();
         int count = KillshotLine.Walk(Points(), _origin, _direction, effect.HalfWidth, effect.Length, _ordered);
         float damage = effect.DamageOfWeapon * (1f + _stats.Resolve(PlayerStat.KillshotDamage).Value)
-            * _stats.Resolve(PlayerStat.WeaponDamage).Value;
+            * _stats.Resolve(PlayerStat.WeaponDamage).Value * _player.HitAndRun.DamageMultiplier(now);
         float threshold = effect.ExecuteBelow + _stats.Resolve(PlayerStat.KillshotExecute).Value;
         int hits = 0;
         for (int i = 0; i < count; i++)
@@ -147,14 +147,20 @@ public sealed class KillshotHandler : IEffectHandler<Killshot>, IEffectCastGuard
             float factor = MathF.Max(effect.MinFactor, 1f - effect.FalloffPerHit * hits);
             hits++;
             _events.Publish(new KillshotHit(agent.Id, agent.Position));
+            DamageResult result;
             if (!_ordered[i].IsBoss && agent.Health.Fraction <= threshold)
             {
                 _events.Publish(new KillshotExecuted(agent.Id));
-                _enemies.Execute(agent.Id, now, _player);
+                result = _enemies.Execute(agent.Id, now, _player);
             }
             else
             {
-                _enemies.ApplyGuardPiercingDamage(agent.Id, damage * factor, now, _player);
+                result = _enemies.ApplyGuardPiercingDamage(agent.Id, damage * factor, now, _player);
+            }
+
+            if (result.Applied > 0f)
+            {
+                _player.HitAndRun.OnHit(now);
             }
         }
 

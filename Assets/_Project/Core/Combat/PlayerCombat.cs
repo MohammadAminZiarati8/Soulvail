@@ -365,6 +365,11 @@ public sealed class PlayerCombat
     /// <exception cref="ArgumentNullException">Any of the three references is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="enemyCapacity"/> is not positive.</exception>
     public PlayerCombat(CharacterSpec spec, IDomainEvents events, IIntentSink intents, int enemyCapacity)
+        : this(spec, events, intents, enemyCapacity, null)
+    {
+    }
+
+    internal PlayerCombat(CharacterSpec spec, IDomainEvents events, IIntentSink intents, int enemyCapacity, Stat moveSpeed)
     {
         if (spec is null)
         {
@@ -386,6 +391,7 @@ public sealed class PlayerCombat
         _movementSkill = spec.MovementSkill;
         _characterId = spec.Id;
         _weaponSpec = spec.Weapon;
+        HitAndRun = new HitAndRun(moveSpeed);
         _candidates = new TargetCandidate[enemyCapacity];
         _shots = new Projectile[enemyCapacity];
         _hitIds = new int[enemyCapacity];
@@ -617,6 +623,10 @@ public sealed class PlayerCombat
     /// </remarks>
     public Stat FireWhileMoving { get; }
 
+    public Stat MovingFireRate { get; } = new(1f);
+
+    public HitAndRun HitAndRun { get; }
+
     /// <summary>
     /// The player is moving on a class that may not fire while it moves, so no swing starts. False on
     /// every tick of a class whose <see cref="FireWhileMoving"/> is above 0.5.
@@ -650,6 +660,7 @@ public sealed class PlayerCombat
     {
         _status = status;
         SteadyAim.AttachStatus(status);
+        HitAndRun.AttachStatus(status);
     }
 
     internal void SetKillshotWindUp(bool active)
@@ -1320,6 +1331,7 @@ public sealed class PlayerCombat
         // equality and counts as movement, so a broken input resets the ramp instead of quietly
         // ramping forever. See FocusTracker.LevelAt for the other half of the same care.
         bool stickPushed = snapshot.MoveInput.LengthSquared() != 0f;
+        HitAndRun.TrackPosition(snapshot.PlayerPosition, now);
 
         Focus.Tick(dt, stickPushed || Charge.IsActive);
 
@@ -1387,14 +1399,15 @@ public sealed class PlayerCombat
         {
             if (IsTargetInWeaponRange(count))
             {
-                OfferShot(snapshot.PlayerPosition, enemies);
+                OfferShot(snapshot.PlayerPosition, enemies, now);
             }
 
             Volley.ClearRequest();
         }
         else
         {
-            TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies);
+            float rateMultiplier = firesWhileMoving && (stickPushed || !_isStanding) ? MovingFireRate.Value : 1f;
+            TickWeapon(dt, now, snapshot.PlayerPosition, bodyFacing, count, enemies, rateMultiplier);
         }
     }
 
@@ -1412,6 +1425,7 @@ public sealed class PlayerCombat
     public void Reset()
     {
         SetKillshotWindUp(false);
+        HitAndRun.Reset();
         SteadyAim.OnMoved();
         Health.Reset();
         Targeter.Reset();
@@ -1660,7 +1674,8 @@ public sealed class PlayerCombat
         Vector3 playerPosition,
         Vector3 bodyFacing,
         int count,
-        ReadOnlySpan<EnemyAgent> enemies)
+        ReadOnlySpan<EnemyAgent> enemies,
+        float rateMultiplier)
     {
         // RS-03a rule 3: a draw the player moved out of is dropped before it can loose anything.
         // Only a draw — see _swingLanded for why a swing whose shot has left keeps its cadence.
@@ -1671,7 +1686,7 @@ public sealed class PlayerCombat
         }
 
         // And no new swing starts while holding.
-        WeaponTick tick = Weapon.Tick(dt, now, !IsHoldingFire && IsTargetInWeaponRange(count));
+        WeaponTick tick = Weapon.Tick(dt, now, !IsHoldingFire && IsTargetInWeaponRange(count), rateMultiplier);
 
         // The damage frame belongs to the swing that was running, and a start on the same tick is
         // the next swing — Weapon.Tick's own order, so the two lines go in that order too.
@@ -1706,7 +1721,7 @@ public sealed class PlayerCombat
                 return;
 
             case WeaponKind.Projectile:
-                OfferShot(playerPosition, enemies);
+                OfferShot(playerPosition, enemies, now);
                 return;
 
             default:
@@ -1785,7 +1800,7 @@ public sealed class PlayerCombat
     /// a position nor a velocity.
     /// </para>
     /// </remarks>
-    private void OfferShot(Vector3 playerPosition, ReadOnlySpan<EnemyAgent> enemies)
+    private void OfferShot(Vector3 playerPosition, ReadOnlySpan<EnemyAgent> enemies, float now)
     {
         int id = Targeter.CurrentTargetId;
 
@@ -1814,20 +1829,22 @@ public sealed class PlayerCombat
             // The newest damage frame replaces anything not taken — see PendingShot.
             ClearShots();
 
+            float momentum = HitAndRun.DamageMultiplier(now);
+
             // RS-03b: asked here, where a shot is known to leave, so a dropped draw and a dead target
             // count nothing (rule 3). The answer decides whether this frame is one shot or a volley.
             if (Volley is null || !Volley.Loose())
             {
                 Vector3 aim = ProjectileLead.Solve(
                     playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed);
-                QueueShot(playerPosition, aim, agent.Position, Weapon.Damage.Value, isVolley: false);
+                QueueShot(playerPosition, aim, agent.Position, Weapon.Damage.Value * momentum, isVolley: false);
 
                 return;
             }
 
             // One damage frame, one tell. Every live, vulnerable enemy within the weapon's XZ
             // range gets its own lead-solved arrow; the registry span bounds the preallocated queue.
-            float damage = ShotDamage(Weapon.Damage.Value * Volley.DamageMultiplier);
+            float damage = ShotDamage(Weapon.Damage.Value * Volley.DamageMultiplier * momentum);
             float range = ConeRange(Weapon.Range.Value);
             float rangeSquared = range * range;
 

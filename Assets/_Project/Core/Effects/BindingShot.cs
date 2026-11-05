@@ -84,7 +84,8 @@ public sealed class BindingShotHandler : IEffectHandler<BindingShot>, IEffectCas
         EnemyAgent target = Pick();
         _projectiles.Fire(new Projectile(_character.Id, 0, _blackboard.PlayerPosition, target.Position,
             _character.Weapon.ShotSpeed, _character.Weapon.ShotRadius,
-            effect.DamageOfWeapon * _stats.Resolve(PlayerStat.WeaponDamage).Value,
+            effect.DamageOfWeapon * _stats.Resolve(PlayerStat.WeaponDamage).Value
+                * _stats.HitAndRun.DamageMultiplier(_clock.Now),
             ShotSide.AtEnemies, bind: effect), _clock.Now);
     }
 

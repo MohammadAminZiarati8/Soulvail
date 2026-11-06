@@ -752,3 +752,15 @@ MonoBehaviour:
     _text: "Whirlwind 3"
   - _key: skill.skirmisher.whirlwind-3.description
     _text: "Three rings. Cooldown 8 s."
+  - _key: skill.skirmisher.storm-run.name
+    _text: "Storm Run"
+  - _key: skill.skirmisher.storm-run.description
+    _text: "For 6 s every roll ends in a volley and the roll recharges twice as fast."
+  - _key: skill.skirmisher.storm-run-2.name
+    _text: "Storm Run 2"
+  - _key: skill.skirmisher.storm-run-2.description
+    _text: "Lasts 8 s."
+  - _key: skill.skirmisher.storm-run-3.name
+    _text: "Storm Run 3"
+  - _key: skill.skirmisher.storm-run-3.description
+    _text: "Storm volley +30% damage."

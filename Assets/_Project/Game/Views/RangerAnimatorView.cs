@@ -149,6 +149,7 @@ namespace Soulvail.Game.Views
         private readonly int _placeId = Animator.StringToHash("Place");
         [SerializeField] private KillshotView _killshotPrefab;
         [SerializeField] private WhirlwindView _whirlwindPrefab;
+        [SerializeField] private StormRunView _stormRunPrefab;
         private WhirlwindView _whirlwindView;
         private GameObject _whirlwindRoot;
         private readonly int _whirlingId = Animator.StringToHash("Whirling");
@@ -248,6 +249,15 @@ namespace Soulvail.Game.Views
                 _whirlwindView = Instantiate(_whirlwindPrefab, _whirlwindRoot.transform, false);
                 _whirlwindView.Construct(hub, ShowWhirlwindSpin);
                 _whirlwindRoot.SetActive(true);
+            }
+            if (_stormRunPrefab != null)
+            {
+                var stormRunRoot = new GameObject("Storm Run (pooled)");
+                stormRunRoot.SetActive(false);
+                stormRunRoot.transform.SetParent(transform, false);
+                StormRunView stormRunView = Instantiate(_stormRunPrefab, stormRunRoot.transform, false);
+                stormRunView.Construct(hub);
+                stormRunRoot.SetActive(true);
             }
             _placedSubscription = hub.Subscribe<TrapPlaced>(OnTrapPlaced);
             _killshotWind = hub.Subscribe<KillshotWindUp>(OnKillshotWindUp);

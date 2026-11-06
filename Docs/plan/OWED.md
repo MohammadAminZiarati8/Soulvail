@@ -304,3 +304,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **SK-04b** — Choose Skirmisher at level 14 and learn Second Wind 3. Roll twice and watch both pips empty and refill one at a time. Roll into a Frog's bite and check that Dodged appears with no HP loss, then the next bite lands.
 
 - **SK-05b [Editor]** Learn Whirlwind on the Skirmisher at level 17. Keep running with three enemies within 6 m. Confirm two upper-body spins, two cyan swirls at the launch positions, and arrows hitting enemies around the Ranger.
+
+- **SK-06b [Editor]** — Stage 21+, level-20 Skirmisher with Storm Run: at five enemies, check the cyan body wind, the roll trail and ring with arrows at enemies in range, and the faster roll refill. At rank 1 the wind should fade after 6 s.

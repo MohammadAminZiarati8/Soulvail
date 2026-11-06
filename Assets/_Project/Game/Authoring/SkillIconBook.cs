@@ -21,10 +21,9 @@ namespace Soulvail.Game.Authoring;
 /// registered at the root, where every run resolves it.
 /// </para>
 /// <para>
-/// <b>A skill with no icon is not an error, and not an entry.</b> Every skill but the Ranger's Volley
-/// ships without art today, so <see cref="For"/> answers null for it as for an id nobody knows, and
-/// the row draws its placeholder. The book says which skills have a picture; the row decides what a
-/// skill without one looks like.
+/// <b>A skill with no icon is not an error, and not an entry.</b> Path ranks register their
+/// authored icons by rank id, so Storm Run can reuse Volley art without hard-coding an alias.
+/// <see cref="For"/> returns null when there is no art and the row draws its placeholder.
 /// </para>
 /// </remarks>
 public sealed class SkillIconBook

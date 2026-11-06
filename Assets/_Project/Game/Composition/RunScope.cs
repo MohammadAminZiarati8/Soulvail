@@ -205,6 +205,7 @@ namespace Soulvail.Game.Composition
                  "than every archetype, so size is what separates a Wight from the player.")]
         [SerializeField] private MinionView _minionPrefab;
         [SerializeField] private ShadeView _shadePrefab;
+        [SerializeField] private ShadeBurstView _shadeBurstPrefab;
 
         [Tooltip("Where standing Wights are parented. Optional — they go to the scene root " +
                  "without it, which is untidy rather than wrong. Deliberately not the arena: one " +
@@ -712,7 +713,9 @@ namespace Soulvail.Game.Composition
                 builder.RegisterEntryPoint<ShadeViews>(Lifetime.Scoped)
                     .WithParameter("prefab", _shadePrefab)
                     .WithParameter("parent", _minionParent)
-                    .WithParameter("player", _playerView);
+                    .WithParameter("player", _playerView)
+                    .WithParameter("burstPrefab", _shadeBurstPrefab)
+                    .WithParameter("burstParent", _decalRoot);
             }
 
             // The corpses (M5-05b). The army's registration exactly, for its reasons — two of its

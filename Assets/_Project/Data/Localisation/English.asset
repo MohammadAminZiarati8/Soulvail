@@ -800,3 +800,27 @@ MonoBehaviour:
     _text: Mirror Image 4
   - _key: skill.echo-archer.mirror-image-4.description
     _text: 3 shades. Cooldown 11 s.
+  - _key: skill.echo-archer.decoy-roll.name
+    _text: "Decoy Roll"
+  - _key: skill.echo-archer.decoy-roll.description
+    _text: "A roll leaves a shade enemies chase for 2 s, at most every 8 s. Bosses ignore it."
+  - _key: skill.echo-archer.decoy-roll-2.name
+    _text: "Decoy Roll 2"
+  - _key: skill.echo-archer.decoy-roll-2.description
+    _text: "3 s, every 6 s."
+  - _key: skill.echo-archer.decoy-roll-3.name
+    _text: "Decoy Roll 3"
+  - _key: skill.echo-archer.decoy-roll-3.description
+    _text: "Every 5 s."
+  - _key: skill.echo-archer.fading-burst.name
+    _text: "Fading Burst"
+  - _key: skill.echo-archer.fading-burst.description
+    _text: "Shades burst when they fade: 1.5× weapon damage within 3 m."
+  - _key: skill.echo-archer.fading-burst-2.name
+    _text: "Fading Burst 2"
+  - _key: skill.echo-archer.fading-burst-2.description
+    _text: "2×."
+  - _key: skill.echo-archer.fading-burst-3.name
+    _text: "Fading Burst 3"
+  - _key: skill.echo-archer.fading-burst-3.description
+    _text: "2.5×, and the burst slows."

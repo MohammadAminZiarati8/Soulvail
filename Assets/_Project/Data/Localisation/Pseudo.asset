@@ -889,3 +889,27 @@ MonoBehaviour:
     _text: "[Mîrrôr Îmágé 4 ·····]"
   - _key: skill.echo-archer.mirror-image-4.description
     _text: "[3 shádés. Çôôldôwñ 11 s. ·········]"
+  - _key: skill.echo-archer.decoy-roll.name
+    _text: "[Déçôý Rôll ····]"
+  - _key: skill.echo-archer.decoy-roll.description
+    _text: "[Á rôll léávés á shádé éñémîés çhásé fôr 2 s, át môst évérý 8 s. Bôssés îgñôré ît. ·····························]"
+  - _key: skill.echo-archer.decoy-roll-2.name
+    _text: "[Déçôý Rôll 2 ·····]"
+  - _key: skill.echo-archer.decoy-roll-2.description
+    _text: "[3 s, évérý 6 s. ······]"
+  - _key: skill.echo-archer.decoy-roll-3.name
+    _text: "[Déçôý Rôll 3 ·····]"
+  - _key: skill.echo-archer.decoy-roll-3.description
+    _text: "[Évérý 5 s. ····]"
+  - _key: skill.echo-archer.fading-burst.name
+    _text: "[Fádîñg Bûrst ·····]"
+  - _key: skill.echo-archer.fading-burst.description
+    _text: "[Shádés bûrst whéñ théý fádé: 1.5× wéápôñ dámágé wîthîñ 3 m. ·····················]"
+  - _key: skill.echo-archer.fading-burst-2.name
+    _text: "[Fádîñg Bûrst 2 ·····]"
+  - _key: skill.echo-archer.fading-burst-2.description
+    _text: "[2×. ··]"
+  - _key: skill.echo-archer.fading-burst-3.name
+    _text: "[Fádîñg Bûrst 3 ·····]"
+  - _key: skill.echo-archer.fading-burst-3.description
+    _text: "[2.5×, áñd thé bûrst slôws. ··········]"

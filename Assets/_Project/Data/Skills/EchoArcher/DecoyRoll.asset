@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: DecoyRoll
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.echo-archer.decoy-roll
+  _nameKey: skill.echo-archer.decoy-roll.name
+  _descriptionKey: skill.echo-archer.decoy-roll.description
+  _kind: 0
+  _effects:
+  - {fileID: 11400000, guid: 84d410bc114846a8b77fcdc10b9e32d2, type: 2}
+  _cooldown: 8
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 0}
+  _icon: {fileID: 21300000, guid: 0e7d82889abd1334f91e04dccaf71ed1, type: 3}
+  _hasPact: 0
+  _pactEffects: []
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.new.pact.description

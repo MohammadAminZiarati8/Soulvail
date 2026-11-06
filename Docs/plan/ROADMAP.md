@@ -79,7 +79,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **EA-02** — Shades drawn, Mirror Image authored: the smoky copy, its shot, its fade (M)
 - [x] **EA-03a** — Decoy Roll in core (M)
 - [x] **EA-03b** — Fading Burst in core (S)
-- [ ] **EA-03c** — Decoy Roll and Fading Burst drawn and authored (M) — [spec](tasks/EA-03c-decoy-and-burst-drawn.md)
+- [x] **EA-03c** — Decoy Roll and Fading Burst drawn and authored (M)
 - [ ] **EA-04a** — Crossfire in core: two shades appear, every shade looses at the target (M) — [spec](tasks/EA-04a-crossfire.md)
 - [ ] **EA-04b** — Crossfire drawn and authored: converging heavy arrows (M) — [spec](tasks/EA-04b-crossfire-drawn.md)
 - [ ] **EA-05a** — Hall of Mirrors in core: a ring of shooting shades (M) — [spec](tasks/EA-05a-hall-of-mirrors.md)

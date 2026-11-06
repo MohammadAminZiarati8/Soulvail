@@ -336,3 +336,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## EA-03b — Fading Burst in core
 
 - [ ] Editor, after EA-03c authors the skill. At rank 3, let a shade expire near a boss and its adds. Check the burst and slow on nearby targets and the shorter slow on the boss. Replace or clear a shade early and check that it fades without bursting.
+
+
+## EA-03c — Decoy Roll and Fading Burst drawn and authored
+
+- [ ] Editor, Jungle stage 16. With both passives, roll and check that a low-bow shade pulses at the start point and enemies turn toward it. Roll again as soon as possible and check that no second shade appears. At stage 15, check that the Warlord ignores the decoy.
+- [ ] Editor. With Fading Burst learned, let a Mirror Image shade expire. Check the 3 m flash and damage on nearby enemies. At rank 3, check the pale edge and slow.

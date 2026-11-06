@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-07, EA-03b._
+_2026-11-07, EA-03c._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **EA-03b** — Fading Burst in core. |
-| **Next task** | **EA-03c** — Decoy Roll and Fading Burst drawn and authored. |
-| **Verified** | EditMode 5924 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **EA-03c** — Decoy Roll and Fading Burst drawn and authored. |
+| **Next task** | **EA-04a** — Crossfire in core. |
+| **Verified** | EditMode 5931 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

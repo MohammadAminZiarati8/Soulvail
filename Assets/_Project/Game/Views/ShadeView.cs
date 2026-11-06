@@ -1,3 +1,4 @@
+using Soulvail.Core.Combat;
 using Soulvail.Game.Pooling;
 using UnityEngine;
 using VContainer;
@@ -18,6 +19,8 @@ namespace Soulvail.Game.Views
         private MaterialPropertyBlock _properties;
         private Color _color;
         private int _upperBody;
+        private ShadeKind _kind;
+        private float _pulseTime;
         private float _opacity;
         private float _fadeFrom;
         private float _fadeLeft;
@@ -35,20 +38,31 @@ namespace Soulvail.Game.Views
         {
         }
 
-        public void Appear(Vector3 position, Quaternion facing)
+        public void Appear(Vector3 position, Quaternion facing, ShadeKind kind)
         {
             transform.SetPositionAndRotation(position, facing);
             _animator.Rebind();
             _upperBody = _animator.GetLayerIndex("Upper Body");
-            _animator.SetLayerWeight(_upperBody, 1f);
-            _animator.SetBool(_aiming, true);
-            _animator.Play("Upper Body.Aim", _upperBody, 0f);
+            _kind = kind;
+            _pulseTime = 0f;
+            bool decoy = kind == ShadeKind.Decoy;
+            _animator.SetLayerWeight(_upperBody, decoy ? 0f : 1f);
+            _animator.SetBool(_aiming, !decoy);
+            if (!decoy)
+            {
+                _animator.Play("Upper Body.Aim", _upperBody, 0f);
+            }
             _fadeLeft = FadeInSeconds;
             SetOpacity(0f);
         }
 
         public void Loose(Vector3 target)
         {
+            if (_kind == ShadeKind.Decoy)
+            {
+                return;
+            }
+
             Vector3 direction = target - transform.position;
             direction.y = 0f;
             if (direction.sqrMagnitude > 0.000001f)
@@ -73,6 +87,12 @@ namespace Soulvail.Game.Views
                 _fadeLeft = Mathf.Max(0f, _fadeLeft - dt);
                 SetOpacity(IsFading ? _fadeFrom * (_fadeLeft / FadeOutSeconds) : 1f - (_fadeLeft / FadeInSeconds));
             }
+            else if (_kind == ShadeKind.Decoy && !IsFading)
+            {
+                _pulseTime += dt;
+                SetOpacity(0.85f + 0.15f * Mathf.Cos(_pulseTime * 2f * Mathf.PI));
+            }
+
             return IsFading && _fadeLeft == 0f;
         }
 

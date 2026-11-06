@@ -86,6 +86,58 @@ public sealed class EchoArcherPathTests
     }
 
     [Test]
+    public void Assets_MatchTheRankTables()
+    {
+        var decoy = Path().Skills[2].Ranks;
+        SkirmisherPathTests.AssertRanks(decoy, new[]
+        {
+            new[] { (PlayerStat.DecoySeconds, 2f) },
+            new[] { (PlayerStat.DecoySeconds, 1f), (PlayerStat.DecoyInterval, -2f) },
+            new[] { (PlayerStat.DecoyInterval, -1f) },
+        });
+
+        var burst = Path().Skills[3].Ranks;
+        SkirmisherPathTests.AssertRanks(burst, new[]
+        {
+            new[] { (PlayerStat.FadeBurst, 1.5f) },
+            new[] { (PlayerStat.FadeBurst, 0.5f) },
+            new[] { (PlayerStat.FadeBurst, 0.5f), (PlayerStat.FadeBurstSlow, 0.4f) },
+        });
+
+        using IObjectResolver boot = SkirmisherPathTests.Boot();
+        var icons = boot.Resolve<SkillIconBook>();
+        foreach (var ranks in new[] { decoy, burst })
+        {
+            foreach (SkillDefinition rank in ranks)
+            {
+                Assert.That(rank.Icon, Is.Not.Null, rank.Id);
+                Assert.That(icons.For(new ContentId(rank.Id)), Is.SameAs(rank.Icon), rank.Id);
+            }
+        }
+
+        Assert.That(decoy[0].Icon, Is.Not.SameAs(burst[0].Icon));
+    }
+
+    [Test]
+    public void Path_BothAtFourteen_InOrder()
+    {
+        PathSpec path = Path().ToSpec(Ranger);
+        Assert.That(path.Skills.Count, Is.EqualTo(4));
+        Check(2, "skill.echo-archer.decoy-roll");
+        Check(3, "skill.echo-archer.fading-burst");
+
+        void Check(int index, string id)
+        {
+            var skill = path.Skills[index];
+            Assert.That(skill.UnlockLevel, Is.EqualTo(14));
+            Assert.That(skill.Ranks.TierCount, Is.EqualTo(3));
+            Assert.That(skill.Ranks.Tier(1), Is.EqualTo(new[] { new ContentId(id) }));
+            Assert.That(skill.Ranks.Tier(2), Is.EqualTo(new[] { new ContentId($"{id}-2") }));
+            Assert.That(skill.Ranks.Tier(3), Is.EqualTo(new[] { new ContentId($"{id}-3") }));
+        }
+    }
+
+    [Test]
     public void Path_MirrorImageSecondAtEleven()
     {
         var skill = Path().ToSpec(Ranger).Skills[1];
@@ -197,6 +249,30 @@ public sealed class EchoArcherPathTests
             SkillSpec spec = mirrorRanks[i].ToSpec();
             Check(spec.NameKey, i == 0 ? "Mirror Image" : $"Mirror Image {i + 1}");
             Check(spec.DescriptionKey, mirrorDescriptions[i]);
+        }
+
+        CheckPassive(2, "Decoy Roll", new[]
+        {
+            "A roll leaves a shade enemies chase for 2 s, at most every 8 s. Bosses ignore it.",
+            "3 s, every 6 s.",
+            "Every 5 s.",
+        });
+        CheckPassive(3, "Fading Burst", new[]
+        {
+            "Shades burst when they fade: 1.5× weapon damage within 3 m.",
+            "2×.",
+            "2.5×, and the burst slows.",
+        });
+
+        void CheckPassive(int index, string title, string[] descriptions)
+        {
+            var passiveRanks = Path().Skills[index].Ranks;
+            for (int i = 0; i < passiveRanks.Count; i++)
+            {
+                SkillSpec spec = passiveRanks[i].ToSpec();
+                Check(spec.NameKey, i == 0 ? title : $"{title} {i + 1}");
+                Check(spec.DescriptionKey, descriptions[i]);
+            }
         }
 
         void Check(LocKey key, string value)

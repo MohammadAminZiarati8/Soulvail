@@ -13,6 +13,9 @@ public sealed class ShadeViews : ITickable, IDisposable
 {
     private readonly ViewPool<ShadeView> _pool;
     private readonly PlayerView _player;
+    private readonly ViewPool<ShadeBurstView> _burstPool;
+    private readonly ShadeBurstView[] _bursts = new ShadeBurstView[ShadeSystem.Capacity];
+    private readonly IDisposable _burst;
     private readonly IDisposable _appeared;
     private readonly IDisposable _loosed;
     private readonly IDisposable _faded;
@@ -20,10 +23,17 @@ public sealed class ShadeViews : ITickable, IDisposable
     private readonly IDisposable _arrived;
     private readonly (int Id, ShadeView View)[] _slots = new (int, ShadeView)[ShadeSystem.Capacity];
 
-    public ShadeViews(IObjectResolver resolver, DomainEventHub hub, ShadeView prefab, Transform parent, PlayerView player)
+    public ShadeViews(IObjectResolver resolver, DomainEventHub hub, ShadeView prefab, Transform parent,
+        PlayerView player, ShadeBurstView burstPrefab = null, Transform burstParent = null)
     {
         _player = player;
         _pool = new ViewPool<ShadeView>(resolver, prefab, parent, ShadeSystem.Capacity);
+        if (burstPrefab != null)
+        {
+            _burstPool = new ViewPool<ShadeBurstView>(resolver, burstPrefab, burstParent, _bursts.Length);
+            _burst = hub.Subscribe<ShadeBurst>(OnBurst);
+        }
+
         _appeared = hub.Subscribe<ShadeAppeared>(OnAppeared);
         _loosed = hub.Subscribe<ShadeLoosed>(OnLoosed);
         _faded = hub.Subscribe<ShadeFaded>(OnFaded);
@@ -41,6 +51,47 @@ public sealed class ShadeViews : ITickable, IDisposable
             {
                 Release(i);
             }
+        }
+
+        for (int i = 0; i < _bursts.Length; i++)
+        {
+            if (_bursts[i] != null && _bursts[i].Step(dt))
+            {
+                ReleaseBurst(i);
+            }
+        }
+    }
+
+    private void OnBurst(ShadeBurst evt)
+    {
+        int slot = 0;
+        for (int i = 0; i < _bursts.Length; i++)
+        {
+            if (_bursts[i] == null)
+            {
+                slot = i;
+                break;
+            }
+
+            if (_bursts[i].Remaining < _bursts[slot].Remaining)
+            {
+                slot = i;
+            }
+        }
+
+        // When all eight are visible, give the most faded ring to the new burst.
+        ReleaseBurst(slot);
+        ShadeBurstView view = _burstPool.Get();
+        view.Flash(evt.Position.ToUnity(), evt.Radius, evt.Slows);
+        _bursts[slot] = view;
+    }
+
+    private void ReleaseBurst(int slot)
+    {
+        if (_bursts[slot] != null)
+        {
+            _burstPool.Release(_bursts[slot]);
+            _bursts[slot] = null;
         }
     }
 
@@ -74,7 +125,7 @@ public sealed class ShadeViews : ITickable, IDisposable
         }
 
         ShadeView view = _pool.Get();
-        view.Appear(evt.Position.ToUnity(), _player.transform.rotation);
+        view.Appear(evt.Position.ToUnity(), _player.transform.rotation, evt.Kind);
         _slots[slot] = (evt.Id, view);
     }
 
@@ -132,6 +183,11 @@ public sealed class ShadeViews : ITickable, IDisposable
                 Release(i);
             }
         }
+
+        for (int i = 0; i < _bursts.Length; i++)
+        {
+            ReleaseBurst(i);
+        }
     }
 
     public void Dispose()
@@ -141,6 +197,8 @@ public sealed class ShadeViews : ITickable, IDisposable
         _faded.Dispose();
         _transition.Dispose();
         _arrived.Dispose();
+        _burst?.Dispose();
+        _burstPool?.Dispose();
         _pool.Dispose();
     }
 }

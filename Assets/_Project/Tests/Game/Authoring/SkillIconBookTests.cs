@@ -139,7 +139,7 @@ public sealed class SkillIconBookTests
         // gained its art with UI-04c; the book answers for both.
         Assert.That(book.For(new ContentId(VolleyId)), Is.SameAs(Icon()));
         Assert.That(book.For(new ContentId("skill.ranger.quick-draw")).name, Is.EqualTo("Icon_QuickDraw"));
-        Assert.That(book.Count, Is.EqualTo(42), "Two explicit Ranger skills and 40 collected path ranks.");
+        Assert.That(book.Count, Is.EqualTo(46), "Two explicit Ranger skills and 44 collected path ranks.");
     }
 
     // ---- The shipped content (rule 9) ------------------------------------------------------------

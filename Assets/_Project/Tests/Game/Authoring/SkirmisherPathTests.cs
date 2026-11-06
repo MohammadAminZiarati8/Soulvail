@@ -184,19 +184,16 @@ public sealed class SkirmisherPathTests
     }
 
     [Test]
-    public void Ranger_OffersMarksmanAndSkirmisher()
+    public void Ranger_KeepsSkirmisherInTheSecondSlot()
     {
         CharacterDefinition ranger = Load<CharacterDefinition>("Characters/Ranger");
         Assert.That(ranger.PathSlots.Count, Is.EqualTo(3));
         Assert.That(ranger.PathSlots[0].Id, Is.EqualTo(Marksman.Value));
         Assert.That(ranger.PathSlots[1].Id, Is.EqualTo(Skirmisher.Value));
-        Assert.That(ranger.PathSlots[2], Is.Null);
         Assert.That(ranger.ToSpec().PathOpensAtLevel, Is.EqualTo(11));
-        Assert.That(ranger.ToSpec().PathIds, Is.EqualTo(new[] { Marksman, Skirmisher }));
 
         using IObjectResolver boot = Boot();
         var catalog = boot.Resolve<ContentCatalog>();
-        Assert.That(catalog.Paths.Count, Is.EqualTo(2));
         Assert.That(catalog.TryGetPath(Skirmisher, out _), Is.True);
     }
 
@@ -211,7 +208,7 @@ public sealed class SkirmisherPathTests
         RunSession session = StartRanger(level, events);
 
         Assert.That(session.State.IsPathChoiceOpen, Is.True);
-        Assert.That(session.State.PathCandidates, Is.EqualTo(new[] { Marksman, Skirmisher }));
+        Assert.That(session.State.PathCandidates, Is.EqualTo(new[] { Marksman, Skirmisher, new ContentId("path.ranger.echo-archer") }));
         int baseNodes = session.State.TreeNodeCount;
         session.ChoosePath(Skirmisher);
 
@@ -346,7 +343,7 @@ public sealed class SkirmisherPathTests
         return session;
     }
 
-    private static void AssertRanks(
+    internal static void AssertRanks(
         IReadOnlyList<SkillDefinition> ranks, (PlayerStat Stat, float Value)[][] expected)
     {
         Assert.That(ranks.Count, Is.EqualTo(expected.Length));
@@ -380,7 +377,7 @@ public sealed class SkirmisherPathTests
         }
     }
 
-    private static IObjectResolver Boot()
+    internal static IObjectResolver Boot()
     {
         string[] guids = AssetDatabase.FindAssets("t:SkillDefinition", new[] { Data + "Skills/Ranger" });
         var skills = new SkillDefinition[guids.Length];

@@ -618,7 +618,8 @@ public sealed class EmberwrightTreeTests
             if (path.StartsWith(EffectDir, StringComparison.Ordinal)
                 || path.StartsWith(RangerEffectDir, StringComparison.Ordinal)
                 || path.StartsWith("Assets/_Project/Data/Skills/Marksman/", StringComparison.Ordinal)
-                || path.StartsWith("Assets/_Project/Data/Skills/Skirmisher/", StringComparison.Ordinal))
+                || path.StartsWith("Assets/_Project/Data/Skills/Skirmisher/", StringComparison.Ordinal)
+                || path.StartsWith("Assets/_Project/Data/Skills/EchoArcher/", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -1086,7 +1087,7 @@ public sealed class EmberwrightTreeTests
             skills.Add(Load<SkillDefinition>(path).ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(85), "Three twelve-node classes, Ranger's nine, and 40 Ranger path ranks.");
+        Assert.That(skills, Has.Count.EqualTo(89), "Three twelve-node classes, Ranger's nine, and 44 Ranger path ranks.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

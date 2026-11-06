@@ -17,7 +17,7 @@ MonoBehaviour:
   _paths:
   - {fileID: 11400000, guid: 791c799fae66f5c4fa83ce895cf211b1, type: 2}
   - {fileID: 11400000, guid: a0d2fc9c7df749388167daa3c58f4b5c, type: 2}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 233ea234944242f4983c664d5bdd3611, type: 2}
   _pathOpensAtLevel: 11
   _descriptionKey: character.ranger.description
   _maxHp: 90

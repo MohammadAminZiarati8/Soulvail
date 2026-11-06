@@ -314,3 +314,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Skirmisher, Running Shot rank 4: strafing fires visibly faster than standing.
 2. **[Editor]** Whirlwind and Storm Run learned, one enemy in reach: both cast.
+
+## EA-01c — The Echo Archer authored
+
+- **[Editor]** DT-01 at stage 12. Confirm the tree shows Marksman, Skirmisher and Echo Archer.
+  Choose Echo Archer and learn Echo Arrow. Every fourth basic arrow should be followed by an
+  ordinary-looking echo 0.15 s later.

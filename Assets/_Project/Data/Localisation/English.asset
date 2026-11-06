@@ -764,3 +764,23 @@ MonoBehaviour:
     _text: "Storm Run 3"
   - _key: skill.skirmisher.storm-run-3.description
     _text: "Storm volley +30% damage."
+  - _key: path.ranger.echo-archer.name
+    _text: "Echo Archer"
+  - _key: path.ranger.echo-archer.description
+    _text: "Be in many places. Shades of you shoot, lure and burst."
+  - _key: skill.echo-archer.echo-arrow.name
+    _text: "Echo Arrow"
+  - _key: skill.echo-archer.echo-arrow.description
+    _text: "Every 4th arrow is loosed again by a shade, for 60% damage."
+  - _key: skill.echo-archer.echo-arrow-2.name
+    _text: "Echo Arrow 2"
+  - _key: skill.echo-archer.echo-arrow-2.description
+    _text: "Every 3rd arrow."
+  - _key: skill.echo-archer.echo-arrow-3.name
+    _text: "Echo Arrow 3"
+  - _key: skill.echo-archer.echo-arrow-3.description
+    _text: "80% damage."
+  - _key: skill.echo-archer.echo-arrow-4.name
+    _text: "Echo Arrow 4"
+  - _key: skill.echo-archer.echo-arrow-4.description
+    _text: "Every 2nd arrow."

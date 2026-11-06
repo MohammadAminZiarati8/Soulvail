@@ -127,7 +127,6 @@ public sealed class MarksmanPathTests
 
         Assert.That(ranger.PathSlots.Count, Is.EqualTo(3));
         Assert.That(ranger.PathSlots[0] == Marksman(), Is.True);
-        Assert.That(ranger.PathSlots[2], Is.Null);
         Assert.That(spec.PathOpensAtLevel, Is.EqualTo(11));
         Assert.That(spec.PathIds[0], Is.EqualTo(new ContentId("path.ranger.marksman")));
     }

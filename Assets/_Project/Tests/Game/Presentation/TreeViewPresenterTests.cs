@@ -1239,14 +1239,14 @@ public sealed class TreeViewPresenterTests
     }
 
     [Test]
-    public void Cards_ThreeSlots_OneComingSoon()
+    public void Cards_ThreeAuthoredPaths()
     {
         RankedRun();
         Assert.That(PathCards().CardText(0), Is.EqualTo("Marksman"));
         Assert.That(PathCards().CardText(1), Is.EqualTo("Skirmisher"));
         Assert.That(PathCards().Card(1).interactable, Is.True);
-        Assert.That(PathCards().CardText(2), Is.EqualTo("Coming soon"));
-        Assert.That(PathCards().Card(2).interactable, Is.False);
+        Assert.That(PathCards().CardText(2), Is.EqualTo("Echo Archer"));
+        Assert.That(PathCards().Card(2).interactable, Is.True);
         Assert.That(ShownCells().Length, Is.EqualTo(3));
         Transform strip = PathCards().Card(0).transform.Find("SkillStrip");
         Assert.That(strip.childCount, Is.EqualTo(6));
@@ -1260,7 +1260,7 @@ public sealed class TreeViewPresenterTests
     public void Cards_BelowLevel_ChooseDisabled()
     {
         RankedRun(level: 10, points: 9);
-        PathCards().Card(0).onClick.Invoke();
+        PathCards().Card(2).onClick.Invoke();
         Assert.That(PathCards().ChooseEnabled, Is.False);
         foreach (TMP_Text gate in Field<TMP_Text[]>(PathCards(), "_gates"))
             Assert.That(gate.text, Is.EqualTo("Lv 11"));
@@ -1296,21 +1296,52 @@ public sealed class TreeViewPresenterTests
         Assert.That(_presenter.IsOpen, Is.True);
     }
 
+    [Test]
+    public void Choose_EchoArcher_ShowsLearnableEchoArrowAndHidesCards()
+    {
+        RankedRun(level: 11, points: 10);
+        PathCards().Card(2).onClick.Invoke();
+        TreeNodeButton arrow = CellFor("skill.echo-archer.echo-arrow");
+        Assert.That(arrow.IsTakeable, Is.False);
+
+        PathCards().Confirm();
+
+        Assert.That(_session.State.PathId, Is.EqualTo(new ContentId("path.ranger.echo-archer")));
+        Assert.That(PathCards().gameObject.activeSelf, Is.False);
+        Assert.That(arrow.IsTakeable, Is.True);
+    }
+
+    [TestCase(360, 780)]
+    [TestCase(411, 914)]
+    public void TreeScreen_ThreeCards_DoNotOverlap(int width, int height)
+    {
+        RankedRun();
+        RectTransform safe = SetSafeArea(width, height);
+        PathCards().Card(2).onClick.Invoke();
+        AssertRankLayout(safe);
+    }
+
     [TestCase(360, 780)]
     [TestCase(411, 914)]
     public void Fits_360x780(int width, int height)
     {
         RankedRun(futureRows: true);
-        var safe = (RectTransform)_presenter.GetComponentInChildren<SafeAreaFitter>(true).transform;
-        safe.anchorMin = safe.anchorMax = new Vector2(0.5f, 0.5f);
-        safe.sizeDelta = new Vector2(width, height);
-        _screen.GetComponent<Canvas>().scaleFactor = 1f;
-        _presenter.UsePixelsPerDp(1f);
+        RectTransform safe = SetSafeArea(width, height);
         PathCards().Card(0).onClick.Invoke();
         AssertRankLayout(safe);
         PathCards().Confirm();
         AssertRankLayout(safe);
         Assert.That(Field<TreeBlockView>(_presenter, "_block").RowCount, Is.EqualTo(5));
+    }
+
+    private RectTransform SetSafeArea(int width, int height)
+    {
+        var safe = (RectTransform)_presenter.GetComponentInChildren<SafeAreaFitter>(true).transform;
+        safe.anchorMin = safe.anchorMax = new Vector2(0.5f, 0.5f);
+        safe.sizeDelta = new Vector2(width, height);
+        _screen.GetComponent<Canvas>().scaleFactor = 1f;
+        _presenter.UsePixelsPerDp(1f);
+        return safe;
     }
 
     private void AssertRankLayout(RectTransform safe)
@@ -1341,6 +1372,7 @@ public sealed class TreeViewPresenterTests
             Assert.That(safe.rect.Contains(rect.min) && safe.rect.Contains(rect.max), Is.True, button.name);
             foreach (Rect other in rects)
                 Assert.That(rect.Overlaps(other), Is.False, button.name);
+            rects.Add(rect);
         }
     }
 
@@ -1350,13 +1382,15 @@ public sealed class TreeViewPresenterTests
         _tree = AssetDatabase.LoadAssetAtPath<SkillTreeDefinition>("Assets/_Project/Data/Trees/Ranger.asset").ToSpec();
         PathSpec path = AssetDatabase.LoadAssetAtPath<PathDefinition>("Assets/_Project/Data/Paths/Marksman.asset").ToSpec(character.Id);
         PathSpec skirmisher = AssetDatabase.LoadAssetAtPath<PathDefinition>("Assets/_Project/Data/Paths/Skirmisher.asset").ToSpec(character.Id);
+        PathSpec echoArcher = AssetDatabase.LoadAssetAtPath<PathDefinition>("Assets/_Project/Data/Paths/EchoArcher.asset").ToSpec(character.Id);
         var skills = new List<SkillSpec>();
         foreach (string guid in AssetDatabase.FindAssets("t:SkillDefinition", new[] { "Assets/_Project/Data/Skills" }))
         {
             SkillSpec skill = AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
             if (skill.Id.Value.StartsWith("skill.ranger.", StringComparison.Ordinal)
                 || skill.Id.Value.StartsWith("skill.marksman.", StringComparison.Ordinal)
-                || skill.Id.Value.StartsWith("skill.skirmisher.", StringComparison.Ordinal))
+                || skill.Id.Value.StartsWith("skill.skirmisher.", StringComparison.Ordinal)
+                || skill.Id.Value.StartsWith("skill.echo-archer.", StringComparison.Ordinal))
             {
                 skills.Add(skill);
             }
@@ -1372,7 +1406,7 @@ public sealed class TreeViewPresenterTests
             }
             path = new PathSpec(path.Id, path.CharacterId, path.NameKey, path.DescriptionKey, pathSkills);
         }
-        _catalog = new ContentCatalog(new[] { character }, new[] { Husk() }, new[] { Mode(free: true) }, skills, new[] { _tree }, paths: new[] { path, skirmisher });
+        _catalog = new ContentCatalog(new[] { character }, new[] { Husk() }, new[] { Mode(free: true) }, skills, new[] { _tree }, paths: new[] { path, skirmisher, echoArcher });
         _session = new RunSession(_catalog, _random, _hub, new RecordingIntents(), new RunRecorder(_random, _clock, _hub), Capacity, DeviceCap, ProjectileCapacity);
         var snapshot = new RunSnapshot(RunSnapshot.CurrentVersion, new ContentId(ModeId), character.Id, _random.Seed, 1,
             new RandomState(101, 102, 103, 104, 105), 90f, 0f, 120f, Instant, level, 0f, points,

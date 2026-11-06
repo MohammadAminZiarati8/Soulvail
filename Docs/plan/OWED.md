@@ -326,3 +326,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] Editor: At stage 12, choose Echo Archer and take Mirror Image. Check that the smoky cyan copy reads apart from the Ranger, shoots its own target, and fades after 6 s.
 - [ ] Editor: With rank-one Echo Arrow, check that every fourth arrow is followed by a smoky cyan one.
 - [ ] Device: Check for frame drops with three shades and the Ranger shooting.
+
+
+## EA-03a — Decoy Roll in core
+
+- [ ] Editor, after EA-03c authors the skill: roll near a boss and its adds. Check that the adds turn toward the roll's starting point while the boss keeps its aim on the Ranger.

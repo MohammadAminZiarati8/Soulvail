@@ -155,6 +155,8 @@ public sealed class ModifyStatTests
                 PlayerStat.MirrorImageSeconds => stats.MirrorImageSeconds,
                 PlayerStat.EchoEvery => combat.EchoEvery,
                 PlayerStat.EchoDamage => combat.EchoDamage,
+                PlayerStat.DecoySeconds => combat.DecoySeconds,
+                PlayerStat.DecoyInterval => combat.DecoyInterval,
                 PlayerStat.StormRunSeconds => stats.StormRunSeconds,
                 PlayerStat.StormRunDamage => stats.StormRunDamage,
                 _ => null,
@@ -184,7 +186,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(47), "Forty-eight members with one enemy-only address.");
+        Assert.That(answered, Is.EqualTo(49), "Fifty members with one enemy-only address.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-07, EA-02._
+_2026-11-07, EA-03a._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **EA-02** — Shades drawn, Mirror Image authored. |
-| **Next task** | **EA-03a** — Decoy Roll in core. |
-| **Verified** | Editor EditMode 5893 (5892 passed, 0 failed, 1 inconclusive). Format clean. |
+| **Last merged** | **EA-03a** — Decoy Roll in core. |
+| **Next task** | **EA-03b** — Fading Burst in core. |
+| **Verified** | Editor EditMode 5909 (5908 passed, 0 failed, 1 inconclusive). Format clean. |
 
 ## What works
 

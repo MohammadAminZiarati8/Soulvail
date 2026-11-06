@@ -1694,14 +1694,13 @@ public sealed class EnemySystem
             EnemyBlackboard blackboard = agent.Blackboard;
             Vector3 position = agent.Position;
 
-            // Where this enemy's quarry is: the player, unless a corpse is standing. Asked per
-            // agent rather than once for the arena because the answer is "the nearest decoy to
-            // *you*" — which is not a filter on who is taunted (every living enemy is, rule 8) but
-            // a choice between the two that may stand at once.
+            // Bosses keep the player as their quarry. All other living enemies, including boss
+            // summons, use the nearest standing lure.
             Vector3 quarry = playerPosition;
             bool lured = false;
 
-            if (lures is not null && lures.TryGetLure(position, out Vector3 decoy))
+            if (agent.Spec.Behaviour != EnemyBehaviourKind.Boss
+                && lures is not null && lures.TryGetLure(position, out Vector3 decoy))
             {
                 quarry = decoy;
                 lured = true;

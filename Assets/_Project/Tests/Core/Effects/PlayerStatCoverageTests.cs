@@ -66,6 +66,17 @@ public sealed class PlayerStatCoverageTests
     }
 
     [Test]
+    public void DecoyStats_ResolveToTheirOwnersWithBaseDefaults()
+    {
+        PlayerCombat combat = Combat();
+        PlayerStats stats = Stats(combat);
+        Assert.That(stats.Resolve(PlayerStat.DecoySeconds), Is.SameAs(combat.DecoySeconds));
+        Assert.That(stats.Resolve(PlayerStat.DecoyInterval), Is.SameAs(combat.DecoyInterval));
+        Assert.That(combat.DecoySeconds.Base, Is.Zero);
+        Assert.That(combat.DecoyInterval.Base, Is.EqualTo(8f));
+    }
+
+    [Test]
     public void EchoStats_ResolveToTheirOwnersAndDefaultToZero()
     {
         PlayerCombat combat = Combat();
@@ -356,7 +367,7 @@ public sealed class PlayerStatCoverageTests
 
         Assert.That(
             values.Length,
-            Is.EqualTo(48),
+            Is.EqualTo(50),
             "Six from M3-05, M3-12a's five, M4-01a's ContactDamage — the first member no "
                 + "player has, added because IStatBlock made this one shared address space rather "
                 + "than two enums — M6-08's four Kindling and pool numbers, RS-03a's "
@@ -364,7 +375,7 @@ public sealed class PlayerStatCoverageTests
                 + "and MK-07a's three Rain numbers, MK-08a's BindStun, MK-09a's SnareRoot/SnareDamage "
                 + "MK-10a's KillshotExecute/KillshotDamage, SK-01a's three Skirmisher stats and SK-03a's "
                 + "two Ricochet Shot stats, SK-04a's two Second Wind stats, SK-05a's two Whirlwind stats "
-                + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats and EA-01b's two Echo Arrow stats.");
+                + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats, EA-01b's two Echo Arrow stats and EA-03a's two Decoy Roll stats.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

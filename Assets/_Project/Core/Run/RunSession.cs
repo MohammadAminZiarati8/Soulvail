@@ -682,6 +682,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // know, and M5-05's view is that something.
         var lures = new LureSystem(_events);
         _shades = new ShadeSystem(projectiles, lures, playerStats, character, _events);
+        combat.AttachShades(_shades);
         effects.Register<MirrorImage>(new MirrorImageHandler(_shades, projectiles, enemies, playerStats,
             combat.Blackboard, character, _clock));
 
@@ -1284,9 +1285,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // last tick's turn: combat cannot be given a facing that has not been decided yet. A swing
         // landing mid-turn is therefore aimed up to one frame of rotation behind the pose that gets
         // drawn — see PlayerCombat.Tick's bodyFacing, which is where that trade is argued.
-        // The lures go down with it, and this is the one step that *writes* one: a Shroudstep drops
-        // its corpse on the start edge of the dash, from the position this snapshot reported
-        // (M5-03 rule 6).
+        // Shroudstep and Decoy Roll drop their lures on the start edge of the movement skill,
+        // from the position this snapshot reported.
         // The army goes down with the lures, and this step *reads* it rather than writing it: the
         // blackboard's MinionCount is filled here so a CC §6.4 trigger can compare against it
         // (M5-06a rule 6). Null for every class but the Gravecaller, which reads as zero standing —
@@ -1576,6 +1576,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 State.Projectiles.ClearRicochets();
                 _whirlwind.Clear();
                 _shades.Clear();
+                State.Combat.ResetDecoy();
                 State.Combat.EndStormRun();
                 State.Combat.ClearEchoes();
             }
@@ -1603,6 +1604,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 State.Combat.SteadyAim.OnMoved();
                 State.Combat.HitAndRun.Reset();
                 State.Combat.ResetSecondWind();
+                State.Combat.ResetDecoy();
                 State.Status.Reset();
             }
 
@@ -2166,6 +2168,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _shades.Clear();
         State.Combat.EndStormRun();
         State.Combat.ClearEchoes();
+        State.Combat.ResetDecoy();
         _events.Publish(new RunEnded(State.Time));
 
         IsRunning = false;

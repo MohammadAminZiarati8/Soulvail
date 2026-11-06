@@ -226,6 +226,12 @@ public enum PlayerStat
     MirrorImageSeconds,
     EchoEvery,
     EchoDamage,
+
+    /// <summary>Seconds a roll decoy stands. Zero disables the decoy.</summary>
+    DecoySeconds,
+
+    /// <summary>Minimum seconds between decoy drops.</summary>
+    DecoyInterval,
 }
 
 /// <summary>
@@ -381,6 +387,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MirrorImageSeconds => MirrorImageSeconds,
             PlayerStat.EchoEvery => _combat.EchoEvery,
             PlayerStat.EchoDamage => _combat.EchoDamage,
+            PlayerStat.DecoySeconds => _combat.DecoySeconds,
+            PlayerStat.DecoyInterval => _combat.DecoyInterval,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -458,6 +466,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MirrorImageSeconds => true,
             PlayerStat.EchoEvery => true,
             PlayerStat.EchoDamage => true,
+            PlayerStat.DecoySeconds => true,
+            PlayerStat.DecoyInterval => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

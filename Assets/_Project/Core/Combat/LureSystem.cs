@@ -21,8 +21,8 @@ namespace Soulvail.Core.Combat;
 /// <para>
 /// <b>It is deliberately not a targeting system and must not become one</b> (M5-03 rule 8).
 /// <c>EnemyBlackboard</c> carries no <c>TargetId</c>, there is no threat table, and there is no way
-/// for a decoy to pull <em>some</em> enemies and not others — <see cref="TryGetLure"/> is asked the
-/// same question about every agent and answers it the same way. The blackboard's four player fields
+/// for a decoy to pick its targets — <see cref="TryGetLure"/> answers the same question for every
+/// eligible agent. Boss immunity is decided by perception. The blackboard's four player fields
 /// keep their names and mean "where this enemy's quarry is" for exactly as long as a decoy stands;
 /// renaming them is M7-01's Choir, which needs a real target id anyway.
 /// </para>
@@ -175,7 +175,7 @@ public sealed class LureSystem
     /// <remarks>
     /// <para>
     /// <b>This is a taunt and not a proximity check.</b> A decoy further away than the player still
-    /// takes the enemy — every living enemy in the arena walks at a corpse while one stands, which
+    /// takes the enemy — every living non-boss in the arena walks at a lure while one stands, which
     /// is what three seconds of the arena's attention means and what the dodge bought. "Nearest"
     /// decides <em>which</em> decoy, never <em>whether</em>.
     /// </para>
@@ -240,6 +240,18 @@ public sealed class LureSystem
     {
         _count = 0;
         _nextId = FirstId;
+    }
+
+    internal void Expire(int id)
+    {
+        for (int i = 0; i < _count; i++)
+        {
+            if (_ids[i] == id)
+            {
+                Retire(i);
+                return;
+            }
+        }
     }
 
     /// <summary>Squared XZ separation. No square root, and no allocation (AR §18.4).</summary>

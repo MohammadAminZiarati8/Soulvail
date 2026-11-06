@@ -12,7 +12,8 @@ public enum ShadeKind { Image, Decoy, Crossfire, Hall }
 
 public readonly struct Shade
 {
-    internal Shade(int id, ShadeKind kind, Vector3 position, float expiresAt, float damageOfWeapon, float nextShotAt)
+    internal Shade(int id, ShadeKind kind, Vector3 position, float expiresAt, float damageOfWeapon,
+        float nextShotAt, int lureId = LureSystem.NoLure)
     {
         Id = id;
         Kind = kind;
@@ -20,6 +21,7 @@ public readonly struct Shade
         ExpiresAt = expiresAt;
         DamageOfWeapon = damageOfWeapon;
         NextShotAt = nextShotAt;
+        LureId = lureId;
     }
 
     public int Id { get; }
@@ -28,6 +30,7 @@ public readonly struct Shade
     public float ExpiresAt { get; }
     public float DamageOfWeapon { get; }
     public float NextShotAt { get; }
+    internal int LureId { get; }
 }
 
 public sealed class ShadeSystem
@@ -36,6 +39,7 @@ public sealed class ShadeSystem
     public const float SideOffset = 1.2f;
 
     private readonly ProjectileSystem _projectiles;
+    private readonly LureSystem _lures;
     private readonly CharacterSpec _character;
     private readonly IDomainEvents _events;
     private readonly Stat _range;
@@ -49,8 +53,7 @@ public sealed class ShadeSystem
         CharacterSpec character, IDomainEvents events)
     {
         _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
-        // Decoy Roll will use this dependency when it starts dropping lures.
-        _ = lures ?? throw new ArgumentNullException(nameof(lures));
+        _lures = lures ?? throw new ArgumentNullException(nameof(lures));
         _ = stats ?? throw new ArgumentNullException(nameof(stats));
         _character = character ?? throw new ArgumentNullException(nameof(character));
         _events = events ?? throw new ArgumentNullException(nameof(events));
@@ -95,7 +98,8 @@ public sealed class ShadeSystem
         }
 
         int id = _nextId++;
-        _standing[_count++] = new Shade(id, kind, position, expiresAt, damageOfWeapon, now);
+        int lureId = kind == ShadeKind.Decoy ? _lures.Drop(position, now, seconds) : LureSystem.NoLure;
+        _standing[_count++] = new Shade(id, kind, position, expiresAt, damageOfWeapon, now, lureId);
         _events.Publish(new ShadeAppeared(id, kind, position, expiresAt));
         return id;
     }
@@ -130,7 +134,11 @@ public sealed class ShadeSystem
     {
         while (_count > 0)
         {
+            int lureId = _standing[0].LureId;
             Retire(0, expired: false);
+
+            // Clearing the field ends the lure. Replacing a shade leaves its lure on its timer.
+            _lures.Expire(lureId);
         }
     }
 

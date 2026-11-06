@@ -166,6 +166,36 @@ public sealed class LureSystemTests
         Assert.That(position, Is.EqualTo(At(-4f, 0f)), "The first dropped keeps the tie.");
     }
 
+    [TestCase(true, TestName = "Boss_IgnoresLure")]
+    [TestCase(false, TestName = "BossAdd_IsLured")]
+    public void Lure_OnlyRedirectsNonBosses(bool isBoss)
+    {
+        var bossBody = new EnemySpec(new ContentId("enemy.warden"), new LocKey("enemy.warden.name"),
+            100f, 2f, 1, 4, 12f, false, 8f, 1.2f, 0.4f, 0.6f, 30f, EnemyBehaviourKind.Boss);
+        var bossSpec = new BossSpec(new ContentId("boss.warden"), bossBody.Id, new[] { new BossPhaseSpec(1f) }, 1.5f);
+        EnemySpec addBody = RunningShotTests.Husk();
+        var catalog = new ContentCatalog(new[] { Gravecaller() }, new[] { bossBody, addBody }, bosses: new[] { bossSpec });
+        var enemies = new EnemySystem(catalog, _events, new FixedRandom(Seed), new DepthScaling(Scalings.Design()), EnemyCapacity);
+        EnemyAgent boss = enemies.SpawnBoss(bossSpec.Id, At(1f, 0f));
+        EnemyAgent add = enemies.SpawnSummon(addBody.Id, At(-1f, 0f));
+        EnemyAgent subject = isBoss ? boss : add;
+
+        Vector3 lurePosition = At(0f, 10f);
+        _lures.Drop(lurePosition, 0f, DecoySeconds);
+        var snapshot = new WorldSnapshot(EnemyCapacity) { PlayerPosition = At(5f, 0f) };
+        snapshot.AddEnemy() = new EnemySense
+        {
+            Id = subject.Id,
+            Position = subject.Position,
+            PathDirectionToPlayer = Vector2.UnitX,
+        };
+        enemies.Ingest(snapshot, _lures);
+
+        Assert.That(subject.Blackboard.QuarryIsADecoy, Is.EqualTo(!isBoss));
+        Assert.That(subject.Blackboard.PlayerPosition, Is.EqualTo(isBoss ? snapshot.PlayerPosition : lurePosition));
+        Assert.That(subject.Blackboard.PathDirectionToPlayer, Is.EqualTo(isBoss ? Vector2.UnitX : Vector2.Zero));
+    }
+
     [Test]
     public void Lure_RefusesAThirdSilently()
     {

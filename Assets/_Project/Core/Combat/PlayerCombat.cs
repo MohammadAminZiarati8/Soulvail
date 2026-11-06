@@ -353,6 +353,12 @@ public sealed class PlayerCombat
     public Stat EchoEvery { get; } = new(0f);
     public Stat EchoDamage { get; } = new(0f);
 
+    private ShadeSystem _shades;
+    private float _nextDecoyAt = float.NegativeInfinity;
+
+    public Stat DecoySeconds { get; } = new(0f);
+    public Stat DecoyInterval { get; } = new(8f);
+
     private bool _isStanding;
 
     /// <param name="spec">
@@ -672,6 +678,10 @@ public sealed class PlayerCombat
 
     internal void AttachStormRun(StormRunHandler stormRun) => _stormRun = stormRun;
 
+    internal void AttachShades(ShadeSystem shades) => _shades = shades;
+
+    internal void ResetDecoy() => _nextDecoyAt = float.NegativeInfinity;
+
     internal void EndStormRun() => _stormRun?.Clear();
 
     public void AttachStatus(StatusBoard status)
@@ -924,6 +934,7 @@ public sealed class PlayerCombat
 
         _deathAnnounced = true;
         ClearEchoes();
+        ResetDecoy();
         EndStormRun();
         SetKillshotWindUp(false);
         _events.Publish(new PlayerDied(now));
@@ -1517,6 +1528,7 @@ public sealed class PlayerCombat
         // And the volley's count, as silently: shots toward a volley belong to the run that fired them.
         Volley?.Reset();
         ClearEchoes();
+        ResetDecoy();
 
         // The dash goes back to rest with everything else, and the three fields that track it here
         // go with it. Health.Reset above has already lowered the external flag — a dash interrupted
@@ -1634,6 +1646,11 @@ public sealed class PlayerCombat
 
             _events.Publish(new ChargeStarted(Charge.Direction));
 
+            if (_movementSkill.Kind == MovementSkillKind.Charge && _weaponSpec.Kind == WeaponKind.Projectile)
+            {
+                DropDecoy(playerPosition, now);
+            }
+
             // **And the corpse, where the blink *left*** (rule 6). CH §3.2 says the Shroudstep
             // "leaves a corpse-decoy" — a thing left behind — so it is dropped from the player's
             // position as of this tick rather than from the destination. Dropped at the
@@ -1678,6 +1695,19 @@ public sealed class PlayerCombat
 
         // A buffered roll can start on the same tick the previous roll ends.
         return wasActive && (started || !Charge.IsActive);
+    }
+
+    private void DropDecoy(Vector3 position, float now)
+    {
+        float seconds = DecoySeconds.Value;
+        if (_shades is null || IsDead || !(now >= _nextDecoyAt) || !(seconds > 0f)
+            || !float.IsFinite(now + seconds))
+        {
+            return;
+        }
+
+        _nextDecoyAt = now + DecoyInterval.Value;
+        _shades.Spawn(ShadeKind.Decoy, position, now, seconds, 0f);
     }
 
     internal void ResetSecondWind()

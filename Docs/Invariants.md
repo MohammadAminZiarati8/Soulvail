@@ -32,7 +32,7 @@ knockbacks (`FrameOrderTests`).
 - A view answering core with a fact takes `Step(dt)` from `RunTicker`, never its own `Update`.
 
 **`RunSession.Tick`:** time → lure expiry → ingest (enemies + minions) → Veilrot → combat → take
-the shot → skills → timed effects → zones → enemy behaviours → minions → projectiles → death drain +
+the shot → shades → skills → timed effects → zones → enemy behaviours → minions → projectiles → death drain +
 rise → (dead? end) → XP drain → director → stage flow → motor → intent.
 
 - `LureSystem.Tick` above ingest; a decoy redirects in `EnemySystem.Perceive` only (the one writer
@@ -42,6 +42,8 @@ rise → (dead? end) → XP drain → director → stage flow → motor → inte
   drain step calls `PlayerCombat.AnnounceDeath` (the one `PlayerDied` publisher).
 - `TryTakeShot` drains right after combat; a projectile weapon writes `PendingShot`, not a
   `ConeHitIntent`.
+- Shades tick after the queued player shots. At a stage boundary or run end they fade with
+  `Expired: false`. Shade IDs continue across stages.
 - `SkillRunner.PrepareVolley` before combat gates the shot-driven Volley; its casts are recorded by the runner. Auto casts wait 0.5 s after any cast; manual requests bypass the gap.
 - `SkillRunner.Tick` after combat, before behaviours and projectiles — HP triggers and Bulwark read
   this tick's state.

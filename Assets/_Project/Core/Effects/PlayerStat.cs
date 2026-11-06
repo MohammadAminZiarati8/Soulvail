@@ -222,6 +222,8 @@ public enum PlayerStat
 
     StormRunSeconds,
     StormRunDamage,
+    MirrorImageShades,
+    MirrorImageSeconds,
 }
 
 /// <summary>
@@ -286,6 +288,8 @@ public sealed class PlayerStats : IStatBlock
 
     public Stat WhirlwindArrows { get; } = new(12f);
     public Stat WhirlwindRings { get; } = new(2f);
+    public Stat MirrorImageShades { get; } = new(1f);
+    public Stat MirrorImageSeconds { get; } = new(6f);
     public Stat StormRunSeconds { get; } = new(6f);
     public Stat StormRunDamage { get; } = new(0f);
 
@@ -371,6 +375,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.RicochetDamage => RicochetDamage,
             PlayerStat.WhirlwindArrows => WhirlwindArrows,
             PlayerStat.WhirlwindRings => WhirlwindRings,
+            PlayerStat.MirrorImageShades => MirrorImageShades,
+            PlayerStat.MirrorImageSeconds => MirrorImageSeconds,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -444,6 +450,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.RicochetDamage => true,
             PlayerStat.WhirlwindArrows => true,
             PlayerStat.WhirlwindRings => true,
+            PlayerStat.MirrorImageShades => true,
+            PlayerStat.MirrorImageSeconds => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

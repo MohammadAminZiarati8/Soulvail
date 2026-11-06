@@ -1,4 +1,5 @@
 using System.Numerics;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Events;
@@ -55,6 +56,8 @@ public readonly struct ProjectileFired
     /// <summary>Where it left from, in world metres — the shooter's position at the moment of firing.</summary>
     public readonly Vector3 Origin;
 
+    public readonly ShotOrigin ShotOrigin;
+
     /// <summary>
     /// The point on the ground it will arrive at, in world metres. Decided once, at the moment of
     /// firing, and it never tracks the player (<c>ProjectileSystem</c>, rule 4).
@@ -95,7 +98,8 @@ public readonly struct ProjectileFired
         Vector3 target,
         float flightTime,
         bool isVolley = false,
-        float radius = 0f, bool isCrit = false, bool isRicochet = false, int chainIndex = 0)
+        float radius = 0f, bool isCrit = false, bool isRicochet = false, int chainIndex = 0,
+        ShotOrigin shotOrigin = ShotOrigin.Ranger)
     {
         Id = id;
         SpecId = specId;
@@ -108,6 +112,7 @@ public readonly struct ProjectileFired
         IsRicochet = isRicochet;
         ChainIndex = chainIndex;
         Radius = radius;
+        ShotOrigin = shotOrigin;
     }
 }
 

@@ -66,6 +66,16 @@ public sealed class PlayerStatCoverageTests
     }
 
     [Test]
+    public void MirrorImageStats_ResolveToTheirOwnersWithRankOneDefaults()
+    {
+        PlayerStats stats = Stats(Combat());
+        Assert.That(stats.Resolve(PlayerStat.MirrorImageShades), Is.SameAs(stats.MirrorImageShades));
+        Assert.That(stats.Resolve(PlayerStat.MirrorImageSeconds), Is.SameAs(stats.MirrorImageSeconds));
+        Assert.That(stats.MirrorImageShades.Value, Is.EqualTo(1f));
+        Assert.That(stats.MirrorImageSeconds.Value, Is.EqualTo(6f));
+    }
+
+    [Test]
     public void StormRunStats_ResolveToTheirOwnersWithRankOneDefaults()
     {
         PlayerStats stats = Stats(Combat());
@@ -335,7 +345,7 @@ public sealed class PlayerStatCoverageTests
 
         Assert.That(
             values.Length,
-            Is.EqualTo(44),
+            Is.EqualTo(46),
             "Six from M3-05, M3-12a's five, M4-01a's ContactDamage — the first member no "
                 + "player has, added because IStatBlock made this one shared address space rather "
                 + "than two enums — M6-08's four Kindling and pool numbers, RS-03a's "
@@ -343,7 +353,7 @@ public sealed class PlayerStatCoverageTests
                 + "and MK-07a's three Rain numbers, MK-08a's BindStun, MK-09a's SnareRoot/SnareDamage "
                 + "MK-10a's KillshotExecute/KillshotDamage, SK-01a's three Skirmisher stats and SK-03a's "
                 + "two Ricochet Shot stats, SK-04a's two Second Wind stats, SK-05a's two Whirlwind stats "
-                + "and SK-06a's two Storm Run stats.");
+                + "SK-06a's two Storm Run stats, and EA-01a's two Mirror Image stats.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

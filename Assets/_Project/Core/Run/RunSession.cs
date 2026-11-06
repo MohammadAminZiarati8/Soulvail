@@ -112,6 +112,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private TimedEffects _timed;
     private KillshotHandler _killshot;
     private WhirlwindHandler _whirlwind;
+    private ShadeSystem _shades;
 
     private TrapSystem _traps;
 
@@ -680,6 +681,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // and on RunState for the reason the zones are there: something outside core will want to
         // know, and M5-05's view is that something.
         var lures = new LureSystem(_events);
+        _shades = new ShadeSystem(projectiles, lures, playerStats, character, _events);
+        effects.Register<MirrorImage>(new MirrorImageHandler(_shades, projectiles, enemies, playerStats,
+            combat.Blackboard, character, _clock));
 
         // **Only for a class that raises the dead, which is the Gravecaller and nothing else**
         // (M5-04a rule 1, M5-04b rule 10). A run with no MinionSpec holds no system, so an Oathbound
@@ -1328,6 +1332,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Projectiles.Fire(shot, State.Time);
         }
 
+        _shades.Tick(State.Time, State.Enemies);
+
         // **After combat and before the enemy behaviours — which puts it above the projectile step
         // as well, and that is the half worth arguing** (M3-06 rule 7, AR §18.1).
         //
@@ -1569,6 +1575,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             {
                 State.Projectiles.ClearRicochets();
                 _whirlwind.Clear();
+                _shades.Clear();
                 State.Combat.EndStormRun();
             }
 
@@ -1584,6 +1591,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             {
                 State.Projectiles.ClearRicochets();
                 _whirlwind.Clear();
+                _shades.Clear();
                 State.Combat.EndStormRun();
                 _traps.Clear();
                 _killshot.Clear();
@@ -2153,6 +2161,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
         _killshot.Clear();
         _whirlwind.Clear();
+        _shades.Clear();
         State.Combat.EndStormRun();
         _events.Publish(new RunEnded(State.Time));
 

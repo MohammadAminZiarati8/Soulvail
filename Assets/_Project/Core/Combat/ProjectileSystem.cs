@@ -32,6 +32,9 @@ public enum ShotSide
     AtEnemies,
 }
 
+/// <summary>Attribution of a friendly projectile.</summary>
+public enum ShotOrigin { Ranger, Shade }
+
 /// <summary>
 /// One shot in flight: a point and a moment, not a body.
 /// </summary>
@@ -93,7 +96,8 @@ public readonly struct Projectile
         float radius,
         float damage,
         ShotSide side = ShotSide.AtPlayer,
-        bool isVolley = false, bool isCrit = false, BindingShot bind = null)
+        bool isVolley = false, bool isCrit = false, BindingShot bind = null,
+        ShotOrigin shotOrigin = ShotOrigin.Ranger)
     {
         SpecId = specId;
         SourceId = sourceId;
@@ -111,6 +115,7 @@ public readonly struct Projectile
         }
 
         Bind = bind;
+        ShotOrigin = shotOrigin;
     }
 
     /// <summary>Which archetype fired it, e.g. <c>enemy.spitter</c>.</summary>
@@ -129,6 +134,8 @@ public readonly struct Projectile
 
     /// <summary>Where it left from, in world metres.</summary>
     public Vector3 Origin { get; }
+
+    public ShotOrigin ShotOrigin { get; }
 
     /// <summary>The point on the ground it arrives at. Decided once and never tracked (rule 4).</summary>
     public Vector3 Target { get; }
@@ -445,7 +452,8 @@ public sealed class ProjectileSystem
             shot.Radius,
             shot.IsCrit,
             chain.IsActive,
-            chain.Index));
+            chain.Index,
+            shot.ShotOrigin));
 
         return id;
     }
@@ -639,7 +647,7 @@ public sealed class ProjectileSystem
         // the only thing that fires an AtEnemies shot is the player's weapon — so this is the
         // projectile half of the door ResolveConeHits is for a swing. After the damage, so the orb
         // that raised the ramp was not itself raised by it.
-        if (hit && shot.Side == ShotSide.AtEnemies)
+        if (hit && shot.Side == ShotSide.AtEnemies && shot.ShotOrigin == ShotOrigin.Ranger)
         {
             player.Kindling?.OnWeaponHitLanded();
         }
@@ -657,7 +665,7 @@ public sealed class ProjectileSystem
         if (bounceTarget != null)
         {
             Fire(new Projectile(shot.SpecId, shot.SourceId, flight.Impact, bounceTarget.Position,
-                shot.Speed, shot.Radius, shot.Damage, ShotSide.AtEnemies), now, chain);
+                shot.Speed, shot.Radius, shot.Damage, ShotSide.AtEnemies, shotOrigin: shot.ShotOrigin), now, chain);
         }
     }
 
@@ -753,7 +761,7 @@ public sealed class ProjectileSystem
             float far = EagleEye.FarDistance;
             float multiplier = ((delta.X * delta.X) + (delta.Z * delta.Z)) > far * far ? farMultiplier : 1f;
             float damage = PlayerCombat.ShotDamage(shot.Damage * multiplier);
-            if (enemies.ApplyDamage(target.Id, damage, now, player).Applied > 0f)
+            if (enemies.ApplyDamage(target.Id, damage, now, player).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
             {
                 player.HitAndRun.OnHit(now);
             }
@@ -803,7 +811,11 @@ public sealed class ProjectileSystem
 
             if (enemies.ApplyDamage(target.Id, shot.Damage, now, player).Applied > 0f)
             {
-                player.HitAndRun.OnHit(now);
+                if (shot.ShotOrigin == ShotOrigin.Ranger)
+                {
+                    player.HitAndRun.OnHit(now);
+                }
+
                 if (flight.Chain.IsActive)
                 {
                     damagedId = target.Id;
@@ -849,7 +861,7 @@ public sealed class ProjectileSystem
             // `this` to the same door: a bolt that kills a Bloater is a bolt that set one off, and
             // whether that reaches the player is PlayerCombat.ApplyDamage's question rather than
             // this method's. Only applied damage refreshes Hit and Run.
-            if (enemies.ApplyDamage(agent.Id, shot.Damage, now, player).Applied > 0f)
+            if (enemies.ApplyDamage(agent.Id, shot.Damage, now, player).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
             {
                 player.HitAndRun.OnHit(now);
             }
@@ -858,12 +870,16 @@ public sealed class ProjectileSystem
         return hit;
     }
 
-    internal EnemyAgent PickRicochetTarget(EnemySystem enemies, Vector3 origin, float range, int preferredId) =>
-        PickRicochetTarget(enemies, origin, range, preferredId, default);
+    internal EnemyAgent PickRicochetTarget(EnemySystem enemies, Vector3 origin, float range, int preferredId,
+        bool fromShade = false) =>
+        PickRicochetTarget(enemies, origin, range, preferredId, default, fromShade);
 
     private EnemyAgent PickRicochetTarget(EnemySystem enemies, Vector3 origin, float range, int preferredId,
-        in RicochetChain chain)
+        in RicochetChain chain, bool fromShade = false)
     {
+        // The blackboard's cover flag is measured from the player. When a trace is available,
+        // an offset shade or ricochet leg can check its own line instead.
+        bool usePlayerCover = (!fromShade && !chain.IsActive) || TraceCover == null;
         EnemyAgent nearest = null;
         float best = range * range;
         ReadOnlySpan<EnemyAgent> agents = enemies.Registry.Alive;
@@ -874,7 +890,7 @@ public sealed class ProjectileSystem
             float distance = delta.X * delta.X + delta.Z * delta.Z;
             bool preferred = agent.Id == preferredId;
             if (!agent.IsAlive || chain.HasHit(agent.Id) || !(distance <= range * range)
-                || ((!chain.IsActive || TraceCover == null) && agent.Blackboard.IsBehindCover)
+                || (usePlayerCover && agent.Blackboard.IsBehindCover)
                 || (!preferred && nearest != null && (distance > best || (distance == best && agent.Id > nearest.Id)))
                 || TraceCoverBetween(origin, agent.Position).HasValue)
             {

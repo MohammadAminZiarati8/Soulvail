@@ -73,7 +73,7 @@ _No milestone. The owner is setting the next direction._
 
 **The Echo Archer, the Ranger's third path** (owner, 2026-11-06; design [CH §3.5](../Characters.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from EA-02 on, with DT-01's test start at stage 12+. The drawn tasks name no screen position, so they hold through the landscape switch.
 
-- [ ] **EA-01a** — Shades and Mirror Image in core: bodies that stand and shoot, the cap of 8, expiry (M) — [spec](tasks/EA-01a-shades-and-mirror-image.md)
+- [x] **EA-01a** — Shades and Mirror Image in core: bodies that stand and shoot, the cap of 8, expiry (M)
 - [ ] **EA-01b** — Echo Arrow in core: every Nth basic arrow loosed again 0.15 s later (S) — [spec](tasks/EA-01b-echo-arrow.md)
 - [ ] **EA-01c** — The Echo Archer authored: the third path slot, its card, Echo Arrow's assets (M) — [spec](tasks/EA-01c-the-echo-archer-authored.md)
 - [ ] **EA-02** — Shades drawn, Mirror Image authored: the smoky copy, its shot, its fade (M) — [spec](tasks/EA-02-shades-drawn.md)

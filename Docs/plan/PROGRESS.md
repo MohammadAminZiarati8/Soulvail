@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-07, EA-04b._
+_2026-11-07, EA-05a._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **EA-04b** — Crossfire drawn and authored. |
-| **Next task** | **EA-05a** — Hall of Mirrors in core. |
-| **Verified** | EditMode 5955 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **EA-05a** — Hall of Mirrors in core. |
+| **Next task** | **EA-05b** — Hall of Mirrors drawn and authored. |
+| **Verified** | EditMode 5966 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

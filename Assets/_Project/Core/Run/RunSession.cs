@@ -687,6 +687,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             combat.Blackboard, character, _clock));
         effects.Register<Crossfire>(new CrossfireHandler(_shades, projectiles, enemies, playerStats,
             combat.Blackboard, character, _clock));
+        effects.Register<HallOfMirrors>(new HallOfMirrorsHandler(_shades, projectiles, enemies, playerStats,
+            combat.Blackboard, character, _clock, _events));
 
         // **Only for a class that raises the dead, which is the Gravecaller and nothing else**
         // (M5-04a rule 1, M5-04b rule 10). A run with no MinionSpec holds no system, so an Oathbound

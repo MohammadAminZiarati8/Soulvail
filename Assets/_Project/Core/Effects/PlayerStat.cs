@@ -241,6 +241,10 @@ public enum PlayerStat
 
     CrossfireShades,
     CrossfireDamage,
+
+    HallShades,
+    HallSeconds,
+    HallDamage,
 }
 
 /// <summary>
@@ -312,6 +316,10 @@ public sealed class PlayerStats : IStatBlock
 
     public Stat CrossfireShades { get; } = new(2f);
     public Stat CrossfireDamage { get; } = new(0f);
+
+    public Stat HallShades { get; } = new(4f);
+    public Stat HallSeconds { get; } = new(5f);
+    public Stat HallDamage { get; } = new(0f);
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -405,6 +413,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.FadeBurstSlow => _combat.FadeBurstSlow,
             PlayerStat.CrossfireShades => CrossfireShades,
             PlayerStat.CrossfireDamage => CrossfireDamage,
+            PlayerStat.HallShades => HallShades,
+            PlayerStat.HallSeconds => HallSeconds,
+            PlayerStat.HallDamage => HallDamage,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -488,6 +499,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.FadeBurstSlow => true,
             PlayerStat.CrossfireShades => true,
             PlayerStat.CrossfireDamage => true,
+            PlayerStat.HallShades => true,
+            PlayerStat.HallSeconds => true,
+            PlayerStat.HallDamage => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

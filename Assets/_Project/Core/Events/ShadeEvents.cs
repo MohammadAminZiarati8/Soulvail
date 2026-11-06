@@ -58,3 +58,17 @@ public readonly struct ShadeBurst
     public readonly float Radius;
     public readonly bool Slows;
 }
+
+public readonly struct HallRaised
+{
+    public HallRaised(Vector3 center, float radius, float seconds)
+    {
+        Center = center;
+        Radius = radius;
+        Seconds = seconds;
+    }
+
+    public readonly Vector3 Center;
+    public readonly float Radius;
+    public readonly float Seconds;
+}

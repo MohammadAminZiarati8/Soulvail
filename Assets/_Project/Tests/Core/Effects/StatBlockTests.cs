@@ -359,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(43), "Forty-three of forty-six addresses are player-only.");
+        Assert.That(refused, Is.EqualTo(45), "Forty-five of forty-eight addresses are player-only.");
     }
 
     [Test]
@@ -476,11 +476,13 @@ public sealed class StatBlockTests
             nameof(PlayerStat.StormRunDamage),
             nameof(PlayerStat.MirrorImageShades),
             nameof(PlayerStat.MirrorImageSeconds),
+            nameof(PlayerStat.EchoEvery),
+            nameof(PlayerStat.EchoDamage),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
             + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three, MK-08a's BindStun, "
             + "MK-09a's SnareRoot/SnareDamage, MK-10a's KillshotExecute/KillshotDamage, SK-01a's three stats "
             + "SK-03a's two Ricochet Shot stats, SK-04a's two Second Wind stats, SK-05a's two Whirlwind stats "
-            + "SK-06a's two Storm Run stats, and EA-01a's two Mirror Image stats.");
+            + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats and EA-01b's two Echo Arrow stats.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------

@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-06, EA-01a._
+_2026-11-06, EA-01b._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **EA-01a** — Shades and Mirror Image. |
-| **Next task** | **EA-01b** — Echo Arrow |
-| **Verified** | Editor EditMode 5855 (5854 passed, 0 failed, 1 inconclusive). Format clean. |
+| **Last merged** | **EA-01b** — Echo Arrow in core. |
+| **Next task** | **EA-01c** — The Echo Archer authored. |
+| **Verified** | Editor EditMode 5870 (5869 passed, 0 failed, 1 inconclusive). Format clean. |
 
 ## What works
 

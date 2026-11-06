@@ -1577,6 +1577,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 _whirlwind.Clear();
                 _shades.Clear();
                 State.Combat.EndStormRun();
+                State.Combat.ClearEchoes();
             }
 
             if (stageCleared)
@@ -1593,6 +1594,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 _whirlwind.Clear();
                 _shades.Clear();
                 State.Combat.EndStormRun();
+                State.Combat.ClearEchoes();
                 _traps.Clear();
                 _killshot.Clear();
 
@@ -2163,6 +2165,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _whirlwind.Clear();
         _shades.Clear();
         State.Combat.EndStormRun();
+        State.Combat.ClearEchoes();
         _events.Publish(new RunEnded(State.Time));
 
         IsRunning = false;

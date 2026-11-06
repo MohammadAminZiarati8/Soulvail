@@ -33,7 +33,7 @@ public enum ShotSide
 }
 
 /// <summary>Attribution of a friendly projectile.</summary>
-public enum ShotOrigin { Ranger, Shade }
+public enum ShotOrigin { Ranger, Shade, Echo }
 
 /// <summary>
 /// One shot in flight: a point and a moment, not a body.

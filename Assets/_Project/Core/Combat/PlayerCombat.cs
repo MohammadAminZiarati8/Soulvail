@@ -73,6 +73,9 @@ namespace Soulvail.Core.Combat;
 /// </remarks>
 public sealed class PlayerCombat
 {
+    public const float EchoDelay = 0.15f;
+    public const int MaxPendingEchoes = 2;
+
     /// <summary>
     /// The radius <c>CombatBlackboard.EnemiesWithin6m</c> counts. CC §6.4's Sever fires at three
     /// enemies inside it, and GD §8.1's clustering is what puts them there.
@@ -343,6 +346,13 @@ public sealed class PlayerCombat
     /// <summary>How many of <see cref="_shots"/> the last damage frame wrote.</summary>
     private int _shotCount;
 
+    private readonly (int TargetId, float Damage, float DueAt)[] _pendingEchoes = new (int, float, float)[MaxPendingEchoes];
+    private int _pendingEchoCount;
+    private int _basicArrowsTowardEcho;
+
+    public Stat EchoEvery { get; } = new(0f);
+    public Stat EchoDamage { get; } = new(0f);
+
     private bool _isStanding;
 
     /// <param name="spec">
@@ -394,7 +404,7 @@ public sealed class PlayerCombat
         _weaponSpec = spec.Weapon;
         HitAndRun = new HitAndRun(moveSpeed);
         _candidates = new TargetCandidate[enemyCapacity];
-        _shots = new Projectile[enemyCapacity + StormRun.MaxArrows];
+        _shots = new Projectile[enemyCapacity + StormRun.MaxArrows + MaxPendingEchoes];
         _hitIds = new int[enemyCapacity];
         _chargeHitIds = new int[enemyCapacity];
 
@@ -427,6 +437,7 @@ public sealed class PlayerCombat
         // reason: the one edge that moves it — a shot leaving — is this class's. Null for every class
         // that ships.
         Volley = spec.Volley is null ? null : new Volley(spec.Volley, _events);
+        EchoEvery.Changed += OnEchoEveryChanged;
         SteadyAim = new SteadyAim(_events);
         EagleEye = new EagleEye();
 
@@ -912,6 +923,7 @@ public sealed class PlayerCombat
         }
 
         _deathAnnounced = true;
+        ClearEchoes();
         EndStormRun();
         SetKillshotWindUp(false);
         _events.Publish(new PlayerDied(now));
@@ -1457,6 +1469,14 @@ public sealed class PlayerCombat
         {
             QueueStormVolley(snapshot.PlayerPosition, enemies, now);
         }
+
+        QueueDueEchoes(snapshot.PlayerPosition, enemies, now);
+    }
+
+    internal void ClearEchoes()
+    {
+        _pendingEchoCount = 0;
+        _basicArrowsTowardEcho = 0;
     }
 
     /// <summary>
@@ -1496,6 +1516,7 @@ public sealed class PlayerCombat
 
         // And the volley's count, as silently: shots toward a volley belong to the run that fired them.
         Volley?.Reset();
+        ClearEchoes();
 
         // The dash goes back to rest with everything else, and the three fields that track it here
         // go with it. Health.Reset above has already lowered the external flag — a dash interrupted
@@ -1922,7 +1943,12 @@ public sealed class PlayerCombat
             {
                 Vector3 aim = ProjectileLead.Solve(
                     playerPosition, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed);
-                QueueShot(playerPosition, aim, agent.Position, Weapon.Damage.Value * momentum, isVolley: false);
+                float basicDamage = QueueShot(playerPosition, aim, agent.Position,
+                    Weapon.Damage.Value * momentum, isVolley: false);
+
+                // Make room for the new echo if an older one is due on this frame.
+                QueueDueEchoes(playerPosition, enemies, now);
+                ScheduleEcho(agent.Id, basicDamage, now);
 
                 return;
             }
@@ -2024,10 +2050,10 @@ public sealed class PlayerCombat
 
     /// <summary>One of this class's shots, onto the end of the queue.</summary>
     /// <remarks>
-    /// The weapon writes at most one arrow per registry entry. Storm Run can add eight more.
+    /// The weapon writes at most one arrow per registry entry. Storm Run and echoes have reserved slots.
     /// <paramref name="isVolley"/> marks a volley's arrow for the view (RS-07b) and changes nothing here.
     /// </remarks>
-    private void QueueShot(Vector3 origin, Vector3 target, Vector3 targetPosition, float damage, bool isVolley)
+    private float QueueShot(Vector3 origin, Vector3 target, Vector3 targetPosition, float damage, bool isVolley)
     {
         float standing = ArrowAimMultiplier(out bool isCrit);
         float dx = targetPosition.X - origin.X;
@@ -2047,6 +2073,64 @@ public sealed class PlayerCombat
             isCrit);
 
         _shotCount++;
+        return damage;
+    }
+
+    private void OnEchoEveryChanged(Stat every)
+    {
+        if (!(every.Value >= 1f))
+        {
+            _basicArrowsTowardEcho = 0;
+        }
+    }
+
+    private void ScheduleEcho(int targetId, float damage, float now)
+    {
+        float every = EchoEvery.Value;
+        if (IsDead || !(every >= 1f))
+        {
+            return;
+        }
+
+        int threshold = every >= int.MaxValue ? int.MaxValue : (int)MathF.Round(every);
+        if (++_basicArrowsTowardEcho < threshold)
+        {
+            return;
+        }
+
+        _basicArrowsTowardEcho = 0;
+        if (_pendingEchoCount < MaxPendingEchoes)
+        {
+            _pendingEchoes[_pendingEchoCount++] = (targetId, damage, now + EchoDelay);
+        }
+    }
+
+    private void QueueDueEchoes(Vector3 origin, ReadOnlySpan<EnemyAgent> enemies, float now)
+    {
+        int remaining = 0;
+        for (int i = 0; i < _pendingEchoCount; i++)
+        {
+            var echo = _pendingEchoes[i];
+            if (now < echo.DueAt)
+            {
+                _pendingEchoes[remaining++] = echo;
+                continue;
+            }
+
+            foreach (EnemyAgent agent in enemies)
+            {
+                if (agent.Id == echo.TargetId && agent.IsAlive)
+                {
+                    Vector3 lead = ProjectileLead.Solve(origin, agent.Position, agent.Velocity, _weaponSpec.ShotSpeed);
+                    _shots[_shotCount++] = new Projectile(_characterId, sourceId: 0, origin, lead,
+                        _weaponSpec.ShotSpeed, _weaponSpec.ShotRadius, ShotDamage(echo.Damage * EchoDamage.Value),
+                        ShotSide.AtEnemies, shotOrigin: ShotOrigin.Echo);
+                    break;
+                }
+            }
+        }
+
+        _pendingEchoCount = remaining;
     }
 
     internal float ArrowAimMultiplier(out bool isCrit)

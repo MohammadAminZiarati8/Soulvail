@@ -832,7 +832,8 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
-            if (evt.SkillId.Value == "skill.echo-archer.mirror-image" && !_rolling && !_whirling)
+            if ((evt.SkillId.Value is "skill.echo-archer.mirror-image" or "skill.echo-archer.crossfire")
+                && !_rolling && !_whirling)
             {
                 PlayQuickRelease();
                 return;

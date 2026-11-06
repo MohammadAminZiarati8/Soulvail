@@ -913,3 +913,15 @@ MonoBehaviour:
     _text: "[Fádîñg Bûrst 3 ·····]"
   - _key: skill.echo-archer.fading-burst-3.description
     _text: "[2.5×, áñd thé bûrst slôws. ··········]"
+  - _key: skill.echo-archer.crossfire.name
+    _text: "[Çrôssfîré ····]"
+  - _key: skill.echo-archer.crossfire.description
+    _text: "[Twô shádés áppéár, áñd évérý shádé lôôsés á héávý árrôw át ýôûr tárgét: 1.5× wéápôñ dámágé éáçh. ··································]"
+  - _key: skill.echo-archer.crossfire-2.name
+    _text: "[Çrôssfîré 2 ····]"
+  - _key: skill.echo-archer.crossfire-2.description
+    _text: "[Thréé shádés áppéár. ·······]"
+  - _key: skill.echo-archer.crossfire-3.name
+    _text: "[Çrôssfîré 3 ····]"
+  - _key: skill.echo-archer.crossfire-3.description
+    _text: "[2× dámágé. Çôôldôwñ 9 s. ·········]"

@@ -342,3 +342,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] Editor, Jungle stage 16. With both passives, roll and check that a low-bow shade pulses at the start point and enemies turn toward it. Roll again as soon as possible and check that no second shade appears. At stage 15, check that the Warlord ignores the decoy.
 - [ ] Editor. With Fading Burst learned, let a Mirror Image shade expire. Check the 3 m flash and damage on nearby enemies. At rank 3, check the pale edge and slow.
+
+## EA-04b — Crossfire drawn and authored
+
+- [ ] Editor, Jungle stage 18. With Mirror Image and Crossfire learned, check that two new shades appear, heavy arrows from every shade meet at the target from different sides, and the two new shades fade after one second.

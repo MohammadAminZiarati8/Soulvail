@@ -119,10 +119,67 @@ public sealed class EchoArcherPathTests
     }
 
     [Test]
+    public void Crossfire_Assets_MatchTheRankTable()
+    {
+        var ranks = Path().Skills[4].Ranks;
+        Assert.That(ranks.Count, Is.EqualTo(3));
+        SkillSpec first = ranks[0].ToSpec();
+        Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
+        Assert.That(first.Active.Cooldown, Is.EqualTo(12f));
+        Assert.That(first.Active.Trigger.Clauses.Count, Is.EqualTo(1));
+        TriggerClause trigger = first.Active.Trigger.Clauses[0];
+        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
+        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
+        Assert.That(trigger.Threshold, Is.EqualTo(1f));
+        Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
+        Assert.That(((Crossfire)first.Active.OnCast[0]).DamageOfWeapon, Is.EqualTo(1.5f));
+
+        using IObjectResolver boot = SkirmisherPathTests.Boot();
+        var icons = boot.Resolve<SkillIconBook>();
+        foreach (SkillDefinition rank in ranks)
+        {
+            Assert.That(rank.Icon, Is.Not.Null, rank.Id);
+            Assert.That(icons.For(new ContentId(rank.Id)), Is.SameAs(rank.Icon), rank.Id);
+        }
+
+        CheckUpgrade(1, PlayerStat.CrossfireShades, 1f);
+        CheckUpgrade(2, PlayerStat.CrossfireDamage, 0.5f);
+        var cooldown = (ModifySkillCooldown)ranks[2].ToSpec().Effects[1];
+        Assert.That(cooldown.SkillId, Is.EqualTo(first.Id));
+        Assert.That(cooldown.Kind, Is.EqualTo(ModifierKind.Flat));
+        Assert.That(cooldown.Value, Is.EqualTo(-3f));
+
+        void CheckUpgrade(int index, PlayerStat playerStat, float value)
+        {
+            SkillSpec rank = ranks[index].ToSpec();
+            Assert.That(rank.Kind, Is.EqualTo(SkillKind.Upgrade));
+            Assert.That(rank.ParentId, Is.EqualTo(ranks[index - 1].ToSpec().Id));
+            Assert.That(rank.Effects.Count, Is.EqualTo(index));
+            var effect = (ModifyStat)rank.Effects[0];
+            Assert.That(effect.Stat, Is.EqualTo(playerStat));
+            Assert.That(effect.Target, Is.EqualTo(StatTarget.Player));
+            Assert.That(effect.Kind, Is.EqualTo(ModifierKind.Flat));
+            Assert.That(effect.Value, Is.EqualTo(value));
+        }
+    }
+
+    [Test]
+    public void Path_CrossfireFifthAtSeventeen()
+    {
+        PathSpec path = Path().ToSpec(Ranger);
+        Assert.That(path.Skills.Count, Is.EqualTo(5));
+        var crossfire = path.Skills[4];
+        Assert.That(crossfire.UnlockLevel, Is.EqualTo(17));
+        Assert.That(crossfire.Ranks.TierCount, Is.EqualTo(3));
+        Assert.That(crossfire.Ranks.Tier(1), Is.EqualTo(new[] { new ContentId("skill.echo-archer.crossfire") }));
+        Assert.That(crossfire.Ranks.Tier(2), Is.EqualTo(new[] { new ContentId("skill.echo-archer.crossfire-2") }));
+        Assert.That(crossfire.Ranks.Tier(3), Is.EqualTo(new[] { new ContentId("skill.echo-archer.crossfire-3") }));
+    }
+
+    [Test]
     public void Path_BothAtFourteen_InOrder()
     {
         PathSpec path = Path().ToSpec(Ranger);
-        Assert.That(path.Skills.Count, Is.EqualTo(4));
         Check(2, "skill.echo-archer.decoy-roll");
         Check(3, "skill.echo-archer.fading-burst");
 
@@ -251,20 +308,27 @@ public sealed class EchoArcherPathTests
             Check(spec.DescriptionKey, mirrorDescriptions[i]);
         }
 
-        CheckPassive(2, "Decoy Roll", new[]
+        CheckRankLoc(2, "Decoy Roll", new[]
         {
             "A roll leaves a shade enemies chase for 2 s, at most every 8 s. Bosses ignore it.",
             "3 s, every 6 s.",
             "Every 5 s.",
         });
-        CheckPassive(3, "Fading Burst", new[]
+        CheckRankLoc(3, "Fading Burst", new[]
         {
             "Shades burst when they fade: 1.5× weapon damage within 3 m.",
             "2×.",
             "2.5×, and the burst slows.",
         });
 
-        void CheckPassive(int index, string title, string[] descriptions)
+        CheckRankLoc(4, "Crossfire", new[]
+        {
+            "Two shades appear, and every shade looses a heavy arrow at your target: 1.5× weapon damage each.",
+            "Three shades appear.",
+            "2× damage. Cooldown 9 s.",
+        });
+
+        void CheckRankLoc(int index, string title, string[] descriptions)
         {
             var passiveRanks = Path().Skills[index].Ranks;
             for (int i = 0; i < passiveRanks.Count; i++)

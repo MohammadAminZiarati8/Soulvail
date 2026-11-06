@@ -213,6 +213,13 @@ public sealed class ProjectileViews : IDisposable
         // shot of the first wave. Construction only, so the boxed enumerator is paid once.
         if (looks != null)
         {
+            ProjectileView rangerArrow = looks.For(new ContentId("character.ranger")).Projectile;
+            if (rangerArrow != null)
+            {
+                // Crossfire shares this pool with regular fire and can fill the remaining core slots.
+                KindFor(rangerArrow, Math.Max(prewarm, classPrewarm));
+            }
+
             foreach (CharacterLook look in looks.All)
             {
                 if (look.Projectile != null)
@@ -458,7 +465,12 @@ public sealed class ProjectileViews : IDisposable
         }
         trailLook.Player = evt.SourceId == 0 && !evt.IsVolley;
         trailLook.Ricochet = evt.IsRicochet;
-        trailLook.Shade = evt.ShotOrigin is ShotOrigin.Shade or ShotOrigin.Echo;
+        trailLook.Crossfire = evt.ShotOrigin == ShotOrigin.Crossfire;
+        trailLook.Shade = trailLook.Crossfire || evt.ShotOrigin is ShotOrigin.Shade or ShotOrigin.Echo;
+        if (trailLook.Crossfire)
+        {
+            view.EnlargeForCrossfire();
+        }
         PaintPathTrail(trailLook);
 
         _byId[evt.Id] = new Rental(view, kind);
@@ -498,16 +510,14 @@ public sealed class ProjectileViews : IDisposable
         Color tint = trail.Shade
             ? ProjectileView.ShadeTrailTint
             : trail.Player && _playerPathLook != null ? _playerPathLook.ArrowTrailTint : Color.clear;
-        if (!trail.Bright && trail.Tint == tint)
+        if (!trail.Bright && trail.Heavy == trail.Crossfire && trail.Tint == tint)
         {
             return;
         }
-        if (trail.Bright)
-        {
-            trail.Trail.time = trail.Time;
-            trail.Trail.widthMultiplier = trail.Width;
-            trail.Bright = false;
-        }
+        trail.Trail.time = trail.Time * (trail.Crossfire ? 2f : 1f);
+        trail.Trail.widthMultiplier = trail.Width * (trail.Crossfire ? 1.65f : 1f);
+        trail.Bright = false;
+        trail.Heavy = trail.Crossfire;
         trail.Tint = tint;
         if (trail.Shade)
         {
@@ -534,6 +544,8 @@ public sealed class ProjectileViews : IDisposable
         public bool Player;
         public bool Ricochet;
         public bool Shade;
+        public bool Crossfire;
+        public bool Heavy;
         public Gradient ShadeGradient;
         public bool Bright;
         public float Time;
@@ -705,12 +717,12 @@ public sealed class ProjectileViews : IDisposable
     /// <paramref name="prefab"/>'s pools, built on first asking — at construction for every class's
     /// shot — and prewarmed to <see cref="_classPrewarm"/>.
     /// </summary>
-    private ShotKind KindFor(ProjectileView prefab)
+    private ShotKind KindFor(ProjectileView prefab, int? prewarm = null)
     {
         if (!_kinds.TryGetValue(prefab, out ShotKind kind))
         {
             kind = new ShotKind(
-                new ViewPool<ProjectileView>(_resolver, prefab, _parent, _classPrewarm),
+                new ViewPool<ProjectileView>(_resolver, prefab, _parent, prewarm ?? _classPrewarm),
                 ImpactPoolFor(prefab.Impact),
                 ImpactPoolFor(prefab.RicochetSpark));
 

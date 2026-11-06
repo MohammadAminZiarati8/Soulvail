@@ -206,6 +206,7 @@ namespace Soulvail.Game.Composition
         [SerializeField] private MinionView _minionPrefab;
         [SerializeField] private ShadeView _shadePrefab;
         [SerializeField] private ShadeBurstView _shadeBurstPrefab;
+        [SerializeField] private Material _crossfireLineMaterial;
 
         [Tooltip("Where standing Wights are parented. Optional — they go to the scene root " +
                  "without it, which is untidy rather than wrong. Deliberately not the arena: one " +
@@ -716,6 +717,14 @@ namespace Soulvail.Game.Composition
                     .WithParameter("player", _playerView)
                     .WithParameter("burstPrefab", _shadeBurstPrefab)
                     .WithParameter("burstParent", _decalRoot);
+            }
+
+            if (_crossfireLineMaterial != null)
+            {
+                builder.RegisterEntryPoint<CrossfireView>(Lifetime.Scoped)
+                    .WithParameter("material", _crossfireLineMaterial)
+                    .WithParameter("parent", _decalRoot)
+                    .WithParameter("capacity", BootInstaller.ProjectileCapacity);
             }
 
             // The corpses (M5-05b). The army's registration exactly, for its reasons — two of its

@@ -984,6 +984,7 @@ MonoBehaviour:
   _minionPrefab: {fileID: 6272270846140008837, guid: 68a94f1510c4876499a90a37c348b863, type: 3}
   _shadePrefab: {fileID: 1084362500258015250, guid: d374c0b3324a3f84dacf4676f80c5fba, type: 3}
   _shadeBurstPrefab: {fileID: 3794187500603272738, guid: 94f68ce59902f784bab3e900f65bf997, type: 3}
+  _crossfireLineMaterial: {fileID: 2100000, guid: 82e51438d7035bfca3464ff7dc2b2637, type: 2}
   _minionParent: {fileID: 1308062827}
   _decoyPrefab: {fileID: 4371545654905838427, guid: be769f9045463a8488f422c8a2240320, type: 3}
   _projectilePrefab: {fileID: 5055392040755623392, guid: f0748e4cd0d908349af56a4260b5bbb4, type: 3}

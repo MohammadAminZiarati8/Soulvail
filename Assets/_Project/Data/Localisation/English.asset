@@ -824,3 +824,15 @@ MonoBehaviour:
     _text: "Fading Burst 3"
   - _key: skill.echo-archer.fading-burst-3.description
     _text: "2.5×, and the burst slows."
+  - _key: skill.echo-archer.crossfire.name
+    _text: "Crossfire"
+  - _key: skill.echo-archer.crossfire.description
+    _text: "Two shades appear, and every shade looses a heavy arrow at your target: 1.5× weapon damage each."
+  - _key: skill.echo-archer.crossfire-2.name
+    _text: "Crossfire 2"
+  - _key: skill.echo-archer.crossfire-2.description
+    _text: "Three shades appear."
+  - _key: skill.echo-archer.crossfire-3.name
+    _text: "Crossfire 3"
+  - _key: skill.echo-archer.crossfire-3.description
+    _text: "2× damage. Cooldown 9 s."

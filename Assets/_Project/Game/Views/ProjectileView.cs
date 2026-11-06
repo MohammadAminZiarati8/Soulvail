@@ -129,6 +129,7 @@ namespace Soulvail.Game.Views
 
         /// <inheritdoc cref="_restPosition" />
         private Quaternion _restRotation = Quaternion.identity;
+        private Vector3? _ordinaryScale;
 
         /// <summary>The core-side id this bolt stands for, or <see cref="Unbound"/>.</summary>
         public int Id => _id;
@@ -294,9 +295,20 @@ namespace Soulvail.Game.Views
         public void OnDespawn()
         {
             transform.SetPositionAndRotation(_restPosition, _restRotation);
+            if (_ordinaryScale is Vector3 scale)
+            {
+                transform.localScale = scale;
+                _ordinaryScale = null;
+            }
 
             ClearTrail();
             Unbind();
+        }
+
+        internal void EnlargeForCrossfire()
+        {
+            _ordinaryScale ??= transform.localScale;
+            transform.localScale = _ordinaryScale.Value * 2f;
         }
 
         /// <summary>Forgets every point the trail has laid down, if there is one.</summary>

@@ -71,6 +71,23 @@ _No milestone. The owner is setting the next direction._
 - [x] **SK-07** — The Skirmisher's look: silver-cyan trim and tints, data only (S)
 - [x] **SK-08** — Skirmisher retune: Running Shot to 125%, Whirlwind and Storm Run cast on one enemy, data only (S)
 
+**The Echo Archer, the Ranger's third path** (owner, 2026-11-06; design [CH §3.5](../Characters.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from EA-02 on, with DT-01's test start at stage 12+. The drawn tasks name no screen position, so they hold through the landscape switch.
+
+- [ ] **EA-01a** — Shades and Mirror Image in core: bodies that stand and shoot, the cap of 8, expiry (M) — [spec](tasks/EA-01a-shades-and-mirror-image.md)
+- [ ] **EA-01b** — Echo Arrow in core: every Nth basic arrow loosed again 0.15 s later (S) — [spec](tasks/EA-01b-echo-arrow.md)
+- [ ] **EA-01c** — The Echo Archer authored: the third path slot, its card, Echo Arrow's assets (M) — [spec](tasks/EA-01c-the-echo-archer-authored.md)
+- [ ] **EA-02** — Shades drawn, Mirror Image authored: the smoky copy, its shot, its fade (M) — [spec](tasks/EA-02-shades-drawn.md)
+- [ ] **EA-03a** — Decoy Roll in core: a roll leaves a lure shade; bosses ignore lures (M) — [spec](tasks/EA-03a-decoy-roll.md)
+- [ ] **EA-03b** — Fading Burst in core: a fading shade bursts, rank 3 slows (S) — [spec](tasks/EA-03b-fading-burst.md)
+- [ ] **EA-03c** — Decoy Roll and Fading Burst drawn and authored (M) — [spec](tasks/EA-03c-decoy-and-burst-drawn.md)
+- [ ] **EA-04a** — Crossfire in core: two shades appear, every shade looses at the target (M) — [spec](tasks/EA-04a-crossfire.md)
+- [ ] **EA-04b** — Crossfire drawn and authored: converging heavy arrows (M) — [spec](tasks/EA-04b-crossfire-drawn.md)
+- [ ] **EA-05a** — Hall of Mirrors in core: a ring of shooting shades (M) — [spec](tasks/EA-05a-hall-of-mirrors.md)
+- [ ] **EA-05b** — Hall of Mirrors drawn and authored: the ring rising (M) — [spec](tasks/EA-05b-hall-of-mirrors-drawn.md)
+- [ ] **EA-06** — The Echo Archer's look: smoky deep-cyan trim and tints, data only (S) — [spec](tasks/EA-06-the-echo-archers-look.md)
+
+**Landscape** (owner, 2026-11-06): the game turns from portrait to landscape. Not specced; camera, HUD, tree screen and menus all move. To be planned on the owner's word.
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

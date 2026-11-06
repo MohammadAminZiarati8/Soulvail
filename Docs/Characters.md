@@ -133,7 +133,7 @@ The level cap is **30**. Points from levels 2–10 fill the Ranger tree (9). Fro
 
 A path is **a handful of skills, most of them actives, each with 3–5 ranks**, and no "ultimate": its last skill is simply the strongest, unlocking at Lv 20. Skills are level-gated. A path holds **exactly 20 ranks for its 20 points**, so level 30 buys everything (LV-02d). Choosing a path costs no point; the choice opens at level 11 whether or not the Ranger tree is full.
 
-Built one at a time: **Marksman** is built; the **Skirmisher** is next (SK specs); the Echo Archer last.
+Built one at a time: the **Marksman** and the **Skirmisher** are built; the **Echo Archer** is next (EA specs) and last.
 
 **Marksman — stand still.** (Owner, 2026-10-31.)
 
@@ -161,9 +161,20 @@ Every active auto-casts on its own trigger (densest group · nearest threat · a
 
 Triggers: Ricochet — at least 3 enemies in range · Whirlwind — at least 1 within 6 m · Storm Run — at least 1 in range, cooldown 30 s. The Skirmisher's tint is a pale silver-cyan, apart from the Marksman's trim and from every enemy's lime.
 
-*Recorded, not specced* — an 8-skill draft, to be reshaped to 20 ranks like the Marksman before its turn:
+**Echo Archer — be in many places.** (Owner, 2026-11-06: the 8-skill draft reshaped to 20 ranks — Umbral Link, Shared Volley and Twin Shadow cut, Fading Burst a skill of its own; Shadow Swap cut for Crossfire, because a teleport on a phone loses the hero and an auto-cast must never move the player.)
 
-**Echo Archer — copies shoot for you.** Echo Arrow (P 11: every 4th/3rd/2nd arrow repeated by a shadow) · **Mirror Image** (A 11: 1–3 clones shoot for 5 s) · Decoy Roll (P 15: roll leaves a clone enemies target) · Shared Volley (P 15: clones Volley with you) · **Shadow Swap** (A 20: swap with farthest clone; auto at low HP) · Fading Burst (P 20: clones explode on expiry) · Umbral Link (P 25: clones take part of your damage) · *Twin Shadow* (U 28/30: one permanent clone).
+A **shade** is a see-through copy of the Ranger in smoky deep cyan. It stands where it appears, nothing can hit or target it, and it fades after its seconds. Up to 8 stand at once; a ninth replaces the oldest, which leaves without bursting. A shade that shoots looses the Ranger's arrow at the nearest enemy in weapon range of where it stands, at the Ranger's standing rate, for its own share of weapon damage; its kills pay as the Ranger's.
+
+| Lv | Skill | Kind | Ranks | Effect |
+|---|---|---|---|---|
+| 11 | **Echo Arrow** | Passive | 4 | Every 4th basic arrow is loosed again 0.15 s later at the same target, for 60% damage. Ranks: every 3rd; 80%; every 2nd. |
+| 11 | **Mirror Image** | Active | 4 | A shade beside you for 6 s, shooting at 50% damage. Ranks: 2 shades; 8 s; 3 shades and cooldown 14 → 11 s. |
+| 14 | **Decoy Roll** | Passive | 3 | A roll leaves a shade where it began, for 2 s, at most once every 8 s. It does not shoot; every enemy but a boss walks at it. Ranks: 3 s and every 6 s; every 5 s. |
+| 14 | **Fading Burst** | Passive | 3 | A shade that fades bursts: every enemy within 3 m takes 1.5/2/2.5× weapon damage. Rank 3: the burst slows by 40% for 2 s. |
+| 17 | **Crossfire** | Active | 3 | Two shades appear at your sides, and every standing shade looses one arrow at your target, 1.5× weapon each; its own two fade after 1 s. Ranks: 3 shades; 2× and cooldown 12 → 9 s. |
+| 20 | **Hall of Mirrors** | Active | 3 | A ring of 4 shades 3 m around you for 5 s, each shooting at 70% damage. Ranks: 6 shades; 7 s and 100% damage. |
+
+Triggers: Mirror Image and Crossfire — at least 1 enemy in range · Hall of Mirrors — at least 1 in range, cooldown 30 s. Crossfire's arrows are ordinary arrows: the first enemy in the way takes one, and nothing pierces. Shades, shade arrows and echo arrows are smoky deep cyan — the player's colour, darker than the Marksman's trim and the Skirmisher's silver-cyan; violet stays Veilrot's (GD §16.4).
 
 **The tree screen** shows one icon per skill with rank pips (●●○), not a node per rank: Ranger row at the bottom, the chosen path's level rows above, locked rows marked with their level. Before level 11 the path area shows the cards (tap = greyed preview); after the choice the others disappear.
 

@@ -2,7 +2,7 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-06, SK-08 complete._
+_2026-11-06, EA specced._
 
 ## State
 
@@ -10,12 +10,12 @@ _2026-11-06, SK-08 complete._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **SK-08** — Skirmisher retune. |
-| **Next task** | None specced — owner to name the next task |
+| **Next task** | **EA-01a** — Shades and Mirror Image in core |
 | **Verified** | Editor EditMode 5834 (5833 passed, 0 failed, 1 inconclusive). Format clean. |
 
 ## What works
 
-Portrait; Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
+Portrait (landscape owed); Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; warned vines.

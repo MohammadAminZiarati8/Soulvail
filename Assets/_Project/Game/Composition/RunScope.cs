@@ -204,6 +204,7 @@ namespace Soulvail.Game.Composition
                  "the enemy body's mesh at 0.7 of its scale in the player's own cyan — smaller " +
                  "than every archetype, so size is what separates a Wight from the player.")]
         [SerializeField] private MinionView _minionPrefab;
+        [SerializeField] private ShadeView _shadePrefab;
 
         [Tooltip("Where standing Wights are parented. Optional — they go to the scene root " +
                  "without it, which is untidy rather than wrong. Deliberately not the arena: one " +
@@ -705,6 +706,14 @@ namespace Soulvail.Game.Composition
                 .WithParameter("prefab", _minionPrefab)
                 .WithParameter("parent", _minionParent)
                 .WithParameter("prewarm", MinionSystem.MaxConcurrent);
+
+            if (_shadePrefab != null)
+            {
+                builder.RegisterEntryPoint<ShadeViews>(Lifetime.Scoped)
+                    .WithParameter("prefab", _shadePrefab)
+                    .WithParameter("parent", _minionParent)
+                    .WithParameter("player", _playerView);
+            }
 
             // The corpses (M5-05b). The army's registration exactly, for its reasons — two of its
             // arguments are references to this scene, and the static installer is deliberately the

@@ -320,3 +320,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **[Editor]** DT-01 at stage 12. Confirm the tree shows Marksman, Skirmisher and Echo Archer.
   Choose Echo Archer and learn Echo Arrow. Every fourth basic arrow should be followed by an
   ordinary-looking echo 0.15 s later.
+
+## EA-02 — Shades drawn, Mirror Image authored
+
+- [ ] Editor: At stage 12, choose Echo Archer and take Mirror Image. Check that the smoky cyan copy reads apart from the Ranger, shoots its own target, and fades after 6 s.
+- [ ] Editor: With rank-one Echo Arrow, check that every fourth arrow is followed by a smoky cyan one.
+- [ ] Device: Check for frame drops with three shades and the Ranger shooting.

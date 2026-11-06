@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: MirrorImage4
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.echo-archer.mirror-image-4
+  _nameKey: skill.echo-archer.mirror-image-4.name
+  _descriptionKey: skill.echo-archer.mirror-image-4.description
+  _kind: 2
+  _effects:
+  - {fileID: 11400000, guid: 61a3013949974973b48bc1db29dc18e5, type: 2}
+  - {fileID: 11400000, guid: 00fe36e7a9db4609a4def5e710b69b1a, type: 2}
+  _cooldown: 14
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 11400000, guid: b6d8b6b6ffde43199fe934b6b4fb471b, type: 2}
+  _icon: {fileID: 21300000, guid: 45da503226699424c8699dbe05cba358, type: 3}
+  _hasPact: 0
+  _pactEffects: []
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.new.pact.description

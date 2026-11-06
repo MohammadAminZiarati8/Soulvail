@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
@@ -457,6 +458,7 @@ public sealed class ProjectileViews : IDisposable
         }
         trailLook.Player = evt.SourceId == 0 && !evt.IsVolley;
         trailLook.Ricochet = evt.IsRicochet;
+        trailLook.Shade = evt.ShotOrigin is ShotOrigin.Shade or ShotOrigin.Echo;
         PaintPathTrail(trailLook);
 
         _byId[evt.Id] = new Rental(view, kind);
@@ -464,7 +466,7 @@ public sealed class ProjectileViews : IDisposable
         {
             PlayImpact(kind.Sparks, evt.Origin.ToUnity(), view.Travel, evt.Id, ricochetSpark: true);
         }
-        if (evt.SourceId == 0 && evt.ChainIndex == 0)
+        if (evt.SourceId == 0 && evt.ChainIndex == 0 && evt.ShotOrigin == ShotOrigin.Ranger)
         {
             _lastPlayerShot = evt.Id;
         }
@@ -493,7 +495,9 @@ public sealed class ProjectileViews : IDisposable
             return;
         }
 
-        Color tint = trail.Player && _playerPathLook != null ? _playerPathLook.ArrowTrailTint : Color.clear;
+        Color tint = trail.Shade
+            ? ProjectileView.ShadeTrailTint
+            : trail.Player && _playerPathLook != null ? _playerPathLook.ArrowTrailTint : Color.clear;
         if (!trail.Bright && trail.Tint == tint)
         {
             return;
@@ -505,7 +509,12 @@ public sealed class ProjectileViews : IDisposable
             trail.Bright = false;
         }
         trail.Tint = tint;
-        if (tint.a > 0f)
+        if (trail.Shade)
+        {
+            trail.ShadeGradient ??= ProjectileView.CreateShadeTrail(trail.Gradient);
+            trail.Trail.colorGradient = trail.ShadeGradient;
+        }
+        else if (tint.a > 0f)
         {
             var gradient = new Gradient();
             gradient.SetKeys(new[] { new GradientColorKey(tint, 0f), new GradientColorKey(tint, 1f) }, trail.Gradient.alphaKeys);
@@ -524,6 +533,8 @@ public sealed class ProjectileViews : IDisposable
         public Color Tint;
         public bool Player;
         public bool Ricochet;
+        public bool Shade;
+        public Gradient ShadeGradient;
         public bool Bright;
         public float Time;
         public float Width;

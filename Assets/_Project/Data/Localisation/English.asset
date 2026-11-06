@@ -784,3 +784,19 @@ MonoBehaviour:
     _text: "Echo Arrow 4"
   - _key: skill.echo-archer.echo-arrow-4.description
     _text: "Every 2nd arrow."
+  - _key: skill.echo-archer.mirror-image.name
+    _text: Mirror Image
+  - _key: skill.echo-archer.mirror-image.description
+    _text: A shade beside you shoots for 6 s, at 50% damage.
+  - _key: skill.echo-archer.mirror-image-2.name
+    _text: Mirror Image 2
+  - _key: skill.echo-archer.mirror-image-2.description
+    _text: 2 shades.
+  - _key: skill.echo-archer.mirror-image-3.name
+    _text: Mirror Image 3
+  - _key: skill.echo-archer.mirror-image-3.description
+    _text: 8 s.
+  - _key: skill.echo-archer.mirror-image-4.name
+    _text: Mirror Image 4
+  - _key: skill.echo-archer.mirror-image-4.description
+    _text: 3 shades. Cooldown 11 s.

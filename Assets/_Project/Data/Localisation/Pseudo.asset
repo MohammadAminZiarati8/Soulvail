@@ -873,3 +873,19 @@ MonoBehaviour:
     _text: "[\xC9\xE7h\xF4 \xC1rr\xF4w 4 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.echo-archer.echo-arrow-4.description
     _text: "[\xC9v\xE9r\xFD 2\xF1d \xE1rr\xF4w. \xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: skill.echo-archer.mirror-image.name
+    _text: "[Mîrrôr Îmágé ·····]"
+  - _key: skill.echo-archer.mirror-image.description
+    _text: "[Á shádé bésîdé ýôû shôôts fôr 6 s, át 50% dámágé. ··················]"
+  - _key: skill.echo-archer.mirror-image-2.name
+    _text: "[Mîrrôr Îmágé 2 ·····]"
+  - _key: skill.echo-archer.mirror-image-2.description
+    _text: "[2 shádés. ····]"
+  - _key: skill.echo-archer.mirror-image-3.name
+    _text: "[Mîrrôr Îmágé 3 ·····]"
+  - _key: skill.echo-archer.mirror-image-3.description
+    _text: "[8 s. ··]"
+  - _key: skill.echo-archer.mirror-image-4.name
+    _text: "[Mîrrôr Îmágé 4 ·····]"
+  - _key: skill.echo-archer.mirror-image-4.description
+    _text: "[3 shádés. Çôôldôwñ 11 s. ·········]"

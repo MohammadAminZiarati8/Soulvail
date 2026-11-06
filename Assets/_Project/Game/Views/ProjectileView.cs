@@ -53,6 +53,24 @@ namespace Soulvail.Game.Views
         /// <summary>How far past <see cref="Palette.Player"/> the glow's emission is pushed (RS-07b).</summary>
         public const float GlowIntensity = 1.5f;
 
+        internal static Color ShadeTrailTint => new(0.08f, 0.46f, 0.54f, 1f);
+
+        internal static Gradient CreateShadeTrail(Gradient original)
+        {
+            Color tint = ShadeTrailTint;
+            GradientColorKey[] colors = original.colorKeys;
+            GradientAlphaKey[] alphas = original.alphaKeys;
+            for (int i = 0; i < colors.Length; i++)
+            {
+                colors[i].color *= tint;
+            }
+            for (int i = 0; i < alphas.Length; i++)
+            {
+                alphas[i].alpha *= 0.7f;
+            }
+            return new Gradient { mode = original.mode, colorSpace = original.colorSpace, colorKeys = colors, alphaKeys = alphas };
+        }
+
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
 

@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
 using Soulvail.Core.Run;
@@ -15,6 +16,8 @@ public sealed class EchoArcherPathTests
     private static readonly ContentId Ranger = new("character.ranger");
     private static readonly ContentId EchoArcher = new("path.ranger.echo-archer");
     private static readonly ContentId EchoArrow = new("skill.echo-archer.echo-arrow");
+
+    private static readonly ContentId MirrorImageId = new("skill.echo-archer.mirror-image");
 
     [Test]
     public void Assets_MatchTheRankTable()
@@ -34,6 +37,64 @@ public sealed class EchoArcherPathTests
         {
             Assert.That(rank.Icon, Is.Not.Null, rank.Id);
             Assert.That(icons.For(new ContentId(rank.Id)), Is.SameAs(rank.Icon), rank.Id);
+        }
+    }
+
+    [Test]
+    public void MirrorImage_Assets_MatchTheRankTable()
+    {
+        var ranks = Path().Skills[1].Ranks;
+        Assert.That(ranks.Count, Is.EqualTo(4));
+        SkillSpec first = ranks[0].ToSpec();
+        Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
+        Assert.That(first.Active.Cooldown, Is.EqualTo(14f));
+        Assert.That(first.Active.Trigger.Clauses.Count, Is.EqualTo(1));
+        TriggerClause trigger = first.Active.Trigger.Clauses[0];
+        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
+        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
+        Assert.That(trigger.Threshold, Is.EqualTo(1f));
+        Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
+        Assert.That(((MirrorImage)first.Active.OnCast[0]).DamageOfWeapon, Is.EqualTo(0.5f));
+
+        var stats = new[] { PlayerStat.MirrorImageShades, PlayerStat.MirrorImageSeconds, PlayerStat.MirrorImageShades };
+        using IObjectResolver boot = SkirmisherPathTests.Boot();
+        var icons = boot.Resolve<SkillIconBook>();
+        for (int i = 0; i < ranks.Count; i++)
+        {
+            SkillSpec rank = ranks[i].ToSpec();
+            Assert.That(ranks[i].Icon, Is.Not.Null, rank.Id.Value);
+            Assert.That(icons.For(rank.Id), Is.SameAs(ranks[i].Icon), rank.Id.Value);
+            if (i == 0)
+            {
+                continue;
+            }
+
+            Assert.That(rank.Kind, Is.EqualTo(SkillKind.Upgrade));
+            Assert.That(rank.ParentId, Is.EqualTo(new ContentId(ranks[i - 1].Id)));
+            Assert.That(rank.Effects.Count, Is.EqualTo(i == 3 ? 2 : 1));
+            var stat = (ModifyStat)rank.Effects[0];
+            Assert.That(stat.Stat, Is.EqualTo(stats[i - 1]));
+            Assert.That(stat.Target, Is.EqualTo(StatTarget.Player));
+            Assert.That(stat.Kind, Is.EqualTo(ModifierKind.Flat));
+            Assert.That(stat.Value, Is.EqualTo(i == 2 ? 2f : 1f));
+        }
+
+        var cooldown = (ModifySkillCooldown)ranks[3].ToSpec().Effects[1];
+        Assert.That(cooldown.SkillId, Is.EqualTo(MirrorImageId));
+        Assert.That(cooldown.Kind, Is.EqualTo(ModifierKind.Flat));
+        Assert.That(cooldown.Value, Is.EqualTo(-3f));
+    }
+
+    [Test]
+    public void Path_MirrorImageSecondAtEleven()
+    {
+        var skill = Path().ToSpec(Ranger).Skills[1];
+        Assert.That(skill.UnlockLevel, Is.EqualTo(11));
+        Assert.That(skill.Ranks.TierCount, Is.EqualTo(4));
+        Assert.That(skill.Ranks.Tier(1), Is.EqualTo(new[] { MirrorImageId }));
+        for (int rank = 2; rank <= skill.Ranks.TierCount; rank++)
+        {
+            Assert.That(skill.Ranks.Tier(rank), Is.EqualTo(new[] { new ContentId($"{MirrorImageId.Value}-{rank}") }));
         }
     }
 
@@ -120,6 +181,22 @@ public sealed class EchoArcherPathTests
             SkillSpec spec = ranks[i].ToSpec();
             Check(spec.NameKey, i == 0 ? "Echo Arrow" : $"Echo Arrow {i + 1}");
             Check(spec.DescriptionKey, descriptions[i]);
+        }
+
+        string[] mirrorDescriptions =
+        {
+            "A shade beside you shoots for 6 s, at 50% damage.",
+            "2 shades.",
+            "8 s.",
+            "3 shades. Cooldown 11 s.",
+        };
+        var mirrorRanks = Path().Skills[1].Ranks;
+        Assert.That(mirrorRanks.Count, Is.EqualTo(mirrorDescriptions.Length));
+        for (int i = 0; i < mirrorRanks.Count; i++)
+        {
+            SkillSpec spec = mirrorRanks[i].ToSpec();
+            Check(spec.NameKey, i == 0 ? "Mirror Image" : $"Mirror Image {i + 1}");
+            Check(spec.DescriptionKey, mirrorDescriptions[i]);
         }
 
         void Check(LocKey key, string value)

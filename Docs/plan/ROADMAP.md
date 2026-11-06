@@ -76,7 +76,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **EA-01a** — Shades and Mirror Image in core: bodies that stand and shoot, the cap of 8, expiry (M)
 - [x] **EA-01b** — Echo Arrow in core: every Nth basic arrow loosed again 0.15 s later (S)
 - [x] **EA-01c** — The Echo Archer authored: the third path slot, its card, Echo Arrow's assets (M)
-- [ ] **EA-02** — Shades drawn, Mirror Image authored: the smoky copy, its shot, its fade (M) — [spec](tasks/EA-02-shades-drawn.md)
+- [x] **EA-02** — Shades drawn, Mirror Image authored: the smoky copy, its shot, its fade (M)
 - [ ] **EA-03a** — Decoy Roll in core: a roll leaves a lure shade; bosses ignore lures (M) — [spec](tasks/EA-03a-decoy-roll.md)
 - [ ] **EA-03b** — Fading Burst in core: a fading shade bursts, rank 3 slows (S) — [spec](tasks/EA-03b-fading-burst.md)
 - [ ] **EA-03c** — Decoy Roll and Fading Burst drawn and authored (M) — [spec](tasks/EA-03c-decoy-and-burst-drawn.md)

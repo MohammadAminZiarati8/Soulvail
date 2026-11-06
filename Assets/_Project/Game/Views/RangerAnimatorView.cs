@@ -1,5 +1,6 @@
 using System;
 using Soulvail.Core.Content;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Game.Adapters;
@@ -232,7 +233,7 @@ namespace Soulvail.Game.Views
             _diedSubscription = hub.Subscribe<PlayerDied>(OnDied);
             _damagedSubscription = hub.Subscribe<PlayerDamaged>(OnDamaged);
             _rainSubscription = hub.Subscribe<RainOfArrowsCast>(OnRainCast);
-            _bindingCastSubscription = hub.Subscribe<SkillCast>(OnBindingCast);
+            _bindingCastSubscription = hub.Subscribe<SkillCast>(OnSkillCast);
             if (_rainPrefab != null)
             {
                 // A scene-root pool: neither the ring nor falling arrows follow the moving body.
@@ -777,7 +778,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnFired(ProjectileFired evt)
         {
-            if (_animator == null || evt.SourceId != 0 || evt.ChainIndex > 0 || _killshotWinding || _whirling || _rolling || _dead
+            if (_animator == null || evt.SourceId != 0 || evt.ShotOrigin != ShotOrigin.Ranger || evt.ChainIndex > 0 || _killshotWinding || _whirling || _rolling || _dead
                 || (_castUpLeft > 0f && !evt.IsRicochet))
             {
                 return;
@@ -788,12 +789,7 @@ namespace Soulvail.Game.Views
             _animator.ResetTrigger(_shootId);
             if (evt.IsRicochet)
             {
-                _castUpLeft = 0f;
-                _bindingReleaseLeft = 0f;
-                _animator.ResetTrigger(_castUpId);
-                _animator.ResetTrigger(_releaseId);
-                _animator.SetFloat(_shotSpeedId, MaxShotSpeed);
-                _animator.Play("Release", _animator.GetLayerIndex(UpperBodyLayer), 0f);
+                PlayQuickRelease();
                 return;
             }
 
@@ -817,9 +813,31 @@ namespace Soulvail.Game.Views
             _animator.SetTrigger(_castUpId);
         }
 
-        private void OnBindingCast(SkillCast evt)
+        private void PlayQuickRelease()
         {
-            if (evt.SkillId.Value != "skill.marksman.binding-shot" || _animator == null || _dead || _killshotWinding)
+            _shotPoseLeft = RunReleaseFadeSeconds;
+            _castUpLeft = 0f;
+            _bindingReleaseLeft = 0f;
+            SetUpperWeight(1f);
+            _animator.ResetTrigger(_castUpId);
+            _animator.ResetTrigger(_shootId);
+            _animator.ResetTrigger(_releaseId);
+            _animator.SetFloat(_shotSpeedId, MaxShotSpeed);
+            _animator.Play("Release", _animator.GetLayerIndex(UpperBodyLayer), 0f);
+        }
+
+        private void OnSkillCast(SkillCast evt)
+        {
+            if (_animator == null || _dead || _killshotWinding)
+            {
+                return;
+            }
+            if (evt.SkillId.Value == "skill.echo-archer.mirror-image" && !_rolling && !_whirling)
+            {
+                PlayQuickRelease();
+                return;
+            }
+            if (evt.SkillId.Value != "skill.marksman.binding-shot")
             {
                 return;
             }

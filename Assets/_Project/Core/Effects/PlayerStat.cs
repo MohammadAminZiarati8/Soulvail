@@ -232,6 +232,12 @@ public enum PlayerStat
 
     /// <summary>Minimum seconds between decoy drops.</summary>
     DecoyInterval,
+
+    /// <summary>Weapon damage multiplier on shade expiry. Zero disables the burst.</summary>
+    FadeBurst,
+
+    /// <summary>Fraction of move speed lost to Fading Burst. Zero disables the slow.</summary>
+    FadeBurstSlow,
 }
 
 /// <summary>
@@ -389,6 +395,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.EchoDamage => _combat.EchoDamage,
             PlayerStat.DecoySeconds => _combat.DecoySeconds,
             PlayerStat.DecoyInterval => _combat.DecoyInterval,
+            PlayerStat.FadeBurst => _combat.FadeBurst,
+            PlayerStat.FadeBurstSlow => _combat.FadeBurstSlow,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -468,6 +476,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.EchoDamage => true,
             PlayerStat.DecoySeconds => true,
             PlayerStat.DecoyInterval => true,
+            PlayerStat.FadeBurst => true,
+            PlayerStat.FadeBurstSlow => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

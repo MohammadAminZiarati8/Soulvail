@@ -70,7 +70,7 @@ public sealed class ShadeSystemTests
         _shades.Spawn(ShadeKind.Image, Vector3.Zero, 0f, 1f, 0.5f);
         _enemies.Spawn(EnemyId, 3f * Vector3.UnitZ);
 
-        _shades.Tick(1f, _enemies);
+        _shades.Tick(1f, _enemies, _player);
 
         Assert.That(_events.Single<ShadeFaded>().Expired, Is.True);
         Assert.That(_events.Count<ShadeLoosed>(), Is.Zero);
@@ -89,7 +89,7 @@ public sealed class ShadeSystemTests
         _player.HitAndRun.OnMoved(3f, 0f);
         int id = _shades.Spawn(kind, Vector3.Zero, 0f, 2f, 0.5f);
 
-        _shades.Tick(0f, _enemies);
+        _shades.Tick(0f, _enemies, _player);
         ProjectileFired arrow = _events.Single<ProjectileFired>();
         ShadeLoosed loosed = _events.Single<ShadeLoosed>();
         Assert.That(loosed.Id, Is.EqualTo(id));
@@ -99,9 +99,9 @@ public sealed class ShadeSystemTests
         _projectiles.Tick(0.25f, Vector3.Zero, _player, _enemies);
         Assert.That(_events.Single<EnemyDamaged>().Amount, Is.EqualTo(10f));
 
-        _shades.Tick(0.49f, _enemies);
+        _shades.Tick(0.49f, _enemies, _player);
         Assert.That(_events.Count<ShadeLoosed>(), Is.EqualTo(1));
-        _shades.Tick(0.5f, _enemies);
+        _shades.Tick(0.5f, _enemies, _player);
         Assert.That(_events.Count<ShadeLoosed>(), Is.EqualTo(2));
     }
 
@@ -112,7 +112,7 @@ public sealed class ShadeSystemTests
         _shades.Spawn(kind, Vector3.Zero, 0f, 1f, 0.5f);
         _enemies.Spawn(EnemyId, 3f * Vector3.UnitZ);
 
-        _shades.Tick(0f, _enemies);
+        _shades.Tick(0f, _enemies, _player);
 
         Assert.That(_events.Count<ProjectileFired>(), Is.Zero);
         Assert.That(_events.Count<ShadeLoosed>(), Is.Zero);
@@ -122,11 +122,11 @@ public sealed class ShadeSystemTests
     public void NoTarget_Waits()
     {
         _shades.Spawn(ShadeKind.Image, Vector3.Zero, 0f, 1f, 0.5f);
-        _shades.Tick(0f, _enemies);
+        _shades.Tick(0f, _enemies, _player);
         Assert.That(_events.Count<ShadeLoosed>(), Is.Zero);
 
         _enemies.Spawn(EnemyId, 3f * Vector3.UnitZ);
-        _shades.Tick(0.01f, _enemies);
+        _shades.Tick(0.01f, _enemies, _player);
         Assert.That(_events.Count<ShadeLoosed>(), Is.EqualTo(1));
     }
 
@@ -141,10 +141,10 @@ public sealed class ShadeSystemTests
             _projectiles.Fire(shot, 0f);
         }
 
-        _shades.Tick(0f, _enemies);
+        _shades.Tick(0f, _enemies, _player);
         Assert.That(_events.Count<ShadeLoosed>(), Is.Zero);
         _projectiles.Clear();
-        _shades.Tick(0.01f, _enemies);
+        _shades.Tick(0.01f, _enemies, _player);
         Assert.That(_events.Count<ShadeLoosed>(), Is.EqualTo(1));
     }
 
@@ -155,7 +155,7 @@ public sealed class ShadeSystemTests
         _enemies.Spawn(EnemyId, 3f * Vector3.UnitZ);
         _player.HitAndRun.HitSpeedBurst.Base = 0.2f;
 
-        _shades.Tick(0f, _enemies);
+        _shades.Tick(0f, _enemies, _player);
         _projectiles.Tick(0.5f, Vector3.Zero, _player, _enemies);
 
         Assert.That(_events.Count<EnemyDamaged>(), Is.EqualTo(1));
@@ -183,8 +183,8 @@ public sealed class ShadeSystemTests
         AllocationAssert.None(() =>
         {
             _shades.Spawn(ShadeKind.Image, Vector3.Zero, 0f, 1f, 0.5f);
-            _shades.Tick(0f, _enemies);
-            _shades.Tick(1f, _enemies);
+            _shades.Tick(0f, _enemies, _player);
+            _shades.Tick(1f, _enemies, _player);
             _projectiles.Clear();
         });
     }

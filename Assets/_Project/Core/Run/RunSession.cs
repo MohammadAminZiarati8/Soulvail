@@ -1332,7 +1332,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Projectiles.Fire(shot, State.Time);
         }
 
-        _shades.Tick(State.Time, State.Enemies);
+        _shades.Tick(State.Time, State.Enemies, State.Combat);
 
         // **After combat and before the enemy behaviours — which puts it above the projectile step
         // as well, and that is the half worth arguing** (M3-06 rule 7, AR §18.1).

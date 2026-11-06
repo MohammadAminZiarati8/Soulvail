@@ -44,3 +44,17 @@ public readonly struct ShadeFaded
     public readonly Vector3 Position;
     public readonly bool Expired;
 }
+
+public readonly struct ShadeBurst
+{
+    public ShadeBurst(Vector3 position, float radius, bool slows)
+    {
+        Position = position;
+        Radius = radius;
+        Slows = slows;
+    }
+
+    public readonly Vector3 Position;
+    public readonly float Radius;
+    public readonly bool Slows;
+}

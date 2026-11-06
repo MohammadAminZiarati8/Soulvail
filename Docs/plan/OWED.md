@@ -331,3 +331,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## EA-03a — Decoy Roll in core
 
 - [ ] Editor, after EA-03c authors the skill: roll near a boss and its adds. Check that the adds turn toward the roll's starting point while the boss keeps its aim on the Ranger.
+
+
+## EA-03b — Fading Burst in core
+
+- [ ] Editor, after EA-03c authors the skill. At rank 3, let a shade expire near a boss and its adds. Check the burst and slow on nearby targets and the shorter slow on the boss. Replace or clear a shade early and check that it fades without bursting.

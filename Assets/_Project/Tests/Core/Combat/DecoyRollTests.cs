@@ -55,12 +55,12 @@ public sealed class DecoyRollTests
         Assert.That(_shades.Standing[0].DamageOfWeapon, Is.Zero);
         Assert.That(_events.Single<DecoySpawned>().Duration, Is.EqualTo(2f));
 
-        _shades.Tick(2.875f, null);
+        _shades.Tick(2.875f, null, _player);
         _lures.Tick(2.875f);
         Assert.That(_shades.Standing.Length, Is.EqualTo(1));
         Assert.That(_lures.Count, Is.EqualTo(1));
 
-        _shades.Tick(3f, null);
+        _shades.Tick(3f, null, _player);
         _lures.Tick(3f);
         Assert.That(_events.Single<ShadeFaded>().Expired, Is.True);
         Assert.That(_shades.Standing.Length, Is.Zero);
@@ -274,7 +274,7 @@ public sealed class DecoyRollTests
         AllocationAssert.None(() =>
         {
             _lures.Tick(now);
-            _shades.Tick(now, null);
+            _shades.Tick(now, null, _player);
             Roll(now);
             _intents.Clear();
             now += 8f;

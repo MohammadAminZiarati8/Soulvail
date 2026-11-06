@@ -670,6 +670,9 @@ public sealed class EnemySystem
     /// <paramref name="seconds"/> is not positive and finite.
     /// </exception>
     public bool Slow(int enemyId, float fraction, float seconds)
+        => Slow(enemyId, fraction, seconds, allowHalfDurationOnBoss: false);
+
+    internal bool Slow(int enemyId, float fraction, float seconds, bool allowHalfDurationOnBoss)
     {
         if (!(fraction > 0f) || fraction > CrowdControl.MaxSlow)
         {
@@ -686,12 +689,16 @@ public sealed class EnemySystem
             return false;
         }
 
-        if (Shrugs(agent, Statuses.Slowed))
+        float duration = Scaled(agent, Statuses.Slowed, seconds);
+        if (allowHalfDurationOnBoss && agent.Behaviour is BossBehaviour)
         {
-            return true;
+            duration = seconds * 0.5f;
         }
 
-        Announce(enemyId, Statuses.Slowed, agent.CrowdControl.Slow(fraction, Scaled(agent, Statuses.Slowed, seconds)));
+        if (duration > 0f)
+        {
+            Announce(enemyId, Statuses.Slowed, agent.CrowdControl.Slow(fraction, duration));
+        }
 
         return true;
     }

@@ -359,6 +359,9 @@ public sealed class PlayerCombat
     public Stat DecoySeconds { get; } = new(0f);
     public Stat DecoyInterval { get; } = new(8f);
 
+    public Stat FadeBurst { get; } = new(0f);
+    public Stat FadeBurstSlow { get; } = new(0f);
+
     private bool _isStanding;
 
     /// <param name="spec">

@@ -37,6 +37,8 @@ public sealed class ShadeSystem
 {
     public const int Capacity = 8;
     public const float SideOffset = 1.2f;
+    public const float BurstRadius = 3f;
+    public const float BurstSlowSeconds = 2f;
 
     private readonly ProjectileSystem _projectiles;
     private readonly LureSystem _lures;
@@ -45,6 +47,8 @@ public sealed class ShadeSystem
     private readonly Stat _range;
     private readonly Stat _fireRate;
     private readonly Stat _damage;
+    private readonly Stat _fadeBurst;
+    private readonly Stat _fadeBurstSlow;
     private readonly Shade[] _standing = new Shade[Capacity];
     private int _count;
     private int _nextId = 1;
@@ -60,6 +64,8 @@ public sealed class ShadeSystem
         _range = stats.Resolve(PlayerStat.WeaponRange);
         _fireRate = stats.Resolve(PlayerStat.FireRate);
         _damage = stats.Resolve(PlayerStat.WeaponDamage);
+        _fadeBurst = stats.Resolve(PlayerStat.FadeBurst);
+        _fadeBurstSlow = stats.Resolve(PlayerStat.FadeBurstSlow);
     }
 
     public ReadOnlySpan<Shade> Standing => _standing.AsSpan(0, _count);
@@ -104,7 +110,7 @@ public sealed class ShadeSystem
         return id;
     }
 
-    public void Tick(float now, EnemySystem enemies)
+    public void Tick(float now, EnemySystem enemies, PlayerCombat player)
     {
         if (!float.IsFinite(now))
         {
@@ -118,6 +124,12 @@ public sealed class ShadeSystem
             if (now >= shade.ExpiresAt)
             {
                 Retire(index, expired: true);
+                float multiplier = _fadeBurst.Value;
+                if (multiplier > 0f)
+                {
+                    Burst(shade.Position, now, multiplier, enemies, player);
+                }
+
                 continue;
             }
 
@@ -140,6 +152,38 @@ public sealed class ShadeSystem
             // Clearing the field ends the lure. Replacing a shade leaves its lure on its timer.
             _lures.Expire(lureId);
         }
+    }
+
+    private void Burst(Vector3 centre, float now, float multiplier, EnemySystem enemies, PlayerCombat player)
+    {
+        float damage = PlayerCombat.ShotDamage(multiplier * _damage.Value);
+        float slow = MathF.Min(_fadeBurstSlow.Value, CrowdControl.MaxSlow);
+        bool slows = slow > 0f;
+
+        // ApplyDamage leaves corpses registered, so kills do not invalidate the span.
+        foreach (EnemyAgent agent in enemies.Registry.Alive)
+        {
+            if (!agent.IsAlive)
+            {
+                continue;
+            }
+
+            float dx = agent.Position.X - centre.X;
+            float dz = agent.Position.Z - centre.Z;
+            float reach = BurstRadius + agent.Spec.BodyRadius;
+            if (!((dx * dx) + (dz * dz) <= reach * reach))
+            {
+                continue;
+            }
+
+            DamageResult hit = enemies.ApplyDamage(agent.Id, damage, now, player);
+            if (slows && !hit.Blocked && !hit.Killed)
+            {
+                enemies.Slow(agent.Id, slow, BurstSlowSeconds, allowHalfDurationOnBoss: true);
+            }
+        }
+
+        _events.Publish(new ShadeBurst(centre, BurstRadius, slows));
     }
 
     private void TryShoot(int index, Shade shade, float now, EnemySystem enemies)

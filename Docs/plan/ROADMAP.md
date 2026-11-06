@@ -78,7 +78,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **EA-01c** — The Echo Archer authored: the third path slot, its card, Echo Arrow's assets (M)
 - [x] **EA-02** — Shades drawn, Mirror Image authored: the smoky copy, its shot, its fade (M)
 - [x] **EA-03a** — Decoy Roll in core (M)
-- [ ] **EA-03b** — Fading Burst in core: a fading shade bursts, rank 3 slows (S) — [spec](tasks/EA-03b-fading-burst.md)
+- [x] **EA-03b** — Fading Burst in core (S)
 - [ ] **EA-03c** — Decoy Roll and Fading Burst drawn and authored (M) — [spec](tasks/EA-03c-decoy-and-burst-drawn.md)
 - [ ] **EA-04a** — Crossfire in core: two shades appear, every shade looses at the target (M) — [spec](tasks/EA-04a-crossfire.md)
 - [ ] **EA-04b** — Crossfire drawn and authored: converging heavy arrows (M) — [spec](tasks/EA-04b-crossfire-drawn.md)

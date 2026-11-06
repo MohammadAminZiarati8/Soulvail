@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-06, SK-06b complete._
+_2026-11-06, SK-07 complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **SK-06b** — Storm Run drawn and authored. |
-| **Next task** | **SK-07** — The Skirmisher's look, awaiting go. |
-| **Verified** | Editor EditMode 5830 (5829 passed, 1 inconclusive). Format clean. |
+| **Last merged** | **SK-07** — Skirmisher path complete. |
+| **Next task** | None specced — owner to name the next task |
+| **Verified** | Editor EditMode 5834 (5833 passed, 1 inconclusive). Format clean. |
 
 ## What works
 
@@ -39,7 +39,7 @@ Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
-Skirmisher shoots on the run. Ricochet at 11. Second Wind at 14 adds roll guard and pips. Whirlwind at 17. Storm Run at 20.
+Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
 ## Missing
 

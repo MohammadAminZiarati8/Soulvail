@@ -68,7 +68,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **SK-05b** — Whirlwind drawn and authored: the spin and the swirl (M)
 - [x] **SK-06a** — Storm Run in core: rolls end in a volley, roll cooldown halved (M)
 - [x] **SK-06b** — Storm Run drawn and authored: the wind aura, the burst ring (M)
-- [ ] [**SK-07**](tasks/SK-07-the-skirmishers-look.md) — The Skirmisher's look: silver-cyan trim and tints, data only (S)
+- [x] **SK-07** — The Skirmisher's look: silver-cyan trim and tints, data only (S)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

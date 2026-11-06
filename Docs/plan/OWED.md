@@ -306,3 +306,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **SK-05b [Editor]** Learn Whirlwind on the Skirmisher at level 17. Keep running with three enemies within 6 m. Confirm two upper-body spins, two cyan swirls at the launch positions, and arrows hitting enemies around the Ranger.
 
 - **SK-06b [Editor]** — Stage 21+, level-20 Skirmisher with Storm Run: at five enemies, check the cyan body wind, the roll trail and ring with arrows at enemies in range, and the faster roll refill. At rank 1 the wind should fade after 6 s.
+
+- **SK-07 [Editor]** — Choose the Skirmisher in play. Check the pale silver-cyan trim and bow, the slightly brighter matching arrow trail, and the KayKit hip quiver during movement and rolls. Compare with the Marksman at a glance.

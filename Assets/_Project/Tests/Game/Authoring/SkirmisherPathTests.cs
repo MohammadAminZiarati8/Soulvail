@@ -234,10 +234,10 @@ public sealed class SkirmisherPathTests
     }
 
     [Test]
-    public void Path_WithoutLook_Loads()
+    public void Path_WithLook_Loads()
     {
         PathDefinition asset = Load<PathDefinition>("Paths/Skirmisher");
-        Assert.That(asset.Look, Is.Null);
+        Assert.That(asset.Look, Is.Not.Null);
         Assert.That(asset.ToSpec(new ContentId("character.ranger")).Id, Is.EqualTo(Skirmisher));
     }
 

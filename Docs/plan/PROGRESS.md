@@ -10,7 +10,7 @@ _2026-11-06, SK-07 complete._
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
 | **Last merged** | **SK-07** — Skirmisher path complete. |
-| **Next task** | None specced — owner to name the next task |
+| **Next task** | **SK-08** — Skirmisher retune, awaiting go. |
 | **Verified** | Editor EditMode 5834 (5833 passed, 1 inconclusive). Format clean. |
 
 ## What works

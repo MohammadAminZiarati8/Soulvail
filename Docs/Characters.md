@@ -148,18 +148,18 @@ Built one at a time: **Marksman** is built; the **Skirmisher** is next (SK specs
 
 Every active auto-casts on its own trigger (densest group · nearest threat · an enemy closing in · the longest line), and no two auto-casts fire within 0.5 s of each other. Each skill has its own effect and animation; a chosen path changes the hero's look.
 
-**Skirmisher — never stop.** (Owner, 2026-11-05: Caltrop Roll cut, Ricochet Shot in its place; Momentum folded into Hit and Run, Untouchable into Second Wind, Storm Run made the Lv-20 active.)
+**Skirmisher — never stop.** (Owner, 2026-11-05: Caltrop Roll cut, Ricochet Shot in its place; Momentum folded into Hit and Run, Untouchable into Second Wind, Storm Run made the Lv-20 active. 2026-11-06: Running Shot out-fires standing at max rank; Whirlwind and Storm Run cast on one enemy.)
 
 | Lv | Skill | Kind | Ranks | Effect |
 |---|---|---|---|---|
-| 11 | **Running Shot** | Passive | 4 | The Ranger fires while moving, at 40/55/70/85% of the standing rate. Standing still fires at the full rate. |
+| 11 | **Running Shot** | Passive | 4 | The Ranger fires while moving, at 50/75/100/125% of the standing rate: at rank 4 running out-fires standing. Standing still fires at the full rate. |
 | 11 | **Ricochet Shot** | Active | 4 | One arrow that bounces to the nearest enemy it has not hit within 5 m: 3 hits, 1× weapon each. Ranks: 4 hits; +25% damage; 5 hits and cooldown 8 → 6 s. |
 | 14 | **Hit and Run** | Passive | 3 | Every arrow that hits gives +15/20/25% move speed for 1.5 s (refreshes). Rank 2+: **Momentum** — +2/3% damage per metre moved in the last 2 s, counting up to 8 m. |
 | 14 | **Second Wind** | Passive | 3 | Roll cooldown −0.5/−1.0 s. Rank 2+: the first hit within 1 s after a roll ends misses. Rank 3: two roll charges. |
 | 17 | **Whirlwind** | Active | 3 | A spin on the run: a ring of 12 arrows outward, twice 0.3 s apart, 0.6× weapon each. Ranks: 16 arrows a ring; a third ring and cooldown 10 → 8 s. |
 | 20 | **Storm Run** | Active | 3 | For 6 s every roll ends in a Volley (one arrow at each enemy in range) and the roll cooldown is halved. Ranks: 8 s; Volley arrows +30% damage. |
 
-Triggers: Ricochet — at least 3 enemies in range · Whirlwind — at least 3 within 6 m · Storm Run — at least 5 in range, cooldown 30 s. The Skirmisher's tint is a pale silver-cyan, apart from the Marksman's trim and from every enemy's lime.
+Triggers: Ricochet — at least 3 enemies in range · Whirlwind — at least 1 within 6 m · Storm Run — at least 1 in range, cooldown 30 s. The Skirmisher's tint is a pale silver-cyan, apart from the Marksman's trim and from every enemy's lime.
 
 *Recorded, not specced* — an 8-skill draft, to be reshaped to 20 ranks like the Marksman before its turn:
 

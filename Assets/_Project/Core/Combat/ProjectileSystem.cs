@@ -33,7 +33,7 @@ public enum ShotSide
 }
 
 /// <summary>Attribution of a friendly projectile.</summary>
-public enum ShotOrigin { Ranger, Shade, Echo }
+public enum ShotOrigin { Ranger, Shade, Echo, Crossfire }
 
 /// <summary>
 /// One shot in flight: a point and a moment, not a body.
@@ -773,9 +773,9 @@ public sealed class ProjectileSystem
 
         bool hit = false;
 
-        if (shot.Bind != null || flight.Chain.IsActive)
+        if (shot.Bind != null || flight.Chain.IsActive || shot.ShotOrigin == ShotOrigin.Crossfire)
         {
-            // Binding and ricochet arrows stop on one body.
+            // Binding, ricochet and Crossfire arrows stop on one body.
             EnemyAgent target = null;
             float best = float.PositiveInfinity;
             for (int i = 0; i < agents.Length; i++)
@@ -908,6 +908,9 @@ public sealed class ProjectileSystem
 
         return nearest;
     }
+
+    internal bool HasClearShadeShot(Vector3 origin, EnemyAgent target) =>
+        TraceCover == null ? !target.Blackboard.IsBehindCover : !TraceCoverBetween(origin, target.Position).HasValue;
 
     private Vector3? TraceCoverBetween(Vector3 from, Vector3 to) => TraceCover?.Invoke(from, to);
 

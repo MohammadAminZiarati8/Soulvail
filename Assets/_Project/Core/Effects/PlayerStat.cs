@@ -238,6 +238,9 @@ public enum PlayerStat
 
     /// <summary>Fraction of move speed lost to Fading Burst. Zero disables the slow.</summary>
     FadeBurstSlow,
+
+    CrossfireShades,
+    CrossfireDamage,
 }
 
 /// <summary>
@@ -306,6 +309,9 @@ public sealed class PlayerStats : IStatBlock
     public Stat MirrorImageSeconds { get; } = new(6f);
     public Stat StormRunSeconds { get; } = new(6f);
     public Stat StormRunDamage { get; } = new(0f);
+
+    public Stat CrossfireShades { get; } = new(2f);
+    public Stat CrossfireDamage { get; } = new(0f);
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -397,6 +403,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.DecoyInterval => _combat.DecoyInterval,
             PlayerStat.FadeBurst => _combat.FadeBurst,
             PlayerStat.FadeBurstSlow => _combat.FadeBurstSlow,
+            PlayerStat.CrossfireShades => CrossfireShades,
+            PlayerStat.CrossfireDamage => CrossfireDamage,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -478,6 +486,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.DecoyInterval => true,
             PlayerStat.FadeBurst => true,
             PlayerStat.FadeBurstSlow => true,
+            PlayerStat.CrossfireShades => true,
+            PlayerStat.CrossfireDamage => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

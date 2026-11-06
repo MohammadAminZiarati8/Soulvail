@@ -80,7 +80,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **EA-03a** — Decoy Roll in core (M)
 - [x] **EA-03b** — Fading Burst in core (S)
 - [x] **EA-03c** — Decoy Roll and Fading Burst drawn and authored (M)
-- [ ] **EA-04a** — Crossfire in core: two shades appear, every shade looses at the target (M) — [spec](tasks/EA-04a-crossfire.md)
+- [x] **EA-04a** — Crossfire in core: two shades appear, every shade looses at the target (M)
 - [ ] **EA-04b** — Crossfire drawn and authored: converging heavy arrows (M) — [spec](tasks/EA-04b-crossfire-drawn.md)
 - [ ] **EA-05a** — Hall of Mirrors in core: a ring of shooting shades (M) — [spec](tasks/EA-05a-hall-of-mirrors.md)
 - [ ] **EA-05b** — Hall of Mirrors drawn and authored: the ring rising (M) — [spec](tasks/EA-05b-hall-of-mirrors-drawn.md)

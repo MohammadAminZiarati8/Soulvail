@@ -142,6 +142,44 @@ public sealed class ShadeSystem
         }
     }
 
+    public int LooseAll(EnemyAgent target, float damage, float now)
+    {
+        _ = target ?? throw new ArgumentNullException(nameof(target));
+        if (!float.IsFinite(now))
+        {
+            throw new ArgumentOutOfRangeException(nameof(now));
+        }
+
+        if (!(damage >= 0f) || !float.IsFinite(damage))
+        {
+            throw new ArgumentOutOfRangeException(nameof(damage));
+        }
+
+        WeaponSpec weapon = _character.Weapon;
+        if (weapon.Kind != WeaponKind.Projectile || !target.IsAlive)
+        {
+            return 0;
+        }
+
+        int loosed = 0;
+        foreach (Shade shade in Standing)
+        {
+            if (_projectiles.InFlightCount >= _projectiles.Capacity)
+            {
+                break;
+            }
+
+            if (now < shade.ExpiresAt && _projectiles.HasClearShadeShot(shade.Position, target)
+                && Fire(shade, target, weapon, damage, now, ShotOrigin.Crossfire, out Vector3 aim))
+            {
+                loosed++;
+                _events.Publish(new ShadeLoosed(shade.Id, aim));
+            }
+        }
+
+        return loosed;
+    }
+
     public void Clear()
     {
         while (_count > 0)
@@ -203,16 +241,22 @@ public sealed class ShadeSystem
             return;
         }
 
-        Vector3 aim = ProjectileLead.Solve(shade.Position, target.Position, target.Velocity, weapon.ShotSpeed);
         float damage = PlayerCombat.ShotDamage(shade.DamageOfWeapon * _damage.Value);
-        var shot = new Projectile(_character.Id, 0, shade.Position, aim, weapon.ShotSpeed, weapon.ShotRadius,
-            damage, ShotSide.AtEnemies, shotOrigin: ShotOrigin.Shade);
-        if (_projectiles.Fire(shot, now) != ProjectileSystem.NoProjectile)
+        if (Fire(shade, target, weapon, damage, now, ShotOrigin.Shade, out Vector3 aim))
         {
             _standing[index] = new Shade(shade.Id, shade.Kind, shade.Position, shade.ExpiresAt,
                 shade.DamageOfWeapon, now + (1f / fireRate));
             _events.Publish(new ShadeLoosed(shade.Id, aim));
         }
+    }
+
+    private bool Fire(Shade shade, EnemyAgent target, WeaponSpec weapon, float damage, float now,
+        ShotOrigin origin, out Vector3 aim)
+    {
+        aim = ProjectileLead.Solve(shade.Position, target.Position, target.Velocity, weapon.ShotSpeed);
+        var shot = new Projectile(_character.Id, 0, shade.Position, aim, weapon.ShotSpeed, weapon.ShotRadius,
+            damage, ShotSide.AtEnemies, shotOrigin: origin);
+        return _projectiles.Fire(shot, now) != ProjectileSystem.NoProjectile;
     }
 
     private void Retire(int index, bool expired)

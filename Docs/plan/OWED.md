@@ -308,3 +308,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **SK-06b [Editor]** — Stage 21+, level-20 Skirmisher with Storm Run: at five enemies, check the cyan body wind, the roll trail and ring with arrows at enemies in range, and the faster roll refill. At rank 1 the wind should fade after 6 s.
 
 - **SK-07 [Editor]** — Choose the Skirmisher in play. Check the pale silver-cyan trim and bow, the slightly brighter matching arrow trail, and the KayKit hip quiver during movement and rolls. Compare with the Marksman at a glance.
+
+
+## SK-08 — Skirmisher retune
+
+1. **[Editor]** Skirmisher, Running Shot rank 4: strafing fires visibly faster than standing.
+2. **[Editor]** Whirlwind and Storm Run learned, one enemy in reach: both cast.

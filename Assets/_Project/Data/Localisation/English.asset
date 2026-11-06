@@ -685,19 +685,19 @@ MonoBehaviour:
   - _key: skill.skirmisher.running-shot.name
     _text: Running Shot
   - _key: skill.skirmisher.running-shot.description
-    _text: Fire while moving, at 40% of your standing rate.
+    _text: Fire while moving, at 50% of your standing rate.
   - _key: skill.skirmisher.running-shot-2.name
     _text: Running Shot 2
   - _key: skill.skirmisher.running-shot-2.description
-    _text: 55%
+    _text: 75%
   - _key: skill.skirmisher.running-shot-3.name
     _text: Running Shot 3
   - _key: skill.skirmisher.running-shot-3.description
-    _text: 70%
+    _text: 100%
   - _key: skill.skirmisher.running-shot-4.name
     _text: Running Shot 4
   - _key: skill.skirmisher.running-shot-4.description
-    _text: 85%
+    _text: "125% \u2014 faster on the run than standing."
   - _key: skill.skirmisher.ricochet-shot.name
     _text: "Ricochet Shot"
   - _key: skill.skirmisher.ricochet-shot.description

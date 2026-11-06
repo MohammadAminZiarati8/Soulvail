@@ -56,8 +56,8 @@ public sealed class RunningShotTests
         Assert.That(_events.Count<PlayerAttacked>(), Is.Zero);
     }
 
-    [TestCase(1, true, 0.40f, TestName = "Moving_Rank1_Fires_AtFortyPercent")]
-    [TestCase(4, true, 0.85f, TestName = "Moving_Rank4_EightyFive")]
+    [TestCase(1, true, 0.50f, TestName = "Moving_Rank1_Fires_AtFiftyPercent")]
+    [TestCase(4, true, 1.25f, TestName = "Moving_Rank4_Fires_AtOneHundredTwentyFivePercent")]
     [TestCase(4, false, 1f, TestName = "Standing_FullRate")]
     public void Rate_SamplesAtTheStartOfEachDraw(int rank, bool moving, float rate)
     {
@@ -141,10 +141,10 @@ public sealed class RunningShotTests
     private void LearnRunningShot(int rank)
     {
         _player.FireWhileMoving.Add(new Modifier(ModifierKind.Flat, 1f, this));
-        _player.MovingFireRate.Add(new Modifier(ModifierKind.Flat, -0.60f, this));
+        _player.MovingFireRate.Add(new Modifier(ModifierKind.Flat, -0.50f, this));
         for (int i = 1; i < rank; i++)
         {
-            _player.MovingFireRate.Add(new Modifier(ModifierKind.Flat, 0.15f, this));
+            _player.MovingFireRate.Add(new Modifier(ModifierKind.Flat, 0.25f, this));
         }
     }
 

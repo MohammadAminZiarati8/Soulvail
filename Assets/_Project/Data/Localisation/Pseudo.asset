@@ -762,20 +762,21 @@ MonoBehaviour:
   - _key: skill.skirmisher.running-shot.name
     _text: "[R\xFB\xF1\xF1\xEE\xF1g Sh\xF4t \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.running-shot.description
-    _text: "[F\xEEr\xE9 wh\xEEl\xE9 m\xF4v\xEE\xF1g, \xE1t 40% \xF4f \xFD\xF4\xFBr
+    _text: "[F\xEEr\xE9 wh\xEEl\xE9 m\xF4v\xEE\xF1g, \xE1t 50% \xF4f \xFD\xF4\xFBr
       st\xE1\xF1d\xEE\xF1g r\xE1t\xE9. \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.running-shot-2.name
     _text: "[R\xFB\xF1\xF1\xEE\xF1g Sh\xF4t 2 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.running-shot-2.description
-    _text: "[55% \xB7\xB7]"
+    _text: "[75% \xB7\xB7]"
   - _key: skill.skirmisher.running-shot-3.name
     _text: "[R\xFB\xF1\xF1\xEE\xF1g Sh\xF4t 3 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.running-shot-3.description
-    _text: "[70% \xB7\xB7]"
+    _text: "[100% \xB7\xB7]"
   - _key: skill.skirmisher.running-shot-4.name
     _text: "[R\xFB\xF1\xF1\xEE\xF1g Sh\xF4t 4 \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.running-shot-4.description
-    _text: "[85% \xB7\xB7]"
+    _text: "[125% \u2014 f\xE1st\xE9r \xF4\xF1 th\xE9 r\xFB\xF1 th\xE1\xF1 st\xE1\xF1d\xEE\xF1g.
+      \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.ricochet-shot.name
     _text: "[R\xEE\xE7\xF4\xE7h\xE9t Sh\xF4t \xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.skirmisher.ricochet-shot.description

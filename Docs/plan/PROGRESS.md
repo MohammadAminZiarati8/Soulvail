@@ -2,16 +2,16 @@
 
 History: `git log`. Owner checks: [OWED.md](OWED.md).
 
-_2026-11-06, SK-07 complete._
+_2026-11-06, SK-08 complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **SK-07** — Skirmisher path complete. |
-| **Next task** | **SK-08** — Skirmisher retune, awaiting go. |
-| **Verified** | Editor EditMode 5834 (5833 passed, 1 inconclusive). Format clean. |
+| **Last merged** | **SK-08** — Skirmisher retune. |
+| **Next task** | None specced — owner to name the next task |
+| **Verified** | Editor EditMode 5834 (5833 passed, 0 failed, 1 inconclusive). Format clean. |
 
 ## What works
 

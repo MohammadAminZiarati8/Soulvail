@@ -37,10 +37,10 @@ public sealed class SkirmisherPathTests
         PathDefinition path = Load<PathDefinition>("Paths/Skirmisher");
         AssertRanks(path.Skills[0].Ranks, new[]
         {
-            new[] { (PlayerStat.FireWhileMoving, 1f), (PlayerStat.MovingFireRate, -0.60f) },
-            new[] { (PlayerStat.MovingFireRate, 0.15f) },
-            new[] { (PlayerStat.MovingFireRate, 0.15f) },
-            new[] { (PlayerStat.MovingFireRate, 0.15f) },
+            new[] { (PlayerStat.FireWhileMoving, 1f), (PlayerStat.MovingFireRate, -0.50f) },
+            new[] { (PlayerStat.MovingFireRate, 0.25f) },
+            new[] { (PlayerStat.MovingFireRate, 0.25f) },
+            new[] { (PlayerStat.MovingFireRate, 0.25f) },
         });
         AssertRanks(path.Skills[2].Ranks, new[]
         {
@@ -109,7 +109,7 @@ public sealed class SkirmisherPathTests
         TriggerClause trigger = first.Active.Trigger.Clauses[0];
         Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesWithin6m));
         Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
-        Assert.That(trigger.Threshold, Is.EqualTo(3f));
+        Assert.That(trigger.Threshold, Is.EqualTo(1f));
         Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
         Assert.That(((Whirlwind)first.Active.OnCast[0]).DamageOfWeapon, Is.EqualTo(0.6f));
 
@@ -147,7 +147,7 @@ public sealed class SkirmisherPathTests
         TriggerClause trigger = first.Active.Trigger.Clauses[0];
         Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
         Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
-        Assert.That(trigger.Threshold, Is.EqualTo(5f));
+        Assert.That(trigger.Threshold, Is.EqualTo(1f));
         Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
         Assert.That(((StormRun)first.Active.OnCast[0]).DamageOfWeapon, Is.EqualTo(0.8f));
 

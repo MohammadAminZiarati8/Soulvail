@@ -21,7 +21,7 @@ MonoBehaviour:
   _trigger:
   - _field: 4
     _comparison: 1
-    _threshold: 5
+    _threshold: 1
   _onCast:
   - {fileID: 11400000, guid: faa8f26fcd13441b9db9af26562386ef, type: 2}
   _parent: {fileID: 0}

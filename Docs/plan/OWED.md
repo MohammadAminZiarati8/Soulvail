@@ -377,3 +377,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] Device: Check the claw glyph over a Frog and a Panther at phone zoom.
 
 - BM-03c: when the Hound is drawn, check spawn placement beside the Beastmaster after the arena teleports him at run start and at a stage change.
+
+- BM-03b: on Jungle ground in the Editor, place the Hound beside a Panther and a Shadow panther. Check that its upright silhouette, pale coat and cyan collar read as the player's at a glance.

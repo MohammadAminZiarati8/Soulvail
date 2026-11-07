@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Hound core complete._
+_2026-11-07, Hound model complete._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-03a** — Hound core targeting, bites, XP and level growth. |
-| **Next task** | BM-03b on a go; playtests owed. |
-| **Verified** | EditMode 6040 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-03b** — Hound prefab, coat and cyan tack, and ten clips on the Panther rig. |
+| **Next task** | BM-03c on a go; playtests owed. |
+| **Verified** | EditMode 6046 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

@@ -836,3 +836,15 @@ MonoBehaviour:
     _text: "Crossfire 3"
   - _key: skill.echo-archer.crossfire-3.description
     _text: "2× damage. Cooldown 9 s."
+  - _key: skill.echo-archer.hall-of-mirrors.name
+    _text: "Hall of Mirrors"
+  - _key: skill.echo-archer.hall-of-mirrors.description
+    _text: "4 shades rise around you and shoot for 5 s, at 70% damage."
+  - _key: skill.echo-archer.hall-of-mirrors-2.name
+    _text: "Hall of Mirrors 2"
+  - _key: skill.echo-archer.hall-of-mirrors-2.description
+    _text: "6 shades."
+  - _key: skill.echo-archer.hall-of-mirrors-3.name
+    _text: "Hall of Mirrors 3"
+  - _key: skill.echo-archer.hall-of-mirrors-3.description
+    _text: "7 s, 100% damage."

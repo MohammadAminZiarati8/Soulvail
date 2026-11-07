@@ -140,7 +140,9 @@ namespace Soulvail.Game.Views
         private GameObject _rainRoot;
         private IDisposable _rainSubscription;
         private readonly int _castUpId = Animator.StringToHash("CastUp");
+        private readonly int _castUpStateId = Animator.StringToHash("Upper Body.Cast Up");
         private float _castUpLeft;
+        private bool _hallRaising;
         private float _bindingReleaseLeft;
         private IDisposable _bindingCastSubscription;
         [SerializeField] private TrapViews _snarePrefab;
@@ -423,6 +425,11 @@ namespace Soulvail.Game.Views
                 _blockPop.gameObject.SetActive(_blockPopLeft > 0f);
             }
             _castUpLeft = Mathf.Max(0f, _castUpLeft - dt);
+            if (_hallRaising && _castUpLeft == 0f)
+            {
+                _hallRaising = false;
+                _animator.Play(_upperIdleId, ResolveUpperLayer(), 0f);
+            }
             if (_bindingReleaseLeft > 0f)
             {
                 _bindingReleaseLeft = Mathf.Max(0f, _bindingReleaseLeft - dt);
@@ -779,7 +786,7 @@ namespace Soulvail.Game.Views
         private void OnFired(ProjectileFired evt)
         {
             if (_animator == null || evt.SourceId != 0 || evt.ShotOrigin != ShotOrigin.Ranger || evt.ChainIndex > 0 || _killshotWinding || _whirling || _rolling || _dead
-                || (_castUpLeft > 0f && !evt.IsRicochet))
+                || _hallRaising || (_castUpLeft > 0f && !evt.IsRicochet))
             {
                 return;
             }
@@ -828,8 +835,26 @@ namespace Soulvail.Game.Views
 
         private void OnSkillCast(SkillCast evt)
         {
-            if (_animator == null || _dead || _killshotWinding)
+            if (_animator == null || _dead || _killshotWinding || _hallRaising)
             {
+                return;
+            }
+            if (evt.SkillId.Value == "skill.echo-archer.hall-of-mirrors" && !_rolling && !_whirling)
+            {
+                int layer = ResolveUpperLayer();
+                if (layer >= 0)
+                {
+                    _bindingReleaseLeft = 0f;
+                    _shotPoseLeft = 0f;
+                    _animator.ResetTrigger(_castUpId);
+                    _animator.ResetTrigger(_shootId);
+                    _animator.ResetTrigger(_releaseId);
+                    _castUpLeft = 0.3f;
+                    _hallRaising = true;
+                    SetUpperWeight(1f);
+                    _animator.Play(_castUpStateId, layer, 0f);
+                }
+
                 return;
             }
             if ((evt.SkillId.Value is "skill.echo-archer.mirror-image" or "skill.echo-archer.crossfire")

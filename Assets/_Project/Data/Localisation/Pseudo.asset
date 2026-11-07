@@ -925,3 +925,15 @@ MonoBehaviour:
     _text: "[Çrôssfîré 3 ····]"
   - _key: skill.echo-archer.crossfire-3.description
     _text: "[2× dámágé. Çôôldôwñ 9 s. ·········]"
+  - _key: skill.echo-archer.hall-of-mirrors.name
+    _text: "[Háll ôf Mîrrôrs ······]"
+  - _key: skill.echo-archer.hall-of-mirrors.description
+    _text: "[4 shádés rîsé árôûñd ýôû áñd shôôt fôr 5 s, át 70% dámágé. ·····················]"
+  - _key: skill.echo-archer.hall-of-mirrors-2.name
+    _text: "[Háll ôf Mîrrôrs 2 ······]"
+  - _key: skill.echo-archer.hall-of-mirrors-2.description
+    _text: "[6 shádés. ····]"
+  - _key: skill.echo-archer.hall-of-mirrors-3.name
+    _text: "[Háll ôf Mîrrôrs 3 ······]"
+  - _key: skill.echo-archer.hall-of-mirrors-3.description
+    _text: "[7 s, 100% dámágé. ······]"

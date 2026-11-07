@@ -167,13 +167,77 @@ public sealed class EchoArcherPathTests
     public void Path_CrossfireFifthAtSeventeen()
     {
         PathSpec path = Path().ToSpec(Ranger);
-        Assert.That(path.Skills.Count, Is.EqualTo(5));
         var crossfire = path.Skills[4];
         Assert.That(crossfire.UnlockLevel, Is.EqualTo(17));
         Assert.That(crossfire.Ranks.TierCount, Is.EqualTo(3));
         Assert.That(crossfire.Ranks.Tier(1), Is.EqualTo(new[] { new ContentId("skill.echo-archer.crossfire") }));
         Assert.That(crossfire.Ranks.Tier(2), Is.EqualTo(new[] { new ContentId("skill.echo-archer.crossfire-2") }));
         Assert.That(crossfire.Ranks.Tier(3), Is.EqualTo(new[] { new ContentId("skill.echo-archer.crossfire-3") }));
+    }
+
+    [Test]
+    public void HallOfMirrors_Assets_MatchTheRankTable()
+    {
+        var ranks = Path().Skills[5].Ranks;
+        Assert.That(ranks.Count, Is.EqualTo(3));
+        SkillSpec first = ranks[0].ToSpec();
+        Assert.That(first.Kind, Is.EqualTo(SkillKind.Active));
+        Assert.That(first.Active.Cooldown, Is.EqualTo(30f));
+        Assert.That(first.Active.Trigger.Clauses.Count, Is.EqualTo(1));
+        TriggerClause trigger = first.Active.Trigger.Clauses[0];
+        Assert.That(trigger.Field, Is.EqualTo(TriggerField.EnemiesInAcquireRange));
+        Assert.That(trigger.Comparison, Is.EqualTo(TriggerComparison.AtLeast));
+        Assert.That(trigger.Threshold, Is.EqualTo(1f));
+        Assert.That(first.Active.OnCast.Count, Is.EqualTo(1));
+        Assert.That(((HallOfMirrors)first.Active.OnCast[0]).DamageOfWeapon, Is.EqualTo(0.7f));
+
+        CheckUpgrade(1, (PlayerStat.HallShades, 2f));
+        CheckUpgrade(2, (PlayerStat.HallSeconds, 2f), (PlayerStat.HallDamage, 0.3f));
+
+        using IObjectResolver boot = SkirmisherPathTests.Boot();
+        var icons = boot.Resolve<SkillIconBook>();
+        foreach (SkillDefinition rank in ranks)
+        {
+            Assert.That(rank.Icon, Is.Not.Null, rank.Id);
+            Assert.That(icons.For(new ContentId(rank.Id)), Is.SameAs(rank.Icon), rank.Id);
+        }
+
+        void CheckUpgrade(int index, params (PlayerStat Stat, float Value)[] expected)
+        {
+            SkillSpec rank = ranks[index].ToSpec();
+            Assert.That(rank.Kind, Is.EqualTo(SkillKind.Upgrade));
+            Assert.That(rank.ParentId, Is.EqualTo(ranks[index - 1].ToSpec().Id));
+            Assert.That(rank.Effects.Count, Is.EqualTo(expected.Length));
+            for (int i = 0; i < expected.Length; i++)
+            {
+                var effect = (ModifyStat)rank.Effects[i];
+                Assert.That(effect.Stat, Is.EqualTo(expected[i].Stat));
+                Assert.That(effect.Value, Is.EqualTo(expected[i].Value));
+                Assert.That(effect.Target, Is.EqualTo(StatTarget.Player));
+                Assert.That(effect.Kind, Is.EqualTo(ModifierKind.Flat));
+            }
+        }
+    }
+
+    [TestCase(19, false)]
+    [TestCase(20, true)]
+    public void Path_HallSixthAtTwenty(int level, bool available)
+    {
+        PathSpec path = Path().ToSpec(Ranger);
+        Assert.That(path.Skills.Count, Is.EqualTo(6));
+        var hall = path.Skills[5];
+        var first = new ContentId("skill.echo-archer.hall-of-mirrors");
+        Assert.That(hall.UnlockLevel, Is.EqualTo(20));
+        Assert.That(hall.Ranks.TierCount, Is.EqualTo(3));
+        Assert.That(hall.Ranks.Tier(1), Is.EqualTo(new[] { first }));
+        Assert.That(hall.Ranks.Tier(2), Is.EqualTo(new[] { new ContentId("skill.echo-archer.hall-of-mirrors-2") }));
+        Assert.That(hall.Ranks.Tier(3), Is.EqualTo(new[] { new ContentId("skill.echo-archer.hall-of-mirrors-3") }));
+
+        using var events = new DomainEventHub();
+        RunSession session = SkirmisherPathTests.StartRanger(level, events);
+        session.ChoosePath(EchoArcher);
+        Assert.That(session.State.IsNodeAvailable(first), Is.EqualTo(available));
+        session.End();
     }
 
     [Test]
@@ -326,6 +390,13 @@ public sealed class EchoArcherPathTests
             "Two shades appear, and every shade looses a heavy arrow at your target: 1.5× weapon damage each.",
             "Three shades appear.",
             "2× damage. Cooldown 9 s.",
+        });
+
+        CheckRankLoc(5, "Hall of Mirrors", new[]
+        {
+            "4 shades rise around you and shoot for 5 s, at 70% damage.",
+            "6 shades.",
+            "7 s, 100% damage.",
         });
 
         void CheckRankLoc(int index, string title, string[] descriptions)

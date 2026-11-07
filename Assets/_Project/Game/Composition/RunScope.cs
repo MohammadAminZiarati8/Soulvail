@@ -207,6 +207,7 @@ namespace Soulvail.Game.Composition
         [SerializeField] private ShadeView _shadePrefab;
         [SerializeField] private ShadeBurstView _shadeBurstPrefab;
         [SerializeField] private Material _crossfireLineMaterial;
+        [SerializeField] private HallOfMirrorsView _hallRingPrefab;
 
         [Tooltip("Where standing Wights are parented. Optional — they go to the scene root " +
                  "without it, which is untidy rather than wrong. Deliberately not the arena: one " +
@@ -403,6 +404,19 @@ namespace Soulvail.Game.Composition
             // look book live at the root. It runs before any entry point starts, so the body is
             // standing and injected before RunTicker.Start publishes a thing.
             builder.RegisterBuildCallback(RaiseBody);
+
+            if (_hallRingPrefab != null)
+            {
+                builder.RegisterBuildCallback(container =>
+                {
+                    var root = new GameObject("Hall of Mirrors (pooled)");
+                    root.SetActive(false);
+                    root.transform.SetParent(_decalRoot, false);
+                    HallOfMirrorsView hall = Instantiate(_hallRingPrefab, root.transform, false);
+                    hall.Construct(container.Resolve<DomainEventHub>());
+                    root.SetActive(true);
+                });
+            }
 
             // Guarded like the player view rather than treated as optional, because the tap-to-focus
             // adapter cannot be built without it and the whole run scope would fail to compose. The

@@ -346,3 +346,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## EA-04b — Crossfire drawn and authored
 
 - [ ] Editor, Jungle stage 18. With Mirror Image and Crossfire learned, check that two new shades appear, heavy arrows from every shade meet at the target from different sides, and the two new shades fade after one second.
+
+## EA-05b — Hall of Mirrors drawn and authored
+
+- [ ] Editor, Jungle stage 20. Learn Hall of Mirrors. Check the overhead bow raise and the rising ring, walk out while the four shades keep shooting, and watch them fade after 5 seconds.
+- [ ] Device. At rank 3, check for a frame drop while six Hall shades and the Ranger are shooting.

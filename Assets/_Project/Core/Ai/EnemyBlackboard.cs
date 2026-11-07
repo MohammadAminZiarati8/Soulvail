@@ -117,6 +117,13 @@ public sealed class EnemyBlackboard
     /// </remarks>
     public bool QuarryIsADecoy;
 
+    public bool QuarryIsAPet;
+    public int QuarryPetId;
+
+    internal int LastBitBy;
+    internal float LastBitAt;
+    internal float PetHuntSuppressedUntil;
+
     /// <summary>How many other enemies are within 6 m. GD §8.1's clustering pressure reads this.</summary>
     public int AlliesNearby;
 
@@ -212,6 +219,11 @@ public sealed class EnemyBlackboard
         HasLineOfSight = false;
         IsBehindCover = false;
         QuarryIsADecoy = false;
+        QuarryIsAPet = false;
+        QuarryPetId = 0;
+        LastBitBy = 0;
+        LastBitAt = 0f;
+        PetHuntSuppressedUntil = 0f;
         AlliesNearby = 0;
         HpFraction = 0f;
         ShieldFraction = 0f;

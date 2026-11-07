@@ -1146,7 +1146,7 @@ public sealed class EnemySystem
     /// owns no view of what is standing on the floor, and a retained reference would be one more
     /// thing to keep in step with a run's lifetime. Null and empty mean the same thing.
     /// </param>
-    public void Ingest(WorldSnapshot snapshot, LureSystem lures = null)
+    public void Ingest(WorldSnapshot snapshot, LureSystem lures = null, PetSystem pets = null, float now = 0f)
     {
         // Stops at EnemyCount, never at Enemies.Length: Clear() leaves the array's contents alone,
         // so everything past the count is last frame's enemies (AR §4.2).
@@ -1175,7 +1175,7 @@ public sealed class EnemySystem
         // because an empty arena is precisely when a respawn is about to be decided.
         _playerPosition = snapshot.PlayerPosition;
 
-        Perceive(snapshot.PlayerPosition, lures);
+        Perceive(snapshot.PlayerPosition, lures, pets, now);
     }
 
     /// <summary>
@@ -1276,7 +1276,7 @@ public sealed class EnemySystem
         EnemyTickContext behaviourCtx = anyRooted
             ? new EnemyTickContext(
                 ctx.Dt, ctx.Now, ctx.Player, _rootGate, ctx.Events, ctx.Projectiles, ctx.Enemies, ctx.Lanes, ctx.OpenGround,
-                ctx.PlayerFacing, ctx.Thorns)
+                ctx.PlayerFacing, ctx.Thorns, ctx.Pets)
             : ctx;
 
         for (int i = 0; i < agents.Length; i++)
@@ -1700,9 +1700,10 @@ public sealed class EnemySystem
     /// acceptable over six metres and three seconds and is written down rather than discovered.
     /// </para>
     /// </remarks>
-    private void Perceive(Vector3 playerPosition, LureSystem lures)
+    private void Perceive(Vector3 playerPosition, LureSystem lures, PetSystem pets, float now)
     {
         ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
+        pets?.ReviewHunters(Registry, playerPosition, now);
 
         for (int i = 0; i < agents.Length; i++)
         {
@@ -1726,6 +1727,15 @@ public sealed class EnemySystem
             {
                 quarry = decoy;
                 lured = true;
+            }
+
+            PetAgent pet = pets?.HuntQuarry(agent, playerPosition);
+            blackboard.QuarryPetId = pet?.Id ?? 0;
+            blackboard.QuarryIsAPet = pet is not null;
+            if (pet is not null)
+            {
+                quarry = pet.Position;
+                lured = false;
             }
 
             blackboard.SelfPosition = position;
@@ -1758,7 +1768,7 @@ public sealed class EnemySystem
             // After the copy in Ingest's first pass and therefore winning over it. See the remarks:
             // the body's path was computed against the player, so it is the one sense that lies
             // while a decoy stands.
-            if (lured)
+            if (lured || blackboard.QuarryIsAPet)
             {
                 blackboard.PathDirectionToPlayer = Vector2.Zero;
             }

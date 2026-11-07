@@ -1259,7 +1259,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // The decoys go in with it, because perception is the one site that writes the four fields
         // a decoy redirects and no behaviour is touched (M5-03 rule 2).
-        State.Enemies.Ingest(snapshot, State.Lures);
+        State.Pets?.Ingest(snapshot);
+        State.Enemies.Ingest(snapshot, State.Lures, State.Pets, State.Time);
         State.Projectiles.TraceCover = snapshot.TraceCover;
 
         // **With the enemies, and that is the half of rule 8 nobody would guess** (M5-04a rule 8,
@@ -1270,7 +1271,6 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // Null for every class but the Gravecaller, so an Oathbound run pays one reference test.
         State.Minions?.Ingest(snapshot);
-        State.Pets?.Ingest(snapshot);
 
         // **Immediately above the combat step, and both halves of that are the mechanic's**
         // (M6-04 rule 9, AR §18.1).
@@ -1437,7 +1437,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             _lanes,
             snapshot.OpenGround,
             new Vector2(State.Motor.Facing.X, State.Motor.Facing.Z),
-            _thorns);
+            _thorns, State.Pets);
 
         State.Enemies.Tick(enemies);
 

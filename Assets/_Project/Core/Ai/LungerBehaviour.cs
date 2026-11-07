@@ -69,6 +69,9 @@ public sealed class LungerBehaviour : IEnemyBehaviour
     private IIntentSink _intents;
     private IDomainEvents _events;
     private LaneSystem _lanes;
+    private PetSystem _pets;
+    private int _attackPetId;
+    private bool _bitPet;
     private EnemyRegistry _registry;
 
     /// <summary>Seconds until an unpaired pack hunter looks for a partner again.</summary>
@@ -135,6 +138,7 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _intents = ctx.Intents;
         _events = ctx.Events;
         _lanes = ctx.Lanes;
+        _pets = ctx.Pets;
         _registry = ctx.Enemies.Registry;
 
         try
@@ -151,6 +155,7 @@ public sealed class LungerBehaviour : IEnemyBehaviour
             _intents = null;
             _events = null;
             _lanes = null;
+            _pets = null;
             _registry = null;
         }
     }
@@ -229,12 +234,20 @@ public sealed class LungerBehaviour : IEnemyBehaviour
 
         blackboard.StateTimer = 0f;
         _windupAt = _now;
+        _attackPetId = blackboard.QuarryPetId;
+        _bitPet = false;
 
         Vector2 aim = blackboard.DirectionToPlayer != Vector2.Zero ? blackboard.DirectionToPlayer : _facing;
 
         blackboard.LungeDirection = Vector2.Normalize(aim);
 
         _events.Publish(new EnemyTelegraph(_agent.Id, _agent.Spec.WindupTime));
+
+        // Pet lunges use the windup tell above. A lane would also deal area damage to the player.
+        if (_attackPetId != 0)
+        {
+            return;
+        }
 
         // A dropped lane (a full table) costs the warning, not the move (rule 8). The agent's stat,
         // so a deep Lunger's lane bites as hard as its depth says.
@@ -277,6 +290,13 @@ public sealed class LungerBehaviour : IEnemyBehaviour
     private void TickDash(float dt)
     {
         EnemyBlackboard blackboard = _agent.Blackboard;
+
+        if (!_bitPet && _attackPetId != 0 && _attackPetId == blackboard.QuarryPetId
+            && blackboard.DistanceToPlayer <= _agent.Spec.Reach)
+        {
+            _bitPet = true;
+            _pets?.ApplyDamage(_attackPetId, _agent.ContactDamage.Value, _now, _agent.Id);
+        }
 
         float remaining = Lunge.Length - _dashed;
 

@@ -5,7 +5,7 @@ using Soulvail.Core.Effects;
 
 namespace Soulvail.Core.Ai;
 
-public enum PetState { Hunt, Heel }
+public enum PetState { Hunt, Heel, Fallen }
 
 public sealed class PetAgent
 {

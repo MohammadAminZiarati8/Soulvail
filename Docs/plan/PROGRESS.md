@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Hound in the run._
+_2026-11-07, Enemies turn on the Hound._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-03c** — The Hound moves, bites and carries a cyan health bar. |
-| **Next task** | BM-04 on a go; playtests owed. |
-| **Verified** | EditMode 6054 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-04** — Two melee hunters at most. The Hound falls at 0 HP. |
+| **Next task** | BM-05a on a go. |
+| **Verified** | EditMode 6067 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

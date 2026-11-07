@@ -12,12 +12,17 @@ namespace Soulvail.Core.Ai;
 public sealed class PetSystem
 {
     public const int Capacity = 3;
+    public const int MaxHunters = 2;
+    public const float HuntMemory = 2f;
     public const float RetargetInterval = 0.5f;
 
     private readonly PetSpec _spec;
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly PetAgent[] _pets = new PetAgent[Capacity];
+    private readonly int[,] _hunters = new int[Capacity, MaxHunters];
+    private EnemyRegistry _enemies;
+    private float _now;
     private Vector3 _spawnPlayerPosition;
     private int _count;
     private int _nextId = 1;
@@ -52,6 +57,7 @@ public sealed class PetSystem
             return;
         }
 
+        Clear();
         PetAgent pet = _pets[0];
         pet.Id = _nextId++;
         _spawnPlayerPosition = player;
@@ -81,7 +87,7 @@ public sealed class PetSystem
             for (int i = 0; i < snapshot.PetCount; i++)
             {
                 ref EnemySense sense = ref snapshot.Pets[i];
-                if (sense.Id == pet.Id)
+                if (sense.Id == pet.Id && pet.State != PetState.Fallen)
                 {
                     pet.Position = sense.Position;
                     break;
@@ -94,6 +100,13 @@ public sealed class PetSystem
     {
         foreach (PetAgent pet in Pets)
         {
+            if (pet.State == PetState.Fallen)
+            {
+                continue;
+            }
+
+            _enemies = enemies.Registry;
+            _now = now;
             EnemyAgent quarry = ChooseQuarry(pet, now, player, enemies);
             Vector2 offset = Offset(pet.Position, quarry?.Position ?? player);
             float distance = offset.Length();
@@ -117,13 +130,197 @@ public sealed class PetSystem
             if (quarry is not null && distance <= _spec.Reach && now >= pet.NextBiteAt && bite > 0f)
             {
                 pet.NextBiteAt = now + _spec.BiteInterval;
+                quarry.Blackboard.LastBitBy = pet.Id;
+                quarry.Blackboard.LastBitAt = now;
                 enemies.ApplyDamage(quarry.Id, bite, now, combat);
                 _events.Publish(new PetBit(pet.Id, quarry.Id, bite));
             }
         }
     }
 
-    public void Clear() => _count = 0;
+    public void Clear()
+    {
+        foreach (PetAgent pet in Pets)
+        {
+            DropHunters(pet.Id);
+        }
+
+        _count = 0;
+        _enemies = null;
+    }
+
+    public DamageResult ApplyDamage(int petId, float amount, float now, int enemyId)
+    {
+        int index = IndexOf(petId);
+        if (index < 0 || _pets[index].State == PetState.Fallen)
+        {
+            return DamageResult.None;
+        }
+
+        PetAgent pet = _pets[index];
+        DamageResult result = pet.Health.ApplyDamage(amount, now);
+        if (result.Killed)
+        {
+            pet.State = PetState.Fallen;
+            pet.QuarryId = 0;
+        }
+
+        if (result.Applied > 0f)
+        {
+            _events.Publish(new PetHurt(petId, result.Applied, enemyId));
+        }
+
+        if (result.Killed)
+        {
+            DropHunters(petId);
+            _events.Publish(new PetFell(petId, pet.Position));
+        }
+
+        return result;
+    }
+
+    public bool BitWithin(int petId, int enemyId, float now, float seconds)
+    {
+        return IndexOf(petId) >= 0 && _enemies is not null
+            && _enemies.TryGet(enemyId, out EnemyAgent enemy)
+            && WasBitten(enemy.Blackboard, petId, now, seconds);
+    }
+
+    public int HuntersOf(int petId)
+    {
+        int index = IndexOf(petId);
+        int count = 0;
+        if (index >= 0)
+        {
+            for (int slot = 0; slot < MaxHunters; slot++)
+            {
+                if (_hunters[index, slot] != 0)
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    public void DropHunters(int petId)
+    {
+        int index = IndexOf(petId);
+        if (index < 0)
+        {
+            return;
+        }
+
+        Span<int> dropped = stackalloc int[MaxHunters];
+        for (int slot = 0; slot < MaxHunters; slot++)
+        {
+            int enemyId = _hunters[index, slot];
+            dropped[slot] = enemyId;
+            _hunters[index, slot] = 0;
+            if (enemyId != 0 && _enemies is not null && _enemies.TryGet(enemyId, out EnemyAgent enemy))
+            {
+                enemy.Blackboard.PetHuntSuppressedUntil = _now + HuntMemory;
+            }
+        }
+
+        foreach (int enemyId in dropped)
+        {
+            if (enemyId != 0)
+            {
+                _events.Publish(new PetHunted(petId, enemyId, false));
+            }
+        }
+    }
+
+    internal void ReviewHunters(EnemyRegistry enemies, Vector3 player, float now)
+    {
+        _enemies = enemies;
+        _now = now;
+        for (int index = 0; index < _count; index++)
+        {
+            for (int slot = 0; slot < MaxHunters; slot++)
+            {
+                int enemyId = _hunters[index, slot];
+                if (enemyId != 0 && (!enemies.TryGet(enemyId, out EnemyAgent enemy)
+                    || !CanHunt(enemy, _pets[index], player)))
+                {
+                    ReleaseHunter(index, slot);
+                }
+            }
+        }
+    }
+
+    internal PetAgent HuntQuarry(EnemyAgent enemy, Vector3 player)
+    {
+        for (int index = 0; index < _count; index++)
+        {
+            PetAgent pet = _pets[index];
+            if (!CanHunt(enemy, pet, player))
+            {
+                continue;
+            }
+
+            for (int slot = 0; slot < MaxHunters; slot++)
+            {
+                if (_hunters[index, slot] == enemy.Id)
+                {
+                    return pet;
+                }
+            }
+
+            for (int slot = 0; slot < MaxHunters; slot++)
+            {
+                if (_hunters[index, slot] == 0)
+                {
+                    _hunters[index, slot] = enemy.Id;
+                    _events.Publish(new PetHunted(pet.Id, enemy.Id, true));
+                    return pet;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private bool CanHunt(EnemyAgent enemy, PetAgent pet, Vector3 player)
+    {
+        EnemyBlackboard board = enemy.Blackboard;
+        return enemy.IsAlive
+            && enemy.Behaviour is not BossBehaviour
+            && enemy.Spec.Behaviour is EnemyBehaviourKind.Chaser or EnemyBehaviourKind.Lunger
+            && pet.State != PetState.Fallen
+            && _now >= board.PetHuntSuppressedUntil
+            && WasBitten(board, pet.Id, _now, HuntMemory)
+            && Offset(enemy.Position, pet.Position).LengthSquared()
+                < Offset(enemy.Position, player).LengthSquared();
+    }
+
+    private static bool WasBitten(EnemyBlackboard board, int petId, float now, float seconds)
+    {
+        float age = now - board.LastBitAt;
+        return board.LastBitBy == petId && age >= 0f && age < seconds;
+    }
+
+    private void ReleaseHunter(int index, int slot)
+    {
+        int enemyId = _hunters[index, slot];
+        _hunters[index, slot] = 0;
+        _events.Publish(new PetHunted(_pets[index].Id, enemyId, false));
+    }
+
+    private int IndexOf(int petId)
+    {
+        for (int index = 0; index < _count; index++)
+        {
+            if (_pets[index].Id == petId)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
 
     private EnemyAgent ChooseQuarry(PetAgent pet, float now, Vector3 player, EnemySystem enemies)
     {

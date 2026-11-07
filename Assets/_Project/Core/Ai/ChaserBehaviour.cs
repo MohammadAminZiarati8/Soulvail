@@ -122,6 +122,8 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     private float _now;
 
     private PlayerCombat _player;
+    private PetSystem _pets;
+    private int _attackPetId;
     private IIntentSink _intents;
     private IDomainEvents _events;
 
@@ -218,6 +220,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     {
         _now = ctx.Now;
         _player = ctx.Player;
+        _pets = ctx.Pets;
         _intents = ctx.Intents;
         _events = ctx.Events;
 
@@ -230,6 +233,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
             // Cleared even if a handler threw, so a half-finished tick cannot leave this holding a
             // player and two ports that the next caller did not supply.
             _player = null;
+            _pets = null;
             _intents = null;
             _events = null;
         }
@@ -353,6 +357,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     /// </remarks>
     private void EnterWindup()
     {
+        _attackPetId = _agent.Blackboard.QuarryPetId;
         _agent.Blackboard.StateTimer = 0f;
 
         _events.Publish(new EnemyTelegraph(_agent.Id, _agent.Spec.WindupTime));
@@ -426,12 +431,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     {
         _agent.Blackboard.StateTimer = 0f;
 
-        if (!_agent.Blackboard.QuarryIsADecoy && _agent.Blackboard.DistanceToPlayer <= _agent.Spec.Reach)
-        {
-            // The agent's stat rather than the spec's float, for the reason TickChase's speed is
-            // one: a stage-40 Husk hits for 8 × d(40), and the 8 is the base.
-            _player.ApplyDamage(_agent.ContactDamage.Value, _now);
-        }
+        HitQuarry(_agent.ContactDamage.Value, _agent.Spec.Reach);
     }
 
     /// <summary>Rule 4: one tick, then the punish window opens.</summary>
@@ -478,6 +478,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         blackboard.StateTimer = 0f;
 
         // The quarry's position, as every other attack aims: a decoy draws the leap too.
+        _attackPetId = blackboard.QuarryPetId;
         _leapTarget = new Vector3(blackboard.PlayerPosition.X, _agent.Position.Y, blackboard.PlayerPosition.Z);
 
         _events.Publish(new EnemyLeapAimed(
@@ -567,9 +568,27 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         // The cooldown counts from the landing (rule 1).
         blackboard.NextAttackAt = _now + leap.Cooldown;
 
-        if (!blackboard.QuarryIsADecoy && blackboard.DistanceToPlayer <= leap.Radius)
+        HitQuarry(_agent.ContactDamage.Value * leap.DamageMultiplier, leap.Radius);
+    }
+
+    private void HitQuarry(float damage, float playerReach)
+    {
+        EnemyBlackboard board = _agent.Blackboard;
+        if (_attackPetId != board.QuarryPetId || board.QuarryIsADecoy)
         {
-            _player.ApplyDamage(_agent.ContactDamage.Value * leap.DamageMultiplier, _now);
+            return;
+        }
+
+        if (board.QuarryIsAPet)
+        {
+            if (board.DistanceToPlayer <= _agent.Spec.Reach)
+            {
+                _pets?.ApplyDamage(board.QuarryPetId, damage, _now, _agent.Id);
+            }
+        }
+        else if (board.DistanceToPlayer <= playerReach)
+        {
+            _player.ApplyDamage(damage, _now);
         }
     }
 

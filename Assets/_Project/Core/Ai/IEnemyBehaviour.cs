@@ -88,7 +88,7 @@ public readonly struct EnemyTickContext
         LaneSystem lanes = null,
         IReadOnlyList<Vector3> openGround = null,
         Vector2 playerFacing = default,
-        ThornSystem thorns = null)
+        ThornSystem thorns = null, PetSystem pets = null)
     {
         Dt = Finite(dt, nameof(dt));
         Now = Finite(now, nameof(now));
@@ -101,10 +101,13 @@ public readonly struct EnemyTickContext
         OpenGround = openGround ?? Array.Empty<Vector3>();
         PlayerFacing = playerFacing;
         Thorns = thorns;
+        Pets = pets;
     }
 
     /// <summary>Seconds since the last tick, from the snapshot.</summary>
     public float Dt { get; }
+
+    public PetSystem Pets { get; }
 
     /// <summary>Simulated run seconds, never a wall clock.</summary>
     public float Now { get; }

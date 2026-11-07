@@ -776,6 +776,8 @@ public sealed class ChargeIntegrationTests
             // Deliberately nothing.
         }
 
+        public void PetLeap(in PetLeapIntent intent) { }
+
         public void PetMove(in EnemyMoveIntent intent)
         {
         }

@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using UnityEngine;
 using VContainer;
 
@@ -91,6 +92,7 @@ namespace Soulvail.Game.Views
 
         /// <summary>A dash sweeps enemies; a throw (JG-25b) walks the same way and sweeps nobody.</summary>
         private bool _sweeps;
+        private int _dashCoverMask;
 
         private bool _warnedAboutCapacity;
 
@@ -155,6 +157,8 @@ namespace Soulvail.Game.Views
             _speed = intent.Distance / intent.Duration;
             _remaining = intent.Duration;
             _sweeps = true;
+            int coverLayer = LayerMask.NameToLayer(ArenaView.CoverLayerName);
+            _dashCoverMask = intent.PassesCover && coverLayer >= 0 ? 1 << coverLayer : 0;
 
             transform.rotation = Quaternion.LookRotation(_direction, Vector3.up);
         }
@@ -180,6 +184,7 @@ namespace Soulvail.Game.Views
 
             _session = null;
             _sweeps = false;
+            _dashCoverMask = 0;
             _direction = direction.normalized;
             _speed = intent.Distance / intent.Duration;
             _remaining = intent.Duration;
@@ -231,7 +236,24 @@ namespace Soulvail.Game.Views
 
             Vector3 from = transform.position;
 
-            _controller.Move(((_direction * _speed) + new Vector3(0f, GroundedFallSpeed, 0f)) * step);
+            Vector3 displacement = ((_direction * _speed) + new Vector3(0f, GroundedFallSpeed, 0f)) * step;
+            if (_dashCoverMask == 0)
+            {
+                _controller.Move(displacement);
+            }
+            else
+            {
+                LayerMask previous = _controller.excludeLayers;
+                _controller.excludeLayers = previous.value | _dashCoverMask;
+                try
+                {
+                    _controller.Move(displacement);
+                }
+                finally
+                {
+                    _controller.excludeLayers = previous;
+                }
+            }
 
             if (_sweeps)
             {

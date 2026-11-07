@@ -60,10 +60,13 @@ public readonly struct ChargeIntent
     /// </summary>
     public readonly float Duration;
 
-    public ChargeIntent(Vector2 directionXZ, float distance, float duration)
+    public readonly bool PassesCover;
+
+    public ChargeIntent(Vector2 directionXZ, float distance, float duration, bool passesCover = false)
     {
         DirectionXZ = directionXZ;
         Distance = distance;
         Duration = duration;
+        PassesCover = passesCover;
     }
 }

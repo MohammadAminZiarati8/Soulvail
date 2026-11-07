@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Hound retreat and rescue have visual feedback._
+_2026-11-07, Wild Swap works in core._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-05b** — Hound hit, heel, fall and rescue visuals. |
-| **Next task** | BM-06a on a go. |
-| **Verified** | EditMode 6083 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-06a** — Wild Swap in core. |
+| **Next task** | BM-06b on a go. |
+| **Verified** | EditMode 6093 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
@@ -38,13 +38,13 @@ Save v5; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
 Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
-Wind-up blocks hits and debuffs, with an Immune pop on blocked hits.
+Wind-up blocks hits and debuffs with an Immune pop.
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
 ## Missing
 
 1. Balance: Gravecaller over, Emberwright under; Warden passes 120 s near stage 33; no natural run past 19.
-2. Sanctum plays as zero; a Pact is ~1 offer in 62.
+2. Sanctum plays as zero; Pact ~1 in 62.
 3. No audio, Elites, feel pass or second language.
 
 ## Known issues

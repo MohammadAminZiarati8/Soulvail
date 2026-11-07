@@ -570,6 +570,14 @@ public sealed class PlayerCombat
     /// </remarks>
     public ChargeSkill Charge { get; }
 
+    internal void RequestMovementSkill(float now, PetSystem pets)
+    {
+        if (_movementSkill.Kind != MovementSkillKind.Swap || (pets is not null && !pets.Pets.IsEmpty))
+        {
+            Charge.Request(now);
+        }
+    }
+
     /// <summary>
     /// Hit points restored for each enemy that dies, live. Zero until a node says otherwise.
     /// </summary>
@@ -1374,13 +1382,14 @@ public sealed class PlayerCombat
         Vector3 bodyFacing,
         LureSystem lures = null,
         MinionSystem minions = null,
-        ZoneSystem zones = null)
+        ZoneSystem zones = null,
+        PetSystem pets = null)
     {
         // Before the ramp, because the ramp asks it a question. A dash that started this tick has
         // to be in flight by the time "am I moving" is answered, or the tick it begins on would be
         // counted as another tick of standing still.
         _stormRun?.ExpireBeforeRoll(now);
-        bool rollEnded = TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones);
+        bool rollEnded = TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones, pets);
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1615,14 +1624,24 @@ public sealed class PlayerCombat
         Vector3 bodyFacing,
         Vector3 playerPosition,
         LureSystem lures,
-        ZoneSystem zones)
+        ZoneSystem zones,
+        PetSystem pets)
     {
         // The stick aims it, the body's facing is the fallback when the stick is centred — CC §5,
         // and ChargeSkill's rule rather than this method's. The facing is the one from last tick's
         // turn, for the reason TickWeapon's is: combat runs before the motor.
         bool wasActive = Charge.IsActive;
         bool wasGuarding = Charge.IsGuarding;
-        bool started = Charge.Tick(dt, now, stickXZ, new Vector2(bodyFacing.X, bodyFacing.Z), allowStart: !IsHeld);
+        bool swap = _movementSkill.Kind == MovementSkillKind.Swap;
+        ChargeAim aim = default;
+        if (swap && pets is not null && !pets.Pets.IsEmpty)
+        {
+            Vector3 offset = pets.Pets[0].Position - playerPosition;
+            var direction = new Vector2(offset.X, offset.Z);
+            aim = new ChargeAim(direction, direction.Length());
+        }
+
+        bool started = Charge.Tick(dt, now, stickXZ, new Vector2(bodyFacing.X, bodyFacing.Z), !IsHeld, aim);
         if (wasGuarding != Charge.IsGuarding)
         {
             SyncSecondWindStatus();
@@ -1646,10 +1665,16 @@ public sealed class PlayerCombat
             // the same one a swing makes.
             _intents.Charge(new ChargeIntent(
                 Charge.Direction,
-                _movementSkill.Distance,
-                _movementSkill.Duration));
+                Charge.Distance,
+                _movementSkill.Duration,
+                passesCover: swap));
 
             _events.Publish(new ChargeStarted(Charge.Direction));
+
+            if (swap)
+            {
+                pets.SwapTo(playerPosition, now, _movementSkill.Duration);
+            }
 
             if (_movementSkill.Kind == MovementSkillKind.Charge && _weaponSpec.Kind == WeaponKind.Projectile)
             {

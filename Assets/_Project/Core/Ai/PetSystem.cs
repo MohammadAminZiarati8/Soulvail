@@ -17,6 +17,9 @@ public sealed class PetSystem
     public const float RetargetInterval = 0.5f;
     public const float AtHeelRadius = 2f;
 
+    private const float SwapImmunityTrail = 0.2f;
+    private const float SwapRescueHeadStart = 0.5f;
+
     private readonly PetSpec _spec;
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
@@ -24,6 +27,8 @@ public sealed class PetSystem
     private readonly int[,] _hunters = new int[Capacity, MaxHunters];
     private EnemyRegistry _enemies;
     private float _now;
+    private float _leapUntil = float.NegativeInfinity;
+    private float _swapImmuneUntil = float.NegativeInfinity;
     private Vector3 _spawnPlayerPosition;
     private int _count;
     private int _nextId = 1;
@@ -115,6 +120,11 @@ public sealed class PetSystem
                 continue;
             }
 
+            if (pet == _pets[0] && now < _leapUntil)
+            {
+                continue;
+            }
+
             _enemies = enemies.Registry;
             _now = now;
             if (!pet.RecoveringAtHeel && pet.Health.Fraction < pet.HeelAt.Value)
@@ -175,6 +185,8 @@ public sealed class PetSystem
         }
 
         _count = 0;
+        _leapUntil = float.NegativeInfinity;
+        _swapImmuneUntil = float.NegativeInfinity;
         _enemies = null;
     }
 
@@ -187,6 +199,7 @@ public sealed class PetSystem
         }
 
         PetAgent pet = _pets[index];
+        pet.Health.SetExternalInvulnerable(index == 0 && now < _swapImmuneUntil);
         DamageResult result = pet.Health.ApplyDamage(amount, now);
         if (result.Killed)
         {
@@ -206,6 +219,29 @@ public sealed class PetSystem
         }
 
         return result;
+    }
+
+    public bool SwapTo(Vector3 playerFrom, float now, float seconds)
+    {
+        if (_count == 0)
+        {
+            return false;
+        }
+
+        PetAgent pet = _pets[0];
+        if (pet.State == PetState.Fallen)
+        {
+            AddRescueHeadStart(pet.Id, SwapRescueHeadStart);
+            return true;
+        }
+
+        _now = now;
+        _leapUntil = now + seconds;
+        _swapImmuneUntil = _leapUntil + SwapImmunityTrail;
+        _intents.PetLeap(new PetLeapIntent(pet.Id, playerFrom, seconds));
+        DropHunters(pet.Id);
+        _events.Publish(new Swapped(pet.Id, playerFrom, pet.Position, seconds));
+        return true;
     }
 
     public void AddRescueHeadStart(int petId, float fraction)

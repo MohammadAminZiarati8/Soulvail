@@ -1870,6 +1870,8 @@ public sealed class EnemySystem
 
         public void PetMove(in EnemyMoveIntent intent) => Inner.PetMove(intent);
 
+        public void PetLeap(in PetLeapIntent intent) => Inner.PetLeap(intent);
+
         public void EnemyKnockback(in EnemyKnockbackIntent intent) => Inner.EnemyKnockback(intent);
     }
 }

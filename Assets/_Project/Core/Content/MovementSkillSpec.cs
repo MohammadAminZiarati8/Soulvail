@@ -61,9 +61,12 @@ public enum MovementSkillKind
     /// Its distance, duration and cooldown are still validated, because the authoring asset always
     /// carries them, and nothing ever reads them. A decoy or a pool on it is refused like one on a
     /// Charge: <see cref="MovementSkillSpec"/>'s two kind-conditional checks name the one kind each
-    /// number belongs to, so a fourth kind lands on the zero side of both without an edit.
+    /// number belongs to, so None and Swap both require zero decoy and pool values.
     /// </remarks>
     None,
+
+    /// <summary>Wild Swap trades places with the lead pet.</summary>
+    Swap,
 }
 
 /// <summary>

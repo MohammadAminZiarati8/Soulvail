@@ -19,6 +19,22 @@ public readonly struct PetSpawned
     }
 }
 
+public readonly struct Swapped
+{
+    public readonly int PetId;
+    public readonly Vector3 PlayerFrom;
+    public readonly Vector3 PlayerTo;
+    public readonly float Seconds;
+
+    public Swapped(int petId, Vector3 playerFrom, Vector3 playerTo, float seconds)
+    {
+        PetId = petId;
+        PlayerFrom = playerFrom;
+        PlayerTo = playerTo;
+        Seconds = seconds;
+    }
+}
+
 public readonly struct PetBit
 {
     public readonly int PetId;

@@ -6,6 +6,26 @@ using Soulvail.Core.Ports;
 
 namespace Soulvail.Core.Combat;
 
+/// <summary>A destination measured from the player's start position on the ground plane.</summary>
+public readonly struct ChargeAim
+{
+    public ChargeAim(Vector2 directionXZ, float distance)
+    {
+        if (!(distance >= 0f) || float.IsInfinity(distance))
+        {
+            throw new ArgumentOutOfRangeException(nameof(distance));
+        }
+
+        DirectionXZ = directionXZ;
+        Distance = distance;
+        HasAim = true;
+    }
+
+    public bool HasAim { get; }
+    internal Vector2 DirectionXZ { get; }
+    internal float Distance { get; }
+}
+
 /// <summary>
 /// The Oathbound's Charge as a clock: when a press counts, when the dash starts, how long it lasts,
 /// how long it protects, and when the button lights up again. CC §5 entire, with no idea where the
@@ -172,6 +192,8 @@ public sealed class ChargeSkill
     /// </remarks>
     public Vector2 Direction { get; private set; }
 
+    internal float Distance { get; private set; }
+
     /// <summary>The dash is in flight: started, and not yet finished.</summary>
     /// <remarks>
     /// The window M1-15 suspends the motor for and resolves pass-through hits in — and, from
@@ -296,6 +318,9 @@ public sealed class ChargeSkill
     /// </param>
     /// <returns><see langword="true"/> on the tick a dash starts, and only then.</returns>
     public bool Tick(float dt, float now, Vector2 stickXZ, Vector2 facingXZ, bool allowStart = true)
+        => Tick(dt, now, stickXZ, facingXZ, allowStart, default);
+
+    public bool Tick(float dt, float now, Vector2 stickXZ, Vector2 facingXZ, bool allowStart, in ChargeAim aim)
     {
         _now = now;
         RefillCharges(now);
@@ -307,6 +332,11 @@ public sealed class ChargeSkill
             {
                 _guardUntil = _activeUntil + seconds;
             }
+        }
+
+        if (_spec.Kind == MovementSkillKind.Swap && !aim.HasAim)
+        {
+            _hasPress = false;
         }
 
         if (!allowStart || !_hasPress)
@@ -332,7 +362,9 @@ public sealed class ChargeSkill
             return false;
         }
 
-        Direction = TryNormalise(stickXZ, out Vector2 aimed) ? aimed : facingXZ;
+        Vector2 direction = aim.HasAim ? aim.DirectionXZ : stickXZ;
+        Direction = TryNormalise(direction, out Vector2 aimed) ? aimed : facingXZ;
+        Distance = aim.HasAim ? aim.Distance : _spec.Distance;
 
         _activeUntil = now + _spec.Duration;
         _invulnUntil = _activeUntil + _spec.IFrameTrail;
@@ -374,6 +406,7 @@ public sealed class ChargeSkill
         _hasPress = false;
 
         Direction = Vector2.Zero;
+        Distance = 0f;
         ResetSecondWind();
     }
 

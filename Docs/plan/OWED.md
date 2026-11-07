@@ -393,3 +393,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] **Editor** — Let the Hound fight three frogs alone. Below 35% HP it runs back, heals at heel and goes back in. Let it fall, check the cyan ring, then kneel beside it for 2 seconds and watch it get up.
 - [ ] **Device** — In a crowd at phone zoom, check that the fallen ring and pulsing cyan health bar are readable.
+
+- [ ] BM-06a, after BM-06b authors Wild Swap. In a Beastmaster run, press Space with the Hound on the far side of cover and check that both land at the other's start. With a fallen Hound, check that only the player leaps and rescue starts half done.

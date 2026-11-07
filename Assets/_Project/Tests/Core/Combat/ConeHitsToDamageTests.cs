@@ -588,6 +588,8 @@ public sealed class ConeHitsToDamageTests
             // Deliberately nothing. Every Husk in this fixture is a Static dummy.
         }
 
+        public void PetLeap(in PetLeapIntent intent) { }
+
         public void PetMove(in EnemyMoveIntent intent)
         {
         }

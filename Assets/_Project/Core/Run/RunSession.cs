@@ -1321,7 +1321,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Motor.Facing,
             State.Lures,
             State.Minions,
-            State.Zones);
+            State.Zones,
+            State.Pets);
 
         // **Immediately after the combat step and above the skills block** (M5-01 rule 7, AR §18.1).
         //
@@ -1845,7 +1846,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
         if (!State.Combat.IsHeld && !State.Motor.IsHeld)
         {
-            State.Combat.Charge.Request(State.Time);
+            State.Combat.RequestMovementSkill(State.Time, State.Pets);
         }
     }
 

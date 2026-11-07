@@ -36,6 +36,7 @@ public sealed class RecordingIntents : IIntentSink
     private readonly List<EnemyKnockbackIntent> _knockbacks = new();
     private readonly List<EnemyMoveIntent> _enemyMoves = new();
     private readonly List<EnemyMoveIntent> _minionMoves = new();
+    private readonly List<PetLeapIntent> _petLeaps = new(1);
     private readonly List<EnemyMoveIntent> _petMoves = new();
 
     /// <summary>Every player-move intent written, in the order core produced them.</summary>
@@ -168,6 +169,8 @@ public sealed class RecordingIntents : IIntentSink
     /// </remarks>
     public IReadOnlyList<EnemyMoveIntent> MinionMoves => _minionMoves;
 
+    public IReadOnlyList<PetLeapIntent> PetLeaps => _petLeaps;
+
     public IReadOnlyList<EnemyMoveIntent> PetMoves => _petMoves;
 
     /// <summary>The most recent Wight's walk.</summary>
@@ -227,6 +230,7 @@ public sealed class RecordingIntents : IIntentSink
         _enemyMoves.Clear();
         _minionMoves.Clear();
         _petMoves.Clear();
+        _petLeaps.Clear();
     }
 
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
@@ -254,6 +258,8 @@ public sealed class RecordingIntents : IIntentSink
     {
         _enemyMoves.Add(intent);
     }
+
+    void IIntentSink.PetLeap(in PetLeapIntent intent) => _petLeaps.Add(intent);
 
     void IIntentSink.PetMove(in EnemyMoveIntent intent)
     {

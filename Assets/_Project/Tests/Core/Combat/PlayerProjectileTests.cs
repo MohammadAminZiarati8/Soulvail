@@ -1087,6 +1087,8 @@ public sealed class PlayerProjectileTests
             // Deliberately nothing.
         }
 
+        public void PetLeap(in PetLeapIntent intent) { }
+
         public void PetMove(in EnemyMoveIntent intent)
         {
         }

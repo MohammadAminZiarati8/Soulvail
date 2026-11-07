@@ -3,6 +3,20 @@ using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ports;
 
+public readonly struct PetLeapIntent
+{
+    public readonly int PetId;
+    public readonly Vector3 To;
+    public readonly float Seconds;
+
+    public PetLeapIntent(int petId, Vector3 to, float seconds)
+    {
+        PetId = petId;
+        To = to;
+        Seconds = seconds;
+    }
+}
+
 /// <summary>Collider question for a shield charge; core owns the lane and daze decisions.</summary>
 public readonly struct LaneProbeIntent
 {
@@ -155,6 +169,8 @@ public interface IIntentSink
     void MinionMove(in EnemyMoveIntent intent);
 
     void PetMove(in EnemyMoveIntent intent);
+
+    void PetLeap(in PetLeapIntent intent);
 
     /// <summary>
     /// Tells the body to shove an enemy: this far, this way. Written while core resolves a

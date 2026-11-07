@@ -180,6 +180,131 @@ Triggers: Mirror Image and Crossfire — at least 1 enemy in range · Hall of Mi
 
 **The battle HUD** (owner, 2026-10-31; GD §5.2): the roll button sits in from the bottom-right corner; every owned active is a circle in an arc above and left of it — cooldown sweep, cyan ready glow, an "A" badge while auto-cast is on, a padlock and level while locked. Tap casts now; long-press toggles auto-cast. Passives are small untappable icons in the corner below and right of the roll. **Buffs and debuffs** — on the player beside the HP bar, with a timer or stack count; stun, root and slow also as an icon over an enemy's bar.
 
+### 3.6 Beastmaster — *axe-thrower and hound* (the second character; designed, not built)
+
+*Owner, 2026-11-07. Melee is on hold: the Oathbound playtest showed melee needs a stagger/poise system, and he stays in class select as a test with his 3 m, 120° Censer. The second character is ranged. **Each campaign place rewards a character themed on it**; the Beastmaster is the Jungle's. Unlock: beat the Apex (Jungle stage 30), or buy him in the store. The price is set when the store is built, and no power is ever for sale.*
+
+| | |
+|---|---|
+| **Body** | KayKit **Barbarian** on `Rig_Medium`; the axes are separate props. 100 HP, no Aegis, 3.1 m/s |
+| **Weapon** | **Returning axes.** Each axe is thrown at the nearest enemy within 8 m, flies out to the full 8 m at 14 m/s, turns, and spins back to his hand at 14 m/s, homing on wherever he is now. 6 dmg per pass; each pass hits an enemy once, and at most 3 enemies. He carries 2 axes and throws one whenever an axe is in hand, at most one throw every 0.5 s. **He throws while moving**: running away lengthens the return, and that delay is the cost |
+| **Signature** | **Mark.** Every axe hit marks the enemy for 4 s (refreshed by each hit). The hound goes for marked enemies first |
+| **Pet** | **The Hound** (§3.6.2), a real animal with real stats. It can fall, and it can be rescued |
+| **Movement** | **Wild Swap** on Space: he and the hound leap past each other and trade places (§3.6.3), 6 s cooldown, its own animation |
+| **Active** | **Pounce**, earned from the tree; the hound's leap, cast from his arc like any active |
+| **Tree** | 3 branches × 3 nodes, free-pick (§5.1), like the Ranger's; three paths from Lv 11 (§3.7) |
+
+**Sized against the Ranger.** Against one enemy standing on the axe's line both passes land, so the axe does 6 × 2 × 1.67 throws/s ≈ **20 dps**. The cycle is about 1.2 s round trip, so 2 axes give 1.67 throws a second. The hound adds **7 dps**: **27** in all, against the Ranger's 13 × 2.2 = **28.6** standing. A Frog (36 HP) takes 3 throws, as it takes the Ranger 3 arrows. The axes hit up to three enemies a pass and the bites hit one, so a crowd adds only on the axe's line. The Oathbound's lesson is that area damage meeting the Jungle's crowds is what breaks the curve, and nothing in the base kit is an area. **The hound is about a quarter of his damage**: it helps and never carries, and losing it costs a quarter, not half.
+
+#### 3.6.1 Pet survival — the problem, and the ruling
+
+A pet that fights in melee next to a crowd, with no thumb of its own, dies fast. **The fix is not to make it unkillable. It is to make every death visible, slow, caused by something the player saw, and undoable.**
+
+| Option | Verdict | Why |
+|---|---|---|
+| **Enemies prefer the player** | **Yes, the core rule** | An enemy hunts you. It turns on the hound only if the hound bit it in the last 2 s **and** the hound is nearer than you. **At most 2 enemies hunt the hound at once**; a third stays on you. **Bosses never turn on it**, and boss adds follow the rule |
+| **What can hurt it** | **Only what turned on it** | An attack aimed at the hound can hit only the hound, and one aimed at you only you. Projectiles, hazard zones and red-orange telegraphs aimed at you pass the hound by. A death always has a culprit standing next to the body |
+| **HP scales with level** | **Yes** | The player's own curve: +3% HP and +2% damage a level, healed like the player's. **Thick Hide** counts for both |
+| **Retreat to heel** | **Yes** | Below 35% HP it breaks off and runs to your side. It is faster than anything in the Jungle (4.0 m/s against the panther's 2.4), and enemies hunting it lose it once it stops biting. At heel it regenerates 6% max HP a second and goes back in at 80%. Between waves it is always at heel |
+| **Downed → revive timer** | **No** (kept as the tuning lever) | A clock that brings it back alone hides the cost, and the owner's ruling is that pets can die |
+| **Falls, waits for a rescue** | **Yes** | At 0 HP it falls where it stood, and the body stays with a cyan ring. Stand within 2.5 m for 2 s (progress is kept if you step away) and it gets up at 50%. Enemies ignore the body. **Unrescued, it stays down for the rest of the stage**; every stage starts with it at full HP |
+| **Rescue through the swap** | **Yes** | Swapping with a hunted hound pulls it out of the fight and drops every enemy's hold on it. Swapping to a fallen hound leaps you onto the body with the rescue half done |
+| **A heal / mend active** | **Not in the base kit** | Another button for a job heel already does. Two paths carry a heal (Howl, Shared Blood) |
+| **Tree nodes toughen it** | **Yes** | Thick Hide (Lv 2–10); Thick Pelts (Packleader); Shared Blood and Last Stand (Apex Bond) |
+| **It blocks enemies** | **No** | Enemies walk through it. It cannot be used as a wall, and it never gets pinned |
+
+**Why this is fair.** The hound gives three warnings before it is lost: its cyan bar, the run to heel, and a fall that can be undone. Only what it was fighting can kill it, never more than two at once, never a boss. And the only way to lose it for the stage is to leave the body. With a Frog's 8 dmg it takes about six bites to send it to heel, and with a Panther's 14 about four lunges. **Tuning lever** if the fall plays too harsh: an unrescued hound gets up on its own after 20 s at 25%.
+
+#### 3.6.2 The animals
+
+**The Hound** is the base pet. It is a big jungle hound, chosen against the Jungle's panthers on every axis GD §16.4 and P1 care about:
+
+| | Enemy panther | The Hound |
+|---|---|---|
+| Silhouette | Long and low, head down, an arrow along its dash | **Upright and tall-legged**: head up, pricked ears, a raised curled tail |
+| Coat | Charcoal | **Sandy bone with darker brindle** (desaturated, off the green floor) |
+| Accents | Lime | **Cyan** `#22D3EE` leather collar with a lit tag, and cyan-lacquered bone plates on shoulders and back |
+| Moves | Prowl, crouch, lunge | Trot, snap-and-spring-back, pounce, heel, fall |
+
+| Stat | Value |
+|---|---|
+| HP | 70 (+3%/level) |
+| Speed | 4.0 m/s |
+| Bite | 7 dmg every 1.0 s, 1.4 m reach (+2%/level) |
+| Leash | Targets only enemies within 8 m of you; past 10 m from you it runs back |
+| Target order | Guardian Beast's target (3 s) → nearest marked enemy → the enemy nearest you; rechosen every 0.5 s |
+
+There is no red-orange, violet, gold or lime anywhere on it. Its bar is a small cyan one over its body, always shown: its health is the player's to manage (GD §16.2). The Barbarian's own atlas gets the same check: any cell reading gold or red-orange is repainted bone or cyan. **What each path adds:** Packleader brings pack hounds (smaller copies of the same body), a **hawk** and a **boar** stampede: two new animals. Axe Master adds no animal. Apex Bond grows the one hound: armour and size, on the same body. The art cost is one hound and, later, a hawk and a boar.
+
+#### 3.6.3 Wild Swap
+
+*The draft's "Spirit Swap", renamed: nothing in this class is a spirit.*
+
+Space: he and the hound **leap past each other** in 0.25 s and land in each other's places. Both stay visible, and a cyan streak joins the two points for 0.3 s. It is a leap, not a cut, because the Echo Archer ruled that a teleport on a phone loses the hero. Both are immune during the leap and for 0.2 s after. The leap arcs, so cover does not stop it. Every enemy hunting the hound loses it. Cooldown **6 s**. With the hound fallen, he leaps onto the body and the rescue starts half done. Clips: `Jump_Full_Short` for him, a lunge for the hound.
+
+#### 3.6.4 Tree — levels 2 to 10
+
+Free-pick, tier *N* needs *N−1* in its branch (§5). The Lv-10 tree costs 9 points, exactly as the Ranger's does.
+
+| Tier | **Axe** | **Beast** | **Wild** |
+|---|---|---|---|
+| 1 | **Heavy Edge** — +12% axe damage | **Sharp Claws** — +15% hound damage | **Thick Hide** — +10% max HP, for you and the hound |
+| 2 | **Third Axe** — carry 3 axes: the 0.5 s gap becomes the limit, 1.67 → 2.0 throws/s | **Feral Bite** — every 3rd bite stuns a light enemy 0.5 s | **Guardian Beast** — an enemy that hits you becomes the hound's target for 3 s, ahead of marks |
+| 3 | **Cleaving Return** — the return pass deals +50% and slows 25% for 1.5 s | **Pounce** — *active.* The hound leaps up to 6 m at a marked enemy: 2× bite, and knocks a light enemy down 0.8 s. Cooldown 8 s | **Quick Swap** — swap cooldown −1 s; the hound lands with a roar that slows enemies within 3 m by 30% for 2 s |
+
+**Light** is a flag each enemy's content carries: Frog, Rootling, Puffball, Spitter, Panther and their kind. It excludes Bullfrog, Mossguard, Shaman, every elite and every boss. Pounce's trigger is a marked enemy 3–6 m from the hound.
+
+### 3.7 Beastmaster paths — levels 11 to 30
+
+The Ranger's rules (§3.5) word for word: one path from Lv 11, locked for the run, six skills and **exactly 20 ranks**, the strongest unlocking at Lv 20. The level-2–10 tree stays. Every active auto-casts on its own trigger, and no two auto-casts fire within 0.5 s of each other; the hound's skills count as his. **Weapon** below means one axe pass (6 dmg, before levels and nodes). Every animal follows §3.6.1: it heels, falls, waits to be rescued, and turns enemies only by biting them.
+
+**Packleader — run with the pack.** More animals.
+
+| Lv | Skill | Kind | Ranks | Effect |
+|---|---|---|---|---|
+| 11 | **Pack Hounds** | Passive | 4 | A pack hound runs with you, at 50% of the Hound's HP and damage. Ranks: 65%; a second pack hound; 80%. Swap trades with the Hound alone |
+| 11 | **Howl** | Active | 4 | Every animal heals 20% max HP and gains +25% attack speed for 4 s. Ranks: 30% heal; 6 s; cooldown 14 → 11 s |
+| 14 | **Pack Tactics** | Passive | 3 | +10/15/20% animal damage on an enemy another animal is biting. Rank 3: an enemy bitten by two at once is slowed 30% |
+| 14 | **Thick Pelts** | Passive | 3 | Animals take −10/−20/−30% damage. Rank 3: a rescue takes 1 s |
+| 17 | **Hawk** | Active | 3 | A jungle hawk circles above you for 8 s and dives at marked enemies every 1.5 s: 2× weapon, and a 0.4 s stun on light ones. It flies, so nothing hits it. Ranks: 10 s; a dive every 1.0 s and cooldown 16 → 12 s |
+| 20 | **Stampede** | Active | 3 | Six wild boars run across the arena down the most crowded line, 3 m wide. Each boar deals 1× weapon to every enemy it passes and knocks light ones down 0.8 s; bosses take half. They are gone in 1.5 s, and nothing hits them. Ranks: nine boars; +30% damage and a 4 m line |
+
+Triggers: Howl — an animal under 50% HP, or at least 3 enemies within 8 m · Hawk — at least 1 marked enemy · Stampede — at least 1 in range, cooldown 30 s. Bites stay single-target, so even three hounds add nothing to a crowd that one hound would not: the pack grows the hound's share, not the area. Look: cyan war-paint stripes on him and on every hound.
+
+**Axe Master — the axe.** No new animal; the Hound stays as base.
+
+| Lv | Skill | Kind | Ranks | Effect |
+|---|---|---|---|---|
+| 11 | **Long Arc** | Passive | 4 | +1 m axe range. Rank 2: the axe hovers 0.3 s at its turn, spinning, and hits everything within 1.5 m once more. Rank 3: +2 m. Rank 4: a 0.5 s hover that hits twice |
+| 11 | **Hurl** | Active | 4 | A great axe at the densest group: it flies 10 m, spins 1.5 s on a 2 m circle hitting 4 times for 1× weapon, then returns, hitting on the way. Ranks: +25% damage; 2.5 m circle; cooldown 10 → 8 s |
+| 14 | **Splitter** | Passive | 3 | Every 5th throw is a heavy axe: 2× damage, and it knocks light enemies back 1 m. Ranks: every 4th; 2.5×, every 3rd |
+| 14 | **Battle Rhythm** | Passive | 3 | Each axe kill gives +5% throw rate for 3 s (refreshes), stacking to 3/4/5 |
+| 17 | **Whirling Axes** | Active | 3 | He spins for 1.5 s at full speed, axes in both hands: 3 hits of 0.8× weapon on every enemy within 2 m, and light ones are pushed out to 2.5 m. Throws pause while he spins. Ranks: 4 hits; cooldown 12 → 9 s |
+| 20 | **Axe Storm** | Active | 3 | For 6 s every throw is a fan of 3 axes 15° apart, and the throw gap halves. The side axes return like any other, but a throw needs only one axe in hand. Ranks: 8 s; axes +30% damage |
+
+Triggers: Hurl — at least 3 enemies in range · Whirling Axes — at least 2 within 2.5 m · Axe Storm — at least 1 in range, cooldown 30 s. Look: bright cyan axe edges and a cyan spin trail.
+
+**Apex Bond — one great beast.** The callback to the fight that earned him.
+
+| Lv | Skill | Kind | Ranks | Effect |
+|---|---|---|---|---|
+| 11 | **Deep Bond** | Passive | 4 | +15% Hound HP and +10% Hound damage a rank. Rank 4: it grows a size (×1.2) and its bite reaches 1.8 m |
+| 11 | **Maul** | Active | 4 | The Hound rears on its target: 3 bites in 0.6 s, 1.5× bite each. Ranks: 4 bites; the last stuns 1 s (bosses half); cooldown 10 → 8 s |
+| 14 | **Shared Blood** | Passive | 3 | The Hound heals 10/15/20% of the damage it deals. Rank 3: you heal a quarter as much |
+| 14 | **Challenge** | Active | 3 | The Hound roars: every non-boss enemy within 4 m of it turns on it for 3 s, past the two-hunter cap, and it takes −40% damage for those 3 s. Ranks: 5 m; 4 s and cooldown 14 → 11 s |
+| 17 | **Last Stand** | Passive | 3 | Once a stage, a blow that would fell the Hound leaves it at 1 HP, immune for 1.5 s, and it runs to heel. Ranks: 2.5 s; twice a stage |
+| 20 | **Apex Form** | Active | 3 | For 8 s the Hound grows to the Apex's size (×1.8): +50% max HP (the gain is healed), its bites hit every enemy in a 2 m cone, and it cannot be stunned or knocked down. Ranks: 10 s; +30% damage and an opening pounce that knocks light enemies within 3 m down |
+
+Triggers: Maul — the Hound is biting a marked enemy · Challenge — at least 2 enemies within 3 m of you · Apex Form — at least 3 enemies within 8 m of the Hound, or a boss in range, cooldown 30 s. Look: the Hound's bone plates grow and glow cyan, and the Apex's broken fang hangs on its collar. It is a hound grown huge, never a panther and never lime.
+
+#### 3.7.1 What the code already has (checked 2026-11-07)
+
+- **Minions.** `MinionSystem` (Core/Ai) holds Gravecaller's Wights: a fixed 8-slot array (`MaxConcurrent = 8`) and a live `Cap` stat. Each Wight walks at the nearest enemy and hits it, retargets every 0.5 s and expires on a clock. Its kills go through `EnemySystem.ApplyDamage(..., player)`, so **they pay XP as the player's**. The Hound's do the same. Boss adds still pay 0 (they are `SpawnSummon`s), whoever kills them. The player's targeter and the stage-complete check cannot see a Wight. `MinionSystem.ApplyDamage` exists but **nothing calls it**, by ruling ("enemies do not fight back"). The Hound needs a hunt/heel/fall/rescue state machine, no clock, a leash and a mark priority. That is a `PetSystem` of its own built on the same patterns, not a stretched `MinionSystem`, whose remarks rule against one class serving two shapes. `MinionStats` addresses MaxHp/MoveSpeed/ContactDamage, and its remarks name the missing piece: no `StatTarget` reaches "my pet", which Sharp Claws and Thick Hide need.
+- **Enemies have no target id.** `LureSystem` only redirects where an enemy *walks*; `EnemyBlackboard` carries no `TargetId`, and lured enemies still face the real player (the Mossguard fix). **An enemy attack landing on the Hound is the largest new piece of this design**, and it gets its own task.
+- **Panther.** `Art/Enemies/Panther.fbx` is a generated body on its own `Rig_Panther` skeleton (Generic), with clips Crouch, Death, Hit, Idle, Lunge, Prowl. The Hound is a new generated quadruped. Skinning it to `Rig_Panther` to inherit the clips is worth trying, but whether the clips key bone translations, which would break on longer legs, is to be checked in the art task.
+- **Barbarian and axes.** `ThirdParty/KayKit/Adventurers/Characters/Barbarian.fbx` (Generic) and `Prefabs/Characters/Barbarian.prefab` exist, already driven by Rig_Medium clips (`AC_Barbarian_Showcase`). Props include `axe_1handed.fbx` and `axe_2handed.fbx`. Rig_Medium has `Throw`, `Jump_Full_Short` (swap) and `Interact` / `PickUp` (rescue kneel).
+- **Blink.** `MovementSkillKind.Blink` is a 0.05 s, 10 m dash along the stick on `ChargeSkill`'s clock, buffer, i-frames and HUD button, with a fire-pool payload. Wild Swap reuses all of that. Its **direction and distance** come from the Hound's position, not the stick, and it moves a second body, so it is a new kind appended to the enum (`None` is last but ordinals are stored, so append after it). Whether the dash is stopped by cover is checked in its task; the swap must not be.
+
 ---
 
 ## 4. Skills — passive, active, auto-cast

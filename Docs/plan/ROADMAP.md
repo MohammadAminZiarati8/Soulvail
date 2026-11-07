@@ -84,7 +84,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **EA-04b** — Crossfire drawn and authored: converging heavy arrows (M)
 - [x] **EA-05a** — Hall of Mirrors in core: a ring of shooting shades (M)
 - [x] **EA-05b** — Hall of Mirrors drawn and authored: the ring rising (M)
-- [ ] **EA-06** — The Echo Archer's look: smoky deep-cyan trim and tints, data only (S) — [spec](tasks/EA-06-the-echo-archers-look.md)
+- [x] **EA-06** — The Echo Archer's look: smoky deep-cyan trim and tints, data only (S)
 
 **Landscape** (owner, 2026-11-06): the game turns from portrait to landscape. Not specced; camera, HUD, tree screen and menus all move. To be planned on the owner's word.
 

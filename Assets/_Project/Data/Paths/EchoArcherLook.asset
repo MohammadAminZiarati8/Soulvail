@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c78695c9d0d49d249b913e5b153bce11, type: 3}
+  m_Name: EchoArcherLook
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.PathLook
+  _materials:
+  - _renderer: Ranger_Cape
+    _slot: 1
+    _material: {fileID: 2100000, guid: 5cbd054f052a45ab88d973b6bf7d2d34, type: 2}
+    _mesh: {fileID: 9210542254203360154, guid: 5c78a8905dcd0d042bf288eadb9c26f4, type: 2}
+    _bowTint: 0
+  - _renderer: Ranger_Cape
+    _slot: 2
+    _material: {fileID: 2100000, guid: 5cbd054f052a45ab88d973b6bf7d2d34, type: 2}
+    _mesh: {fileID: 9210542254203360154, guid: 5c78a8905dcd0d042bf288eadb9c26f4, type: 2}
+    _bowTint: 0
+  - _renderer: Ranger_Head
+    _slot: 1
+    _material: {fileID: 2100000, guid: 5cbd054f052a45ab88d973b6bf7d2d34, type: 2}
+    _mesh: {fileID: -6484283968259952991, guid: 5c78a8905dcd0d042bf288eadb9c26f4, type: 2}
+    _bowTint: 0
+  - _renderer: Ranger_Head
+    _slot: 2
+    _material: {fileID: 2100000, guid: 5cbd054f052a45ab88d973b6bf7d2d34, type: 2}
+    _mesh: {fileID: -6484283968259952991, guid: 5c78a8905dcd0d042bf288eadb9c26f4, type: 2}
+    _bowTint: 0
+  - _renderer: Bow
+    _slot: 1
+    _material: {fileID: 2100000, guid: 5cbd054f052a45ab88d973b6bf7d2d34, type: 2}
+    _mesh: {fileID: -3784579079913590873, guid: 5c78a8905dcd0d042bf288eadb9c26f4, type: 2}
+    _bowTint: 1
+  _props: []
+  _bowTint: {r: 0.063, g: 0.3192, b: 0.378, a: 1}
+  _arrowTrailTint: {r: 0.075, g: 0.38, b: 0.45, a: 1}

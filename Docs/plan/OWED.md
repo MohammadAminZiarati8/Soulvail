@@ -351,3 +351,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] Editor, Jungle stage 20. Learn Hall of Mirrors. Check the overhead bow raise and the rising ring, walk out while the four shades keep shooting, and watch them fade after 5 seconds.
 - [ ] Device. At rank 3, check for a frame drop while six Hall shades and the Ranger are shooting.
+
+- [ ] **EA-06 [Editor]** Choose the Echo Archer. Check that trim, bow and trails read smoky deep cyan at a glance against the Marksman and Skirmisher, and that the shades still read apart from the hero.

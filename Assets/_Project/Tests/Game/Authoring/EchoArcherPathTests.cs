@@ -324,10 +324,9 @@ public sealed class EchoArcherPathTests
     }
 
     [Test]
-    public void Path_WithoutLook_Loads()
+    public void Path_Loads()
     {
         PathDefinition path = Path();
-        Assert.That(path.Look, Is.Null);
         Assert.That(path.ToSpec(Ranger).Id, Is.EqualTo(EchoArcher));
     }
 

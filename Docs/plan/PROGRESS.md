@@ -1,17 +1,17 @@
 # Soulvail — Progress
 
-History: `git log`. Owner checks: [OWED.md](OWED.md).
+History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, EA-05b._
+_2026-11-07, EA-06._
 
 ## State
 
 | | |
 |---|---|
-| **Milestone** | None planned. M0–M5 tagged; m6 owner to tag. |
-| **Last merged** | **EA-05b** — Hall of Mirrors drawn and authored. |
-| **Next task** | **EA-06** — The Echo Archer's look. |
-| **Verified** | EditMode 5973 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Milestone** | None planned. M0–M6 tagged. |
+| **Last merged** | **EA-06** — Echo Archer look. |
+| **Next task** | none planned — the Echo Archer block is done. Landscape awaits the owner's word. |
+| **Verified** | EditMode 5977 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

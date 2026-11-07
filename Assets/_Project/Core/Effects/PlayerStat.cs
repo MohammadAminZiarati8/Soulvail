@@ -250,6 +250,8 @@ public enum PlayerStat
     PetHeelRegen,
     PetReturnAt,
     PetRescueSeconds,
+    PetBiteStunEvery,
+    PetBiteStunSeconds,
 }
 
 /// <summary>

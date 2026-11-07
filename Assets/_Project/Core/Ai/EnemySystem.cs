@@ -607,6 +607,9 @@ public sealed class EnemySystem
         return true;
     }
 
+    public bool IsLight(int enemyId) =>
+        TryLiving(enemyId, out EnemyAgent agent) && agent.Spec.IsLight && agent.Behaviour is not BossBehaviour;
+
     /// <summary>
     /// Stuns a living enemy for <paramref name="seconds"/> (never a boss, JG-26a): its behaviour is not
     /// ticked, so its timers freeze and it neither moves nor attacks (MK-06a rule 2).

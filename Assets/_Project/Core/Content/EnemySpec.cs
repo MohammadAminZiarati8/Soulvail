@@ -266,13 +266,19 @@ public sealed class EnemySpec
         LeapSpec leap = null,
         PackSpec pack = null,
         StalkerSpec stalker = null,
-        ThornweaverSpec thornweaver = null)
+        ThornweaverSpec thornweaver = null,
+        bool isLight = false)
     {
         if (id.Value is null)
         {
             throw new ArgumentException(
                 "id must be a valid ContentId; default(ContentId) has none.",
                 nameof(id));
+        }
+
+        if (isLight && (isElite || behaviour == EnemyBehaviourKind.Boss))
+        {
+            throw new ArgumentException($"'{id}' is an elite or boss and cannot be light.", nameof(isLight));
         }
 
         if (behaviour == EnemyBehaviourKind.Spitter && projectile is null)
@@ -366,6 +372,7 @@ public sealed class EnemySpec
         ThreatCost = threatCost;
         XpValue = Positive(xpValue, nameof(xpValue));
         IsElite = isElite;
+        IsLight = isLight;
         ContactDamage = NonNegative(contactDamage, nameof(contactDamage));
         Reach = Positive(reach, nameof(reach));
         WindupTime = NonNegative(windupTime, nameof(windupTime));
@@ -444,6 +451,8 @@ public sealed class EnemySpec
 
     /// <summary>Whether this archetype is an Elite (M7-02).</summary>
     public bool IsElite { get; }
+
+    public bool IsLight { get; }
 
     /// <summary>Damage one strike deals; zero for an enemy that never attacks.</summary>
     public float ContactDamage { get; }

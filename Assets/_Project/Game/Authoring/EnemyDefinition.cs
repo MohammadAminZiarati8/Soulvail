@@ -68,6 +68,7 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0.01f)] private float _xpValue = 12f;
 
         [SerializeField] private bool _isElite;
+        [SerializeField] private bool _isLight;
 
         [Tooltip("Damage one strike deals. 0 is legal and means an enemy that never hurts the " +
                  "player directly — GD §8.1's Choir.")]
@@ -334,7 +335,8 @@ namespace Soulvail.Game.Authoring
                             _weaverCastInterval, _weaverCastSeconds, _weaverWallLength,
                             _weaverWallHalfWidth, _weaverArmSeconds, _weaverStandSeconds,
                             _weaverBeyondDistance, _weaverMaxWalls)
-                        : null);
+                        : null,
+                    isLight: _isLight);
             }
             catch (ArgumentException inner)
             {

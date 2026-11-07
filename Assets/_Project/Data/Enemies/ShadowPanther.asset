@@ -20,6 +20,7 @@ MonoBehaviour:
   _threatCost: 12
   _xpValue: 31
   _isElite: 0
+  _isLight: 1
   _contactDamage: 16
   _reach: 1.2
   _windupTime: 0.9

@@ -23,6 +23,7 @@ public sealed class PetSystem
     private readonly PetSpec _spec;
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
+    private readonly long[] _biteCounts = new long[Capacity];
     private readonly PetAgent[] _pets = new PetAgent[Capacity];
     private readonly int[,] _hunters = new int[Capacity, MaxHunters];
     private EnemyRegistry _enemies;
@@ -75,6 +76,7 @@ public sealed class PetSystem
         pet.RescueProgress = 0f;
         pet.NextBiteAt = now;
         pet.NextRetargetAt = now;
+        _biteCounts[0] = 0;
         _count = 1;
     }
 
@@ -106,8 +108,9 @@ public sealed class PetSystem
 
     public void Tick(float dt, float now, Vector3 player, EnemySystem enemies, PlayerCombat combat)
     {
-        foreach (PetAgent pet in Pets)
+        for (int index = 0; index < _count; index++)
         {
+            PetAgent pet = _pets[index];
             float playerDistanceSquared = Offset(pet.Position, player).LengthSquared();
             if (pet.State == PetState.Fallen)
             {
@@ -172,7 +175,15 @@ public sealed class PetSystem
                 quarry.Blackboard.LastBitBy = pet.Id;
                 quarry.Blackboard.LastBitAt = now;
                 enemies.ApplyDamage(quarry.Id, bite, now, combat);
+                long biteCount = ++_biteCounts[index];
                 _events.Publish(new PetBit(pet.Id, quarry.Id, bite));
+
+                int stunEvery = (int)Math.Clamp(pet.Stats.BiteStunEvery.Value, 0f, 10f);
+                float stunSeconds = pet.Stats.BiteStunSeconds.Value;
+                if (stunEvery > 0 && biteCount % stunEvery == 0 && stunSeconds > 0f && enemies.IsLight(quarry.Id))
+                {
+                    enemies.Stun(quarry.Id, stunSeconds);
+                }
             }
         }
     }

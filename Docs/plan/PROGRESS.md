@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Wild Swap has a cyan streak and swap icon._
+_2026-11-08, Feral Bite core and light enemy flags are in._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-06c** — Wild Swap streak and icon shipped. |
-| **Next task** | BM-07a on a go, after the pet-survival playtest. |
-| **Verified** | EditMode 6103 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-07a** — Feral Bite core and light enemies shipped. |
+| **Next task** | BM-07b on a go. |
+| **Verified** | EditMode 6108 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

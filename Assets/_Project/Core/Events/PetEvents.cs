@@ -35,6 +35,20 @@ public readonly struct Swapped
     }
 }
 
+public readonly struct PetRoared
+{
+    public readonly int PetId;
+    public readonly Vector3 Position;
+    public readonly float Radius;
+
+    public PetRoared(int petId, Vector3 position, float radius)
+    {
+        PetId = petId;
+        Position = position;
+        Radius = radius;
+    }
+}
+
 public readonly struct PetBit
 {
     public readonly int PetId;

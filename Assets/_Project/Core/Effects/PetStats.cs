@@ -16,6 +16,8 @@ public sealed class PetStats : IStatBlock
     internal Stat BiteStunEvery { get; } = new Stat(0f);
     internal Stat BiteStunSeconds { get; } = new Stat(0.5f);
 
+    internal Stat SwapRoarSlow { get; } = new Stat(0f);
+
     public Stat Resolve(PlayerStat stat) => stat switch
     {
         PlayerStat.MaxHp => _pet.MaxHp,
@@ -26,11 +28,12 @@ public sealed class PetStats : IStatBlock
         PlayerStat.PetRescueSeconds => _pet.RescueSeconds,
         PlayerStat.PetBiteStunEvery => BiteStunEvery,
         PlayerStat.PetBiteStunSeconds => BiteStunSeconds,
+        PlayerStat.SwapRoarSlow => SwapRoarSlow,
         _ => throw new ArgumentOutOfRangeException(nameof(stat), stat, "The pet has no such stat."),
     };
 
     public bool Has(PlayerStat stat) =>
         stat is PlayerStat.MaxHp or PlayerStat.MoveSpeed or PlayerStat.ContactDamage
             or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds
-            or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds;
+            or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow;
 }

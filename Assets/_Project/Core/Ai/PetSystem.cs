@@ -16,6 +16,8 @@ public sealed class PetSystem
     public const float HuntMemory = 2f;
     public const float RetargetInterval = 0.5f;
     public const float AtHeelRadius = 2f;
+    public const float RoarRadius = 3f;
+    public const float RoarSlowSeconds = 2f;
 
     private const float SwapImmunityTrail = 0.2f;
     private const float SwapRescueHeadStart = 0.5f;
@@ -29,6 +31,7 @@ public sealed class PetSystem
     private EnemyRegistry _enemies;
     private float _now;
     private float _leapUntil = float.NegativeInfinity;
+    private Vector3 _swapLanding;
     private float _swapImmuneUntil = float.NegativeInfinity;
     private Vector3 _spawnPlayerPosition;
     private int _count;
@@ -112,6 +115,15 @@ public sealed class PetSystem
         {
             PetAgent pet = _pets[index];
             float playerDistanceSquared = Offset(pet.Position, player).LengthSquared();
+            if (index == 0 && now >= _leapUntil && _leapUntil != float.NegativeInfinity)
+            {
+                _leapUntil = float.NegativeInfinity;
+                if (pet.State != PetState.Fallen)
+                {
+                    Roar(pet, enemies);
+                }
+            }
+
             if (pet.State == PetState.Fallen)
             {
                 if (dt > 0f && playerDistanceSquared <= _spec.RescueRadius * _spec.RescueRadius)
@@ -248,11 +260,32 @@ public sealed class PetSystem
 
         _now = now;
         _leapUntil = now + seconds;
+        _swapLanding = playerFrom;
         _swapImmuneUntil = _leapUntil + SwapImmunityTrail;
         _intents.PetLeap(new PetLeapIntent(pet.Id, playerFrom, seconds));
         DropHunters(pet.Id);
         _events.Publish(new Swapped(pet.Id, playerFrom, pet.Position, seconds));
         return true;
+    }
+
+    private void Roar(PetAgent pet, EnemySystem enemies)
+    {
+        float slow = pet.Stats.SwapRoarSlow.Value;
+        if (!(slow > 0f))
+        {
+            return;
+        }
+
+        slow = MathF.Min(slow, CrowdControl.MaxSlow);
+        foreach (EnemyAgent enemy in enemies.Registry.Alive)
+        {
+            if (enemy.IsAlive && Offset(_swapLanding, enemy.Position).LengthSquared() <= RoarRadius * RoarRadius)
+            {
+                enemies.Slow(enemy.Id, slow, RoarSlowSeconds);
+            }
+        }
+
+        _events.Publish(new PetRoared(pet.Id, _swapLanding, RoarRadius));
     }
 
     public void AddRescueHeadStart(int petId, float fraction)

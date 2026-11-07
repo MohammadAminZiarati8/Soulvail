@@ -32,11 +32,13 @@ public sealed class AxeSystem
 {
     public const int Capacity = 8;
     public const float CatchRadius = 0.3f;
+    public const float ReturnSlowSeconds = 1.5f;
 
     private readonly IDomainEvents _events;
     private readonly WeaponSpec _weapon;
     private readonly Stat _range;
     private readonly Stat _returnDamage;
+    private readonly Stat _returnSlow;
     private readonly Stat _carry;
     private readonly Axe[] _axes = new Axe[Capacity];
     private readonly int[][] _hitIds = new int[Capacity][];
@@ -56,6 +58,7 @@ public sealed class AxeSystem
         _weapon = weapon;
         _range = stats.Resolve(PlayerStat.WeaponRange);
         _returnDamage = stats.AxeReturnDamage;
+        _returnSlow = stats.AxeReturnSlow;
         _carry = stats.AxeCarry;
         for (int i = 0; i < Capacity; i++)
         {
@@ -184,6 +187,11 @@ public sealed class AxeSystem
             if (_weapon.MarkSeconds > 0f)
             {
                 enemies.Mark(bestId, _weapon.MarkSeconds);
+            }
+
+            if (axe.Pass == AxePass.Back && _returnSlow.Value > 0f)
+            {
+                enemies.Slow(bestId, MathF.Min(_returnSlow.Value, CrowdControl.MaxSlow), ReturnSlowSeconds);
             }
 
             _events.Publish(new AxeHit(axe.Id, bestId, axe.Pass, result.Applied));

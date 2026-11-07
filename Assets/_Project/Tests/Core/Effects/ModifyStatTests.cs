@@ -81,7 +81,7 @@ public sealed class ModifyStatTests
             // These addresses are reserved for other combatants.
             if (member is PlayerStat.ContactDamage
                 or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds
-                or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds)
+                or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow)
             {
                 Assert.That(
                     () => stats.Resolve(member),
@@ -164,6 +164,7 @@ public sealed class ModifyStatTests
                 PlayerStat.HallDamage => stats.HallDamage,
                 PlayerStat.AxeCarry => stats.AxeCarry,
                 PlayerStat.AxeReturnDamage => stats.AxeReturnDamage,
+                PlayerStat.AxeReturnSlow => stats.AxeReturnSlow,
                 PlayerStat.StormRunSeconds => stats.StormRunSeconds,
                 PlayerStat.StormRunDamage => stats.StormRunDamage,
                 _ => null,
@@ -193,7 +194,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(58), "Sixty-two members with four addresses reserved for other combatants.");
+        Assert.That(answered, Is.EqualTo(59), "Sixty-six members with seven addresses reserved for other combatants.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

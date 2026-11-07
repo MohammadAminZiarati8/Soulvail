@@ -71,6 +71,8 @@ public sealed class PlayerStatCoverageTests
         PlayerStats stats = Stats(Combat());
         Assert.That(stats.Resolve(PlayerStat.AxeCarry), Is.SameAs(stats.AxeCarry));
         Assert.That(stats.Resolve(PlayerStat.AxeReturnDamage), Is.SameAs(stats.AxeReturnDamage));
+        Assert.That(stats.Resolve(PlayerStat.AxeReturnSlow), Is.SameAs(stats.AxeReturnSlow));
+        Assert.That(stats.AxeReturnSlow.Base, Is.Zero);
         Assert.That(stats.AxeCarry.Base, Is.Zero);
         Assert.That(stats.AxeReturnDamage.Base, Is.EqualTo(1f));
     }
@@ -377,7 +379,7 @@ public sealed class PlayerStatCoverageTests
 
         Assert.That(
             values.Length,
-            Is.EqualTo(64),
+            Is.EqualTo(66),
             "Six from M3-05, M3-12a's five, M4-01a's ContactDamage — the first member no "
                 + "player has, added because IStatBlock made this one shared address space rather "
                 + "than two enums — M6-08's four Kindling and pool numbers, RS-03a's "
@@ -385,7 +387,7 @@ public sealed class PlayerStatCoverageTests
                 + "and MK-07a's three Rain numbers, MK-08a's BindStun, MK-09a's SnareRoot/SnareDamage "
                 + "MK-10a's KillshotExecute/KillshotDamage, SK-01a's three Skirmisher stats and SK-03a's "
                 + "two Ricochet Shot stats, SK-04a's two Second Wind stats, SK-05a's two Whirlwind stats "
-                + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats, EA-01b's two Echo Arrow stats, EA-03a's two Decoy Roll stats and EA-03b's two Fading Burst stats, EA-04a's two Crossfire stats and EA-05a's three Hall of Mirrors stats, BM-01a's two axe stats, and BM-05a's three pet stats and BM-07a's two Feral Bite stats.");
+                + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats, EA-01b's two Echo Arrow stats, EA-03a's two Decoy Roll stats and EA-03b's two Fading Burst stats, EA-04a's two Crossfire stats and EA-05a's three Hall of Mirrors stats, BM-01a's two axe stats, and BM-05a's three pet stats and BM-07a's two Feral Bite stats, and BM-07b's two slow stats.");
     }
 
     // ---- Fixtures --------------------------------------------------------------------------------

@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Beastmaster specced._
+_2026-11-07, returning axes in core._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **Tune** — Oathbound Censer 8 m/60° → 3 m/120°. |
-| **Next task** | BM-01a on a go; melee playtest owed. |
-| **Verified** | EditMode 5979 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-01a** — Returning axes in core. |
+| **Next task** | BM-01b on a go; melee playtest owed. |
+| **Verified** | EditMode 5993 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

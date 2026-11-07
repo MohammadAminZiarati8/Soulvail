@@ -538,6 +538,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // (ADR-0009). M3-03's tree below is the first thing in a live run to call Apply — until it
         // existed this was a table that was built, filled and never read.
         var playerStats = new PlayerStats(combat, motor, progression);
+        if (character.Weapon.Kind == WeaponKind.ReturningAxe)
+        {
+            combat.Axes = new AxeSystem(_events, playerStats, character.Weapon);
+        }
         var effects = new EffectRegistry();
 
         // **GD §10's meter, one per run and never null** (M6-04). A second Start must not inherit
@@ -1336,6 +1340,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Projectiles.Fire(shot, State.Time);
         }
 
+        State.Combat.Axes?.Tick(snapshot.Dt, State.Time, snapshot.PlayerPosition, State.Combat, State.Enemies);
         _shades.Tick(State.Time, State.Enemies, State.Combat);
 
         // **After combat and before the enemy behaviours — which puts it above the projectile step
@@ -1578,6 +1583,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (stageCleared || (phaseBefore != StagePhase.Transition && _flow.Phase == StagePhase.Transition))
             {
                 State.Projectiles.ClearRicochets();
+                State.Combat.Axes?.Clear();
                 _whirlwind.Clear();
                 _shades.Clear();
                 State.Combat.ResetDecoy();
@@ -1596,6 +1602,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (State.StageIndex != _flow.Stage)
             {
                 State.Projectiles.ClearRicochets();
+                State.Combat.Axes?.Clear();
                 _whirlwind.Clear();
                 _shades.Clear();
                 State.Combat.EndStormRun();
@@ -2191,6 +2198,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // And the shots that were still in the air, silently again. A bolt that landed on an ended
         // run would hurt a corpse and publish an impact into a scope that is being torn down.
         State.Projectiles.Clear();
+        State.Combat.Axes?.Clear();
 
         // And whatever a cast was still holding — forgotten rather than taken back, for the same
         // sentence: there is nothing left to take it off, and an expiry announced here would reach a

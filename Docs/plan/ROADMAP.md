@@ -35,7 +35,7 @@ _No milestone. The owner is setting the next direction._
 
 **The Beastmaster, the second character** (owner, 2026-11-07; design [CH §3.6–3.7](../Characters.md)). The Jungle's reward: returning axes, the Mark, the Hound, Wild Swap, a 3 × 3 tree, then the Packleader path. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from BM-02a (class select); **playtest pet survival after BM-06b**, before the tree (the 20 s self-revive is the lever, CH §3.6.1). BM-03b, PL-04b and PL-05b need the owner's TRELLIS sculpt (prompt in the spec) any time before their drawn task. The drawn tasks name no screen position, so they hold through the landscape switch.
 
-- [ ] [BM-01a](tasks/BM-01a-returning-axes.md) — Returning axes in core: full-range flight, homing return, hits on both passes (M)
+- [x] BM-01a — Returning axes in core: full-range flight, homing return, hits on both passes (M)
 - [ ] [BM-01b](tasks/BM-01b-the-mark.md) — The Mark in core: an axe hit marks for 4 s (S)
 - [ ] [BM-02a](tasks/BM-02a-the-beastmaster-body.md) — The Beastmaster's body and character asset, in class select (M)
 - [ ] [BM-02b](tasks/BM-02b-axes-and-mark-drawn.md) — Axes and the Mark drawn: spin, cyan trail, claw glyph (M)

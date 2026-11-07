@@ -359,7 +359,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(54), "Fifty-four of fifty-seven addresses are player-only.");
+        Assert.That(refused, Is.EqualTo(56), "Fifty-six of fifty-nine addresses are player-only.");
     }
 
     [Test]
@@ -487,11 +487,13 @@ public sealed class StatBlockTests
             nameof(PlayerStat.HallShades),
             nameof(PlayerStat.HallSeconds),
             nameof(PlayerStat.HallDamage),
+            nameof(PlayerStat.AxeCarry),
+            nameof(PlayerStat.AxeReturnDamage),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
             + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three, MK-08a's BindStun, "
             + "MK-09a's SnareRoot/SnareDamage, MK-10a's KillshotExecute/KillshotDamage, SK-01a's three stats "
             + "SK-03a's two Ricochet Shot stats, SK-04a's two Second Wind stats, SK-05a's two Whirlwind stats "
-            + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats, EA-01b's two Echo Arrow stats, EA-03a's two Decoy Roll stats and EA-03b's two Fading Burst stats and EA-04a's two Crossfire stats, then EA-05a's three Hall of Mirrors stats.");
+            + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats, EA-01b's two Echo Arrow stats, EA-03a's two Decoy Roll stats and EA-03b's two Fading Burst stats and EA-04a's two Crossfire stats, then EA-05a's three Hall of Mirrors stats and BM-01a's two axe stats.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------

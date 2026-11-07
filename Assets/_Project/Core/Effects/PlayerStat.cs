@@ -245,6 +245,8 @@ public enum PlayerStat
     HallShades,
     HallSeconds,
     HallDamage,
+    AxeCarry,
+    AxeReturnDamage,
 }
 
 /// <summary>
@@ -320,6 +322,8 @@ public sealed class PlayerStats : IStatBlock
     public Stat HallShades { get; } = new(4f);
     public Stat HallSeconds { get; } = new(5f);
     public Stat HallDamage { get; } = new(0f);
+    public Stat AxeCarry { get; }
+    public Stat AxeReturnDamage { get; } = new(1f);
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -347,6 +351,7 @@ public sealed class PlayerStats : IStatBlock
         _motor = motor ?? throw new ArgumentNullException(nameof(motor));
         _progression = progression ?? throw new ArgumentNullException(nameof(progression));
         _leavesPool = combat.Charge.PoolDuration.Base > 0f;
+        AxeCarry = new Stat(combat.BaseAxeCarry);
     }
 
     /// <summary>
@@ -416,6 +421,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.HallShades => HallShades,
             PlayerStat.HallSeconds => HallSeconds,
             PlayerStat.HallDamage => HallDamage,
+            PlayerStat.AxeCarry => AxeCarry,
+            PlayerStat.AxeReturnDamage => AxeReturnDamage,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -502,6 +509,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.HallShades => true,
             PlayerStat.HallSeconds => true,
             PlayerStat.HallDamage => true,
+            PlayerStat.AxeCarry => true,
+            PlayerStat.AxeReturnDamage => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

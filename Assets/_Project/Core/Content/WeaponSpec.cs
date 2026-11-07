@@ -34,6 +34,7 @@ public enum WeaponKind
     /// <see cref="WeaponSpec.ShotRadius"/> of the impact takes full damage.
     /// </summary>
     Projectile,
+    ReturningAxe,
 }
 
 /// <summary>
@@ -122,7 +123,10 @@ public sealed class WeaponSpec
         float shotSpeed = 0f,
         float shotRadius = 0f,
         float shotSpread = 0f,
-        bool firesWhileMoving = true)
+        bool firesWhileMoving = true,
+        float axeSpeed = 0f,
+        int axeCarry = 0,
+        int axeHitsPerPass = 0)
     {
         // `!(x > 0f)` throughout rather than `x <= 0f`, so NaN is refused with everything else —
         // the spelling every spec in this folder uses, for the reason TargetingSpec.Positive gives.
@@ -164,6 +168,22 @@ public sealed class WeaponSpec
 
         ValidateShotNumbers(kind, coneAngleDeg, shotSpeed, shotRadius);
 
+        if (kind == WeaponKind.ReturningAxe)
+        {
+            RequirePositive(axeSpeed, nameof(axeSpeed), kind);
+            RequirePositive(axeCarry, nameof(axeCarry), kind);
+            RequirePositive(axeHitsPerPass, nameof(axeHitsPerPass), kind);
+        }
+        else
+        {
+            RequireZero(axeSpeed, nameof(axeSpeed), kind);
+            RequireZero(axeCarry, nameof(axeCarry), kind);
+            RequireZero(axeHitsPerPass, nameof(axeHitsPerPass), kind);
+        }
+
+        AxeSpeed = axeSpeed;
+        AxeCarry = axeCarry;
+        AxeHitsPerPass = axeHitsPerPass;
         Kind = kind;
         Damage = Positive(damage, nameof(damage));
         SwingsPerSecond = Positive(swingsPerSecond, nameof(swingsPerSecond));
@@ -211,6 +231,10 @@ public sealed class WeaponSpec
     /// number and what keeps one damage figure honest against an arc that hits a crowd.
     /// </remarks>
     public float ShotRadius { get; }
+
+    public float AxeSpeed { get; }
+    public int AxeCarry { get; }
+    public int AxeHitsPerPass { get; }
 
     /// <summary>Reserved and required to be zero.</summary>
     /// <remarks>
@@ -263,6 +287,11 @@ public sealed class WeaponSpec
             case WeaponKind.Cone:
                 RequireZero(shotSpeed, nameof(shotSpeed), kind);
                 RequireZero(shotRadius, nameof(shotRadius), kind);
+                return;
+
+            case WeaponKind.ReturningAxe:
+                RequireZero(shotSpeed, nameof(shotSpeed), kind);
+                RequirePositive(shotRadius, nameof(shotRadius), kind);
                 return;
 
             case WeaponKind.Projectile:

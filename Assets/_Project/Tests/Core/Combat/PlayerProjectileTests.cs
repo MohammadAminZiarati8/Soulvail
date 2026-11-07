@@ -138,6 +138,33 @@ public sealed class PlayerProjectileTests
     // ---- Rule 2: the three shot numbers, and which kind may carry them --------------------------
 
     [Test]
+    public void Spec_AxeNumbers_RequiredAndRefused()
+    {
+        WeaponSpec Axe(float speed, int carry, int hits, float radius) =>
+            new(WeaponKind.ReturningAxe, 10f, 2f, 8f, 360f, 0.4f,
+                shotRadius: radius, axeSpeed: speed, axeCarry: carry, axeHitsPerPass: hits);
+
+        Assert.That(Axe(8f, 2, 3, 0.3f).AxeCarry, Is.EqualTo(2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Axe(0f, 2, 3, 0.3f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Axe(float.NaN, 2, 3, 0.3f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Axe(8f, 0, 3, 0.3f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Axe(8f, 2, 0, 0.3f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Axe(8f, 2, 3, 0f));
+
+        foreach (WeaponKind kind in new[] { WeaponKind.Cone, WeaponKind.Projectile })
+        {
+            float shot = kind == WeaponKind.Projectile ? 1f : 0f;
+            WeaponSpec Other(float speed, int carry, int hits) =>
+                new(kind, 10f, 2f, 8f, 360f, 0.4f, shot, shot,
+                    axeSpeed: speed, axeCarry: carry, axeHitsPerPass: hits);
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => Other(8f, 0, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => Other(0f, 2, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => Other(0f, 0, 3));
+        }
+    }
+
+    [Test]
     public void Spec_AProjectileWeaponRequiresItsShotNumbers()
     {
         // No speed: a bolt that never arrives anywhere.

@@ -179,6 +179,8 @@ public sealed class PlayerCombat
     /// a second kind.
     /// </remarks>
     private readonly WeaponSpec _weaponSpec;
+    internal AxeSystem Axes { get; set; }
+    internal int BaseAxeCarry => _weaponSpec.AxeCarry;
 
     /// <summary>
     /// The class's authored movement skill: the numbers <see cref="Charge"/> deliberately does not
@@ -1825,7 +1827,12 @@ public sealed class PlayerCombat
         }
 
         // And no new swing starts while holding.
-        WeaponTick tick = Weapon.Tick(dt, now, !IsHoldingFire && IsTargetInWeaponRange(count), rateMultiplier);
+        // A late frame can finish the draw and start its successor. Reserve the last axe for
+        // the pending damage frame so that tick cannot start an empty swing.
+        int axesNeeded = Weapon.IsSwinging && !_swingLanded ? 2 : 1;
+        bool hasAmmo = _weaponSpec.Kind != WeaponKind.ReturningAxe
+            || (Axes is not null && Axes.InHand >= axesNeeded && Axes.InFlight.Length + axesNeeded <= AxeSystem.Capacity);
+        WeaponTick tick = Weapon.Tick(dt, now, hasAmmo && !IsHoldingFire && IsTargetInWeaponRange(count), rateMultiplier);
 
         // The damage frame belongs to the swing that was running, and a start on the same tick is
         // the next swing — Weapon.Tick's own order, so the two lines go in that order too.
@@ -1861,6 +1868,11 @@ public sealed class PlayerCombat
 
             case WeaponKind.Projectile:
                 OfferShot(playerPosition, enemies, now);
+                return;
+
+            case WeaponKind.ReturningAxe:
+                Axes.TryThrow(playerPosition, playerPosition + (FaceDirection ?? bodyFacing),
+                    ShotDamage(Weapon.Damage.Value), now);
                 return;
 
             default:
@@ -2349,9 +2361,8 @@ public sealed class PlayerCombat
         {
             EnemyAgent agent = enemies[i];
 
-            // The targeter can hold facing on an invulnerable enemy (CC §3.6). Leave hidden
-            // and covered enemies out of the candidates so auto-aim never points at them.
-            if (agent.IsHidden || agent.Blackboard.IsBehindCover)
+            // Hidden enemies cannot be aimed at. Returning axes can fly through cover.
+            if (agent.IsHidden || (agent.Blackboard.IsBehindCover && _weaponSpec.Kind != WeaponKind.ReturningAxe))
             {
                 continue;
             }

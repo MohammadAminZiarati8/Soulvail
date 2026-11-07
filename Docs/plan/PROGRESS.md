@@ -2,20 +2,20 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, the Mark in core._
+_2026-11-07, Beastmaster in class select._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-01b** — The Mark in core. |
-| **Next task** | BM-02a on a go; melee playtest owed. |
-| **Verified** | EditMode 6014 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-02a** — Beastmaster body and class. |
+| **Next task** | BM-02b on a go; playtests owed. |
+| **Verified** | EditMode 6022 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
-Portrait (landscape owed); Heroes/Places; Jungle 30 stages. Ranger + Oathbound (melee test); Veilrot/Sanctum/disc off.
+Portrait (landscape owed); Heroes/Places; Jungle 30 stages. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; warned vines.

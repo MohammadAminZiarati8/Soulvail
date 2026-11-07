@@ -85,7 +85,7 @@ public sealed class RangerTests
 
         ContentCatalog catalog = BootCatalog();
 
-        Assert.That(catalog.Characters.Count, Is.EqualTo(4), "CH §3's three and the Ranger boot.");
+        Assert.That(catalog.Characters.Count, Is.EqualTo(5), "The five authored classes boot.");
 
         for (int i = 0; i < RosterIds.Length; i++)
         {

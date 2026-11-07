@@ -104,7 +104,7 @@ public sealed class PortraitBakerTests
             .OrderBy(p => p, System.StringComparer.Ordinal)
             .ToArray();
 
-        Assert.That(expected, Has.Length.EqualTo(4), "the Ranger and the three classes in the Knight's body.");
+        Assert.That(expected, Has.Length.EqualTo(5), "Ranger, Beastmaster and the three classes in the Knight's body.");
         Assert.That(found, Is.EqualTo(expected), "Heroes/ holds one portrait per class with a body, and no other PNG.");
     }
 

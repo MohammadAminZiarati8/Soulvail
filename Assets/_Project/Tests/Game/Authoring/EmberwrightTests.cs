@@ -144,7 +144,7 @@ public sealed class EmberwrightTests
 
         ContentCatalog catalog = BootCatalog();
 
-        Assert.That(catalog.Characters.Count, Is.EqualTo(4), "CH §3's whole roster boots, and RS-03c's Ranger.");
+        Assert.That(catalog.Characters.Count, Is.EqualTo(5), "The five authored classes boot.");
 
         foreach (string id in new[] { OathboundId, GravecallerId, EmberwrightId })
         {

@@ -69,7 +69,7 @@ public sealed class ClassSelectRosterTests
     // ---- Rule 3: the shipped list ------------------------------------------------------------------
 
     [Test]
-    public void Boot_ClassSelectShowsTheRangerThenTheOathbound()
+    public void Boot_ClassSelectShowsRangerOathboundAndBeastmaster()
     {
         // The owner's ruling of 2026-09-28 showed the Ranger alone; on 2026-11-07 the owner turned the
         // Oathbound back on to playtest melee. The Ranger stays first, so it stays the fallback (rule 4).
@@ -80,13 +80,15 @@ public sealed class ClassSelectRosterTests
         SerializedProperty shown = serialized.FindProperty("_classSelect");
 
         Assert.That(shown, Is.Not.Null, "BootScope has no Class Select list.");
-        Assert.That(shown.arraySize, Is.EqualTo(2));
+        Assert.That(shown.arraySize, Is.EqualTo(3));
         Assert.That(shown.GetArrayElementAtIndex(0).objectReferenceValue, Is.EqualTo(Load<CharacterDefinition>(RangerPath)));
         Assert.That(shown.GetArrayElementAtIndex(1).objectReferenceValue, Is.EqualTo(Load<CharacterDefinition>(OathboundPath)));
+        Assert.That(shown.GetArrayElementAtIndex(2).objectReferenceValue,
+            Is.EqualTo(Load<CharacterDefinition>("Assets/_Project/Data/Characters/Beastmaster.asset")));
 
         SerializedProperty characters = serialized.FindProperty("_characters");
 
-        Assert.That(characters.arraySize, Is.EqualTo(4), "a hidden class was taken out of the catalog.");
+        Assert.That(characters.arraySize, Is.EqualTo(5), "a hidden class was taken out of the catalog.");
     }
 
     // ---- Rule 4: the Run scene's fallback ----------------------------------------------------------

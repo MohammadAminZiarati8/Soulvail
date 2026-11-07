@@ -848,3 +848,7 @@ MonoBehaviour:
     _text: "Hall of Mirrors 3"
   - _key: skill.echo-archer.hall-of-mirrors-3.description
     _text: "7 s, 100% damage."
+  - _key: character.beastmaster.name
+    _text: Beastmaster
+  - _key: character.beastmaster.description
+    _text: Hurls returning axes and keeps moving.

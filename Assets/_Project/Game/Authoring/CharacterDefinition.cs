@@ -92,13 +92,19 @@ namespace Soulvail.Game.Authoring
                  "0.4 is CC §4.2's readable-but-not-a-commitment windup.")]
         [SerializeField, Range(0f, 0.99f)] private float _weaponDamageFrame = 0.4f;
 
-        [Tooltip("Shot numbers — Projectile weapons only. Leave all three at 0 for a Cone; a " +
-                 "cone carrying a shot speed is refused rather than ignored. A Projectile needs " +
+        [Tooltip("Shot speed and spread stay at 0 for cones and returning axes. A returning axe uses the shot radius. A " +
+                 "Projectile needs " +
                  "a speed and a radius above 0 and the cone angle set to exactly 360, since an " +
                  "arc does not gate a shot. Spread must stay 0: it is reserved.")]
         [SerializeField, Min(0f)] private float _weaponShotSpeed;
         [SerializeField, Min(0f)] private float _weaponShotRadius;
         [SerializeField, Min(0f)] private float _weaponShotSpread;
+
+        [Tooltip("Returning axes only. Carry and hits per pass must be positive; mark seconds at zero disables the mark.")]
+        [SerializeField, Min(0f)] private float _axeSpeed;
+        [SerializeField, Min(0)] private int _axeCarry;
+        [SerializeField, Min(0)] private int _axeHitsPerPass;
+        [SerializeField, Min(0f)] private float _markSeconds;
 
         [Tooltip("Whether the class attacks while it moves. On for every class that ships. Off is " +
                  "the Ranger's rule: it holds fire and faces where it runs until it stops, then " +
@@ -368,7 +374,11 @@ namespace Soulvail.Game.Authoring
                         _weaponShotSpeed,
                         _weaponShotRadius,
                         _weaponShotSpread,
-                        _weaponFiresWhileMoving),
+                        _weaponFiresWhileMoving,
+                        _axeSpeed,
+                        _axeCarry,
+                        _axeHitsPerPass,
+                        _markSeconds),
                     new FocusSpec(_focusDelay, _focusRampTime, _focusMaxMultiplier),
                     new MovementSkillSpec(
                         _movementSkillKind,

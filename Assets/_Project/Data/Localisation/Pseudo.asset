@@ -937,3 +937,8 @@ MonoBehaviour:
     _text: "[Háll ôf Mîrrôrs 3 ······]"
   - _key: skill.echo-archer.hall-of-mirrors-3.description
     _text: "[7 s, 100% dámágé. ······]"
+  - _key: character.beastmaster.name
+    _text: "[B\xE9\xE1stm\xE1st\xE9r \xB7\xB7\xB7\xB7]"
+  - _key: character.beastmaster.description
+    _text: "[H\xFBrls r\xE9t\xFBr\xF1\xEE\xF1g \xE1x\xE9s \xE1\xF1d k\xE9\xE9ps m\xF4v\xEE\xF1g.
+      \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"

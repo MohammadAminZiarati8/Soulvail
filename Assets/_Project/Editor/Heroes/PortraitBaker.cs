@@ -108,6 +108,16 @@ public static class PortraitBaker
                 camera.enabled = false;
                 Pose(preview.Body);
 
+                // The Beastmaster's idle brings his axe blades into the corners of the bust crop.
+                // Hide the props on the portrait clone so the face and shoulders frame cleanly.
+                foreach (MeshRenderer renderer in preview.Body.GetComponentsInChildren<MeshRenderer>())
+                {
+                    if (renderer.name == "axe_1handed")
+                    {
+                        renderer.enabled = false;
+                    }
+                }
+
                 byte[] png = Render(camera, preview.Body);
                 File.WriteAllBytes(path, png);
                 Import(path);

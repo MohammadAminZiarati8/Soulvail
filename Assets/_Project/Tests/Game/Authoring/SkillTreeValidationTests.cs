@@ -416,6 +416,14 @@ public sealed class SkillTreeValidationTests
 
             CharacterSpec spec = definition.ToSpec();
 
+            // BM-02a ships the body for playtesting. Remove this exemption when BM-07 adds the tree.
+            if (spec.Id == new ContentId("character.beastmaster"))
+            {
+                Assert.That(catalog.TryGetTreeFor(spec.Id, out _), Is.False,
+                    "BM-07 has landed. Remove the Beastmaster's temporary tree exemption.");
+                continue;
+            }
+
             if (!catalog.TryGetTreeFor(spec.Id, out SkillTreeSpec _))
             {
                 problems.Add(

@@ -106,7 +106,7 @@ public sealed class HeroGridTests
             Is.EqualTo(new[] { Ranger, Oathbound, Gravecaller, Emberwright }));
         Assert.That(grid.Cards[0].NameLabel.text, Is.EqualTo(_words.Get(_catalog.Character(Ranger).NameKey)));
 
-        // Today's roster is the Ranger alone: one card, and the other three are gone, not hidden.
+        // A one-class roster: one card, and the other three are gone, not hidden.
         _roster = new ClassSelectRoster(new[] { Ranger });
         Enable();
         OpenHeroes();

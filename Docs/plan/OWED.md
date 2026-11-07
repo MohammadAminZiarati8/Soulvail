@@ -357,3 +357,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## Fix — lured Mossguard shield
 
 - [ ] Editor, Jungle stage 17–19 (Mossguards), Echo Archer with Decoy Roll. Roll past a Mossguard so it turns to the decoy. Check that the Ranger shoots its back at once and the arrows land; from in front they are still blocked.
+
+## Oathbound melee playtest (2026-11-07)
+
+- [ ] Menu → heroes: the Ranger is first and the Oathbound second; both are Choose, not priced.
+- [ ] Play Jungle 1–15 as the Oathbound. Note: does melee survive spitters, chain bombers, Thornweaver walls and the Warlord? Does touching enemies hurt? Does the 12-node tree open and take points?
+- [ ] Report: fun / survivable / hopeless — this decides Knight vs Necrophos.

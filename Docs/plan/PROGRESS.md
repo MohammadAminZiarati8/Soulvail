@@ -2,20 +2,20 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Mossguard decoy fix._
+_2026-11-07, Oathbound back in class select._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **Fix** — a lured Mossguard's shield faces the real player. |
-| **Next task** | None planned; Landscape awaits the owner's word. |
+| **Last merged** | **Chore** — Oathbound back in class select. |
+| **Next task** | None; melee playtest owed. |
 | **Verified** | EditMode 5979 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
-Portrait (landscape owed); Heroes/Places; Jungle 30 stages. Ranger only; Veilrot/Sanctum/disc off.
+Portrait (landscape owed); Heroes/Places; Jungle 30 stages. Ranger + Oathbound (melee test); Veilrot/Sanctum/disc off.
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; warned vines.

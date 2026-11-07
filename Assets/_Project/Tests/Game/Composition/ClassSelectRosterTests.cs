@@ -69,17 +69,20 @@ public sealed class ClassSelectRosterTests
     // ---- Rule 3: the shipped list ------------------------------------------------------------------
 
     [Test]
-    public void Boot_ClassSelectShowsTheRangerAlone()
+    public void Boot_ClassSelectShowsTheRangerThenTheOathbound()
     {
-        // The owner's ruling of 2026-09-28. The other three stay in Characters: hidden, not removed.
+        // The owner's ruling of 2026-09-28 showed the Ranger alone; on 2026-11-07 the owner turned the
+        // Oathbound back on to playtest melee. The Ranger stays first, so it stays the fallback (rule 4).
+        // The other two stay in Characters: hidden, not removed.
         var boot = AssetDatabase.LoadAssetAtPath<GameObject>(BootScopePath).GetComponentInChildren<BootScope>(true);
         var serialized = new SerializedObject(boot);
 
         SerializedProperty shown = serialized.FindProperty("_classSelect");
 
         Assert.That(shown, Is.Not.Null, "BootScope has no Class Select list.");
-        Assert.That(shown.arraySize, Is.EqualTo(1));
+        Assert.That(shown.arraySize, Is.EqualTo(2));
         Assert.That(shown.GetArrayElementAtIndex(0).objectReferenceValue, Is.EqualTo(Load<CharacterDefinition>(RangerPath)));
+        Assert.That(shown.GetArrayElementAtIndex(1).objectReferenceValue, Is.EqualTo(Load<CharacterDefinition>(OathboundPath)));
 
         SerializedProperty characters = serialized.FindProperty("_characters");
 

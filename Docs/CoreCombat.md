@@ -183,7 +183,7 @@ Ship it in V1, expect ~10% adoption, and don't balance around it.
 
 | Property | Value |
 |---|---|
-| Shape | **60° cone, 8 m** along facing |
+| Shape | **120° sweep, 3 m** along facing *(owner, 2026-11-07: was a 60° cone at 8 m, which played as a ranged class; cut for the melee test)* |
 | Damage | **13** per swing, to **every** enemy in the arc |
 | Rate | **3.0 /s** (0.333s interval) |
 | Ammo / reload | None. Ever. |
@@ -197,7 +197,7 @@ Single-target DPS is only 39 — deliberately low. The Oathbound's damage comes 
 
 | Rule | Behaviour |
 |---|---|
-| **Trigger** | Automatic, whenever any enemy is within 8m. Arc is not required to *start* the swing — we're rotating to face anyway. |
+| **Trigger** | Automatic, whenever any enemy is within the 3 m reach. Arc is not required to *start* the swing — we're rotating to face anyway. |
 | **Idle** | No enemy in range → no swing. No wasted VFX, no audio noise. |
 | **Movement** | **Attacking never slows, roots, or interrupts movement.** Non-negotiable. |
 | **Damage frame** | 40% through the swing animation — readable, but not a commitment |
@@ -341,7 +341,7 @@ Every number in one place. Expose all of these in a ScriptableObject; do not har
 ### Attack
 | | |
 |---|---|
-| Cone angle / range | 60° / 8 m |
+| Cone angle / range | 120° / 3 m *(60° / 8 m until 2026-11-07)* |
 | Damage | 13 |
 | Rate | 3.0 /s |
 | Damage frame | 40% of animation |

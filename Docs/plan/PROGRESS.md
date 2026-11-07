@@ -2,15 +2,15 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Oathbound back in class select._
+_2026-11-07, Oathbound 3 m sweep._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **Chore** — Oathbound back in class select. |
-| **Next task** | None; melee playtest owed. |
+| **Last merged** | **Tune** — Oathbound Censer 8 m/60° → 3 m/120°. |
+| **Next task** | None; 3 m melee playtest owed. |
 | **Verified** | EditMode 5979 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works

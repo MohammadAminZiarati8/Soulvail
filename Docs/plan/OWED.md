@@ -363,3 +363,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] Menu → heroes: the Ranger is first and the Oathbound second; both are Choose, not priced.
 - [ ] Play Jungle 1–15 as the Oathbound. Note: does melee survive spitters, chain bombers, Thornweaver walls and the Warlord? Does touching enemies hurt? Does the 12-node tree open and take points?
 - [ ] Report: fun / survivable / hopeless — this decides Knight vs Necrophos.
+
+## Oathbound 3 m sweep playtest (2026-11-07)
+
+- [ ] The 8 m test played ranged and too strong. Replay Jungle 1–15 as the Oathbound with the 3 m, 120° sweep: you must step in to hit.
+- [ ] Report: too strong / about right / too weak, and what killed you. HP, damage and the Charge are unchanged on purpose.

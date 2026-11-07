@@ -33,8 +33,8 @@ MonoBehaviour:
   _weaponKind: 0
   _weaponDamage: 13
   _weaponSwingsPerSecond: 3
-  _weaponRange: 8
-  _weaponConeAngleDeg: 60
+  _weaponRange: 3
+  _weaponConeAngleDeg: 120
   _weaponDamageFrame: 0.4
   _weaponShotSpeed: 0
   _weaponShotRadius: 0

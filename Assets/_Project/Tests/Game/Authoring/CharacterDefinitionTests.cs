@@ -115,7 +115,8 @@ public sealed class CharacterDefinitionTests
         // the transposition risk: 3 / 2 / 1 / 1.5 are close enough that a swapped pair would
         // still produce plausible-looking targeting, and no behaviour row would notice.
         Assert.That(spec.Targeting.AcquireRange, Is.EqualTo(12f).Within(Tolerance),
-            "CC §7 targeting: acquire range 12 m — weapon range × 1.5.");
+            "CC §7 targeting: acquire range 12 m — it was weapon range × 1.5 until the 3 m sweep, and stays " +
+            "at 12 so the body still faces what is coming.");
         Assert.That(spec.Targeting.DistanceWeight, Is.EqualTo(3f).Within(Tolerance),
             "CC §7 targeting: distance weight 3.0, not the elite bonus.");
         Assert.That(spec.Targeting.EliteBonus, Is.EqualTo(2f).Within(Tolerance),
@@ -148,10 +149,12 @@ public sealed class CharacterDefinitionTests
             "CC §7 attack: 13 damage a swing, not the swing rate.");
         Assert.That(spec.Weapon.SwingsPerSecond, Is.EqualTo(3f).Within(Tolerance),
             "CC §7 attack: 3.0 swings a second, not the damage.");
-        Assert.That(spec.Weapon.Range, Is.EqualTo(8f).Within(Tolerance),
-            "CC §7 attack: 8 m — and the acquire range above is this × 1.5.");
-        Assert.That(spec.Weapon.ConeAngleDeg, Is.EqualTo(60f).Within(Tolerance),
-            "CC §7 attack: a 60° full arc, not a 60° half-angle.");
+        // Owner, 2026-11-07: at 8 m the Censer played as a ranged class, so the melee test cut it to
+        // a 3 m sweep, widened to 120° so it still reads as a swing.
+        Assert.That(spec.Weapon.Range, Is.EqualTo(3f).Within(Tolerance),
+            "CC §4.1 attack: a 3 m sweep, not the 8 m cone it was.");
+        Assert.That(spec.Weapon.ConeAngleDeg, Is.EqualTo(120f).Within(Tolerance),
+            "CC §4.1 attack: a 120° full arc, not a 120° half-angle.");
         Assert.That(spec.Weapon.DamageFrame, Is.EqualTo(0.4f).Within(Tolerance),
             "CC §4.2: the damage lands 40 % through the swing.");
 

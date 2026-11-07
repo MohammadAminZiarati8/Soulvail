@@ -379,3 +379,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - BM-03c: when the Hound is drawn, check spawn placement beside the Beastmaster after the arena teleports him at run start and at a stage change.
 
 - BM-03b: on Jungle ground in the Editor, place the Hound beside a Panther and a Shadow panther. Check that its upright silhouette, pale coat and cyan collar read as the player's at a glance.
+
+- BM-03c: in Jungle stage 3, watch the Hound follow at heel, chase a marked frog, bite about once a second, and return after the wave. Check the cyan bar and the spawn beside the player on opening and crossing.

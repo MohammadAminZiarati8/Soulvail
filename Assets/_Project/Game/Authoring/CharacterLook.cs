@@ -54,7 +54,8 @@ public readonly struct CharacterLook
         Sprite portrait = null,
         LocKey attackNameKey = default,
         LocKey attackDescriptionKey = default,
-        ProjectileView volleyProjectile = null)
+        ProjectileView volleyProjectile = null,
+        PetView pet = null)
     {
         Body = body;
         Projectile = projectile;
@@ -67,6 +68,7 @@ public readonly struct CharacterLook
         AttackNameKey = attackNameKey;
         AttackDescriptionKey = attackDescriptionKey;
         VolleyProjectile = volleyProjectile;
+        Pet = pet;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -75,6 +77,8 @@ public readonly struct CharacterLook
     /// reference that only the engine's operator calls null.
     /// </remarks>
     public GameObject Body { get; }
+
+    public PetView Pet { get; }
 
     /// <summary>The shot prefab, or null for the run's default shot.</summary>
     /// <remarks>

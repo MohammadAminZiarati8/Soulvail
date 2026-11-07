@@ -82,6 +82,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     /// snapshot's <c>Dt</c>.
     /// </summary>
     private readonly MinionViews _minionViews;
+    private readonly PetViews _petViews;
 
     /// <summary>
     /// The bolts in the air. Held for two reasons and both are the same one: it has to be stepped
@@ -186,9 +187,11 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         BindProbeAdapter bindProbe = null,
         BindingChainView bindingChains = null,
         LaneProbeAdapter laneProbe = null,
-        ChainLinkViews chainLinks = null)
+        ChainLinkViews chainLinks = null,
+        PetViews petViews = null)
     {
         _chainLinks = chainLinks;
+        _petViews = petViews;
         _bindProbe = bindProbe;
         _laneProbe = laneProbe;
         _bindingChains = bindingChains;
@@ -467,6 +470,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // (M2-15a): nothing sweeps a Wight today, and a body written after the flush would be the
         // one exception nobody remembered on the day something does.
         ApplyMinionMoves();
+        _petViews?.ApplyMoves(_intents.PetMoves, _snapshot.Dt);
 
         // Beside the two bodies above and with the same step, which is the whole of M2-09 rule 3:
         // core timed every flight with the snapshot's clamped Dt, so a bolt advanced on

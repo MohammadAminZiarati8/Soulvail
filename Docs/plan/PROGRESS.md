@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Hound model complete._
+_2026-11-07, Hound in the run._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-03b** — Hound prefab, coat and cyan tack, and ten clips on the Panther rig. |
-| **Next task** | BM-03c on a go; playtests owed. |
-| **Verified** | EditMode 6046 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-03c** — The Hound moves, bites and carries a cyan health bar. |
+| **Next task** | BM-04 on a go; playtests owed. |
+| **Verified** | EditMode 6054 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

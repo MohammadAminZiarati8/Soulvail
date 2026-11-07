@@ -681,6 +681,17 @@ namespace Soulvail.Game.Composition
 
             // The gate parameter is gone: where the door is became a question about whichever arena
             // is standing, so the builder takes the pool above and asks it every frame (M2-11a).
+            builder.Register(resolver =>
+            {
+                // ArenaPool must teleport the player before PetViews handles StageArrived.
+                ArenaPool arenas = resolver.Resolve<ArenaPool>();
+                ContentCatalog catalog = resolver.Resolve<ContentCatalog>();
+                ContentId characterId = RunCharacter.Choose(resolver.Resolve<PendingRun>(), catalog,
+                    resolver.Resolve<ClassSelectRoster>());
+                PetView prefab = resolver.Resolve<CharacterLookBook>().For(characterId).Pet;
+                return new PetViews(resolver, prefab, transform, resolver.Resolve<DomainEventHub>(),
+                    resolver.Resolve<PlayerView>(), arenas, _camera);
+            }, Lifetime.Scoped);
             builder.Register<SnapshotBuilder>(Lifetime.Scoped);
 
             // By name, like the enemy prefab below: WithParameter<Camera> would be the same kind of

@@ -65,6 +65,7 @@ public sealed class SnapshotBuilder
     /// the writer that fills the second array.
     /// </remarks>
     private readonly MinionViews _minions;
+    private readonly PetViews _pets;
 
     private readonly NavPathSense _paths;
 
@@ -156,12 +157,13 @@ public sealed class SnapshotBuilder
         NavPathSense paths,
         ArenaPool arenas,
         LineOfSightSense sight,
-        OpenGroundSense openGround)
+        OpenGroundSense openGround, PetViews pets = null)
     {
         _player = player;
         _input = input;
         _enemies = enemies;
         _minions = minions;
+        _pets = pets;
         _paths = paths;
         _arenas = arenas;
         _sight = sight;
@@ -262,6 +264,8 @@ public sealed class SnapshotBuilder
         {
             _minions.CopyInto(snapshot);
         }
+
+        _pets?.CopyInto(snapshot);
 
         WriteSenses(snapshot);
     }

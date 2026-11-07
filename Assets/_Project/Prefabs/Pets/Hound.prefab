@@ -9,6 +9,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 565128800334882347}
+  - component: {fileID: 5700881314092131525}
+  - component: {fileID: 1342280564543246559}
   m_Layer: 0
   m_Name: Hound
   m_TagString: Untagged
@@ -32,6 +34,33 @@ Transform:
   - {fileID: 1560875414798489726}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5700881314092131525
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3638758017639273714}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f7555f5c6e74f04892ba349a1c17c28, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PetHealthBar
+  _height: 1.45
+--- !u!114 &1342280564543246559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3638758017639273714}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f59729461b44d17b5ea887541b72d7f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PetView
+  _animator: {fileID: 4848541988528161284}
+  _healthBar: {fileID: 5700881314092131525}
 --- !u!1001 &1307150644931018645
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -84,6 +113,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Model
       objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 4921ace533a0e9b409c17a27150bba57, type: 3}
+      propertyPath: m_Controller
+      value:
+      objectReference: {fileID: 9100000, guid: b22fcfb3b6b503a4eb89fa31e9d27e0b, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -92,5 +125,10 @@ PrefabInstance:
 --- !u!4 &1560875414798489726 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4921ace533a0e9b409c17a27150bba57, type: 3}
+  m_PrefabInstance: {fileID: 1307150644931018645}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &4848541988528161284 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 4921ace533a0e9b409c17a27150bba57, type: 3}
   m_PrefabInstance: {fileID: 1307150644931018645}
   m_PrefabAsset: {fileID: 0}

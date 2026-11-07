@@ -7,10 +7,15 @@ public readonly struct PetSpawned
     public readonly int Id;
     public readonly Vector3 Position;
 
-    public PetSpawned(int id, Vector3 position)
+    public readonly Vector3? PlayerPosition;
+    public readonly float HealthFraction;
+
+    public PetSpawned(int id, Vector3 position, Vector3? playerPosition = null, float healthFraction = 1f)
     {
         Id = id;
         Position = position;
+        PlayerPosition = playerPosition;
+        HealthFraction = healthFraction;
     }
 }
 

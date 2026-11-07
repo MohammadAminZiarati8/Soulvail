@@ -41,7 +41,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **BM-02b** — Axes and the Mark drawn: spin, cyan trail, claw glyph (M)
 - [x] BM-03a — The Hound in core: `PetSystem`, leash, marked-first, bite, XP, level growth (M)
 - [x] BM-03b — The Hound's model on `Rig_Panther` (M)
-- [ ] [BM-03c](tasks/BM-03c-hound-drawn.md) — The Hound drawn and in the run, always-on cyan bar (M)
+- [x] BM-03c — The Hound drawn and in the run, always-on cyan bar (M)
 - [ ] [BM-04](tasks/BM-04-enemies-turn-on-the-hound.md) — Enemies turn on the Hound: the hunt rule, two hunters, strikes land, it falls (M)
 - [ ] [BM-05a](tasks/BM-05a-heel-fall-rescue.md) — Heel, regen and rescue in core (M)
 - [ ] [BM-05b](tasks/BM-05b-heel-fall-rescue-drawn.md) — Heel, fall and rescue drawn: the ring, the kneel (M)

@@ -90,6 +90,16 @@ MonoBehaviour:
   _body: {fileID: 5016929437214058246, guid: b84299b5a9fd9994e9e64dd99db05ec8, type: 3}
   _projectile: {fileID: 0}
   _volleyProjectile: {fileID: 0}
+  _petId: pet.hound
+  _petMaxHp: 70
+  _petMoveSpeed: 4
+  _petBiteDamage: 7
+  _petBiteInterval: 1
+  _petReach: 1.4
+  _petLeash: 8
+  _petReturnRange: 10
+  _petHeelDistance: 1.5
+  _petPrefab: {fileID: 1342280564543246559, guid: c36791b06fa96a2468ad7e93d624ec53, type: 3}
   _volleyNode: {fileID: 0}
   _emblem: {fileID: 0}
   _spaceIcon: {fileID: 0}

@@ -251,6 +251,18 @@ namespace Soulvail.Game.Authoring
                  "an error: a volley flies the class's shot above.")]
         [SerializeField] private ProjectileView _volleyProjectile;
 
+        [Header("Pet")]
+        [SerializeField] private string _petId;
+        [SerializeField] private float _petMaxHp;
+        [SerializeField] private float _petMoveSpeed;
+        [SerializeField] private float _petBiteDamage;
+        [SerializeField] private float _petBiteInterval;
+        [SerializeField] private float _petReach;
+        [SerializeField] private float _petLeash;
+        [SerializeField] private float _petReturnRange;
+        [SerializeField] private float _petHeelDistance;
+        [SerializeField] private PetView _petPrefab;
+
         [Tooltip("The tree node the HUD draws this class's volley as (UI-01e): its icon heads the " +
                  "auto-cast row once a node has given the volley. The Ranger's is Volley. Empty is " +
                  "not an error: a class with no volley has no cell to draw, and one with a volley " +
@@ -433,7 +445,12 @@ namespace Soulvail.Game.Authoring
                         ? new VolleySpec(_volleyArrows, _volleyFanAngleDeg, _volleyDamageMultiplier)
                         : null,
                     pathIds: PathIds(),
-                    pathOpensAtLevel: _pathOpensAtLevel);
+                    pathOpensAtLevel: _pathOpensAtLevel,
+                    pet: string.IsNullOrEmpty(_petId)
+                        ? null
+                        : new PetSpec(new ContentId(_petId), _petMaxHp, _petMoveSpeed,
+                            _petBiteDamage, _petBiteInterval, _petReach, _petLeash,
+                            _petReturnRange, _petHeelDistance));
             }
             catch (ArgumentException inner)
             {
@@ -469,7 +486,7 @@ namespace Soulvail.Game.Authoring
             _portrait,
             string.IsNullOrEmpty(_attackNameKey) ? default : new LocKey(_attackNameKey),
             string.IsNullOrEmpty(_attackDescriptionKey) ? default : new LocKey(_attackDescriptionKey),
-            _volleyProjectile);
+            _volleyProjectile, _petPrefab);
 
         /// <summary>Only filled cards cross into core as available paths.</summary>
         private IReadOnlyList<ContentId> PathIds()

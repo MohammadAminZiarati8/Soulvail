@@ -18,6 +18,7 @@ public sealed class PetSystem
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly PetAgent[] _pets = new PetAgent[Capacity];
+    private Vector3 _spawnPlayerPosition;
     private int _count;
     private int _nextId = 1;
 
@@ -53,6 +54,7 @@ public sealed class PetSystem
 
         PetAgent pet = _pets[0];
         pet.Id = _nextId++;
+        _spawnPlayerPosition = player;
         pet.Position = player - facing * _spec.HeelDistance;
         pet.State = PetState.Heel;
         pet.QuarryId = 0;
@@ -68,7 +70,7 @@ public sealed class PetSystem
         {
             PetAgent pet = _pets[0];
             pet.Health.Reset();
-            _events.Publish(new PetSpawned(pet.Id, pet.Position));
+            _events.Publish(new PetSpawned(pet.Id, pet.Position, _spawnPlayerPosition, pet.Health.Fraction));
         }
     }
 

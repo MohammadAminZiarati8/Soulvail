@@ -47,7 +47,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BM-05b — Heel, fall and rescue drawn: the ring, the kneel (M)
 - [x] BM-06a — Wild Swap in core on `ChargeSkill` (M)
 - [x] BM-06b — Wild Swap drawn and authored: both leap (M)
-- [ ] [BM-06c](tasks/BM-06c-swap-streak-and-icon.md) — Wild Swap's cyan streak and button icon (M)
+- [x] BM-06c — Wild Swap's cyan streak and button icon (M)
 - [ ] [BM-07a](tasks/BM-07a-feral-bite-and-light-enemies.md) — Feral Bite and light enemies (M)
 - [ ] [BM-07b](tasks/BM-07b-axe-nodes-and-quick-swap.md) — Cleaving Return and Quick Swap in core (S)
 - [ ] [BM-07c](tasks/BM-07c-pounce-core.md) — Pounce in core (M)

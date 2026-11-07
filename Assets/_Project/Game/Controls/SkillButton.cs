@@ -62,6 +62,7 @@ namespace Soulvail.Game.Controls
 
         [Tooltip("The centered icon image wearing Icon_Roll.")]
         [SerializeField] private Image _icon;
+        [SerializeField] private Sprite _swapIcon;
 
         [Tooltip("The frame sprite when movement skill is ready (RollButton_Ready).")]
         [SerializeField] private Sprite _readySprite;
@@ -91,6 +92,7 @@ namespace Soulvail.Game.Controls
         [SerializeField] private Vector2 _marginDp = new Vector2(96f, 96f);
 
         private IRunSession _session;
+        private Sprite _rollIcon;
         private Image[] _chargePips;
         private int _shownCapacity = 1;
         private int _shownReady = -1;
@@ -171,6 +173,7 @@ namespace Soulvail.Game.Controls
             }
 
             Place();
+            _rollIcon = _icon != null ? _icon.sprite : null;
 
             // Drawn once immediately, so a button that shows nothing is unambiguous evidence that
             // the run never started rather than a first frame that has not come round yet.
@@ -247,7 +250,17 @@ namespace Soulvail.Game.Controls
         private void Refresh()
         {
             RunState state = _session.State;
-            bool hide = state is not null && state.Character.MovementSkill.Kind == MovementSkillKind.None;
+            MovementSkillKind kind = state?.Character.MovementSkill.Kind ?? MovementSkillKind.None;
+            if (_icon != null)
+            {
+                Sprite icon = kind == MovementSkillKind.Swap && _swapIcon != null ? _swapIcon : _rollIcon;
+                if (_icon.sprite != icon)
+                {
+                    _icon.sprite = icon;
+                }
+            }
+
+            bool hide = state is not null && kind == MovementSkillKind.None;
 
             if (hide)
             {

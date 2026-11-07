@@ -207,6 +207,7 @@ namespace Soulvail.Game.Composition
         [SerializeField] private ShadeView _shadePrefab;
         [SerializeField] private ShadeBurstView _shadeBurstPrefab;
         [SerializeField] private Material _crossfireLineMaterial;
+        [SerializeField] private LineRenderer _swapStreakPrefab;
         [SerializeField] private AxeView _axePrefab;
         [SerializeField] private RescueRingView _rescueRingPrefab;
         [SerializeField] private SpriteRenderer _markGlyphPrefab;
@@ -322,6 +323,7 @@ namespace Soulvail.Game.Composition
         [SerializeField] private Transform _arenaRoot;
 
         protected override void Configure(IContainerBuilder builder)
+
         {
             RunInstaller.Install(builder);
 
@@ -857,6 +859,16 @@ namespace Soulvail.Game.Composition
                     "raycasts that mask before it winds up, so an empty one means cover blocks " +
                     "nothing (GD §7.2).");
             }
+
+            if (_swapStreakPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} requires {nameof(_swapStreakPrefab)}. Assign the SwapStreak prefab.");
+            }
+
+            builder.RegisterEntryPoint<SwapStreakView>(Lifetime.Scoped)
+                .WithParameter("prefab", _swapStreakPrefab)
+                .WithParameter("parent", _decalRoot);
 
             // The cover raycasts (M2-11b). Sized to the snapshot's capacity for NavPathSense's
             // reason — the cache is keyed by enemy id and evicts only what stopped asking — and

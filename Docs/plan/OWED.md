@@ -402,3 +402,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] Editor — Swap with the Hound inside a frog pair. Beastmaster lands in the fight, the Hound lands behind him, and the frogs turn back to him. Both stay visible and the camera follows Beastmaster without a cut.
 - [ ] Editor — Swap to a fallen Hound. Only Beastmaster leaps, he lands on the body, and the rescue ring fills to half.
 - [ ] Device — Keep the hero in sight through the full swap.
+
+### BM-06c — Wild Swap streak and icon
+
+- [ ] **[Editor]** Swap as the Beastmaster. Check that the cyan streak joins the two landing points and vanishes within a blink.
+- [ ] **[device]** Check that the Beastmaster's swap glyph reads at thumb size and the Ranger still shows the roll icon.
+- [ ] **[Editor playtest]** Before the Beastmaster tree, run the Jungle and check how often the Hound goes down and whether its 20 s self-revive keeps it available often enough. The revive time is the tuning lever.
+

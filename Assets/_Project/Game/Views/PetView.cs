@@ -9,6 +9,7 @@ namespace Soulvail.Game.Views
     public sealed class PetView : MonoBehaviour, IPoolable
     {
         private const float RunBlendSpeed = 4f;
+        private const float LeapHeight = 0.6f;
 
         [SerializeField] private Animator _animator;
         [SerializeField] private PetHealthBar _healthBar;
@@ -20,6 +21,13 @@ namespace Soulvail.Game.Views
         private static readonly int Fallen = Animator.StringToHash("Base Layer.Fall");
         private static readonly int GetUp = Animator.StringToHash("Base Layer.GetUp");
 
+        private static readonly int LeapTrigger = Animator.StringToHash("Leap");
+        private static readonly int Land = Animator.StringToHash("Base Layer.Land");
+
+        private Vector3 _leapFrom;
+        private Vector3 _leapTo;
+        private float _leapSeconds;
+        private float _leapElapsed;
         private Func<int, float?> _healthFraction;
         private bool _heeling;
         private bool _fallen;
@@ -34,6 +42,8 @@ namespace Soulvail.Game.Views
             transform.SetPositionAndRotation(position, Quaternion.identity);
             _healthFraction = readHealthFraction;
             _fallen = false;
+            _leapSeconds = 0f;
+            _animator.ResetTrigger(LeapTrigger);
             SetHeeling(false);
             _healthBar.Bind(healthFraction, camera);
             _animator.ResetTrigger(Bite);
@@ -41,9 +51,55 @@ namespace Soulvail.Game.Views
             _animator.Play(Locomotion, 0, 0f);
         }
 
+        public void Leap(Vector3 to, float seconds)
+        {
+            if (_fallen || !(seconds > 0f))
+            {
+                return;
+            }
+
+            _leapFrom = transform.position;
+            _leapTo = to;
+            _leapElapsed = 0f;
+            _leapSeconds = seconds;
+            Velocity = (to - _leapFrom) / seconds;
+            var facing = new Vector3(Velocity.x, 0f, Velocity.z);
+            if (facing.sqrMagnitude > 0f)
+            {
+                transform.rotation = Quaternion.LookRotation(facing);
+            }
+
+            _animator.ResetTrigger(Bite);
+            _animator.SetTrigger(LeapTrigger);
+        }
+
+        public void StepLeap(float dt)
+        {
+            if (_leapSeconds == 0f)
+            {
+                return;
+            }
+
+            _leapElapsed += dt;
+            float progress = Mathf.Clamp01(_leapElapsed / _leapSeconds);
+            if (progress >= 1f)
+            {
+                transform.position = _leapTo;
+                Velocity = Vector3.zero;
+                _leapSeconds = 0f;
+                _animator.ResetTrigger(LeapTrigger);
+                _animator.SetFloat(Speed, 0f);
+                _animator.Play(Land, 0, 0f);
+                return;
+            }
+
+            transform.position = Vector3.Lerp(_leapFrom, _leapTo, progress)
+                + Vector3.up * (4f * LeapHeight * progress * (1f - progress));
+        }
+
         public void Apply(in EnemyMoveIntent intent, float dt)
         {
-            if (_fallen)
+            if (_fallen || _leapSeconds > 0f)
             {
                 return;
             }
@@ -62,7 +118,7 @@ namespace Soulvail.Game.Views
 
         public void PlayBite()
         {
-            if (!_fallen && _animator.GetCurrentAnimatorStateInfo(0).fullPathHash != GetUp)
+            if (!_fallen && _leapSeconds == 0f && _animator.GetCurrentAnimatorStateInfo(0).fullPathHash != GetUp)
             {
                 _animator.SetTrigger(Bite);
             }
@@ -84,6 +140,8 @@ namespace Soulvail.Game.Views
         public void Fall(Vector3 position)
         {
             _fallen = true;
+            _leapSeconds = 0f;
+            _animator.ResetTrigger(LeapTrigger);
             Velocity = Vector3.zero;
             transform.position = position;
             _healthBar.SetVisible(false);
@@ -115,6 +173,7 @@ namespace Soulvail.Game.Views
         public void OnDespawn()
         {
             _healthFraction = null;
+            _leapSeconds = 0f;
             Id = 0;
             Velocity = Vector3.zero;
         }

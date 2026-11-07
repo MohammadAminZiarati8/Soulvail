@@ -20,6 +20,8 @@ namespace Soulvail.Game.Views
         private readonly int _hit = Animator.StringToHash("Hit");
         private readonly int _dead = Animator.StringToHash("Dead");
         private readonly int _rescuing = Animator.StringToHash("Rescuing");
+        private readonly int _jump = Animator.StringToHash("Base Layer.Jump_Full_Short");
+        private bool _swap;
         private bool _rescueAdvanced;
         private PlayerView _body;
         private int _throwLayer;
@@ -29,11 +31,17 @@ namespace Soulvail.Game.Views
         private IDisposable[] _subscriptions;
 
         [Inject]
-        public void Construct(DomainEventHub events)
+        public void Construct(DomainEventHub events, ContentCatalog catalog = null)
         {
             Unsubscribe();
             _subscriptions = new IDisposable[]
             {
+                events.Subscribe<RunStarted>(evt =>
+                {
+                    _swap = catalog != null && catalog.TryGetCharacter(evt.CharacterId, out CharacterSpec character)
+                        && character.MovementSkill.Kind == MovementSkillKind.Swap;
+                }),
+                events.Subscribe<ChargeStarted>(_ => PlaySwap()),
                 events.Subscribe<PlayerAttacked>(OnAttacked),
                 events.Subscribe<AxeThrown>(OnThrown),
                 events.Subscribe<AxeCaught>(OnCaught),
@@ -63,7 +71,18 @@ namespace Soulvail.Game.Views
             bool kneeling = !_died && _rescueAdvanced && !IsMoving();
             _rescueAdvanced = false;
             _animator.SetBool(_rescuing, kneeling);
-            _animator.SetLayerWeight(_throwLayer, !_died && !kneeling ? 1f : 0f);
+            bool jumping = _animator.GetCurrentAnimatorStateInfo(0).fullPathHash == _jump;
+            _animator.SetLayerWeight(_throwLayer, !_died && !kneeling && !jumping ? 1f : 0f);
+        }
+
+        private void PlaySwap()
+        {
+            if (_swap && !_died)
+            {
+                StopRescue();
+                _animator.SetLayerWeight(_throwLayer, 0f);
+                _animator.Play(_jump, 0, 0f);
+            }
         }
 
         private bool IsMoving() => !_died && _body != null && _body.Velocity.sqrMagnitude > 0.01f;

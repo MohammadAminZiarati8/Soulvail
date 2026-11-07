@@ -470,6 +470,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         // (M2-15a): nothing sweeps a Wight today, and a body written after the flush would be the
         // one exception nobody remembered on the day something does.
         ApplyMinionMoves();
+        _petViews?.ApplyLeaps(_intents.PetLeaps);
         _petViews?.ApplyMoves(_intents.PetMoves, _snapshot.Dt);
 
         // Beside the two bodies above and with the same step, which is the whole of M2-09 rule 3:

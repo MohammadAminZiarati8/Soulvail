@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Wild Swap works in core._
+_2026-11-07, Beastmaster and Hound leap on Wild Swap._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-06a** — Wild Swap in core. |
-| **Next task** | BM-06b on a go. |
-| **Verified** | EditMode 6093 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-06b** — Wild Swap leaps authored. |
+| **Next task** | BM-06c on a go. |
+| **Verified** | EditMode 6098 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

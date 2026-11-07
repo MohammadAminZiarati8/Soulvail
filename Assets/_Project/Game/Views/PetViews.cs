@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Arena;
@@ -87,6 +88,18 @@ public sealed class PetViews : IDisposable
         }
     }
 
+    public void ApplyLeaps(IReadOnlyList<PetLeapIntent> leaps)
+    {
+        for (int i = 0; i < leaps.Count; i++)
+        {
+            PetLeapIntent leap = leaps[i];
+            if (_active.TryGetValue(leap.PetId, out PetView view))
+            {
+                view.Leap(leap.To.ToUnity(), leap.Seconds);
+            }
+        }
+    }
+
     public void ApplyMoves(IReadOnlyList<EnemyMoveIntent> moves, float dt)
     {
         for (int i = 0; i < moves.Count; i++)
@@ -96,6 +109,10 @@ public sealed class PetViews : IDisposable
             {
                 view.Apply(move, dt);
             }
+        }
+        foreach (PetView view in _active.Values)
+        {
+            view.StepLeap(dt);
         }
     }
 

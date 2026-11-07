@@ -395,3 +395,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **Device** — In a crowd at phone zoom, check that the fallen ring and pulsing cyan health bar are readable.
 
 - [ ] BM-06a, after BM-06b authors Wild Swap. In a Beastmaster run, press Space with the Hound on the far side of cover and check that both land at the other's start. With a fallen Hound, check that only the player leaps and rescue starts half done.
+
+
+## BM-06b — Wild Swap leaps
+
+- [ ] Editor — Swap with the Hound inside a frog pair. Beastmaster lands in the fight, the Hound lands behind him, and the frogs turn back to him. Both stay visible and the camera follows Beastmaster without a cut.
+- [ ] Editor — Swap to a fallen Hound. Only Beastmaster leaps, he lands on the body, and the rescue ring fills to half.
+- [ ] Device — Keep the hero in sight through the full swap.

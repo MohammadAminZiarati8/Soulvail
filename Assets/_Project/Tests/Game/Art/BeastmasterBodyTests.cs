@@ -54,7 +54,6 @@ public sealed class BeastmasterBodyTests
         Assert.That(spec.Weapon.ShotRadius, Is.EqualTo(0.5f));
         Assert.That(spec.Weapon.MarkSeconds, Is.EqualTo(4f));
         Assert.That(spec.Weapon.FiresWhileMoving, Is.True);
-        Assert.That(spec.MovementSkill.Kind, Is.EqualTo(MovementSkillKind.None));
         Assert.That(spec.Unlock, Is.Null);
         Assert.That(spec.Minions, Is.Null);
     }
@@ -167,7 +166,7 @@ public sealed class BeastmasterBodyTests
         Assert.That(upper.stateMachine.states.Single(state => state.state.name == "Throw").state.motion.name,
             Is.EqualTo("Throw"));
         Assert.That(controller.animationClips.Select(clip => clip.name),
-            Is.EquivalentTo(new[] { "Idle_A", "Running_A", "Hit_A", "Death_A", "PickUp", "Throw" }));
+            Is.EquivalentTo(new[] { "Idle_A", "Running_A", "Hit_A", "Death_A", "PickUp", "Throw", "Jump_Full_Short" }));
         foreach (AnimationClip clip in controller.animationClips)
         {
             Assert.That(AssetDatabase.GetAssetPath(clip), Does.StartWith("Assets/ThirdParty/KayKit/Animations/Rig_Medium/"));

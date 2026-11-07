@@ -363,6 +363,11 @@ namespace Soulvail.Game.Authoring
         {
             try
             {
+                if (_movementSkillKind == MovementSkillKind.Swap && string.IsNullOrEmpty(_petId))
+                {
+                    throw new ArgumentException("Swap requires a pet.");
+                }
+
                 return new CharacterSpec(
                     new ContentId(_id),
                     new LocKey(_nameKey),

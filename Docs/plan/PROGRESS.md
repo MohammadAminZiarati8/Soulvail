@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, EA-06._
+_2026-11-07, Mossguard decoy fix._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **EA-06** — Echo Archer look. |
-| **Next task** | none planned — the Echo Archer block is done. Landscape awaits the owner's word. |
-| **Verified** | EditMode 5977 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **Fix** — a lured Mossguard's shield faces the real player. |
+| **Next task** | None planned; Landscape awaits the owner's word. |
+| **Verified** | EditMode 5979 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

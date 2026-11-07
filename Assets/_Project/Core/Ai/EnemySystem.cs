@@ -1728,6 +1728,14 @@ public sealed class EnemySystem
                 ? Vector2.Zero
                 : toPlayer / distance;
 
+            // The real player's bearing, written every tick whether lured or not, so a shield
+            // faces the arrows rather than the decoy the bearer is walking at.
+            var toRealPlayer = new Vector2(playerPosition.X - position.X, playerPosition.Z - position.Z);
+            float realDistance = toRealPlayer.Length();
+            blackboard.DirectionToRealPlayer = realDistance < MinDirectionDistance
+                ? Vector2.Zero
+                : toRealPlayer / realDistance;
+
             // Written unconditionally, so a decoy that rotted since the last tick lowers it — the
             // same discipline every perception field on this blackboard keeps.
             blackboard.QuarryIsADecoy = lured;

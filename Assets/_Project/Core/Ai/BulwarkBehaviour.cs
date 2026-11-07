@@ -25,6 +25,7 @@ public sealed class BulwarkBehaviour : IEnemyBehaviour
     private readonly StateMachine<BulwarkState> _machine;
     private Vector2 _facing = Vector2.UnitY;
     private bool _firstTick = true;
+    private bool _quarryInFront;
     private float _now;
     private PlayerCombat _player;
     private IIntentSink _intents;
@@ -66,7 +67,10 @@ public sealed class BulwarkBehaviour : IEnemyBehaviour
                 Turn(Path(), MathF.Max(0f, ctx.Dt));
             }
 
-            bool shielded = InArc(_agent.Blackboard.DirectionToPlayer, Shield.ShieldHalfArcDegrees);
+            // The shield answers where the player is, not where a decoy drew the bearer: lured
+            // round to face one, its back is open to the player behind it.
+            bool shielded = InArc(_agent.Blackboard.DirectionToRealPlayer, Shield.ShieldHalfArcDegrees);
+            _quarryInFront = InArc(_agent.Blackboard.DirectionToPlayer, Shield.ShieldHalfArcDegrees);
             _agent.Health.SetExternalInvulnerable(shielded);
             _agent.IsVulnerable = !shielded;
             _machine.Tick(ctx.Dt);
@@ -86,6 +90,7 @@ public sealed class BulwarkBehaviour : IEnemyBehaviour
         _agent.Blackboard.NextAttackAt = 0f;
         _agent.Health.SetExternalInvulnerable(false);
         _agent.IsVulnerable = true;
+        _quarryInFront = false;
         _facing = Vector2.UnitY;
         _firstTick = true;
     }
@@ -93,7 +98,7 @@ public sealed class BulwarkBehaviour : IEnemyBehaviour
     private void TickApproach(float dt)
     {
         EnemyBlackboard board = _agent.Blackboard;
-        if (board.DistanceToPlayer <= _agent.Spec.Reach && !_agent.IsVulnerable
+        if (board.DistanceToPlayer <= _agent.Spec.Reach && _quarryInFront
             && _now >= board.NextAttackAt)
         {
             Stand();

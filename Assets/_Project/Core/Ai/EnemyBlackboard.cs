@@ -68,6 +68,15 @@ public sealed class EnemyBlackboard
     public Vector2 DirectionToPlayer;
 
     /// <summary>
+    /// Unit XZ direction to the <em>real</em> player, decoy or not; zero when the two are in the
+    /// same place. Equal to <see cref="DirectionToPlayer"/> while <see cref="QuarryIsADecoy"/> is
+    /// down. A question about where the player's shots come from — a frontal shield's — reads
+    /// this and never the quarry: a Bulwark lured round to face a decoy is open to the player
+    /// behind it.
+    /// </summary>
+    public Vector2 DirectionToRealPlayer;
+
+    /// <summary>
     /// Unit XZ direction to the player along the NavMesh (M1-19), or zero when there is no path or
     /// no NavMesh yet. Behaviours fall back to <see cref="DirectionToPlayer"/> when it is zero, so
     /// a chaser works before pathfinding lands and works better after.
@@ -198,6 +207,7 @@ public sealed class EnemyBlackboard
         PlayerPosition = Vector3.Zero;
         DistanceToPlayer = 0f;
         DirectionToPlayer = Vector2.Zero;
+        DirectionToRealPlayer = Vector2.Zero;
         PathDirectionToPlayer = Vector2.Zero;
         HasLineOfSight = false;
         IsBehindCover = false;

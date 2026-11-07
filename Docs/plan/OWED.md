@@ -353,3 +353,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] Device. At rank 3, check for a frame drop while six Hall shades and the Ranger are shooting.
 
 - [ ] **EA-06 [Editor]** Choose the Echo Archer. Check that trim, bow and trails read smoky deep cyan at a glance against the Marksman and Skirmisher, and that the shades still read apart from the hero.
+
+## Fix — lured Mossguard shield
+
+- [ ] Editor, Jungle stage 17–19 (Mossguards), Echo Archer with Decoy Roll. Roll past a Mossguard so it turns to the decoy. Check that the Ranger shoots its back at once and the arrows land; from in front they are still blocked.

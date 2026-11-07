@@ -65,6 +65,33 @@ public sealed class BulwarkBehaviourTests
         Assert.That(_agent.IsVulnerable, Is.EqualTo(!shielded));
     }
 
+    // Decoy fix (2026-11-07): lured round to face a decoy, the shield answers the real player.
+    // Driven through EnemySystem's perception with a real lure, so the field's writer is covered.
+    [TestCase(-4f, true, TestName = "Bulwark_Lured_PlayerBehind_IsOpen")]
+    [TestCase(8f, false, TestName = "Bulwark_Lured_PlayerInFront_IsShielded")]
+    public void Bulwark_Lured_ShieldAnswersTheRealPlayer(float playerZ, bool open)
+    {
+        var lures = new LureSystem(_events);
+        lures.Drop(new Vector3(0f, 0f, 4f), 0f, 5f);
+        var snapshot = new WorldSnapshot(16) { Dt = 0f, PlayerPosition = new Vector3(0f, 0f, playerZ) };
+        ref EnemySense sense = ref snapshot.AddEnemy();
+        sense.Id = _agent.Id;
+        sense.Position = _agent.Position;
+        sense.Velocity = Vector3.Zero;
+        sense.PathDirectionToPlayer = Vector2.Zero;
+        sense.HasLineOfSight = true;
+        _system.Ingest(snapshot, lures);
+        Tick(0f);
+
+        Assert.That(_agent.Blackboard.QuarryIsADecoy, Is.True);
+        Assert.That(_intents.LastEnemyMove.FacingXZ.Y, Is.GreaterThan(0.99f), "Faces the decoy.");
+        Assert.That(_agent.IsVulnerable, Is.EqualTo(open));
+        _events.Clear();
+        DamageResult result = _system.ApplyDamage(_agent.Id, 20f, _now, _player);
+        Assert.That(result.Blocked, Is.EqualTo(!open));
+        Assert.That(_agent.Health.Current, Is.EqualTo(open ? 70f : 90f));
+    }
+
     // Rule 2: through the public damage door, including the fact the views will consume.
     [TestCase(0f, true, TestName = "Bulwark_ShieldedHit_IsBlocked")]
     [TestCase(180f, false, TestName = "Bulwark_HitFromBehind_Lands")]
@@ -297,6 +324,7 @@ public sealed class BulwarkBehaviourTests
     private void Bearing(float degrees, float distance)
     {
         _agent.Blackboard.DirectionToPlayer = Direction(degrees);
+        _agent.Blackboard.DirectionToRealPlayer = Direction(degrees);
         _agent.Blackboard.DistanceToPlayer = distance;
     }
 

@@ -458,6 +458,7 @@ public sealed class KillshotTests
             ? _enemies.SpawnBoss(new ContentId("boss.warlord"), new Vector3(3f, 0f, 0f))
             : _enemies.Spawn(GuardBody().Id, new Vector3(3f, 0f, 0f));
         agent.Blackboard.DirectionToPlayer = -Vector2.UnitX;
+        agent.Blackboard.DirectionToRealPlayer = -Vector2.UnitX;
         agent.Blackboard.PathDirectionToPlayer = -Vector2.UnitX;
         agent.Blackboard.DistanceToPlayer = 3f;
         agent.Blackboard.SelfPosition = agent.Position;

@@ -129,11 +129,21 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6a850892b44e3d54faf069e1768a8121, type: 2}
   - {fileID: 11400000, guid: 7740fc83c26bd374391ab8b35e622b72, type: 2}
   - {fileID: 11400000, guid: a5063abc593b30047a7b9fd2b4b2f816, type: 2}
+  - {fileID: 11400000, guid: 192266532078c3748a6476ac833875fb, type: 2}
+  - {fileID: 11400000, guid: c81c81286ebd72f44b2348c7ef11d12e, type: 2}
+  - {fileID: 11400000, guid: b259e5a145c892f4597bce26d364e2e0, type: 2}
+  - {fileID: 11400000, guid: d96fdcfce02a203478a885976982a0e2, type: 2}
+  - {fileID: 11400000, guid: 06926c6f2ef048c4da3f2cb1dda268b3, type: 2}
+  - {fileID: 11400000, guid: 2cad870aaa7e89744bc34a4481419ba3, type: 2}
+  - {fileID: 11400000, guid: dbd0aa31706b0b941b1ef8f09b3f3ed6, type: 2}
+  - {fileID: 11400000, guid: 255e39eb3faaed444bac01b73a47d7c0, type: 2}
+  - {fileID: 11400000, guid: 3b51bab68951d2a479ee6930818efce4, type: 2}
   _trees:
   - {fileID: 11400000, guid: 552e56837856cfa43975643ea6cab493, type: 2}
   - {fileID: 11400000, guid: cbfbf7fc1482c7d104ca2fbfef607ee2, type: 2}
   - {fileID: 11400000, guid: dbd457d61ab3677ed9ba4d1812440b5d, type: 2}
   - {fileID: 11400000, guid: fa38ddb8be599ec46b6b8cabafb9fa26, type: 2}
+  - {fileID: 11400000, guid: c71f05a2d1e1aa549aa9e73aefc0bcd3, type: 2}
   _bosses:
   - {fileID: 11400000, guid: 74a6fdaa03d6e184fbff110ee9000655, type: 2}
   - {fileID: 11400000, guid: 8e9df31e6f18431882ba7ef334877696, type: 2}

@@ -856,3 +856,48 @@ MonoBehaviour:
     _text: Beastmaster
   - _key: character.beastmaster.description
     _text: Hurls returning axes and keeps moving.
+  - _key: tree.beastmaster.axe
+    _text: Axe
+  - _key: tree.beastmaster.beast
+    _text: Beast
+  - _key: tree.beastmaster.wild
+    _text: Wild
+  - _key: skill.beastmaster.heavy-edge.name
+    _text: Heavy Edge
+  - _key: skill.beastmaster.heavy-edge.description
+    _text: +12% axe damage.
+  - _key: skill.beastmaster.third-axe.name
+    _text: Third Axe
+  - _key: skill.beastmaster.third-axe.description
+    _text: Carry one more axe.
+  - _key: skill.beastmaster.cleaving-return.name
+    _text: Cleaving Return
+  - _key: skill.beastmaster.cleaving-return.description
+    _text: Returning axes deal 50% more damage and slow by 25%.
+  - _key: skill.beastmaster.sharp-claws.name
+    _text: Sharp Claws
+  - _key: skill.beastmaster.sharp-claws.description
+    _text: +15% hound bite damage.
+  - _key: skill.beastmaster.feral-bite.name
+    _text: Feral Bite
+  - _key: skill.beastmaster.feral-bite.description
+    _text: Every third bite stuns a light enemy.
+  - _key: skill.beastmaster.pounce.name
+    _text: Pounce
+  - _key: skill.beastmaster.pounce.description
+    _text: "The hound leaps at a marked enemy 3\u20136 m away for double bite damage
+      and knocks light enemies down."
+  - _key: skill.beastmaster.thick-hide.name
+    _text: Thick Hide
+  - _key: skill.beastmaster.thick-hide.description
+    _text: +10% max health for you and the hound.
+  - _key: skill.beastmaster.lick-wounds.name
+    _text: Lick Wounds
+  - _key: skill.beastmaster.lick-wounds.description
+    _text: The hound heals 6% more max health per second at heel and rejoins at 60%
+      health.
+  - _key: skill.beastmaster.quick-swap.name
+    _text: Quick Swap
+  - _key: skill.beastmaster.quick-swap.description
+    _text: Swap recharges 1 s sooner and slows enemies near the hound's landing by
+      30%.

@@ -416,14 +416,6 @@ public sealed class SkillTreeValidationTests
 
             CharacterSpec spec = definition.ToSpec();
 
-            // BM-02a ships the body for playtesting. Remove this exemption when BM-07 adds the tree.
-            if (spec.Id == new ContentId("character.beastmaster"))
-            {
-                Assert.That(catalog.TryGetTreeFor(spec.Id, out _), Is.False,
-                    "BM-07 has landed. Remove the Beastmaster's temporary tree exemption.");
-                continue;
-            }
-
             if (!catalog.TryGetTreeFor(spec.Id, out SkillTreeSpec _))
             {
                 problems.Add(
@@ -738,6 +730,7 @@ public sealed class SkillTreeValidationTests
         // **The seventh, predicted by M5-06b's As built 6 and arriving the same way** (M6-08 rule
         // 5): Emberfall and Cinder Nova cast a SpawnBurnZone, and the starve walks went red on it.
         registry.Register<SpawnBurnZone>(new Ignoring<SpawnBurnZone>());
+        registry.Register<Pounce>(new Ignoring<Pounce>());
 
         return registry;
     }

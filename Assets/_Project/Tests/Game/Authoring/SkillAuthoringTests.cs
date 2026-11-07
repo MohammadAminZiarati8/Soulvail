@@ -1013,11 +1013,11 @@ public sealed class SkillAuthoringTests
         // the two fields are still present and still reachable from this fixture's own prefab load.
         Assert.That(
             skills.arraySize,
-            Is.EqualTo(45),
+            Is.EqualTo(54),
             "M3-12c's twelve Oathbound nodes, M5-06b's twelve Gravecaller ones, M6-08's twelve "
-                + "Emberwright ones and RS-03c's nine Ranger ones.");
+                + "Emberwright ones, plus nine each for Ranger and Beastmaster.");
 
-        Assert.That(trees.arraySize, Is.EqualTo(4), "One tree per shipped class, since M6-08.");
+        Assert.That(trees.arraySize, Is.EqualTo(5), "Five authored trees.");
     }
 
     // ------------------------------------------------------------------------------- helpers

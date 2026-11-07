@@ -619,7 +619,8 @@ public sealed class EmberwrightTreeTests
                 || path.StartsWith(RangerEffectDir, StringComparison.Ordinal)
                 || path.StartsWith("Assets/_Project/Data/Skills/Marksman/", StringComparison.Ordinal)
                 || path.StartsWith("Assets/_Project/Data/Skills/Skirmisher/", StringComparison.Ordinal)
-                || path.StartsWith("Assets/_Project/Data/Skills/EchoArcher/", StringComparison.Ordinal))
+                || path.StartsWith("Assets/_Project/Data/Skills/EchoArcher/", StringComparison.Ordinal)
+                || path.StartsWith("Assets/_Project/Data/Effects/Beastmaster/", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -805,8 +806,8 @@ public sealed class EmberwrightTreeTests
         SerializedProperty skills = serialized.FindProperty("_skills");
         SerializedProperty trees = serialized.FindProperty("_trees");
 
-        Assert.That(skills.arraySize, Is.EqualTo(45), "Thirty-six since M6-08, and RS-03c's nine.");
-        Assert.That(trees.arraySize, Is.EqualTo(4));
+        Assert.That(skills.arraySize, Is.EqualTo(54), "Thirty-six since M6-08, plus nine each for Ranger and Beastmaster.");
+        Assert.That(trees.arraySize, Is.EqualTo(5));
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
 
@@ -1087,7 +1088,7 @@ public sealed class EmberwrightTreeTests
             skills.Add(Load<SkillDefinition>(path).ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(105), "Three twelve-node classes, Ranger's nine, and 60 Ranger path ranks.");
+        Assert.That(skills, Has.Count.EqualTo(114), "Three twelve-node classes, nine each for Ranger and Beastmaster, and 60 Ranger path ranks.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

@@ -698,8 +698,8 @@ public sealed class GravecallerTreeTests
         SerializedProperty skills = serialized.FindProperty("_skills");
         SerializedProperty trees = serialized.FindProperty("_trees");
 
-        Assert.That(skills.arraySize, Is.EqualTo(45), "Twelve nodes for each of three classes since M6-08, and the Ranger's nine.");
-        Assert.That(trees.arraySize, Is.EqualTo(4));
+        Assert.That(skills.arraySize, Is.EqualTo(54), "Twelve nodes for each of three classes, plus nine each for Ranger and Beastmaster.");
+        Assert.That(trees.arraySize, Is.EqualTo(5));
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
 
@@ -726,7 +726,7 @@ public sealed class GravecallerTreeTests
             treeIds.Add(tree.Id);
         }
 
-        Assert.That(treeIds, Is.EquivalentTo(new[] { "tree.oathbound", "tree.gravecaller", "tree.emberwright", "tree.ranger" }));
+        Assert.That(treeIds, Is.EquivalentTo(new[] { "tree.oathbound", "tree.gravecaller", "tree.emberwright", "tree.ranger", "tree.beastmaster" }));
 
         // And the answer that has been false for every Gravecaller since M5-02.
         ContentCatalog catalog = Catalog();
@@ -888,7 +888,7 @@ public sealed class GravecallerTreeTests
             skills.Add(definition.ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(105), "Three twelve-node classes, Ranger's nine, and 60 Ranger path ranks.");
+        Assert.That(skills, Has.Count.EqualTo(114), "Three twelve-node classes, nine each for Ranger and Beastmaster, and 60 Ranger path ranks.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

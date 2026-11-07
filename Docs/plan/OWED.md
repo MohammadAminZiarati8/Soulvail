@@ -415,3 +415,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **[Editor check]** Once BM-07d wires the node, learn Feral Bite and check that the third bite on a Frog shows stun stars and the stun bar icon. Check that a third bite on a Bullfrog shows neither.
 
 - [ ] BM-07c (once Pounce is authored): In the Editor, cast from the arc and in Auto. Check that the trigger label reads in English and Pseudo, a light enemy is knocked down, and a Bullfrog or boss stays upright.
+
+- **BM-07d [Editor]** — Start Beastmaster at stage 8 with DT-01 and banked points. Learn all nine nodes in tier order. Check Pounce appears in the arc with Auto on. Mark a frog 4 m from the hound and check the hound arcs and lands on it. Check that Quick Swap slows frogs near the landing.

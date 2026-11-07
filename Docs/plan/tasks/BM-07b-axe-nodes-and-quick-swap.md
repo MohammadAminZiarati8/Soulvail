@@ -35,7 +35,8 @@ public sealed class PetSystem { public const float RoarRadius = 3f; public const
    fraction (clamped 0–0.9) for `ReturnSlowSeconds`, through `EnemySystem.Slow` (bosses immune).
    Out-pass hits never slow.
 2. **Quick Swap:** with `SwapRoarSlow` > 0, when a swap's pet leap ends, every living enemy within
-   `RoarRadius` of the landing point is slowed by that fraction for `RoarSlowSeconds`; `PetRoared`.
+   `RoarRadius` of the landing point is slowed by that fraction for `RoarSlowSeconds` through the
+   public `EnemySystem.Slow` (bosses immune, as rule 1 and JG-26a; no half-duration path); `PetRoared`.
    A fallen pet's swap has no landing, so no roar.
 3. 0 on either stat does nothing and publishes nothing.
 
@@ -44,7 +45,7 @@ public sealed class PetSystem { public const float RoarRadius = 3f; public const
 | Test | Given / When / Then |
 |---|---|
 | `ReturnHit_Slows_OutHitDoesNot` / `ReturnSlow_Boss_Immune` (1) |
-| `SwapLanding_RoarSlowsWithinThree` / `FallenSwap_NoRoar` (2) |
+| `SwapLanding_RoarSlowsWithinThree` / `SwapRoar_Boss_Immune` / `FallenSwap_NoRoar` (2) |
 | `ZeroStats_Silent` (3) |
 
 ## Out of scope

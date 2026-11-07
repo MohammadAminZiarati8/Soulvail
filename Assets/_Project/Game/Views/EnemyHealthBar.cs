@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
@@ -294,6 +295,21 @@ namespace Soulvail.Game.Views
         private void DrawStatuses()
         {
             int shown = IsShown ? _row.Shown(_isElite) : 0;
+            // Mark already has a body glyph. The bar gives every other status the space first.
+            int markRank = -1;
+            if (_row.Count > 1)
+            {
+                for (int rank = 0; rank < _row.Count; rank++)
+                {
+                    if (_row.RuleAt(rank).Id.Value == EnemyStatuses.MarkedKey)
+                    {
+                        markRank = rank;
+                        shown = Mathf.Min(shown, _row.Count - 1);
+                        break;
+                    }
+                }
+            }
+
             float px = _statusPx;
             for (int i = 0; i < SlotCount; i++)
             {
@@ -314,7 +330,10 @@ namespace Soulvail.Game.Views
                     continue;
                 }
 
-                Sprite sprite = _book != null ? _book.For(_row.RuleAt(i).Id) : null;
+                int statusRank = markRank >= 0 && i >= markRank ? i + 1 : i;
+                var statusId = _row.RuleAt(statusRank).Id;
+                Sprite sprite = _book != null ? _book.For(statusId) : null;
+                icon.color = statusId.Value == EnemyStatuses.MarkedKey ? Palette.Player : Color.white;
                 if (icon.sprite != sprite)
                 {
                     icon.sprite = sprite;
@@ -325,13 +344,13 @@ namespace Soulvail.Game.Views
                 rect.pivot = new Vector2(0.5f, 0f);
                 rect.sizeDelta = Vector2.one * (14f * px);
                 rect.anchoredPosition = new Vector2((i - (shown - 1) * 0.5f) * 16f, 2f) * px;
-                float fill = _row.FillAt(i);
+                float fill = _row.FillAt(statusRank);
                 if (!Mathf.Approximately(_statusSweeps[i].fillAmount, fill))
                 {
                     _statusSweeps[i].fillAmount = fill;
                 }
 
-                int stacks = _row.StacksAt(i);
+                int stacks = _row.StacksAt(statusRank);
                 TMP_Text label = _statusStacks[i];
                 bool counted = stacks > 1;
                 if (label.gameObject.activeSelf != counted)

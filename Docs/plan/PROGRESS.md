@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Beastmaster in class select._
+_2026-11-07, Axes and Mark drawn._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-02a** — Beastmaster body and class. |
-| **Next task** | BM-02b on a go; playtests owed. |
-| **Verified** | EditMode 6022 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-02b** — Axes and the Mark drawn. |
+| **Next task** | BM-03a on a go; playtests owed. |
+| **Verified** | EditMode 6028 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

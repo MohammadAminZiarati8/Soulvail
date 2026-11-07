@@ -207,6 +207,8 @@ namespace Soulvail.Game.Composition
         [SerializeField] private ShadeView _shadePrefab;
         [SerializeField] private ShadeBurstView _shadeBurstPrefab;
         [SerializeField] private Material _crossfireLineMaterial;
+        [SerializeField] private AxeView _axePrefab;
+        [SerializeField] private SpriteRenderer _markGlyphPrefab;
         [SerializeField] private HallOfMirrorsView _hallRingPrefab;
 
         [Tooltip("Where standing Wights are parented. Optional — they go to the scene root " +
@@ -731,6 +733,32 @@ namespace Soulvail.Game.Composition
                     .WithParameter("player", _playerView)
                     .WithParameter("burstPrefab", _shadeBurstPrefab)
                     .WithParameter("burstParent", _decalRoot);
+            }
+
+            if (_axePrefab != null)
+            {
+                builder.RegisterEntryPoint<AxeViews>(Lifetime.Scoped)
+                    .WithParameter("prefab", _axePrefab)
+                    .WithParameter("parent", _projectileParent)
+                    .WithParameter("readFlight", resolver =>
+                    {
+                        IRunSession session = resolver.Resolve<IRunSession>();
+                        return (AxeViews.ReadFlight)(() => session.State is { } state ? state.InFlightAxes : default);
+                    });
+            }
+
+            if (_markGlyphPrefab != null)
+            {
+                builder.RegisterEntryPoint<MarkGlyphViews>(Lifetime.Scoped)
+                    .WithParameter("prefab", _markGlyphPrefab)
+                    .WithParameter("parent", _decalRoot)
+                    .WithParameter("viewer", _camera.transform)
+                    .WithParameter("findEnemy", resolver =>
+                    {
+                        EnemyViews enemies = resolver.Resolve<EnemyViews>();
+                        return (Func<int, EnemyView>)(id => enemies.TryGet(id, out EnemyView enemy) ? enemy : null);
+                    })
+                    .WithParameter("prewarm", PrewarmCount());
             }
 
             if (_crossfireLineMaterial != null)

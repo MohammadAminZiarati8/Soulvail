@@ -38,7 +38,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BM-01a — Returning axes in core: full-range flight, homing return, hits on both passes (M)
 - [x] **BM-01b** — The Mark in core: an axe hit marks for 4 s (S)
 - [x] **BM-02a** — The Beastmaster's body and character asset, in class select (M)
-- [ ] [BM-02b](tasks/BM-02b-axes-and-mark-drawn.md) — Axes and the Mark drawn: spin, cyan trail, claw glyph (M)
+- [x] **BM-02b** — Axes and the Mark drawn: spin, cyan trail, claw glyph (M)
 - [ ] [BM-03a](tasks/BM-03a-the-hound-in-core.md) — The Hound in core: `PetSystem`, leash, marked-first, bite, XP, level growth (M)
 - [ ] [BM-03b](tasks/BM-03b-hound-model.md) — The Hound's model on `Rig_Panther` (M)
 - [ ] [BM-03c](tasks/BM-03c-hound-drawn.md) — The Hound drawn and in the run, always-on cyan bar (M)

@@ -370,3 +370,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] Report: too strong / about right / too weak, and what killed you. HP, damage and the Charge are unchanged on purpose.
 
 - BM-02a (2026-11-07): Jungle stage 1 as Beastmaster. Walk while throwing and check that the legs keep moving, the hand axes hide and return, and a Frog takes about three throws. The 8 m flight is covered by core tests; the visible flight comes with BM-02b.
+
+### BM-02b — Axes and the Mark drawn
+
+- [ ] Editor: Throw into a crowd of Frogs. Check both flight passes, the spin, the cyan trail and the turn flash. Check that each struck Frog loses the glyph 4 s after its last hit.
+- [ ] Device: Check the claw glyph over a Frog and a Panther at phone zoom.

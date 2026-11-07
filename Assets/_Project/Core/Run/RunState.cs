@@ -1054,6 +1054,10 @@ public sealed class RunState
     /// </remarks>
     public int InFlightProjectiles => Projectiles.InFlightCount;
 
+    /// <summary>The current flight poses for the returning axe presentation.</summary>
+    public System.ReadOnlySpan<Axe> InFlightAxes =>
+        Combat.Axes is AxeSystem axes ? axes.InFlight : default;
+
     /// <summary>
     /// How many enemies are registered in the run.
     /// </summary>

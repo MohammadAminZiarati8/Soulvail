@@ -78,17 +78,14 @@ public sealed class ModifyStatTests
 
         foreach (PlayerStat member in Enum.GetValues(typeof(PlayerStat)))
         {
-            // The one member the player does not have, and the only named exception this row
-            // carries (M4-01a rule 1). PlayerStat became the address space *every* combatant is
-            // addressed in, so it holds one number no PlayerStats can answer — and the refusal is
-            // asserted here rather than waved past, because "not in the switch" and "deliberately
-            // not the player's" must not look the same from this row.
-            if (member == PlayerStat.ContactDamage)
+            // These addresses are reserved for other combatants.
+            if (member is PlayerStat.ContactDamage
+                or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds)
             {
                 Assert.That(
                     () => stats.Resolve(member),
                     Throws.TypeOf<ArgumentOutOfRangeException>(),
-                    "A player has no contact damage. Only CombatantStats answers this address.");
+                    "This address belongs to another combatant.");
 
                 Assert.That(stats.Has(member), Is.False, "Has must agree with the refusal.");
 
@@ -195,7 +192,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(58), "Fifty-nine members with one enemy-only address.");
+        Assert.That(answered, Is.EqualTo(58), "Sixty-two members with four addresses reserved for other combatants.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

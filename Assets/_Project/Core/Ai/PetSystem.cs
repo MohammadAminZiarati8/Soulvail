@@ -15,6 +15,7 @@ public sealed class PetSystem
     public const int MaxHunters = 2;
     public const float HuntMemory = 2f;
     public const float RetargetInterval = 0.5f;
+    public const float AtHeelRadius = 2f;
 
     private readonly PetSpec _spec;
     private readonly IDomainEvents _events;
@@ -65,6 +66,8 @@ public sealed class PetSystem
         pet.State = PetState.Heel;
         pet.QuarryId = 0;
         pet.Returning = false;
+        pet.RecoveringAtHeel = false;
+        pet.RescueProgress = 0f;
         pet.NextBiteAt = now;
         pet.NextRetargetAt = now;
         _count = 1;
@@ -100,14 +103,40 @@ public sealed class PetSystem
     {
         foreach (PetAgent pet in Pets)
         {
+            float playerDistanceSquared = Offset(pet.Position, player).LengthSquared();
             if (pet.State == PetState.Fallen)
             {
+                if (dt > 0f && playerDistanceSquared <= _spec.RescueRadius * _spec.RescueRadius)
+                {
+                    float seconds = pet.RescueSeconds.Value;
+                    AdvanceRescue(pet, seconds > 0f ? dt / seconds : 1f);
+                }
+
                 continue;
             }
 
             _enemies = enemies.Registry;
             _now = now;
-            EnemyAgent quarry = ChooseQuarry(pet, now, player, enemies);
+            if (!pet.RecoveringAtHeel && pet.Health.Fraction < pet.HeelAt.Value)
+            {
+                pet.RecoveringAtHeel = true;
+                pet.State = PetState.Heel;
+                SetQuarry(pet, 0);
+                _events.Publish(new PetHeeled(pet.Id));
+            }
+
+            EnemyAgent quarry = pet.RecoveringAtHeel ? null : ChooseQuarry(pet, now, player, enemies);
+            if (pet.State == PetState.Heel && dt > 0f && playerDistanceSquared <= AtHeelRadius * AtHeelRadius)
+            {
+                pet.Health.Heal(pet.HeelRegen.Value * pet.MaxHp.Value * dt);
+            }
+
+            if (pet.RecoveringAtHeel && pet.Health.Fraction >= pet.ReturnAt.Value)
+            {
+                pet.RecoveringAtHeel = false;
+                quarry = ChooseQuarry(pet, now, player, enemies);
+                _events.Publish(new PetReturned(pet.Id));
+            }
             Vector2 offset = Offset(pet.Position, quarry?.Position ?? player);
             float distance = offset.Length();
             float stopAt = quarry is null ? _spec.HeelDistance : _spec.Reach;
@@ -177,6 +206,35 @@ public sealed class PetSystem
         }
 
         return result;
+    }
+
+    public void AddRescueHeadStart(int petId, float fraction)
+    {
+        int index = IndexOf(petId);
+        if (index >= 0 && _pets[index].State == PetState.Fallen && fraction > 0f)
+        {
+            AdvanceRescue(_pets[index], fraction);
+        }
+    }
+
+    private void AdvanceRescue(PetAgent pet, float fraction)
+    {
+        float progress = MathF.Min(1f, pet.RescueProgress + fraction);
+        if (progress == pet.RescueProgress)
+        {
+            return;
+        }
+
+        pet.RescueProgress = progress;
+        _events.Publish(new RescueProgressed(pet.Id, progress));
+        if (progress == 1f)
+        {
+            pet.Health.Restore(_spec.RiseFraction * pet.MaxHp.Value, 0f);
+            pet.State = PetState.Heel;
+            pet.RecoveringAtHeel = true;
+            pet.RescueProgress = 0f;
+            _events.Publish(new PetRose(pet.Id));
+        }
     }
 
     public bool BitWithin(int petId, int enemyId, float now, float seconds)
@@ -335,7 +393,7 @@ public sealed class PetSystem
         {
             pet.NextRetargetAt = now;
         }
-        else if (now >= pet.NextRetargetAt)
+        else if (pet.QuarryId == 0 || now >= pet.NextRetargetAt)
         {
             quarry = FindQuarry(pet, player, leashSquared, enemies.Registry.Alive);
             pet.NextRetargetAt = now + RetargetInterval;
@@ -348,13 +406,17 @@ public sealed class PetSystem
 
         int id = quarry?.Id ?? 0;
         pet.State = id == 0 ? PetState.Heel : PetState.Hunt;
+        SetQuarry(pet, id);
+        return quarry;
+    }
+
+    private void SetQuarry(PetAgent pet, int id)
+    {
         if (pet.QuarryId != id)
         {
             pet.QuarryId = id;
             _events.Publish(new PetRetargeted(pet.Id, id));
         }
-
-        return quarry;
     }
 
     private static EnemyAgent FindQuarry(PetAgent pet, Vector3 player, float leashSquared,

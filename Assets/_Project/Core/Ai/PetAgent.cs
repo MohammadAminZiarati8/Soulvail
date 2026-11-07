@@ -14,6 +14,10 @@ public sealed class PetAgent
         MaxHp = new Stat(spec.MaxHp);
         MoveSpeed = new Stat(spec.MoveSpeed);
         ContactDamage = new Stat(spec.BiteDamage);
+        HeelAt = new Stat(spec.HeelAt);
+        ReturnAt = new Stat(spec.ReturnAt);
+        HeelRegen = new Stat(spec.HeelRegen);
+        RescueSeconds = new Stat(spec.RescueSeconds);
         Health = new Health(MaxHp, null, 0f);
         Stats = new PetStats(this);
     }
@@ -28,7 +32,14 @@ public sealed class PetAgent
     public int QuarryId { get; internal set; }
     public float NextBiteAt { get; internal set; }
 
+    public Stat HeelAt { get; }
+    public Stat ReturnAt { get; }
+    public Stat HeelRegen { get; }
+    public Stat RescueSeconds { get; }
+    public float RescueProgress { get; internal set; }
+
     internal PetStats Stats { get; }
+    internal bool RecoveringAtHeel { get; set; }
     internal bool Returning { get; set; }
     internal float NextRetargetAt { get; set; }
 }

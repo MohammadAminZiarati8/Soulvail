@@ -18,9 +18,13 @@ public sealed class PetStats : IStatBlock
         PlayerStat.MaxHp => _pet.MaxHp,
         PlayerStat.MoveSpeed => _pet.MoveSpeed,
         PlayerStat.ContactDamage => _pet.ContactDamage,
+        PlayerStat.PetHeelRegen => _pet.HeelRegen,
+        PlayerStat.PetReturnAt => _pet.ReturnAt,
+        PlayerStat.PetRescueSeconds => _pet.RescueSeconds,
         _ => throw new ArgumentOutOfRangeException(nameof(stat), stat, "The pet has no such stat."),
     };
 
     public bool Has(PlayerStat stat) =>
-        stat is PlayerStat.MaxHp or PlayerStat.MoveSpeed or PlayerStat.ContactDamage;
+        stat is PlayerStat.MaxHp or PlayerStat.MoveSpeed or PlayerStat.ContactDamage
+            or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds;
 }

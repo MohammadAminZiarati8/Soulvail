@@ -71,6 +71,48 @@ public readonly struct PetFell
     }
 }
 
+public readonly struct PetHeeled
+{
+    public readonly int PetId;
+
+    public PetHeeled(int petId)
+    {
+        PetId = petId;
+    }
+}
+
+public readonly struct PetReturned
+{
+    public readonly int PetId;
+
+    public PetReturned(int petId)
+    {
+        PetId = petId;
+    }
+}
+
+public readonly struct RescueProgressed
+{
+    public readonly int PetId;
+    public readonly float Fraction;
+
+    public RescueProgressed(int petId, float fraction)
+    {
+        PetId = petId;
+        Fraction = fraction;
+    }
+}
+
+public readonly struct PetRose
+{
+    public readonly int PetId;
+
+    public PetRose(int petId)
+    {
+        PetId = petId;
+    }
+}
+
 public readonly struct PetHunted
 {
     public readonly int PetId;

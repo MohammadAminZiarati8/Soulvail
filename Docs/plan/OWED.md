@@ -383,3 +383,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - BM-03c: in Jungle stage 3, watch the Hound follow at heel, chase a marked frog, bite about once a second, and return after the wave. Check the cyan bar and the spawn beside the player on opening and crossing.
 
 - [ ] **[Editor]** BM-04, stage 5: check that a Frog the Hound bites turns and fights it, a third Frog keeps coming at the player, and a Spitter never turns.
+
+## BM-05a — Hound survival
+
+- [ ] In a Beastmaster run, let melee hunters damage the Hound. Confirm it stops biting below 35% HP, runs back at full speed, heals near you between waves, and resumes hunting at 80% HP.
+- [ ] Let the Hound fall. Stand within 2.5 m, step away partway through, and return to confirm the two seconds of rescue time carry over. Confirm it rises at half HP. On another fall, leave it behind and confirm the next stage starts with a full-health Hound.

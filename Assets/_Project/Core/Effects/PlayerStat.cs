@@ -247,6 +247,9 @@ public enum PlayerStat
     HallDamage,
     AxeCarry,
     AxeReturnDamage,
+    PetHeelRegen,
+    PetReturnAt,
+    PetRescueSeconds,
 }
 
 /// <summary>

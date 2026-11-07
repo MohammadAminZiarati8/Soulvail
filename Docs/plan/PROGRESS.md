@@ -2,20 +2,20 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Enemies turn on the Hound._
+_2026-11-07, The Hound can heel and be rescued._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-04** — Two melee hunters at most. The Hound falls at 0 HP. |
-| **Next task** | BM-05a on a go. |
-| **Verified** | EditMode 6067 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-05a** — The Hound heals at heel and rises after a nearby rescue. |
+| **Next task** | BM-05b on a go. |
+| **Verified** | EditMode 6076 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
-Portrait (landscape owed); Heroes/Places; Jungle 30 stages. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
+Portrait; Heroes/Places; Jungle 30 stages. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; warned vines.

@@ -42,6 +42,13 @@ public sealed class PetSpec
         HeelDistance = heelDistance;
     }
 
+    public float HeelAt { get; } = 0.35f;
+    public float ReturnAt { get; } = 0.8f;
+    public float HeelRegen { get; } = 0.06f;
+    public float RescueSeconds { get; } = 2f;
+    public float RescueRadius { get; } = 2.5f;
+    public float RiseFraction { get; } = 0.5f;
+
     public ContentId Id { get; }
     public float MaxHp { get; }
     public float MoveSpeed { get; }

@@ -76,6 +76,9 @@ public sealed class CombatBlackboard
     /// <summary>Closest living enemy in XZ metres; infinity when the census is empty.</summary>
     public float NearestEnemyDistance = float.PositiveInfinity;
 
+    /// <summary>Living marked enemies in the lead pet's Pounce band and within its leash.</summary>
+    public int MarkedInPounceReach;
+
     /// <summary>
     /// The enemy the character is facing, or −1 for none. The same id
     /// <see cref="Targeter.CurrentTargetId"/> carries, so nothing has to hold two answers.
@@ -204,6 +207,7 @@ public sealed class CombatBlackboard
         EnemiesWithin8m = 0;
         EnemiesInAcquireRange = 0;
         NearestEnemyDistance = float.PositiveInfinity;
+        MarkedInPounceReach = 0;
         CurrentTargetId = -1;
         IsTargetBlocked = false;
         HasFocus = false;

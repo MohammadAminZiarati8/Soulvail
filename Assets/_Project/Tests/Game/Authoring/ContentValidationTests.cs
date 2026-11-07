@@ -118,6 +118,9 @@ public sealed class ContentValidationTests
         // MK-09a: PlayerCombat.UpdateBlackboard's living-enemy XZ census, each tick.
         TriggerField.NearestEnemyDistance,
 
+        // RunSession writes the lead pet's Pounce census before SkillRunner ticks.
+        TriggerField.MarkedInPounceReach,
+
         // PlayerCombat.UpdateBlackboard again, from the army it is handed (M5-06a rule 6).
         TriggerField.MinionCount,
 
@@ -831,7 +834,7 @@ public sealed class ContentValidationTests
     [Test]
     public void EveryTriggerKey_ResolvesInEnglish()
     {
-        // Twenty-two after MK-09a: eleven TriggerFields × two comparisons. A trigger line with no row reads as a key on
+        // Twenty-four after BM-07c: twelve TriggerFields × two comparisons. A trigger line with no row reads as a key on
         // the Skills list, which is a screen the player uses constantly — and TriggerText's own
         // Trigger_EveryPairHasAKey proves the *table* is complete, not that the words exist.
         TableLocalizer localizer = English();
@@ -854,7 +857,7 @@ public sealed class ContentValidationTests
             }
         }
 
-        Assert.That(pairs, Is.EqualTo(22), "Eleven TriggerFields after MK-09a × two comparisons.");
+        Assert.That(pairs, Is.EqualTo(24), "Twelve TriggerFields after BM-07c × two comparisons.");
 
         AssertNoProblems(problems, "Trigger keys resolvable");
     }

@@ -50,7 +50,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BM-06c — Wild Swap's cyan streak and button icon (M)
 - [x] BM-07a — Feral Bite and light enemies (M)
 - [x] BM-07b — Cleaving Return and Quick Swap in core (S)
-- [ ] [BM-07c](tasks/BM-07c-pounce-core.md) — Pounce in core (M)
+- [x] BM-07c — Pounce in core (M)
 - [ ] [BM-07d](tasks/BM-07d-the-tree-authored.md) — The tree authored, Pounce and the roar drawn (M)
 - [ ] [BM-08](tasks/BM-08-the-jungles-reward.md) — The Beastmaster is the Jungle's reward: beat the Apex or buy (S)
 - [ ] [PL-01a](tasks/PL-01a-pack-hounds-core.md) — Pack Hounds in core (M)

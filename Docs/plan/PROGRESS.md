@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-08, Cleaving Return and Quick Swap are in core._
+_2026-11-08, Pounce is in core._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-07b** — Cleaving Return and Quick Swap in core. |
-| **Next task** | BM-07c on a go. |
-| **Verified** | EditMode 6114 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-07c** — Pounce in core. |
+| **Next task** | BM-07d on a go. |
+| **Verified** | EditMode 6121 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

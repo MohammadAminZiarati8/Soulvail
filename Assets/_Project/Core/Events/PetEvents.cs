@@ -156,3 +156,31 @@ public readonly struct PetHunted
         Started = started;
     }
 }
+
+public readonly struct PetPounced
+{
+    public readonly int PetId;
+    public readonly int EnemyId;
+    public readonly Vector3 From;
+    public readonly Vector3 To;
+
+    public PetPounced(int petId, int enemyId, Vector3 from, Vector3 to)
+    {
+        PetId = petId;
+        EnemyId = enemyId;
+        From = from;
+        To = to;
+    }
+}
+
+public readonly struct PetLanded
+{
+    public readonly int PetId;
+    public readonly int EnemyId;
+
+    public PetLanded(int petId, int enemyId)
+    {
+        PetId = petId;
+        EnemyId = enemyId;
+    }
+}

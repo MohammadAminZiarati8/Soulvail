@@ -146,6 +146,10 @@ public static class TriggerText
                 new LocKey("trigger.nearestEnemyDistance.below"),
             (TriggerField.NearestEnemyDistance, TriggerComparison.AtLeast) =>
                 new LocKey("trigger.nearestEnemyDistance.atLeast"),
+            (TriggerField.MarkedInPounceReach, TriggerComparison.Below) =>
+                new LocKey("trigger.markedInPounceReach.below"),
+            (TriggerField.MarkedInPounceReach, TriggerComparison.AtLeast) =>
+                new LocKey("trigger.markedInPounceReach.atLeast"),
 
             _ => throw Unknown(field, comparison),
         };
@@ -195,6 +199,7 @@ public static class TriggerText
 
             TriggerField.StationaryTime => TriggerUnit.Seconds,
             TriggerField.NearestEnemyDistance => TriggerUnit.Metres,
+            TriggerField.MarkedInPounceReach => TriggerUnit.Count,
 
             _ => throw new ArgumentOutOfRangeException(
                 nameof(field),

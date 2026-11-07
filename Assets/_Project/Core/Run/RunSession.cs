@@ -681,6 +681,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         effects.Register<StormRun>(stormRun);
         combat.AttachStormRun(stormRun);
         effects.Register<BindingShot>(new BindingShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
+        effects.Register<Pounce>(new PounceHandler(pets, enemies, combat, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
         // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
@@ -1369,6 +1370,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // mechanic rather than a lag to fix.
         //
         // At most one cast per tick, and the walk stops on it (rule 6).
+        State.Combat.Blackboard.MarkedInPounceReach = State.Pets?.CountMarkedInPounceReach(State.Enemies) ?? 0;
         State.Skills.Tick(snapshot.Dt, State.Time);
         _killshot.Tick(State.Time);
         _whirlwind.Tick(State.Time, State.PlayerPosition);

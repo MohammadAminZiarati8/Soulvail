@@ -65,6 +65,9 @@ public enum TriggerField
 
     /// <summary>The closest living enemy's XZ distance in metres, filled by PlayerCombat.</summary>
     NearestEnemyDistance,
+
+    /// <summary>Living marked enemies the lead pet can reach with Pounce.</summary>
+    MarkedInPounceReach,
 }
 
 /// <summary>
@@ -213,6 +216,7 @@ public readonly struct TriggerClause
             TriggerField.FocusRampLevel => blackboard.FocusRampLevel,
             TriggerField.MinionCount => blackboard.MinionCount,
             TriggerField.NearestEnemyDistance => blackboard.NearestEnemyDistance,
+            TriggerField.MarkedInPounceReach => blackboard.MarkedInPounceReach,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(Field),
                 Field,

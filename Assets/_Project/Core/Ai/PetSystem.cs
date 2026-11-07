@@ -32,6 +32,10 @@ public sealed class PetSystem
     private float _now;
     private float _leapUntil = float.NegativeInfinity;
     private Vector3 _swapLanding;
+    private Vector3 _playerPosition;
+    private Vector3 _pounceLanding;
+    private Pounce _pounce;
+    private int _pounceTargetId;
     private float _swapImmuneUntil = float.NegativeInfinity;
     private Vector3 _spawnPlayerPosition;
     private int _count;
@@ -71,6 +75,7 @@ public sealed class PetSystem
         PetAgent pet = _pets[0];
         pet.Id = _nextId++;
         _spawnPlayerPosition = player;
+        _playerPosition = player;
         pet.Position = player - facing * _spec.HeelDistance;
         pet.State = PetState.Heel;
         pet.QuarryId = 0;
@@ -95,6 +100,7 @@ public sealed class PetSystem
 
     public void Ingest(WorldSnapshot snapshot)
     {
+        _playerPosition = snapshot.PlayerPosition;
         foreach (PetAgent pet in Pets)
         {
             for (int i = 0; i < snapshot.PetCount; i++)
@@ -111,6 +117,7 @@ public sealed class PetSystem
 
     public void Tick(float dt, float now, Vector3 player, EnemySystem enemies, PlayerCombat combat)
     {
+        _playerPosition = player;
         for (int index = 0; index < _count; index++)
         {
             PetAgent pet = _pets[index];
@@ -118,6 +125,12 @@ public sealed class PetSystem
             if (index == 0 && now >= _leapUntil && _leapUntil != float.NegativeInfinity)
             {
                 _leapUntil = float.NegativeInfinity;
+                if (_pounce is not null)
+                {
+                    LandPounce(pet, now, enemies, combat);
+                    continue;
+                }
+
                 if (pet.State != PetState.Fallen)
                 {
                     Roar(pet, enemies);
@@ -210,6 +223,7 @@ public sealed class PetSystem
         _count = 0;
         _leapUntil = float.NegativeInfinity;
         _swapImmuneUntil = float.NegativeInfinity;
+        _pounce = null;
         _enemies = null;
     }
 
@@ -261,11 +275,129 @@ public sealed class PetSystem
         _now = now;
         _leapUntil = now + seconds;
         _swapLanding = playerFrom;
+        _pounce = null;
         _swapImmuneUntil = _leapUntil + SwapImmunityTrail;
         _intents.PetLeap(new PetLeapIntent(pet.Id, playerFrom, seconds));
         DropHunters(pet.Id);
         _events.Publish(new Swapped(pet.Id, playerFrom, pet.Position, seconds));
         return true;
+    }
+
+    internal bool CanPounce(Pounce pounce, EnemySystem enemies) =>
+        LeadCanPounce() && FindPounceTarget(pounce.MinReach, pounce.MaxReach, enemies.Registry, out _) is not null;
+
+    internal int CountMarkedInPounceReach(EnemySystem enemies)
+    {
+        FindPounceTarget(Pounce.DefaultMinReach, Pounce.DefaultMaxReach, enemies.Registry, out int count);
+        return count;
+    }
+
+    public bool TryPounce(in Pounce pounce, float now, EnemySystem enemies, PlayerCombat combat)
+    {
+        if (!LeadCanPounce())
+        {
+            return false;
+        }
+
+        EnemyAgent target = FindPounceTarget(pounce.MinReach, pounce.MaxReach, enemies.Registry, out _);
+        if (target is null)
+        {
+            return false;
+        }
+
+        PetAgent pet = _pets[0];
+        _enemies = enemies.Registry;
+        _now = now;
+        _leapUntil = now + pounce.LeapSeconds;
+        _pounce = pounce;
+        _pounceTargetId = target.Id;
+        _pounceLanding = target.Position;
+        _intents.PetLeap(new PetLeapIntent(pet.Id, _pounceLanding, pounce.LeapSeconds));
+        DropHunters(pet.Id);
+        _events.Publish(new PetPounced(pet.Id, target.Id, pet.Position, _pounceLanding));
+        return true;
+    }
+
+    private bool LeadCanPounce() => _count != 0 && _leapUntil == float.NegativeInfinity
+        && _pets[0].State != PetState.Fallen && !_pets[0].RecoveringAtHeel && !_pets[0].Returning;
+
+    private EnemyAgent FindPounceTarget(float minReach, float maxReach, EnemyRegistry enemies, out int count)
+    {
+        count = 0;
+        if (_count == 0)
+        {
+            return null;
+        }
+
+        Vector3 from = _pets[0].Position;
+        float minSquared = minReach * minReach;
+        float maxSquared = maxReach * maxReach;
+        float leashSquared = _spec.Leash * _spec.Leash;
+        EnemyAgent nearest = null;
+        float best = maxSquared;
+        foreach (EnemyAgent enemy in enemies.Alive)
+        {
+            if (!enemy.IsAlive || !enemy.CrowdControl.IsMarked
+                || !(Offset(_playerPosition, enemy.Position).LengthSquared() <= leashSquared))
+            {
+                continue;
+            }
+
+            float distance = Offset(from, enemy.Position).LengthSquared();
+            if (!(distance >= minSquared && distance <= maxSquared))
+            {
+                continue;
+            }
+
+            count++;
+            if (nearest is null || distance < best || (distance == best && enemy.Id < nearest.Id))
+            {
+                nearest = enemy;
+                best = distance;
+            }
+        }
+
+        return nearest;
+    }
+
+    private void LandPounce(PetAgent pet, float now, EnemySystem enemies, PlayerCombat combat)
+    {
+        Pounce pounce = _pounce;
+        int targetId = _pounceTargetId;
+        _pounce = null;
+        if (pet.State == PetState.Fallen)
+        {
+            return;
+        }
+
+        pet.Position = _pounceLanding;
+        if (enemies.Registry.TryGet(targetId, out EnemyAgent target) && target.IsAlive)
+        {
+            float bite = pet.ContactDamage.Value;
+            if (bite > 0f)
+            {
+                bite *= pounce.BiteMultiplier;
+                pet.NextBiteAt = now + _spec.BiteInterval;
+                target.Blackboard.LastBitBy = pet.Id;
+                target.Blackboard.LastBitAt = now;
+                enemies.ApplyDamage(targetId, bite, now, combat);
+                _events.Publish(new PetBit(pet.Id, targetId, bite));
+            }
+
+            if (enemies.IsLight(targetId))
+            {
+                enemies.Stun(targetId, pounce.KnockdownSeconds);
+            }
+
+            if (target.IsAlive)
+            {
+                pet.State = PetState.Hunt;
+                pet.NextRetargetAt = now + RetargetInterval;
+                SetQuarry(pet, targetId);
+            }
+        }
+
+        _events.Publish(new PetLanded(pet.Id, targetId));
     }
 
     private void Roar(PetAgent pet, EnemySystem enemies)
@@ -428,6 +560,7 @@ public sealed class PetSystem
             && enemy.Behaviour is not BossBehaviour
             && enemy.Spec.Behaviour is EnemyBehaviourKind.Chaser or EnemyBehaviourKind.Lunger
             && pet.State != PetState.Fallen
+            && (pet != _pets[0] || _pounce is null)
             && _now >= board.PetHuntSuppressedUntil
             && WasBitten(board, pet.Id, _now, HuntMemory)
             && Offset(enemy.Position, pet.Position).LengthSquared()

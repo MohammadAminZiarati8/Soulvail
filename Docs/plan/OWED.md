@@ -413,3 +413,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## BM-07a — Feral Bite and light enemies
 
 - [ ] **[Editor check]** Once BM-07d wires the node, learn Feral Bite and check that the third bite on a Frog shows stun stars and the stun bar icon. Check that a third bite on a Bullfrog shows neither.
+
+- [ ] BM-07c (once Pounce is authored): In the Editor, cast from the arc and in Auto. Check that the trigger label reads in English and Pseudo, a light enemy is knocked down, and a Bullfrog or boss stays upright.

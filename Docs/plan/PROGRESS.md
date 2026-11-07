@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, returning axes in core._
+_2026-11-07, the Mark in core._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-01a** — Returning axes in core. |
-| **Next task** | BM-01b on a go; melee playtest owed. |
-| **Verified** | EditMode 5993 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-01b** — The Mark in core. |
+| **Next task** | BM-02a on a go; melee playtest owed. |
+| **Verified** | EditMode 6014 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

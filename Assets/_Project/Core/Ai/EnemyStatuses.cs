@@ -12,6 +12,8 @@ public sealed class EnemyStatuses
     public const string HastedKey = "status.enemy.hasted";
     public const string PoisonedKey = "status.enemy.poisoned";
 
+    public const string MarkedKey = "status.enemy.marked";
+
     // JG-26a: no boss is stunned, rooted or slowed.
     private const float CrowdControlBossScale = 0f;
 
@@ -22,6 +24,7 @@ public sealed class EnemyStatuses
         Slowed = new StatusRule(new ContentId(SlowedKey), StatusSide.Debuff, 20, CrowdControlBossScale);
         Hasted = new StatusRule(new ContentId(HastedKey), StatusSide.Buff, 10, 1f);
         Poisoned = new StatusRule(new ContentId(PoisonedKey), StatusSide.Debuff, 25, 1f);
+        Marked = new StatusRule(new ContentId(MarkedKey), StatusSide.Debuff, 5, 1f);
     }
 
     public StatusRule Stunned { get; }
@@ -34,7 +37,9 @@ public sealed class EnemyStatuses
 
     public StatusRule Poisoned { get; }
 
-    /// <returns>False for any id but the five.</returns>
+    public StatusRule Marked { get; }
+
+    /// <returns>False for an unrecognized id.</returns>
     public bool TryGet(ContentId id, out StatusRule rule)
     {
         string key = id.Value;
@@ -58,6 +63,10 @@ public sealed class EnemyStatuses
         else if (key == PoisonedKey)
         {
             rule = Poisoned;
+        }
+        else if (key == MarkedKey)
+        {
+            rule = Marked;
         }
         else
         {

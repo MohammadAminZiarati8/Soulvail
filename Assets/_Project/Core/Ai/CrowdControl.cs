@@ -42,6 +42,7 @@ public sealed class CrowdControl
     private int _slowCount;
     private float _stunned;
     private float _rooted;
+    private float _marked;
 
     /// <summary>The fraction on <see cref="_moveSpeed"/> now; 0 when no modifier is on it.</summary>
     private float _applied;
@@ -58,16 +59,19 @@ public sealed class CrowdControl
     /// <summary>The strongest active slow, or 0.</summary>
     public float SlowFraction => _applied;
 
+    internal bool IsMarked => _marked > 0f;
+
     public bool Has(StatusRule rule) => Remaining(rule) > 0f;
 
     /// <summary>Seconds left; for a slow, of the longest one.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">Not one of the four.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The rule has no timer here.</exception>
     public float Remaining(StatusRule rule) => rule.Id.Value switch
     {
         EnemyStatuses.StunnedKey => _stunned,
         EnemyStatuses.RootedKey => _rooted,
         EnemyStatuses.SlowedKey => LongestSlow(),
         EnemyStatuses.HastedKey => _hasted,
+        EnemyStatuses.MarkedKey => _marked,
         _ => throw new ArgumentOutOfRangeException(nameof(rule), rule.Id, "Not a crowd-control status."),
     };
 
@@ -76,6 +80,9 @@ public sealed class CrowdControl
 
     /// <returns>As <see cref="Stun"/>.</returns>
     internal float Root(float seconds) => Lengthen(ref _rooted, seconds);
+
+    /// <returns>As <see cref="Stun"/>.</returns>
+    internal float Mark(float seconds) => Lengthen(ref _marked, seconds);
 
     /// <returns>The longest slow's remaining when that grew, else 0.</returns>
     internal float Slow(float fraction, float seconds)
@@ -135,6 +142,11 @@ public sealed class CrowdControl
             events.Publish(new EnemyStatusChanged(enemyId, statuses.Hasted, 0f, 1));
         }
 
+        if (Expire(ref _marked, dt))
+        {
+            events.Publish(new EnemyStatusChanged(enemyId, statuses.Marked, 0f, 1));
+        }
+
         if (_slowCount == 0)
         {
             return;
@@ -174,6 +186,7 @@ public sealed class CrowdControl
         _hasteFraction = 0f;
         _stunned = 0f;
         _rooted = 0f;
+        _marked = 0f;
         _slowCount = 0;
 
         Apply();

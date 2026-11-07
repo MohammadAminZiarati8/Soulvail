@@ -703,6 +703,21 @@ public sealed class EnemySystem
         return true;
     }
 
+    /// <summary>Marks a living enemy for a finite positive duration, refreshing to the longer.</summary>
+    public bool Mark(int enemyId, float seconds)
+    {
+        if (!(seconds > 0f) || float.IsInfinity(seconds) || !TryLiving(enemyId, out EnemyAgent agent))
+        {
+            return false;
+        }
+
+        Announce(enemyId, Statuses.Marked, agent.CrowdControl.Mark(Scaled(agent, Statuses.Marked, seconds)));
+        return true;
+    }
+
+    public bool IsMarked(int enemyId) =>
+        TryLiving(enemyId, out EnemyAgent agent) && agent.CrowdControl.IsMarked;
+
     /// <summary>Hastens a living enemy; strongest wins and the duration refreshes.</summary>
     public bool Haste(int enemyId, float fraction, float seconds)
     {

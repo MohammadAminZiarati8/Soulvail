@@ -181,6 +181,11 @@ public sealed class AxeSystem
 
             hitIds[_hitCounts[slot]++] = bestId;
             DamageResult result = enemies.ApplyDamage(bestId, damage, now, player);
+            if (_weapon.MarkSeconds > 0f)
+            {
+                enemies.Mark(bestId, _weapon.MarkSeconds);
+            }
+
             _events.Publish(new AxeHit(axe.Id, bestId, axe.Pass, result.Applied));
         }
     }

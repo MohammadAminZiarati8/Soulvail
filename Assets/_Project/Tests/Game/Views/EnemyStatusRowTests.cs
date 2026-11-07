@@ -83,6 +83,17 @@ public sealed class EnemyStatusRowTests
     }
 
     [Test]
+    public void Marked_LosesTheSlotToStun()
+    {
+        Apply(Statuses.Marked, 4f);
+        Apply(Statuses.Stunned, 1f);
+
+        Assert.That(_row.Shown(false), Is.EqualTo(1));
+        Assert.That(_row.RuleAt(0).Id.Value, Is.EqualTo(EnemyStatuses.StunnedKey));
+        Assert.That(_row.RuleAt(1).Id.Value, Is.EqualTo(EnemyStatuses.MarkedKey));
+    }
+
+    [Test]
     public void Apply_ZeroSeconds_Removes()
     {
         Apply(Statuses.Stunned, 3f);

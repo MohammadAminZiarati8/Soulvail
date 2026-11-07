@@ -102,7 +102,7 @@ public sealed class WeaponSpec
     /// <param name="shotSpread">Reserved and required to be zero, whatever the kind — see <see cref="ShotSpread"/>.</param>
     /// <param name="firesWhileMoving">
     /// Whether the class may attack while it moves — true for every class that ships. False is the
-    /// Ranger's rule (RS-03a): it holds fire until it stops. Defaulted and last, so every
+    /// Ranger's rule (RS-03a): it holds fire until it stops. Defaulted so every
     /// <c>new WeaponSpec(...)</c> written before RS-03a keeps meaning what it meant.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -126,7 +126,8 @@ public sealed class WeaponSpec
         bool firesWhileMoving = true,
         float axeSpeed = 0f,
         int axeCarry = 0,
-        int axeHitsPerPass = 0)
+        int axeHitsPerPass = 0,
+        float markSeconds = 0f)
     {
         // `!(x > 0f)` throughout rather than `x <= 0f`, so NaN is refused with everything else —
         // the spelling every spec in this folder uses, for the reason TargetingSpec.Positive gives.
@@ -181,6 +182,12 @@ public sealed class WeaponSpec
             RequireZero(axeHitsPerPass, nameof(axeHitsPerPass), kind);
         }
 
+        if (!(markSeconds >= 0f) || float.IsInfinity(markSeconds))
+        {
+            throw new ArgumentOutOfRangeException(nameof(markSeconds), markSeconds, "Mark duration must be finite and nonnegative.");
+        }
+
+        MarkSeconds = markSeconds;
         AxeSpeed = axeSpeed;
         AxeCarry = axeCarry;
         AxeHitsPerPass = axeHitsPerPass;
@@ -235,6 +242,9 @@ public sealed class WeaponSpec
     public float AxeSpeed { get; }
     public int AxeCarry { get; }
     public int AxeHitsPerPass { get; }
+
+    /// <summary>Seconds an axe hit marks its target. Zero disables the mark.</summary>
+    public float MarkSeconds { get; }
 
     /// <summary>Reserved and required to be zero.</summary>
     /// <remarks>

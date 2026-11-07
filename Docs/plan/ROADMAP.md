@@ -33,7 +33,7 @@ footers are in `git log` (last sweep 2026-10-31). Tags `m0`–`m5`.
 
 _No milestone. The owner is setting the next direction._
 
-**The Beastmaster, the second character** (owner, 2026-11-07; design [CH §3.6–3.7](../Characters.md)). The Jungle's reward: returning axes, the Mark, the Hound, Wild Swap, a 3 × 3 tree, then the Packleader path. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from BM-02a (class select); **playtest pet survival after BM-06b**, before the tree (the 20 s self-revive is the lever, CH §3.6.1). BM-03b, PL-04b and PL-05b need the owner's TRELLIS sculpt (prompt in the spec) any time before their drawn task. The drawn tasks name no screen position, so they hold through the landscape switch.
+**The Beastmaster, the second character** (owner, 2026-11-07; design [CH §3.6–3.7](../Characters.md)). The Jungle's reward: returning axes, the Mark, the Hound, Wild Swap, a 3 × 3 tree, then the Packleader path. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from BM-02a (class select); **playtest pet survival after BM-06c**, before the tree (the 20 s self-revive is the lever, CH §3.6.1). BM-03b, PL-04b and PL-05b need the owner's TRELLIS sculpt (prompt in the spec) any time before their drawn task. The drawn tasks name no screen position, so they hold through the landscape switch.
 
 - [x] BM-01a — Returning axes in core: full-range flight, homing return, hits on both passes (M)
 - [x] **BM-01b** — The Mark in core: an axe hit marks for 4 s (S)
@@ -46,7 +46,8 @@ _No milestone. The owner is setting the next direction._
 - [x] BM-05a — Heel, regen and rescue in core (M)
 - [x] BM-05b — Heel, fall and rescue drawn: the ring, the kneel (M)
 - [x] BM-06a — Wild Swap in core on `ChargeSkill` (M)
-- [ ] [BM-06b](tasks/BM-06b-wild-swap-drawn.md) — Wild Swap drawn and authored: both leap, cyan streak (M)
+- [ ] [BM-06b](tasks/BM-06b-wild-swap-drawn.md) — Wild Swap drawn and authored: both leap (M)
+- [ ] [BM-06c](tasks/BM-06c-swap-streak-and-icon.md) — Wild Swap's cyan streak and button icon (M)
 - [ ] [BM-07a](tasks/BM-07a-feral-bite-and-light-enemies.md) — Feral Bite and light enemies (M)
 - [ ] [BM-07b](tasks/BM-07b-axe-nodes-and-quick-swap.md) — Cleaving Return and Quick Swap in core (S)
 - [ ] [BM-07c](tasks/BM-07c-pounce-core.md) — Pounce in core (M)

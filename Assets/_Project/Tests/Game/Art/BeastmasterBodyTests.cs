@@ -167,7 +167,7 @@ public sealed class BeastmasterBodyTests
         Assert.That(upper.stateMachine.states.Single(state => state.state.name == "Throw").state.motion.name,
             Is.EqualTo("Throw"));
         Assert.That(controller.animationClips.Select(clip => clip.name),
-            Is.EquivalentTo(new[] { "Idle_A", "Running_A", "Hit_A", "Death_A", "Throw" }));
+            Is.EquivalentTo(new[] { "Idle_A", "Running_A", "Hit_A", "Death_A", "PickUp", "Throw" }));
         foreach (AnimationClip clip in controller.animationClips)
         {
             Assert.That(AssetDatabase.GetAssetPath(clip), Does.StartWith("Assets/ThirdParty/KayKit/Animations/Rig_Medium/"));

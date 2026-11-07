@@ -19,6 +19,8 @@ namespace Soulvail.Game.Views
         private readonly int _empty = Animator.StringToHash("Throw.Empty");
         private readonly int _hit = Animator.StringToHash("Hit");
         private readonly int _dead = Animator.StringToHash("Dead");
+        private readonly int _rescuing = Animator.StringToHash("Rescuing");
+        private bool _rescueAdvanced;
         private PlayerView _body;
         private int _throwLayer;
         private int? _leftFlight;
@@ -37,6 +39,8 @@ namespace Soulvail.Game.Views
                 events.Subscribe<AxeCaught>(OnCaught),
                 events.Subscribe<PlayerDamaged>(OnDamaged),
                 events.Subscribe<PlayerDied>(OnDied),
+                events.Subscribe<RescueProgressed>(_ => _rescueAdvanced = true),
+                events.Subscribe<PetRose>(_ => StopRescue()),
                 events.Subscribe<StageCleared>(_ => ResetHands()),
                 events.Subscribe<StageTransitionStarted>(_ => ResetHands()),
                 events.Subscribe<StageArrived>(_ => ResetHands()),
@@ -51,7 +55,23 @@ namespace Soulvail.Game.Views
 
         private void Update()
         {
-            _animator.SetBool(_moving, !_died && _body != null && _body.Velocity.sqrMagnitude > 0.01f);
+            _animator.SetBool(_moving, IsMoving());
+        }
+
+        private void LateUpdate()
+        {
+            bool kneeling = !_died && _rescueAdvanced && !IsMoving();
+            _rescueAdvanced = false;
+            _animator.SetBool(_rescuing, kneeling);
+            _animator.SetLayerWeight(_throwLayer, !_died && !kneeling ? 1f : 0f);
+        }
+
+        private bool IsMoving() => !_died && _body != null && _body.Velocity.sqrMagnitude > 0.01f;
+
+        private void StopRescue()
+        {
+            _rescueAdvanced = false;
+            _animator.SetBool(_rescuing, false);
         }
 
         private void OnDestroy() => Unsubscribe();
@@ -109,6 +129,7 @@ namespace Soulvail.Game.Views
 
         private void ResetHands()
         {
+            StopRescue();
             _leftFlight = null;
             _rightFlight = null;
             _leftAxe.SetActive(true);
@@ -127,6 +148,7 @@ namespace Soulvail.Game.Views
         private void OnDied(PlayerDied evt)
         {
             _died = true;
+            StopRescue();
             _animator.SetLayerWeight(_throwLayer, 0f);
             _animator.SetBool(_dead, true);
         }

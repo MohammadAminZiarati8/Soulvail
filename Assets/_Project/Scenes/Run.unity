@@ -986,6 +986,7 @@ MonoBehaviour:
   _shadeBurstPrefab: {fileID: 3794187500603272738, guid: 94f68ce59902f784bab3e900f65bf997, type: 3}
   _crossfireLineMaterial: {fileID: 2100000, guid: 82e51438d7035bfca3464ff7dc2b2637, type: 2}
   _axePrefab: {fileID: 216999579305513603, guid: 5650f5d006d9be74b9bd7f8d12a4d4f1, type: 3}
+  _rescueRingPrefab: {fileID: 11400000, guid: 4917564711fd4da29bd87e271e0a4747, type: 3}
   _markGlyphPrefab: {fileID: 4593902581434423630, guid: d1e3a0485f76d7946bb92ca0eafa818f, type: 3}
   _hallRingPrefab: {fileID: 114001, guid: 1c7b4fd5540a5dd49e74e5aeda44ef5d, type: 3}
   _minionParent: {fileID: 1308062827}

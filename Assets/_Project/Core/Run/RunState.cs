@@ -660,6 +660,23 @@ public sealed class RunState
 
     internal PetSystem Pets { get; }
 
+    /// <summary>Current health for a pet in this stage, if the id is still live.</summary>
+    public float? PetHealthFraction(int id)
+    {
+        if (Pets is not null)
+        {
+            foreach (PetAgent pet in Pets.Pets)
+            {
+                if (pet.Id == id)
+                {
+                    return pet.Health.Fraction;
+                }
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// CH §3.2's Rise — what turns a quarter of this run's kills into Wights — or
     /// <see langword="null"/> for a class that raises none.

@@ -21,12 +21,19 @@ public sealed class PetViews : IDisposable
     private readonly Camera _camera;
     private readonly IDisposable _spawned;
     private readonly IDisposable _bit;
+    private readonly IDisposable _hurt;
+    private readonly IDisposable _heeled;
+    private readonly IDisposable _returned;
+    private readonly IDisposable _fell;
+    private readonly IDisposable _rose;
+    private readonly Func<int, float?> _healthFraction;
     private readonly IDisposable _arrived;
     private readonly IDisposable _ended;
     private Vector3? _arenaEntryPosition;
 
     public PetViews(IObjectResolver resolver, PetView prefab, Transform parent, DomainEventHub hub,
-        PlayerView player = null, ArenaPool arenas = null, Camera camera = null)
+        PlayerView player = null, ArenaPool arenas = null, Camera camera = null,
+        Func<int, float?> healthFraction = null)
     {
         if (prefab == null)
         {
@@ -36,9 +43,33 @@ public sealed class PetViews : IDisposable
         _player = player;
         _arenas = arenas;
         _camera = camera;
+        _healthFraction = healthFraction;
         _pool = new ViewPool<PetView>(resolver, prefab, parent, prewarm: 1);
         _spawned = hub.Subscribe<PetSpawned>(OnSpawned);
         _bit = hub.Subscribe<PetBit>(OnBit);
+        _hurt = hub.Subscribe<PetHurt>(evt =>
+        {
+            if (_active.TryGetValue(evt.PetId, out PetView view))
+            {
+                view.PlayHit();
+            }
+        });
+        _heeled = hub.Subscribe<PetHeeled>(evt => SetHeeling(evt.PetId, true));
+        _returned = hub.Subscribe<PetReturned>(evt => SetHeeling(evt.PetId, false));
+        _fell = hub.Subscribe<PetFell>(evt =>
+        {
+            if (_active.TryGetValue(evt.PetId, out PetView view))
+            {
+                view.Fall(evt.Position.ToUnity());
+            }
+        });
+        _rose = hub.Subscribe<PetRose>(evt =>
+        {
+            if (_active.TryGetValue(evt.PetId, out PetView view))
+            {
+                view.Rise();
+            }
+        });
         _arrived = hub.Subscribe<StageArrived>(OnArrived);
         _ended = hub.Subscribe<RunEnded>(_ => Clear());
     }
@@ -72,6 +103,11 @@ public sealed class PetViews : IDisposable
     {
         _spawned?.Dispose();
         _bit?.Dispose();
+        _hurt?.Dispose();
+        _heeled?.Dispose();
+        _returned?.Dispose();
+        _fell?.Dispose();
+        _rose?.Dispose();
         _arrived?.Dispose();
         _ended?.Dispose();
         _active.Clear();
@@ -93,8 +129,16 @@ public sealed class PetViews : IDisposable
         }
 
         PetView view = _pool.Get();
-        view.Bind(evt.Id, position, evt.HealthFraction, _camera);
+        view.Bind(evt.Id, position, evt.HealthFraction, _camera, _healthFraction);
         _active.Add(evt.Id, view);
+    }
+
+    private void SetHeeling(int petId, bool heeling)
+    {
+        if (_active.TryGetValue(petId, out PetView view))
+        {
+            view.SetHeeling(heeling);
+        }
     }
 
     private void OnBit(PetBit evt)

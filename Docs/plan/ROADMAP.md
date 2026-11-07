@@ -44,7 +44,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BM-03c — The Hound drawn and in the run, always-on cyan bar (M)
 - [x] BM-04 — Enemies turn on the Hound: the hunt rule, two hunters, strikes land, it falls (M)
 - [x] BM-05a — Heel, regen and rescue in core (M)
-- [ ] [BM-05b](tasks/BM-05b-heel-fall-rescue-drawn.md) — Heel, fall and rescue drawn: the ring, the kneel (M)
+- [x] BM-05b — Heel, fall and rescue drawn: the ring, the kneel (M)
 - [ ] [BM-06a](tasks/BM-06a-wild-swap-core.md) — Wild Swap in core on `ChargeSkill` (M)
 - [ ] [BM-06b](tasks/BM-06b-wild-swap-drawn.md) — Wild Swap drawn and authored: both leap, cyan streak (M)
 - [ ] [BM-07a](tasks/BM-07a-feral-bite-and-light-enemies.md) — Feral Bite and light enemies (M)

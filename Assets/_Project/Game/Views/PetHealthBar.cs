@@ -11,6 +11,8 @@ namespace Soulvail.Game.Views
         private Camera _camera;
         private RectTransform _billboard;
         private RectTransform _fill;
+        private Image _fillImage;
+        private bool _pulsing;
 
         public void Bind(float fraction, Camera camera)
         {
@@ -20,11 +22,40 @@ namespace Soulvail.Game.Views
                 Build();
             }
 
+            SetVisible(true);
+            SetFraction(fraction);
+        }
+
+        public void SetFraction(float fraction) =>
             _fill.anchorMax = new Vector2(Mathf.Clamp01(fraction), 1f);
+
+        public void SetVisible(bool visible) => _billboard.gameObject.SetActive(visible);
+
+        public void SetPulsing(bool pulsing)
+        {
+            _pulsing = pulsing;
+            UpdatePulse(0f);
+        }
+
+        public void UpdatePulse(float seconds)
+        {
+            if (_fillImage == null)
+            {
+                return;
+            }
+
+            Color cyan = Palette.Player;
+            if (_pulsing)
+            {
+                cyan.a = Mathf.Lerp(0.5f, 1f, Mathf.PingPong(seconds * 3f, 1f));
+            }
+
+            _fillImage.color = cyan;
         }
 
         private void LateUpdate()
         {
+            UpdatePulse(Time.time);
             if (_billboard != null && _camera != null)
             {
                 _billboard.rotation = _camera.transform.rotation;
@@ -43,6 +74,7 @@ namespace Soulvail.Game.Views
 
             AddImage("Track", new Color(0.08f, 0.1f, 0.12f));
             _fill = AddImage("Fill", Palette.Player);
+            _fillImage = _fill.GetComponent<Image>();
         }
 
         private RectTransform AddImage(string name, Color colour)

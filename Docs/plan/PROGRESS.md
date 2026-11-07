@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, The Hound can heel and be rescued._
+_2026-11-07, Hound retreat and rescue have visual feedback._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-05a** — The Hound heals at heel and rises after a nearby rescue. |
-| **Next task** | BM-05b on a go. |
-| **Verified** | EditMode 6076 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-05b** — Hound hit, heel, fall and rescue visuals. |
+| **Next task** | BM-06a on a go. |
+| **Verified** | EditMode 6083 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

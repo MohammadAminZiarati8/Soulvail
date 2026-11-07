@@ -388,3 +388,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] In a Beastmaster run, let melee hunters damage the Hound. Confirm it stops biting below 35% HP, runs back at full speed, heals near you between waves, and resumes hunting at 80% HP.
 - [ ] Let the Hound fall. Stand within 2.5 m, step away partway through, and return to confirm the two seconds of rescue time carry over. Confirm it rises at half HP. On another fall, leave it behind and confirm the next stage starts with a full-health Hound.
+
+### BM-05b — Hound heel, fall and rescue
+
+- [ ] **Editor** — Let the Hound fight three frogs alone. Below 35% HP it runs back, heals at heel and goes back in. Let it fall, check the cyan ring, then kneel beside it for 2 seconds and watch it get up.
+- [ ] **Device** — In a crowd at phone zoom, check that the fallen ring and pulsing cyan health bar are readable.

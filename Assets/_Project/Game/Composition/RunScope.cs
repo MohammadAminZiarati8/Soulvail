@@ -208,6 +208,7 @@ namespace Soulvail.Game.Composition
         [SerializeField] private ShadeBurstView _shadeBurstPrefab;
         [SerializeField] private Material _crossfireLineMaterial;
         [SerializeField] private AxeView _axePrefab;
+        [SerializeField] private RescueRingView _rescueRingPrefab;
         [SerializeField] private SpriteRenderer _markGlyphPrefab;
         [SerializeField] private HallOfMirrorsView _hallRingPrefab;
 
@@ -689,8 +690,18 @@ namespace Soulvail.Game.Composition
                 ContentId characterId = RunCharacter.Choose(resolver.Resolve<PendingRun>(), catalog,
                     resolver.Resolve<ClassSelectRoster>());
                 PetView prefab = resolver.Resolve<CharacterLookBook>().For(characterId).Pet;
-                return new PetViews(resolver, prefab, transform, resolver.Resolve<DomainEventHub>(),
-                    resolver.Resolve<PlayerView>(), arenas, _camera);
+                DomainEventHub hub = resolver.Resolve<DomainEventHub>();
+                if (prefab != null && _rescueRingPrefab != null &&
+                    catalog.TryGetCharacter(characterId, out CharacterSpec character) && character.Pet is PetSpec pet)
+                {
+                    RescueRingView ring = Instantiate(_rescueRingPrefab, _decalRoot, false);
+                    ring.Construct(hub, pet.RescueRadius);
+                    ring.gameObject.SetActive(true);
+                }
+
+                IRunSession session = resolver.Resolve<IRunSession>();
+                return new PetViews(resolver, prefab, transform, hub,
+                    resolver.Resolve<PlayerView>(), arenas, _camera, id => session.State?.PetHealthFraction(id));
             }, Lifetime.Scoped);
             builder.Register<SnapshotBuilder>(Lifetime.Scoped);
 

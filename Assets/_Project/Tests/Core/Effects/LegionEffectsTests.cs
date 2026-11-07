@@ -316,19 +316,19 @@ public sealed class LegionEffectsTests
     }
 
     [Test]
-    public void StatTarget_HasThreeMembersAndTheDefaultIsPlayer()
+    public void StatTarget_HasFourMembersAndTheDefaultIsPlayer()
     {
-        Assert.That(Enum.GetValues(typeof(StatTarget)), Has.Length.EqualTo(3));
+        Assert.That(Enum.GetValues(typeof(StatTarget)), Has.Length.EqualTo(4));
 
         Assert.That(
             new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, 1f).Target,
             Is.EqualTo(StatTarget.Player),
             "The default is what makes each widening a widening rather than a migration.");
 
-        // M4-01a's rule held one member later: a fourth cast in from an int is refused at the door
+        // M4-01a's rule held one member later: an undefined target cast in from an int is refused at the door
         // rather than falling out of the handler's switch at the moment a player picks the node.
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, 1f, (StatTarget)3));
+            () => new ModifyStat(PlayerStat.MaxHp, ModifierKind.Flat, 1f, (StatTarget)4));
     }
 
     // ---- Rule 3: what a node changes, and when ----------------------------------------------------

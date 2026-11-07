@@ -154,6 +154,8 @@ public interface IIntentSink
     /// </remarks>
     void MinionMove(in EnemyMoveIntent intent);
 
+    void PetMove(in EnemyMoveIntent intent);
+
     /// <summary>
     /// Tells the body to shove an enemy: this far, this way. Written while core resolves a
     /// pass-through fact, once per enemy hit.

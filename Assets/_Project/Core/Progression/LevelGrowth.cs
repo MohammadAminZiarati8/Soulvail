@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Effects;
@@ -24,12 +25,18 @@ public sealed class LevelGrowth
     private readonly ModifyStat _maxHp;
     private readonly ModifyStat _damage;
 
+    private readonly PetSystem _pets;
+    private readonly ModifyStat _petMaxHp;
+    private readonly ModifyStat _petDamage;
+
     /// <param name="spec">The mode's growth; <c>default</c> grows nothing.</param>
     /// <param name="progression">The run's tracker, which this attaches to.</param>
     /// <param name="effects">Where the two modifiers go on.</param>
     /// <param name="health">The player's, healed by each level's gain.</param>
+    /// <param name="pets">The optional lead pet, grown and healed alongside the player.</param>
     /// <exception cref="ArgumentNullException">Any reference is null.</exception>
-    public LevelGrowth(LevelGrowthSpec spec, LevelTracker progression, EffectRegistry effects, Health health)
+    public LevelGrowth(LevelGrowthSpec spec, LevelTracker progression, EffectRegistry effects, Health health,
+        PetSystem pets = null)
     {
         if (progression is null)
         {
@@ -44,6 +51,13 @@ public sealed class LevelGrowth
         // tick that crosses it.
         _maxHp = new ModifyStat(PlayerStat.MaxHp, ModifierKind.PercentAdd, spec.MaxHp);
         _damage = new ModifyStat(PlayerStat.WeaponDamage, ModifierKind.PercentAdd, spec.Damage);
+
+        _pets = pets;
+        if (pets is not null)
+        {
+            _petMaxHp = new ModifyStat(PlayerStat.MaxHp, ModifierKind.PercentAdd, spec.MaxHp, StatTarget.Pet);
+            _petDamage = new ModifyStat(PlayerStat.ContactDamage, ModifierKind.PercentAdd, spec.Damage, StatTarget.Pet);
+        }
 
         progression.Attach(this);
     }
@@ -62,9 +76,13 @@ public sealed class LevelGrowth
     {
         float before = _health.MaxHp.Value;
 
+        Health petHealth = _pets is not null && !_pets.Pets.IsEmpty ? _pets.Pets[0].Health : null;
+        float petBefore = petHealth?.MaxHp.Value ?? 0f;
+
         Apply();
 
         _health.Heal(_health.MaxHp.Value - before);
+        petHealth?.Heal(petHealth.MaxHp.Value - petBefore);
     }
 
     /// <summary>
@@ -86,5 +104,10 @@ public sealed class LevelGrowth
         Levels++;
         _effects.Apply(_maxHp, this);
         _effects.Apply(_damage, this);
+        if (_pets is not null)
+        {
+            _effects.Apply(_petMaxHp, this);
+            _effects.Apply(_petDamage, this);
+        }
     }
 }

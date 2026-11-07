@@ -375,3 +375,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] Editor: Throw into a crowd of Frogs. Check both flight passes, the spin, the cyan trail and the turn flash. Check that each struck Frog loses the glyph 4 s after its last hit.
 - [ ] Device: Check the claw glyph over a Frog and a Panther at phone zoom.
+
+- BM-03c: when the Hound is drawn, check spawn placement beside the Beastmaster after the arena teleports him at run start and at a stage change.

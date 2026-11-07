@@ -143,6 +143,10 @@ public sealed class WorldSnapshot
     /// </remarks>
     public readonly EnemySense[] Minions = new EnemySense[MinionSystem.MaxConcurrent];
 
+    public int PetCount;
+
+    public readonly EnemySense[] Pets = new EnemySense[PetSystem.Capacity];
+
     /// <param name="enemyCapacity">
     /// The device tier's concurrency cap. M0-12 supplies a constant; a tuning field later.
     /// </param>
@@ -232,6 +236,17 @@ public sealed class WorldSnapshot
         return ref Minions[slot];
     }
 
+    public ref EnemySense AddPet()
+    {
+        if (PetCount >= Pets.Length)
+        {
+            throw new InvalidOperationException(
+                $"WorldSnapshot is full at {Pets.Length} pets. The builder must respect the capacity.");
+        }
+
+        return ref Pets[PetCount++];
+    }
+
     /// <summary>
     /// Resets the snapshot for a fresh frame: scalars to zero, no enemies.
     /// </summary>
@@ -267,5 +282,6 @@ public sealed class WorldSnapshot
         // reason: every reader stops at the count, and AddMinion hands out slots to be overwritten
         // rather than appended to.
         MinionCount = 0;
+        PetCount = 0;
     }
 }

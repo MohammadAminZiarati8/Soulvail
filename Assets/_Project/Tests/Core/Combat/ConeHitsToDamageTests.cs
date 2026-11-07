@@ -588,6 +588,10 @@ public sealed class ConeHitsToDamageTests
             // Deliberately nothing. Every Husk in this fixture is a Static dummy.
         }
 
+        public void PetMove(in EnemyMoveIntent intent)
+        {
+        }
+
         public void MinionMove(in EnemyMoveIntent intent)
         {
             // Deliberately nothing. No run in this fixture raises a Wight.

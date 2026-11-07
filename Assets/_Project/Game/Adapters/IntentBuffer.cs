@@ -70,6 +70,7 @@ public sealed class IntentBuffer : IIntentSink
     /// literal, so the buffer cannot fall behind the cap the day one moves.
     /// </summary>
     private readonly List<EnemyMoveIntent> _minionMoves = new(MinionSystem.MaxConcurrent);
+    private readonly List<EnemyMoveIntent> _petMoves = new(PetSystem.Capacity);
 
     private PlayerMoveIntent _playerMove;
     private ChargeIntent _charge;
@@ -182,6 +183,8 @@ public sealed class IntentBuffer : IIntentSink
     /// </remarks>
     public IReadOnlyList<EnemyMoveIntent> MinionMoves => _minionMoves;
 
+    public IReadOnlyList<EnemyMoveIntent> PetMoves => _petMoves;
+
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
     {
         _playerMove = intent;
@@ -212,6 +215,11 @@ public sealed class IntentBuffer : IIntentSink
     void IIntentSink.EnemyMove(in EnemyMoveIntent intent)
     {
         _enemyMoves.Add(intent);
+    }
+
+    void IIntentSink.PetMove(in EnemyMoveIntent intent)
+    {
+        _petMoves.Add(intent);
     }
 
     void IIntentSink.MinionMove(in EnemyMoveIntent intent)
@@ -248,5 +256,6 @@ public sealed class IntentBuffer : IIntentSink
         _knockbacks.Clear();
         _enemyMoves.Clear();
         _minionMoves.Clear();
+        _petMoves.Clear();
     }
 }

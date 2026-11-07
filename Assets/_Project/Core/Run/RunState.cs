@@ -72,7 +72,8 @@ public sealed class RunState
         Veilrot rot,
         SanctumShop shop,
         Ordeals ordeals,
-        bool hasSanctum = true)
+        bool hasSanctum = true,
+        PetSystem pets = null)
     {
         HasSanctum = hasSanctum;
         ModeId = modeId;
@@ -91,6 +92,7 @@ public sealed class RunState
         Zones = zones;
         Lures = lures;
         Minions = minions;
+        Pets = pets;
         Rise = rise;
         LevelUp = levelUp;
         Splash = splash;
@@ -655,6 +657,8 @@ public sealed class RunState
     /// </para>
     /// </remarks>
     internal MinionSystem Minions { get; }
+
+    internal PetSystem Pets { get; }
 
     /// <summary>
     /// CH §3.2's Rise — what turns a quarter of this run's kills into Wights — or

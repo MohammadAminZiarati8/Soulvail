@@ -146,7 +146,8 @@ public sealed class CharacterSpec
         UnlockSpec unlock = null,
         VolleySpec volley = null,
         IReadOnlyList<ContentId> pathIds = null,
-        int pathOpensAtLevel = 0)
+        int pathOpensAtLevel = 0,
+        PetSpec pet = null)
     {
         if (id.Value is null)
         {
@@ -219,6 +220,7 @@ public sealed class CharacterSpec
         Shield = shield;
         HitIFrames = hitIFrames;
         Minions = minions;
+        Pet = pet;
         Kindling = kindling;
         Veilrot = veilrot;
         Unlock = unlock;
@@ -300,6 +302,8 @@ public sealed class CharacterSpec
     /// they are authored twice (M5-02 rule 5).
     /// </remarks>
     public MinionSpec Minions { get; }
+
+    public PetSpec Pet { get; }
 
     /// <summary>
     /// The class's stacking signature, or <see langword="null"/> for a class with none. Only the

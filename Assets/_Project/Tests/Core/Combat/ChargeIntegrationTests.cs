@@ -776,6 +776,10 @@ public sealed class ChargeIntegrationTests
             // Deliberately nothing.
         }
 
+        public void PetMove(in EnemyMoveIntent intent)
+        {
+        }
+
         public void MinionMove(in EnemyMoveIntent intent)
         {
             // Deliberately nothing. No run in this fixture raises a Wight.

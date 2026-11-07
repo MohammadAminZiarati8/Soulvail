@@ -1,4 +1,5 @@
 using System;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 
 namespace Soulvail.Core.Effects;
@@ -51,6 +52,8 @@ public enum StatTarget
     /// a target is a field rather than a type, so the registry's own sweep cannot see it.
     /// </summary>
     Minions,
+
+    Pet,
 }
 
 /// <summary>
@@ -139,7 +142,7 @@ public sealed class ModifyStat : IEffect
             throw new ArgumentOutOfRangeException(
                 nameof(target),
                 target,
-                "A ModifyStat is aimed at Player, Self or Minions.");
+                "A ModifyStat is aimed at Player, Self, Minions or Pet.");
         }
 
         Stat = stat;
@@ -205,6 +208,8 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
     /// </summary>
     private readonly IStatBlock _minions;
 
+    private readonly PetSystem _pets;
+
     /// <summary>
     /// The one scope instance, handed out by every <see cref="Aiming"/> call. Built here rather
     /// than per call because a <c>using</c> on a freshly allocated scope is an allocation on the
@@ -230,10 +235,11 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
     /// null.
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="player"/> is null.</exception>
-    public ModifyStatHandler(IStatBlock player, IStatBlock minions = null)
+    public ModifyStatHandler(IStatBlock player, IStatBlock minions = null, PetSystem pets = null)
     {
         _player = player ?? throw new ArgumentNullException(nameof(player));
         _minions = minions;
+        _pets = pets;
         _scope = new AimScope(this);
     }
 
@@ -311,7 +317,7 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
             throw new ArgumentNullException(nameof(effect));
         }
 
-        Block(effect.Target).Resolve(effect.Stat).Add(new Modifier(effect.Kind, effect.Value, source));
+        Block(effect.Target)?.Resolve(effect.Stat).Add(new Modifier(effect.Kind, effect.Value, source));
     }
 
     /// <summary>
@@ -340,7 +346,7 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
             throw new ArgumentNullException(nameof(effect));
         }
 
-        Block(effect.Target).Resolve(effect.Stat).RemoveAll(source);
+        Block(effect.Target)?.Resolve(effect.Stat).RemoveAll(source);
     }
 
     /// <summary>
@@ -380,6 +386,7 @@ public sealed class ModifyStatHandler : IEffectHandler<ModifyStat>
                     + "would move by the authored amount and nothing would report it. A tree that "
                     + "aims here belongs to a class with a MinionSpec, and RunSession.Start "
                     + "refuses the run before this is ever reached."),
+            StatTarget.Pet => _pets?.LeadStats,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(target),
                 target,

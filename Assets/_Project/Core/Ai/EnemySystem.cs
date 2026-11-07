@@ -1858,6 +1858,8 @@ public sealed class EnemySystem
 
         public void MinionMove(in EnemyMoveIntent intent) => Inner.MinionMove(intent);
 
+        public void PetMove(in EnemyMoveIntent intent) => Inner.PetMove(intent);
+
         public void EnemyKnockback(in EnemyKnockbackIntent intent) => Inner.EnemyKnockback(intent);
     }
 }

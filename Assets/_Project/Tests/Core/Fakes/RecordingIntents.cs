@@ -36,6 +36,7 @@ public sealed class RecordingIntents : IIntentSink
     private readonly List<EnemyKnockbackIntent> _knockbacks = new();
     private readonly List<EnemyMoveIntent> _enemyMoves = new();
     private readonly List<EnemyMoveIntent> _minionMoves = new();
+    private readonly List<EnemyMoveIntent> _petMoves = new();
 
     /// <summary>Every player-move intent written, in the order core produced them.</summary>
     /// <remarks>
@@ -167,6 +168,8 @@ public sealed class RecordingIntents : IIntentSink
     /// </remarks>
     public IReadOnlyList<EnemyMoveIntent> MinionMoves => _minionMoves;
 
+    public IReadOnlyList<EnemyMoveIntent> PetMoves => _petMoves;
+
     /// <summary>The most recent Wight's walk.</summary>
     /// <exception cref="InvalidOperationException">
     /// Nothing has been written. Louder than a default intent, which would read as Wight 0 standing
@@ -223,6 +226,7 @@ public sealed class RecordingIntents : IIntentSink
         _knockbacks.Clear();
         _enemyMoves.Clear();
         _minionMoves.Clear();
+        _petMoves.Clear();
     }
 
     void IIntentSink.PlayerMove(in PlayerMoveIntent intent)
@@ -249,6 +253,11 @@ public sealed class RecordingIntents : IIntentSink
     void IIntentSink.EnemyMove(in EnemyMoveIntent intent)
     {
         _enemyMoves.Add(intent);
+    }
+
+    void IIntentSink.PetMove(in EnemyMoveIntent intent)
+    {
+        _petMoves.Add(intent);
     }
 
     void IIntentSink.MinionMove(in EnemyMoveIntent intent)

@@ -621,6 +621,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ? null
             : new MinionRecipe(character.Minions);
 
+        PetSystem pets = character.Pet is null ? null : new PetSystem(character.Pet, _events, _intents);
+        pets?.PlaceBeside(Vector3.Zero, motor.Facing, 0f);
+
         // The second block is null for every class but the Gravecaller, and **null is a real answer
         // rather than a missing dependency** (rule 5): a ModifyStat aimed at Minions on a class that
         // raises none is refused by the handler, naming the class, and refused earlier still by the
@@ -628,7 +631,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // a target is a field on one.
         effects.Register<ModifyStat>(new ModifyStatHandler(
             playerStats,
-            minionRecipe is null ? null : new MinionRecipeStats(minionRecipe)));
+            minionRecipe is null ? null : new MinionRecipeStats(minionRecipe),
+            pets));
 
         // One per run like everything above, and the clock with them: a second Start must not
         // inherit the first run's held effects, and a clock that carried the last run's seconds
@@ -867,7 +871,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
         // **LV-01a's per-level growth, in every run, tree or none.** It attaches itself to the
         // tracker, which grows it before each LeveledUp; the registry already knows ModifyStat.
-        var growth = new LevelGrowth(mode.LevelGrowth, progression, effects, combat.Health);
+        var growth = new LevelGrowth(mode.LevelGrowth, progression, effects, combat.Health, pets);
 
         LevelUpFlow levelUp = tree is null
             ? null
@@ -935,7 +939,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             veilrot,
             shop,
             ordeals,
-            mode.HasSanctum);
+            mode.HasSanctum,
+            pets);
 
         combat.AttachStatus(State.Status);
         stormRun.AttachStatus(State.Status);
@@ -1182,6 +1187,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         if (plan is null)
         {
             _flow = null;
+            pets?.AnnounceSpawn();
 
             return;
         }
@@ -1207,6 +1213,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // there is a run to dress one for. It does not begin the director — GD §7.1's two seconds
         // of arrival come first, and it is the end of those that hands the plan over (M2-10 rule 2).
         _flow.Begin(config.StageIndex, State.Time);
+        pets?.AnnounceSpawn();
     }
 
     /// <inheritdoc />
@@ -1263,6 +1270,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // Null for every class but the Gravecaller, so an Oathbound run pays one reference test.
         State.Minions?.Ingest(snapshot);
+        State.Pets?.Ingest(snapshot);
 
         // **Immediately above the combat step, and both halves of that are the mechanic's**
         // (M6-04 rule 9, AR §18.1).
@@ -1449,6 +1457,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // It takes the census to choose from and the player because the kill goes through
         // EnemySystem.ApplyDamage, which resolves a Bloater's blast (M5-04a rule 11).
         State.Minions?.Tick(snapshot.Dt, State.Time, State.Enemies, State.Combat);
+        State.Pets?.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat);
 
         // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).
         //
@@ -1599,7 +1608,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // Copied rather than owned, because the two numbers answer different questions: the
             // flow's is what the stage machine is running, and this is what the run reports and
             // saves (M2-13). They agree because this is the one line that moves the second one.
-            if (State.StageIndex != _flow.Stage)
+            bool stageArrived = State.StageIndex != _flow.Stage;
+            if (stageArrived)
             {
                 State.Projectiles.ClearRicochets();
                 State.Combat.Axes?.Clear();
@@ -1620,6 +1630,10 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             }
 
             State.StageIndex = _flow.Stage;
+            if (stageArrived)
+            {
+                State.Pets?.SpawnBeside(State.PlayerPosition, State.PlayerFacing, State.Time);
+            }
 
             // The same copy for the same reason, one line down (M6-02a rule 4). Written every tick
             // rather than on the edge, because a flow parked in the Sanctum for ten minutes must
@@ -2233,6 +2247,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // duration. Rise is what made it reachable, which is why the sweep lands in the task that
         // ships Rise rather than in the one that shipped the body.
         State.Minions?.Clear();
+        State.Pets?.Clear();
 
         // And the ground the boss made dangerous, in the same silence — but **not** for the zone's
         // reason, and the difference is worth the line (M4-02). A zone is the player's own and

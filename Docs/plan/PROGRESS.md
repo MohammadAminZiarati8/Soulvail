@@ -2,7 +2,7 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-07, Oathbound 3 m sweep._
+_2026-11-07, Beastmaster specced._
 
 ## State
 
@@ -10,7 +10,7 @@ _2026-11-07, Oathbound 3 m sweep._
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
 | **Last merged** | **Tune** — Oathbound Censer 8 m/60° → 3 m/120°. |
-| **Next task** | None; 3 m melee playtest owed. |
+| **Next task** | BM-01a on a go; melee playtest owed. |
 | **Verified** | EditMode 5979 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works

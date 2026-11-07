@@ -33,6 +33,40 @@ footers are in `git log` (last sweep 2026-10-31). Tags `m0`–`m5`.
 
 _No milestone. The owner is setting the next direction._
 
+**The Beastmaster, the second character** (owner, 2026-11-07; design [CH §3.6–3.7](../Characters.md)). The Jungle's reward: returning axes, the Mark, the Hound, Wild Swap, a 3 × 3 tree, then the Packleader path. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from BM-02a (class select); **playtest pet survival after BM-06b**, before the tree (the 20 s self-revive is the lever, CH §3.6.1). BM-03b, PL-04b and PL-05b need the owner's TRELLIS sculpt (prompt in the spec) any time before their drawn task. The drawn tasks name no screen position, so they hold through the landscape switch.
+
+- [ ] [BM-01a](tasks/BM-01a-returning-axes.md) — Returning axes in core: full-range flight, homing return, hits on both passes (M)
+- [ ] [BM-01b](tasks/BM-01b-the-mark.md) — The Mark in core: an axe hit marks for 4 s (S)
+- [ ] [BM-02a](tasks/BM-02a-the-beastmaster-body.md) — The Beastmaster's body and character asset, in class select (M)
+- [ ] [BM-02b](tasks/BM-02b-axes-and-mark-drawn.md) — Axes and the Mark drawn: spin, cyan trail, claw glyph (M)
+- [ ] [BM-03a](tasks/BM-03a-the-hound-in-core.md) — The Hound in core: `PetSystem`, leash, marked-first, bite, XP, level growth (M)
+- [ ] [BM-03b](tasks/BM-03b-hound-model.md) — The Hound's model on `Rig_Panther` (M)
+- [ ] [BM-03c](tasks/BM-03c-hound-drawn.md) — The Hound drawn and in the run, always-on cyan bar (M)
+- [ ] [BM-04](tasks/BM-04-enemies-turn-on-the-hound.md) — Enemies turn on the Hound: the hunt rule, two hunters, strikes land, it falls (M)
+- [ ] [BM-05a](tasks/BM-05a-heel-fall-rescue.md) — Heel, regen and rescue in core (M)
+- [ ] [BM-05b](tasks/BM-05b-heel-fall-rescue-drawn.md) — Heel, fall and rescue drawn: the ring, the kneel (M)
+- [ ] [BM-06a](tasks/BM-06a-wild-swap-core.md) — Wild Swap in core on `ChargeSkill` (M)
+- [ ] [BM-06b](tasks/BM-06b-wild-swap-drawn.md) — Wild Swap drawn and authored: both leap, cyan streak (M)
+- [ ] [BM-07a](tasks/BM-07a-feral-bite-and-light-enemies.md) — Feral Bite and light enemies (M)
+- [ ] [BM-07b](tasks/BM-07b-axe-nodes-and-quick-swap.md) — Cleaving Return and Quick Swap in core (S)
+- [ ] [BM-07c](tasks/BM-07c-pounce-core.md) — Pounce in core (M)
+- [ ] [BM-07d](tasks/BM-07d-the-tree-authored.md) — The tree authored, Pounce and the roar drawn (M)
+- [ ] [BM-08](tasks/BM-08-the-jungles-reward.md) — The Beastmaster is the Jungle's reward: beat the Apex or buy (S)
+- [ ] [PL-01a](tasks/PL-01a-pack-hounds-core.md) — Pack Hounds in core (M)
+- [ ] [PL-01b](tasks/PL-01b-packleader-authored.md) — The Packleader authored: the path slot, its card, Pack Hounds (M)
+- [ ] [PL-02a](tasks/PL-02a-howl-core.md) — Howl in core (M)
+- [ ] [PL-02b](tasks/PL-02b-howl-drawn.md) — Howl drawn and authored (M)
+- [ ] [PL-03](tasks/PL-03-pack-tactics-and-thick-pelts.md) — Pack Tactics and Thick Pelts (M)
+- [ ] [PL-04a](tasks/PL-04a-hawk-core.md) — Hawk in core (M)
+- [ ] [PL-04b](tasks/PL-04b-hawk-model.md) — The hawk's model on `Rig_Hawk` (M)
+- [ ] [PL-04c](tasks/PL-04c-hawk-drawn.md) — Hawk drawn and authored (M)
+- [ ] [PL-05a](tasks/PL-05a-stampede-core.md) — Stampede in core (M)
+- [ ] [PL-05b](tasks/PL-05b-boar-model.md) — The boar's model on `Rig_Panther` (M)
+- [ ] [PL-05c](tasks/PL-05c-stampede-drawn.md) — Stampede drawn and authored (M)
+- [ ] [PL-06](tasks/PL-06-the-packleaders-look.md) — The Packleader's look: cyan war-paint, data and a pet tint (S)
+- [ ] AM — Axe Master, the second path (titles only; specced on the owner's word)
+- [ ] AB — Apex Bond, the third path (titles only; specced on the owner's word)
+
 **The Marksman, the Ranger's first path** (owner, 2026-10-31; design [CH §3.5](../Characters.md), HUD [GD §5.2](../GameDesign.md)). Specs written for an outside implementer; each built only on the owner's go, one at a time, in this order. Playtestable from MK-03 on, with DT-01's test start at stage 12+.
 
 - [x] **MK-01a** — A path's shape: `PathSpec`, skills as ranked branches with an unlock level, installed after the class's tree; a gated node is unavailable below its level (M)

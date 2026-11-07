@@ -202,7 +202,7 @@ A pet that fights in melee next to a crowd, with no thumb of its own, dies fast.
 
 | Option | Verdict | Why |
 |---|---|---|
-| **Enemies prefer the player** | **Yes, the core rule** | An enemy hunts you. It turns on the hound only if the hound bit it in the last 2 s **and** the hound is nearer than you. **At most 2 enemies hunt the hound at once**; a third stays on you. **Bosses never turn on it**, and boss adds follow the rule |
+| **Enemies prefer the player** | **Yes, the core rule** | An enemy hunts you. It turns on the hound only if the hound bit it in the last 2 s **and** the hound is nearer than you. **At most 2 enemies hunt the hound at once**; a third stays on you. **Bosses never turn on it**, and boss adds follow the rule. Only melee kinds turn on it (chasers and lungers: Frog, Rootling, Bullfrog, the panthers); ranged and bursting enemies never do |
 | **What can hurt it** | **Only what turned on it** | An attack aimed at the hound can hit only the hound, and one aimed at you only you. Projectiles, hazard zones and red-orange telegraphs aimed at you pass the hound by. A death always has a culprit standing next to the body |
 | **HP scales with level** | **Yes** | The player's own curve: +3% HP and +2% damage a level, healed like the player's. **Thick Hide** counts for both |
 | **Retreat to heel** | **Yes** | Below 35% HP it breaks off and runs to your side. It is faster than anything in the Jungle (4.0 m/s against the panther's 2.4), and enemies hunting it lose it once it stops biting. At heel it regenerates 6% max HP a second and goes back in at 80%. Between waves it is always at heel |
@@ -232,7 +232,7 @@ A pet that fights in melee next to a crowd, with no thumb of its own, dies fast.
 | Speed | 4.0 m/s |
 | Bite | 7 dmg every 1.0 s, 1.4 m reach (+2%/level) |
 | Leash | Targets only enemies within 8 m of you; past 10 m from you it runs back |
-| Target order | Guardian Beast's target (3 s) → nearest marked enemy → the enemy nearest you; rechosen every 0.5 s |
+| Target order | Nearest marked enemy → the enemy nearest you; rechosen every 0.5 s |
 
 There is no red-orange, violet, gold or lime anywhere on it. Its bar is a small cyan one over its body, always shown: its health is the player's to manage (GD §16.2). The Barbarian's own atlas gets the same check: any cell reading gold or red-orange is repainted bone or cyan. **What each path adds:** Packleader brings pack hounds (smaller copies of the same body), a **hawk** and a **boar** stampede: two new animals. Axe Master adds no animal. Apex Bond grows the one hound: armour and size, on the same body. The art cost is one hound and, later, a hawk and a boar.
 
@@ -249,7 +249,7 @@ Free-pick, tier *N* needs *N−1* in its branch (§5). The Lv-10 tree costs 9 po
 | Tier | **Axe** | **Beast** | **Wild** |
 |---|---|---|---|
 | 1 | **Heavy Edge** — +12% axe damage | **Sharp Claws** — +15% hound damage | **Thick Hide** — +10% max HP, for you and the hound |
-| 2 | **Third Axe** — carry 3 axes: the 0.5 s gap becomes the limit, 1.67 → 2.0 throws/s | **Feral Bite** — every 3rd bite stuns a light enemy 0.5 s | **Guardian Beast** — an enemy that hits you becomes the hound's target for 3 s, ahead of marks |
+| 2 | **Third Axe** — carry 3 axes: the 0.5 s gap becomes the limit, 1.67 → 2.0 throws/s | **Feral Bite** — every 3rd bite stuns a light enemy 0.5 s | **Lick Wounds** — the hound heals twice as fast at heel (12%/s) and goes back in at 60% instead of 80% |
 | 3 | **Cleaving Return** — the return pass deals +50% and slows 25% for 1.5 s | **Pounce** — *active.* The hound leaps up to 6 m at a marked enemy: 2× bite, and knocks a light enemy down 0.8 s. Cooldown 8 s | **Quick Swap** — swap cooldown −1 s; the hound lands with a roar that slows enemies within 3 m by 30% for 2 s |
 
 **Light** is a flag each enemy's content carries: Frog, Rootling, Puffball, Spitter, Panther and their kind. It excludes Bullfrog, Mossguard, Shaman, every elite and every boss. Pounce's trigger is a marked enemy 3–6 m from the hound.
@@ -269,7 +269,7 @@ The Ranger's rules (§3.5) word for word: one path from Lv 11, locked for the ru
 | 17 | **Hawk** | Active | 3 | A jungle hawk circles above you for 8 s and dives at marked enemies every 1.5 s: 2× weapon, and a 0.4 s stun on light ones. It flies, so nothing hits it. Ranks: 10 s; a dive every 1.0 s and cooldown 16 → 12 s |
 | 20 | **Stampede** | Active | 3 | Six wild boars run across the arena down the most crowded line, 3 m wide. Each boar deals 1× weapon to every enemy it passes and knocks light ones down 0.8 s; bosses take half. They are gone in 1.5 s, and nothing hits them. Ranks: nine boars; +30% damage and a 4 m line |
 
-Triggers: Howl — an animal under 50% HP, or at least 3 enemies within 8 m · Hawk — at least 1 marked enemy · Stampede — at least 1 in range, cooldown 30 s. Bites stay single-target, so even three hounds add nothing to a crowd that one hound would not: the pack grows the hound's share, not the area. Look: cyan war-paint stripes on him and on every hound.
+Triggers: Howl — an animal under 50% HP · Hawk — at least 1 marked enemy · Stampede — at least 1 in range, cooldown 30 s. Bites stay single-target, so even three hounds add nothing to a crowd that one hound would not: the pack grows the hound's share, not the area. Look: cyan war-paint stripes on him and on every hound.
 
 **Axe Master — the axe.** No new animal; the Hound stays as base.
 

@@ -495,6 +495,8 @@ public sealed class PlayerCombat
     /// </summary>
     public Weapon Weapon { get; }
 
+    internal int EnemyCapacity => _candidates.Length;
+
     /// <summary>
     /// CC §4.3's Focus ramp: the stationary clock, the level it is worth, and the modifier that
     /// puts it on <see cref="Weapon"/>'s fire rate. Ticked first in <see cref="Tick"/>; exposed for

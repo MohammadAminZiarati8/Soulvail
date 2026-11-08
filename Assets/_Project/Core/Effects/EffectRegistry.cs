@@ -31,6 +31,7 @@ public interface IEffect
 }
 
 /// <summary>Optional, side-effect-free runtime check before a cast spends cooldown or resources.</summary>
+/// <remarks>Use this for casts that may have no valid target or line on the current tick.</remarks>
 public interface IEffectCastGuard<in TEffect> where TEffect : IEffect
 {
     bool CanCast(TEffect effect);

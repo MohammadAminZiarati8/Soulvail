@@ -63,7 +63,7 @@ _No milestone. The owner is setting the next direction._
 - [x] PL-04a — Hawk in core (M)
 - [x] PL-04b — The hawk's model on `Rig_Hawk` (M)
 - [x] PL-04c — Hawk drawn and authored (M)
-- [ ] [PL-05a](tasks/PL-05a-stampede-core.md) — Stampede in core (M)
+- [x] PL-05a — Stampede in core (M)
 - [x] PL-05b — The boar's model on `Rig_Panther` (M)
 - [ ] [PL-05c](tasks/PL-05c-stampede-drawn.md) — Stampede drawn and authored (M)
 - [ ] [PL-06](tasks/PL-06-the-packleaders-look.md) — The Packleader's look: cyan war-paint, data and a pet tint (S)

@@ -30,7 +30,11 @@ dust, and struck enemies tumble.
    time, never ahead of core.
 3. A small dust burst at each `BoarHit`; light enemies show their stun stars (BM-07a).
 4. `StampedeEnded` or a stage change returns every boar to the pool.
-5. Stampede is a circle in the arc, auto-cast on by default; the path now authors 20 ranks.
+5. Stampede is a circle in the arc. The path now authors 20 ranks.
+   - Rank 1: active `Stampede(0.8)`, trigger `EnemiesInAcquireRange ≥ 1`, 30 s cooldown,
+     auto-cast on by default.
+   - Rank 2: `StampedeBoars` +3.
+   - Rank 3: `StampedeDamage` +0.3 and `StampedeHalfWidth` +0.5.
 
 ## Tests
 

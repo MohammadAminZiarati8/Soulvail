@@ -114,6 +114,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private WhirlwindHandler _whirlwind;
     private ShadeSystem _shades;
     private HawkSystem _hawk;
+    private StampedeSystem _stampede;
 
     private TrapSystem _traps;
 
@@ -687,6 +688,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         effects.Register<Howl>(new HowlHandler(pets, playerStats, _clock));
         _hawk = new HawkSystem(_events, playerStats);
         effects.Register<CallHawk>(new CallHawkHandler(_hawk, _clock));
+        _stampede = new StampedeSystem(_events, playerStats);
+        effects.Register<Stampede>(new StampedeHandler(_stampede, enemies, combat, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
         // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
@@ -1382,6 +1385,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         State.Skills.Tick(snapshot.Dt, State.Time);
         _killshot.Tick(State.Time);
         _whirlwind.Tick(State.Time, State.PlayerPosition);
+        _stampede.Tick(State.Time, State.Enemies, State.Combat);
 
         // **Immediately after the runner and above the projectile step, and both halves are the
         // mechanic's** (M3-11a-ii rule 3, AR §18.1). *After the runner*, because it may cast this
@@ -1624,6 +1628,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             if (stageArrived)
             {
                 _hawk.Clear();
+                _stampede.Clear();
                 State.Projectiles.ClearRicochets();
                 State.Combat.Axes?.Clear();
                 _whirlwind.Clear();
@@ -2205,6 +2210,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _whirlwind.Clear();
         _shades.Clear();
         _hawk.Clear();
+        _stampede.Clear();
         State.Combat.EndStormRun();
         State.Combat.ClearEchoes();
         State.Combat.ResetDecoy();

@@ -263,6 +263,9 @@ public enum PlayerStat
     PetDamageTaken,
     HawkSeconds,
     HawkDiveInterval,
+    StampedeBoars,
+    StampedeDamage,
+    StampedeHalfWidth,
 }
 
 /// <summary>
@@ -345,6 +348,11 @@ public sealed class PlayerStats : IStatBlock
     public Stat HowlSeconds { get; } = new(4f);
     public Stat HawkSeconds { get; } = new(8f);
     public Stat HawkDiveInterval { get; } = new(1.5f);
+    public Stat StampedeBoars { get; } = new(6f);
+    public Stat StampedeDamage { get; } = new(1f);
+    public Stat StampedeHalfWidth { get; } = new(1.5f);
+
+    internal int EnemyCapacity => _combat.EnemyCapacity;
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -449,6 +457,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.HowlSeconds => HowlSeconds,
             PlayerStat.HawkSeconds => HawkSeconds,
             PlayerStat.HawkDiveInterval => HawkDiveInterval,
+            PlayerStat.StampedeBoars => StampedeBoars,
+            PlayerStat.StampedeDamage => StampedeDamage,
+            PlayerStat.StampedeHalfWidth => StampedeHalfWidth,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -542,6 +553,9 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.HowlSeconds => true,
             PlayerStat.HawkSeconds => true,
             PlayerStat.HawkDiveInterval => true,
+            PlayerStat.StampedeBoars => true,
+            PlayerStat.StampedeDamage => true,
+            PlayerStat.StampedeHalfWidth => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

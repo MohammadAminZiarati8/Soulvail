@@ -9,11 +9,14 @@ namespace Soulvail.Game.Authoring
     public sealed class PathLook : ScriptableObject
     {
         [SerializeField] private MaterialSwap[] _materials = Array.Empty<MaterialSwap>();
+        [Tooltip("Optional swaps for every live pet body, matched by renderer name like the hero's.")]
+        [SerializeField] private MaterialSwap[] _petMaterials = Array.Empty<MaterialSwap>();
         [SerializeField] private Prop[] _props = Array.Empty<Prop>();
         [SerializeField] private Color _bowTint = Color.clear;
         [SerializeField] private Color _arrowTrailTint = Color.clear;
 
         public IReadOnlyList<MaterialSwap> Materials => _materials;
+        public IReadOnlyList<MaterialSwap> PetMaterials => _petMaterials;
         public IReadOnlyList<Prop> Props => _props;
         /// <summary>Alpha zero leaves the bow alone; tinted material slots opt in below.</summary>
         public Color BowTint => _bowTint;

@@ -36,6 +36,11 @@ public sealed class PetViews : IDisposable
     private readonly IDisposable _ended;
     private Vector3? _arenaEntryPosition;
 
+    /// <summary>Raised after a pet body is bound, so a run-local look can dress it on arrival.</summary>
+    public event Action<PetView> Spawned;
+
+    public IReadOnlyCollection<PetView> Active => _active.Values;
+
     public PetViews(IObjectResolver resolver, PetView prefab, Transform parent, DomainEventHub hub,
         PlayerView player = null, ArenaPool arenas = null, Camera camera = null,
         Func<int, float?> healthFraction = null)
@@ -173,6 +178,7 @@ public sealed class PetViews : IDisposable
         view.transform.localScale = evt.IsLead ? _bodyScale : _bodyScale * 0.8f;
         view.Bind(evt.Id, position, evt.HealthFraction, _camera, _healthFraction);
         _active.Add(evt.Id, view);
+        Spawned?.Invoke(view);
     }
 
     private void OnDespawned(PetDespawned evt)

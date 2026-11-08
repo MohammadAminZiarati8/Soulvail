@@ -48,4 +48,4 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 7f331ac5224d4c14bcf8463f70bf2306, type: 2}
     - {fileID: 11400000, guid: 7f331ac5224d4c14bcf8463f70bf2307, type: 2}
     _unlockLevel: 20
-  _look: {fileID: 0}
+  _look: {fileID: 11400000, guid: 69f0ba212bb114a428fe5d3a63c6a4db, type: 2}

@@ -465,3 +465,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Learn Stampede at level 20 in a crowd. At rank 1, six boars run the crowded line and frogs tumble. At rank 2, nine boars run the line.
 2. **[device]** Check that frame time holds with twelve boars and a full wave.
+
+### PL-06 — The Packleader's look
+
+1. **[Editor]** Choose Packleader at 11: the hero (arms and chest) and the hound (flanks) take cyan stripes; a pack hound learned later arrives striped; a non-Packleader run shows none.

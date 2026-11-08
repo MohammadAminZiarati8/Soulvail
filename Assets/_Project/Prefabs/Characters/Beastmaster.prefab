@@ -109,6 +109,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8620186324161534070, guid: 58578f2bb8d8b284cb45c76edca53af5, type: 3}
       insertIndex: -1
       addedObject: {fileID: 22154477747980086}
+    - targetCorrespondingSourceObject: {fileID: 8620186324161534070, guid: 58578f2bb8d8b284cb45c76edca53af5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3100988940176029806}
   m_SourcePrefab: {fileID: 100100000, guid: 58578f2bb8d8b284cb45c76edca53af5, type: 3}
 --- !u!95 &2465336189053705192 stripped
 Animator:
@@ -140,6 +143,19 @@ MonoBehaviour:
   _animator: {fileID: 2465336189053705192}
   _leftAxe: {fileID: 3510115610653263041}
   _rightAxe: {fileID: 4784000510178044549}
+--- !u!114 &3100988940176029806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5016929437214058246}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0210707c6f3fab945af2a91e8cb11f75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PathLookView
+  _character: {fileID: 11400000, guid: 46a042df167a8ff48ae4b76bb2fa0031, type: 2}
 --- !u!4 &6286108887855778701 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7278386331130918141, guid: 58578f2bb8d8b284cb45c76edca53af5, type: 3}

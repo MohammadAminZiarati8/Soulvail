@@ -9,9 +9,9 @@ _2026-11-08._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **PL-05c**. |
-| **Next task** | PL-06 on a go. |
-| **Verified** | EditMode 6130 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **PL-06**. |
+| **Next task** | None specced — owner picks (AM/AB titles only). |
+| **Verified** | EditMode 6135 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -19,9 +19,9 @@ Portrait; Heroes/Places; Jungle 30 stages. Ranger, Oathbound, Beastmaster; Veilr
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; warned vines.
-Mother: shields, lobs, spray, pod. Leap: crouch, ring, 1.2 m arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
-From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther) replace.
-Stalker (22+): lurks, hides, hit reveals, strikes; shimmer, flash.
+Mother: shields, lobs, spray, pod. Leap: crouch, ring, arc, bite. Chain: lit bombers, red link, 8 Hz fuse.
+From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther).
+Stalker (22+): lurks, hides, hit reveals, strikes.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; window tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 986 HP, 2.8 m/s, 4 pillars.
@@ -30,18 +30,18 @@ Stone-stops dash/rake. Pack: 3 s cd. Hunt: +30% speed, 3 lanes, double pounce; 0
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m;
-flees <4 m. Strongest haste refreshes, stacks with slow. Lime staff/glow/ring.
+flees <4 m. Haste stacks with slow. Lime staff/glow/ring.
 17–19: healer/guards, wall, gate; XP 32, priority 8.
 Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points; paused free-pick tree, rank pips, Learn; 20 Marksman ranks (Steady Aim 4, Binding Shot 3). Death pays Shards.
-Save v5; Clash UI/LocKeys. Six-circle arc: tap fire on Auto,
-0.45 s hold toggles; 0.5 s gap; mirrored. Legacy saves expand to six.
+Save v5; Clash UI/LocKeys. Six-circle arc: tap fires on Auto,
+0.45 s hold toggles; mirrored; legacy saves expand.
 Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs with an Immune pop.
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
-Beastmaster: 9 nodes, Auto Pounce, Quick Swap. Packleader: Hounds/Howl (4+4 at 11), Tactics/Pelts (3+3 at 14), Hawk (17), Stampede (20).
+Beastmaster: 9 nodes, Auto Pounce, Quick Swap. Packleader: Hounds/Howl (4+4 at 11), Tactics/Pelts (3+3 at 14), Hawk (17), Stampede (20); cyan war-paint on hero and hounds.
 
 ## Missing
 

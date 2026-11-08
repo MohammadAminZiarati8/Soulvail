@@ -21,17 +21,24 @@ namespace Soulvail.Game.Views
         private IDisposable _chosen, _started;
         private IRunSession _session;
         private ProjectileViews _projectiles;
+        private PetViews _pets;
         private float _shimmer;
 
         public PathLook Look { get; private set; }
         public bool IsShimmering => _shimmer > 0f;
 
         // RunScope constructs this after raising and injecting the body, before RunTicker.Start.
-        public void Construct(DomainEventHub hub, IRunSession session, ProjectileViews projectiles)
+        public void Construct(DomainEventHub hub, IRunSession session, ProjectileViews projectiles,
+            PetViews pets = null)
         {
             Dispose();
             _session = session;
             _projectiles = projectiles;
+            _pets = pets;
+            if (_pets != null)
+            {
+                _pets.Spawned += DressPet;
+            }
             _chosen = hub.Subscribe<PathChosen>(evt => ApplyPath(evt.PathId, true));
             _started = hub.Subscribe<RunStarted>(_ => ApplyPath(_session?.State?.PathId ?? default, false));
         }
@@ -66,48 +73,12 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
-            foreach (PathLook.MaterialSwap swap in look.Materials)
+            Swap(GetComponentsInChildren<Renderer>(true), look.Materials, look);
+            if (_pets != null)
             {
-                if (swap == null || swap.Material == null || swap.Slot < 0)
+                foreach (PetView pet in _pets.Active)
                 {
-                    continue;
-                }
-                foreach (Renderer renderer in renderers)
-                {
-                    if (renderer.name != swap.Renderer)
-                    {
-                        continue;
-                    }
-                    Original original = Remember(renderer);
-                    var skin = renderer as SkinnedMeshRenderer;
-                    if (swap.Mesh != null && skin != null)
-                    {
-                        skin.sharedMesh = swap.Mesh;
-                    }
-                    Material[] materials = renderer.sharedMaterials;
-                    if (swap.Slot >= materials.Length)
-                    {
-                        int count = skin != null && skin.sharedMesh != null ? skin.sharedMesh.subMeshCount : materials.Length;
-                        if (swap.Slot >= count)
-                        {
-                            continue;
-                        }
-                        Array.Resize(ref materials, count);
-                    }
-                    materials[swap.Slot] = swap.Material;
-                    renderer.sharedMaterials = materials;
-                    if (swap.BowTint && look.BowTint.a > 0f)
-                    {
-                        var block = new MaterialPropertyBlock();
-                        renderer.GetPropertyBlock(block, swap.Slot);
-                        original.SlotBlocks.Add((swap.Slot, block));
-                        var tint = new MaterialPropertyBlock();
-                        renderer.GetPropertyBlock(tint, swap.Slot);
-                        tint.SetColor("_BaseColor", look.BowTint);
-                        tint.SetColor("_EmissionColor", look.BowTint * 1.2f);
-                        renderer.SetPropertyBlock(tint, swap.Slot);
-                    }
+                    DressPet(pet);
                 }
             }
 
@@ -149,6 +120,63 @@ namespace Soulvail.Game.Views
                 }
                 _shimmer = ShimmerDuration;
                 Step(0f);
+            }
+        }
+
+        /// <summary>Dresses a pet body with the path's pet swaps; a pooled body keeps its first original.</summary>
+        public void DressPet(PetView pet)
+        {
+            if (Look == null || pet == null || Look.PetMaterials.Count == 0)
+            {
+                return;
+            }
+            Swap(pet.GetComponentsInChildren<Renderer>(true), Look.PetMaterials, Look);
+        }
+
+        private void Swap(Renderer[] renderers, IReadOnlyList<PathLook.MaterialSwap> swaps, PathLook look)
+        {
+            foreach (PathLook.MaterialSwap swap in swaps)
+            {
+                if (swap == null || swap.Material == null || swap.Slot < 0)
+                {
+                    continue;
+                }
+                foreach (Renderer renderer in renderers)
+                {
+                    if (renderer.name != swap.Renderer)
+                    {
+                        continue;
+                    }
+                    Original original = Remember(renderer);
+                    var skin = renderer as SkinnedMeshRenderer;
+                    if (swap.Mesh != null && skin != null)
+                    {
+                        skin.sharedMesh = swap.Mesh;
+                    }
+                    Material[] materials = renderer.sharedMaterials;
+                    if (swap.Slot >= materials.Length)
+                    {
+                        int count = skin != null && skin.sharedMesh != null ? skin.sharedMesh.subMeshCount : materials.Length;
+                        if (swap.Slot >= count)
+                        {
+                            continue;
+                        }
+                        Array.Resize(ref materials, count);
+                    }
+                    materials[swap.Slot] = swap.Material;
+                    renderer.sharedMaterials = materials;
+                    if (swap.BowTint && look.BowTint.a > 0f)
+                    {
+                        var block = new MaterialPropertyBlock();
+                        renderer.GetPropertyBlock(block, swap.Slot);
+                        original.SlotBlocks.Add((swap.Slot, block));
+                        var tint = new MaterialPropertyBlock();
+                        renderer.GetPropertyBlock(tint, swap.Slot);
+                        tint.SetColor("_BaseColor", look.BowTint);
+                        tint.SetColor("_EmissionColor", look.BowTint * 1.2f);
+                        renderer.SetPropertyBlock(tint, swap.Slot);
+                    }
+                }
             }
         }
 
@@ -239,6 +267,11 @@ namespace Soulvail.Game.Views
             _chosen?.Dispose();
             _started?.Dispose();
             _chosen = _started = null;
+            if (_pets != null)
+            {
+                _pets.Spawned -= DressPet;
+                _pets = null;
+            }
             Restore();
             if (_projectiles != null)
             {

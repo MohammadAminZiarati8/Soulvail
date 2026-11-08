@@ -1289,7 +1289,7 @@ namespace Soulvail.Game.Composition
             if (pathLook != null)
             {
                 pathLook.Construct(container.Resolve<DomainEventHub>(), container.Resolve<IRunSession>(),
-                    container.Resolve<ProjectileViews>());
+                    container.Resolve<ProjectileViews>(), container.Resolve<PetViews>());
             }
         }
 

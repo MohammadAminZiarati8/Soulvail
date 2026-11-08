@@ -67,6 +67,20 @@ _No milestone. The owner is setting the next direction._
 - [x] PL-05b — The boar's model on `Rig_Panther` (M)
 - [x] PL-05c — Stampede drawn and authored (M)
 - [x] PL-06 — The Packleader's look: cyan war-paint, data and a pet tint (S)
+
+**Beastmaster tune** (owner playtest, 2026-11-08; design CH §3.6–3.7 updated the same day). One at a time on the owner's go, in this order.
+
+- [ ] [BT-01](tasks/BT-01-two-axes-at-once.md) — Two axes at once, attack speed sets the cadence, Swift Hands (M)
+- [ ] [BT-02](tasks/BT-02-axes-stop-at-cover.md) — Axes stop at cover (S)
+- [ ] [BT-03](tasks/BT-03-arena-wide-hunt-and-hawk-climb.md) — Animals hunt the whole arena, your last mark first; the hawk climbs back (M)
+- [ ] [BT-04](tasks/BT-04-pack-formation.md) — The pack's formation: slots, spacing, eased following (M)
+- [ ] [BT-05](tasks/BT-05-swap-lands-exactly.md) — Wild Swap lands him exactly where the hound was (S)
+- [ ] [BT-06a](tasks/BT-06a-frenzy-core.md) — Frenzy in core; Howl heals only (M)
+- [ ] [BT-06b](tasks/BT-06b-frenzy-authored-and-drawn.md) — Frenzy authored at Lv 20 and drawn (M)
+- [ ] [BT-06c](tasks/BT-06c-stampede-removed.md) — Stampede's code removed (S)
+- [ ] [BT-07a](tasks/BT-07a-boar-core.md) — The boar in core: a ranged animal that spits (M)
+- [ ] [BT-07b](tasks/BT-07b-boar-drawn-and-authored.md) — The boar drawn and authored at Lv 14 (M)
+
 - [ ] AM — Axe Master, the second path (titles only; specced on the owner's word)
 - [ ] AB — Apex Bond, the third path (titles only; specced on the owner's word)
 

@@ -187,14 +187,14 @@ Triggers: Mirror Image and Crossfire — at least 1 enemy in range · Hall of Mi
 | | |
 |---|---|
 | **Body** | KayKit **Barbarian** on `Rig_Medium`; the axes are separate props. 100 HP, no Aegis, 3.1 m/s |
-| **Weapon** | **Returning axes.** Each axe is thrown at the nearest enemy within 8 m, flies out to the full 8 m at 14 m/s, turns, and spins back to his hand at 14 m/s, homing on wherever he is now. 6 dmg per pass; each pass hits an enemy once, and at most 3 enemies. He carries 2 axes and throws one whenever an axe is in hand, at most one throw every 0.5 s. **He throws while moving**: running away lengthens the return, and that delay is the cost |
-| **Signature** | **Mark.** Every axe hit marks the enemy for 4 s (refreshed by each hit). The hound goes for marked enemies first |
+| **Weapon** | **Returning axes** *(owner, 2026-11-08)*. He carries **two axes, never more**, and throws **both at once**, 8° either side of the nearest enemy within 8 m. Each flies out to the full 8 m whatever the target's distance, turns, and spins back to his hand, homing on wherever he is now. A rock stops the out pass: the axe turns where it hit; the way back passes cover. 6 dmg per pass; each pass hits an enemy once, and at most 3 enemies. **A throw every 1.2 s, and only with both axes in hand.** Attack speed shortens the interval and speeds the flight by the same factor, so the axes are always back in time. **He stands to throw**, as the Ranger does; axes in flight still come home while he runs |
+| **Signature** | **Mark.** Every axe hit marks the enemy for 4 s (refreshed by each hit). Every animal goes for the enemy his last throw aimed at while it is marked, then the nearest marked, then the enemy nearest him, anywhere in the arena |
 | **Pet** | **The Hound** (§3.6.2), a real animal with real stats. It can fall, and it can be rescued |
 | **Movement** | **Wild Swap** on Space: he and the hound leap past each other and trade places (§3.6.3), 6 s cooldown, its own animation |
 | **Active** | **Pounce**, earned from the tree; the hound's leap, cast from his arc like any active |
 | **Tree** | 3 branches × 3 nodes, free-pick (§5.1), like the Ranger's; three paths from Lv 11 (§3.7) |
 
-**Sized against the Ranger.** Against one enemy standing on the axe's line both passes land, so the axe does 6 × 2 × 1.67 throws/s ≈ **20 dps**. The cycle is about 1.2 s round trip, so 2 axes give 1.67 throws a second. The hound adds **7 dps**: **27** in all, against the Ranger's 13 × 2.2 = **28.6** standing. A Frog (36 HP) takes 3 throws, as it takes the Ranger 3 arrows. The axes hit up to three enemies a pass and the bites hit one, so a crowd adds only on the axe's line. The Oathbound's lesson is that area damage meeting the Jungle's crowds is what breaks the curve, and nothing in the base kit is an area. **The hound is about a quarter of his damage**: it helps and never carries, and losing it costs a quarter, not half.
+**Sized against the Ranger.** Against one enemy standing on the axe's line both passes land, so a throw does 2 axes × 2 passes × 6 = 24 every 1.2 s ≈ **20 dps**. The hound adds **7 dps**: **27** in all, against the Ranger's 13 × 2.2 = **28.6** standing. A Frog (36 HP) takes 2 throws. The axes hit up to three enemies a pass and the bites hit one, so a crowd adds only on the axe's line. The Oathbound's lesson is that area damage meeting the Jungle's crowds is what breaks the curve, and nothing in the base kit is an area. **The hound is about a quarter of his damage**: it helps and never carries, and losing it costs a quarter, not half.
 
 #### 3.6.1 Pet survival — the problem, and the ruling
 
@@ -231,16 +231,17 @@ A pet that fights in melee next to a crowd, with no thumb of its own, dies fast.
 | HP | 70 (+3%/level) |
 | Speed | 4.0 m/s |
 | Bite | 7 dmg every 1.0 s, 1.4 m reach (+2%/level) |
-| Leash | Targets only enemies within 8 m of you; past 10 m from you it runs back |
-| Target order | Nearest marked enemy → the enemy nearest you; rechosen every 0.5 s |
+| Reach | Any enemy in the arena *(owner, 2026-11-08; the 8 m leash is gone)* |
+| Target order | Your last throw's target while marked → the nearest marked enemy → the enemy nearest you; rechosen every 0.5 s, and at once when your throw target changes |
+| Following | Out of a fight each animal holds a slot: the Hound at your right, pack hounds at your left and behind, the boar behind-left. Animals keep 1.1 m apart; they ease into the slot, ignore a nudge under 0.5 m, and turn at a capped rate, so they never read as steered by the stick |
 
-There is no red-orange, violet, gold or lime anywhere on it. Its bar is a small cyan one over its body, always shown: its health is the player's to manage (GD §16.2). The Barbarian's own atlas gets the same check: any cell reading gold or red-orange is repainted bone or cyan. **What each path adds:** Packleader brings pack hounds (smaller copies of the same body), a **hawk** and a **boar** stampede: two new animals. Axe Master adds no animal. Apex Bond grows the one hound: armour and size, on the same body. The art cost is one hound and, later, a hawk and a boar.
+There is no red-orange, violet, gold or lime anywhere on it. Its bar is a small cyan one over its body, always shown: its health is the player's to manage (GD §16.2). The Barbarian's own atlas gets the same check: any cell reading gold or red-orange is repainted bone or cyan. **What each path adds:** Packleader brings pack hounds (smaller copies of the same body), a **hawk** and a spitting **boar**: two new animals. Axe Master adds no animal. Apex Bond grows the one hound: armour and size, on the same body. The art cost is one hound and, later, a hawk and a boar.
 
 #### 3.6.3 Wild Swap
 
 *The draft's "Spirit Swap", renamed: nothing in this class is a spirit.*
 
-Space: he and the hound **leap past each other** in 0.25 s and land in each other's places. Both stay visible, and a cyan streak joins the two points for 0.3 s. It is a leap, not a cut, because the Echo Archer ruled that a teleport on a phone loses the hero. Both are immune during the leap and for 0.2 s after. The leap arcs, so cover does not stop it. Every enemy hunting the hound loses it. Cooldown **6 s**. With the hound fallen, he leaps onto the body and the rescue starts half done. Clips: `Jump_Full_Short` for him, a lunge for the hound.
+Space: he and the hound **leap past each other** in 0.25 s and land in each other's places. Both stay visible, and a cyan streak joins the two points for 0.3 s. It is a leap, not a cut, because the Echo Archer ruled that a teleport on a phone loses the hero. Both are immune during the leap and for 0.2 s after. The leap arcs, so nothing stops it — no cover, no enemy, no animal — and each lands exactly on the other's spot. Every enemy hunting the hound loses it. Cooldown **6 s**. With the hound fallen, he leaps onto the body and the rescue starts half done. Clips: `Jump_Full_Short` for him, a lunge for the hound.
 
 #### 3.6.4 Tree — levels 2 to 10
 
@@ -249,7 +250,7 @@ Free-pick, tier *N* needs *N−1* in its branch (§5). The Lv-10 tree costs 9 po
 | Tier | **Axe** | **Beast** | **Wild** |
 |---|---|---|---|
 | 1 | **Heavy Edge** — +12% axe damage | **Sharp Claws** — +15% hound damage | **Thick Hide** — +10% max HP, for you and the hound |
-| 2 | **Third Axe** — carry 3 axes: the 0.5 s gap becomes the limit, 1.67 → 2.0 throws/s | **Feral Bite** — every 3rd bite stuns a light enemy 0.5 s | **Lick Wounds** — the hound heals twice as fast at heel (12%/s) and goes back in at 60% instead of 80% |
+| 2 | **Swift Hands** — +20% attack speed: a throw every 1.0 s, axes 20% faster *(replaced Third Axe, owner 2026-11-08)* | **Feral Bite** — every 3rd bite stuns a light enemy 0.5 s | **Lick Wounds** — the hound heals twice as fast at heel (12%/s) and goes back in at 60% instead of 80% |
 | 3 | **Cleaving Return** — the return pass deals +50% and slows 25% for 1.5 s | **Pounce** — *active.* The hound leaps up to 6 m at a marked enemy: 2× bite, and knocks a light enemy down 0.8 s. Cooldown 8 s | **Quick Swap** — swap cooldown −1 s; the hound lands with a roar that slows enemies within 3 m by 30% for 2 s |
 
 **Light** is a flag each enemy's content carries: Frog, Rootling, Puffball, Spitter, Panther and their kind. It excludes Bullfrog, Mossguard, Shaman, every elite and every boss. Pounce's trigger is a marked enemy 3–6 m from the hound.
@@ -263,13 +264,13 @@ The Ranger's rules (§3.5) word for word: one path from Lv 11, locked for the ru
 | Lv | Skill | Kind | Ranks | Effect |
 |---|---|---|---|---|
 | 11 | **Pack Hounds** | Passive | 4 | A pack hound runs with you, at 50% of the Hound's HP and damage. Ranks: 65%; a second pack hound; 80%. Swap trades with the Hound alone |
-| 11 | **Howl** | Active | 4 | Every animal heals 20% max HP and gains +25% attack speed for 4 s. Ranks: 30% heal; 6 s; cooldown 14 → 11 s |
-| 14 | **Pack Tactics** | Passive | 3 | +10/15/20% animal damage on an enemy another animal is biting. Rank 3: an enemy bitten by two at once is slowed 30% |
+| 11 | **Howl** | Active | 4 | Every animal heals 20% max HP. A heal, not a buff: the attack-speed part moved to Frenzy. Ranks: 30%; 40%; cooldown 14 → 11 s |
+| 14 | **Boar** | Passive | 3 | *(Owner, 2026-11-08; replaced Pack Tactics.)* A jungle boar joins the pack, a **ranged** animal: 60 HP (+3%/level), 3.6 m/s, holds 5 m from its target and spits a toxic-green glob (`#16A34A`, never the enemies' lime, with a thin cyan trail) every 1.5 s at 12 m/s, 7 m range, 6 dmg (+2%/level). Cover stops a glob, so it spits only with a clear line. A melee enemy its glob hits may turn on it by the hunt rule. Ranks: +30% spit damage; the glob slows 25% for 1.5 s |
 | 14 | **Thick Pelts** | Passive | 3 | Animals take −10/−20/−30% damage. Rank 3: a rescue takes 1 s |
-| 17 | **Hawk** | Active | 3 | A jungle hawk circles above you for 8 s and dives at marked enemies every 1.5 s: 2× weapon, and a 0.4 s stun on light ones. It flies, so nothing hits it. Ranks: 10 s; a dive every 1.0 s and cooldown 16 → 12 s |
-| 20 | **Stampede** | Active | 3 | Six wild boars run across the arena down the most crowded line, 3 m wide. Each boar deals 1× weapon to every enemy it passes and knocks light ones down 0.8 s; bosses take half. They are gone in 1.5 s, and nothing hits them. Ranks: nine boars; +30% damage and a 4 m line |
+| 17 | **Hawk** | Active | 3 | A jungle hawk circles above you for 8 s and dives at marked enemies every 1.5 s: 2× weapon, and a 0.4 s stun on light ones. It flies, so nothing hits it. After each strike it climbs back to its circle over 0.4 s. Ranks: 10 s; a dive every 1.0 s and cooldown 16 → 12 s |
+| 20 | **Frenzy** | Active | 3 | *(Owner, 2026-11-08; replaced Stampede.)* Every animal gets +30% attack speed, +30% move speed and +30% damage for 8 s, the buff icon over its bar (GD §16.5). Ranks: 10 s; +40% and cooldown 30 → 24 s |
 
-Triggers: Howl — an animal under 50% HP · Hawk — at least 1 marked enemy · Stampede — at least 1 in range, cooldown 30 s. Bites stay single-target, so even three hounds add nothing to a crowd that one hound would not: the pack grows the hound's share, not the area. Look: cyan war-paint stripes on him and on every hound.
+Triggers: Howl — an animal under 50% HP · Hawk — at least 1 marked enemy · Frenzy — at least 1 in range, cooldown 30 s. Bites stay single-target, so even three hounds add nothing to a crowd that one hound would not: the pack grows the hound's share, not the area. Look: cyan war-paint stripes on him and on every hound.
 
 **Axe Master — the axe.** No new animal; the Hound stays as base.
 
@@ -280,7 +281,7 @@ Triggers: Howl — an animal under 50% HP · Hawk — at least 1 marked enemy ·
 | 14 | **Splitter** | Passive | 3 | Every 5th throw is a heavy axe: 2× damage, and it knocks light enemies back 1 m. Ranks: every 4th; 2.5×, every 3rd |
 | 14 | **Battle Rhythm** | Passive | 3 | Each axe kill gives +5% throw rate for 3 s (refreshes), stacking to 3/4/5 |
 | 17 | **Whirling Axes** | Active | 3 | He spins for 1.5 s at full speed, axes in both hands: 3 hits of 0.8× weapon on every enemy within 2 m, and light ones are pushed out to 2.5 m. Throws pause while he spins. Ranks: 4 hits; cooldown 12 → 9 s |
-| 20 | **Axe Storm** | Active | 3 | For 6 s every throw is a fan of 3 axes 15° apart, and the throw gap halves. The side axes return like any other, but a throw needs only one axe in hand. Ranks: 8 s; axes +30% damage |
+| 20 | **Axe Storm** | Active | 3 | For 6 s, +100% attack speed: throws twice as often and the axes fly twice as fast (still two axes, §3.6). Ranks: 8 s; axes +30% damage |
 
 Triggers: Hurl — at least 3 enemies in range · Whirling Axes — at least 2 within 2.5 m · Axe Storm — at least 1 in range, cooldown 30 s. Look: bright cyan axe edges and a cyan spin trail.
 

@@ -10,7 +10,7 @@ _2026-11-08._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **PL-06**. |
-| **Next task** | None specced — owner picks (AM/AB titles only). |
+| **Next task** | **BT-01** (Beastmaster tune, BT-01 → BT-07b specced). |
 | **Verified** | EditMode 6135 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works

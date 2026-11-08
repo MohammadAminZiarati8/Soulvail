@@ -96,8 +96,6 @@ MonoBehaviour:
   _petBiteDamage: 7
   _petBiteInterval: 1
   _petReach: 1.4
-  _petLeash: 8
-  _petReturnRange: 10
   _petHeelDistance: 1.5
   _petPrefab: {fileID: 1342280564543246559, guid: c36791b06fa96a2468ad7e93d624ec53, type: 3}
   _volleyNode: {fileID: 0}

@@ -12,18 +12,21 @@ public sealed class HawkSystem
     public const float CircleRadius = 3f;
     public const float Height = 4f;
     public const float DiveSeconds = 0.4f;
+    public const float ClimbSeconds = 0.4f;
 
     private readonly IDomainEvents _events;
     private readonly PlayerStats _stats;
     private float _expiresAt;
     private float _lastDiveAt;
     private float _strikeAt;
+    private float _climbFrom = float.NegativeInfinity;
     private float _angle;
     private float _damageOfWeapon;
     private float _stunSeconds;
     private int _targetId;
     private Vector3 _from;
     private Vector3 _to;
+    private Vector3 _climbStart;
 
     public HawkSystem(IDomainEvents events, PlayerStats stats)
     {
@@ -48,6 +51,7 @@ public sealed class HawkSystem
 
         IsAloft = true;
         _angle = 0f;
+        _climbFrom = float.NegativeInfinity;
         _lastDiveAt = now;
         _events.Publish(new HawkArrived());
     }
@@ -77,13 +81,25 @@ public sealed class HawkSystem
         }
 
         _angle += dt;
-        Position = player + new Vector3(MathF.Cos(_angle) * CircleRadius, Height, MathF.Sin(_angle) * CircleRadius);
+        Vector3 circle = player + new Vector3(MathF.Cos(_angle) * CircleRadius, Height, MathF.Sin(_angle) * CircleRadius);
+        float climbed = (now - _climbFrom) / ClimbSeconds;
+        if (climbed < 1f)
+        {
+            // BT-03 rule 5: rise from the strike point to the still-turning circle, eased out.
+            float t = MathF.Max(0f, climbed);
+            float eased = 1f - (1f - t) * (1f - t);
+            Vector3 flat = Vector3.Lerp(_climbStart, circle, t);
+            Position = new Vector3(flat.X, _climbStart.Y + (circle.Y - _climbStart.Y) * eased, flat.Z);
+            return;
+        }
+
+        Position = circle;
         if (now < _lastDiveAt + _stats.HawkDiveInterval.Value)
         {
             return;
         }
 
-        EnemyAgent target = FindMarked(player, enemies, combat.Weapon.Range.Value, out _);
+        EnemyAgent target = FindDiveTarget(enemies, combat.LastThrowTargetId);
         if (target is null)
         {
             return;
@@ -120,6 +136,9 @@ public sealed class HawkSystem
     {
         int targetId = _targetId;
         _targetId = 0;
+        _climbFrom = now;
+        _climbStart = _to;
+        Position = _to;
         if (!enemies.Registry.TryGet(targetId, out EnemyAgent target) || !target.IsAlive)
         {
             return;
@@ -133,6 +152,38 @@ public sealed class HawkSystem
         }
 
         _events.Publish(new HawkStruck(targetId, result.Applied));
+    }
+
+    // BT-03 rule 4: the last throw's target while marked, else the marked enemy nearest the hawk,
+    // anywhere in the arena.
+    private EnemyAgent FindDiveTarget(EnemySystem enemies, int throwTargetId)
+    {
+        if (enemies.Registry.TryGet(throwTargetId, out EnemyAgent thrown) && thrown.IsAlive
+            && thrown.CrowdControl.IsMarked)
+        {
+            return thrown;
+        }
+
+        EnemyAgent nearest = null;
+        float nearestSquared = float.PositiveInfinity;
+        foreach (EnemyAgent enemy in enemies.Registry.Alive)
+        {
+            if (!enemy.IsAlive || !enemy.CrowdControl.IsMarked)
+            {
+                continue;
+            }
+
+            float dx = enemy.Position.X - Position.X;
+            float dz = enemy.Position.Z - Position.Z;
+            float distanceSquared = dx * dx + dz * dz;
+            if (nearest is null || distanceSquared < nearestSquared)
+            {
+                nearest = enemy;
+                nearestSquared = distanceSquared;
+            }
+        }
+
+        return nearest;
     }
 
     private static EnemyAgent FindMarked(Vector3 player, EnemySystem enemies, float range, out int count)

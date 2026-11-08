@@ -18,7 +18,7 @@ public sealed class PackTacticsTests
     private static readonly ContentId EnemyId = new("enemy.pack_target");
     private static readonly ContentId BossBodyId = new("enemy.warden");
     private static readonly ContentId BossId = new("boss.warden");
-    private static readonly PetSpec Hound = new(new ContentId("pet.hound"), 70f, 4f, 8f, BiteInterval, 1.4f, 8f, 10f, 1.5f);
+    private static readonly PetSpec Hound = new(new ContentId("pet.hound"), 70f, 4f, 8f, BiteInterval, 1.4f, 1.5f);
 
     private SilentEvents _events;
     private RecordingIntents _intents;

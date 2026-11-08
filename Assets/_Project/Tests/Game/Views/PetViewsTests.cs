@@ -189,8 +189,6 @@ public sealed class PetViewsTests
         Assert.That(pet.BiteDamage, Is.EqualTo(7f));
         Assert.That(pet.BiteInterval, Is.EqualTo(1f));
         Assert.That(pet.Reach, Is.EqualTo(1.4f));
-        Assert.That(pet.Leash, Is.EqualTo(8f));
-        Assert.That(pet.ReturnRange, Is.EqualTo(10f));
         Assert.That(pet.HeelDistance, Is.EqualTo(1.5f));
     }
 

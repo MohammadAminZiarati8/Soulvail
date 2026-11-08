@@ -478,3 +478,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ### BT-02 — Axes stop at cover
 
 1. **[Editor]** Beastmaster on a Jungle stage with stones: an axe thrown at a stone turns at the stone and flies home through it; none is ever left behind. An enemy standing behind a stone is not aimed at (he throws at an enemy in the open instead, or not at all).
+
+### BT-03 — Animals hunt the whole arena, your last mark first; the hawk climbs back
+
+1. **[Editor]** Beastmaster: the hound runs to an enemy across the arena, however far from you. With two marked enemies, hit the other one: the pack switches to it at once.
+2. **[Editor]** Hawk (Packleader 17): after each dive it rises back to its circle over about 0.4 s instead of snapping.

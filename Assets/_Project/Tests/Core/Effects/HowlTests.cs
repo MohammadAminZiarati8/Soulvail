@@ -20,7 +20,7 @@ public sealed class HowlTests
 {
     private const int Capacity = 8;
     private static readonly ContentId EnemyId = new("enemy.howl_target");
-    private static readonly PetSpec Hound = new(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 8f, 10f, 1.5f);
+    private static readonly PetSpec Hound = new(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 1.5f);
     private readonly Howl _howl = new(0.25f);
     private RecordingEvents _events;
     private RecordingIntents _intents;

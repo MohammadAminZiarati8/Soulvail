@@ -19,7 +19,7 @@ public sealed class RescueRingViewTests
 {
     private const string Prefabs = "Assets/_Project/Prefabs/";
     private const int HoundId = 1;
-    private readonly PetSpec _spec = new(new ContentId("pet.hound"), 50f, 4f, 8f, 1f, 1f, 8f, 10f, 1.5f);
+    private readonly PetSpec _spec = new(new ContentId("pet.hound"), 50f, 4f, 8f, 1f, 1f, 1.5f);
     private DomainEventHub _hub;
     private IObjectResolver _resolver;
     private GameObject _root;

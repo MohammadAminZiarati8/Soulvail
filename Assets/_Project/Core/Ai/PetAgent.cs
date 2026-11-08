@@ -42,6 +42,5 @@ public sealed class PetAgent
 
     internal PetStats Stats { get; }
     internal bool RecoveringAtHeel { get; set; }
-    internal bool Returning { get; set; }
     internal float NextRetargetAt { get; set; }
 }

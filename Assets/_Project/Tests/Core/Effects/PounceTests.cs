@@ -39,7 +39,7 @@ public sealed class PounceTests
     {
         _events = new RecordingEvents();
         _intents = new RecordingIntents();
-        var hound = new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 8f, 10f, 1.5f);
+        var hound = new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 1.5f);
         _character = new CharacterSpec(
             new ContentId("character.beastmaster"), new LocKey("character.beastmaster.name"),
             new LocKey("character.beastmaster.description"), 100f,
@@ -73,9 +73,6 @@ public sealed class PounceTests
 
         Spawn(Light, 6f);
         EnemyAgent near = Spawn(Light, 3f);
-        _pets.Ingest(new WorldSnapshot(Capacity) { PlayerPosition = new Vector3(-8f, 0f, 0f) });
-        Assert.That(skills.Cast(0, 0f, auto: false), Is.False, "Both candidates are outside the leash.");
-        _pets.Ingest(new WorldSnapshot(Capacity));
         Assert.That(skills.Cast(0, 0f, auto: false), Is.True);
         Assert.That(_events.Single<PetPounced>().EnemyId, Is.EqualTo(near.Id));
     }

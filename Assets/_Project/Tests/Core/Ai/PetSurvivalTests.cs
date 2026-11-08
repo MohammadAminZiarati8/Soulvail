@@ -288,7 +288,7 @@ public sealed class PetSurvivalTests
         }
     }
 
-    private static PetSpec Hound() => new PetSpec(new ContentId("pet.hound"), 100f, 4f, 7f, 1f, 1.4f, 8f, 10f, 1.5f);
+    private static PetSpec Hound() => new PetSpec(new ContentId("pet.hound"), 100f, 4f, 7f, 1f, 1.4f, 1.5f);
 
     private static CharacterSpec Character() => new CharacterSpec(
         CharacterId, new LocKey("character.beastmaster.name"), new LocKey("character.beastmaster.description"),

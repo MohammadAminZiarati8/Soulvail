@@ -767,6 +767,12 @@ public sealed class PlayerCombat
     public int PendingConeRequestId { get; private set; } = -1;
 
     /// <summary>
+    /// The enemy the last axe pair was thrown at; 0 before any throw. BT-03: the animals' first
+    /// choice while it is marked.
+    /// </summary>
+    public int LastThrowTargetId { get; private set; }
+
+    /// <summary>
     /// The next shot this tick's damage frame produced, or <see langword="null"/>. Taken by the run
     /// through <see cref="TryTakeShot"/>.
     /// </summary>
@@ -1899,8 +1905,12 @@ public sealed class PlayerCombat
                 return;
 
             case WeaponKind.ReturningAxe:
-                Axes.TryThrowPair(playerPosition, playerPosition + (FaceDirection ?? bodyFacing),
-                    ShotDamage(Weapon.Damage.Value), now);
+                if (Axes.TryThrowPair(playerPosition, playerPosition + (FaceDirection ?? bodyFacing),
+                    ShotDamage(Weapon.Damage.Value), now) > 0)
+                {
+                    LastThrowTargetId = Math.Max(0, Targeter.CurrentTargetId);
+                }
+
                 return;
 
             default:

@@ -123,16 +123,6 @@ public sealed class PetSystemTests
     }
 
     [Test]
-    public void Target_OutsideLeash_Ignored()
-    {
-        EnemyAgent marked = _enemies.Spawn(EnemyId, -Vector3.UnitZ * 8.1f);
-        EnemyAgent inside = _enemies.Spawn(EnemyId, Vector3.UnitX * 8f);
-        _enemies.Mark(marked.Id, 4f);
-        Tick(0f);
-        Assert.That(Lead.QuarryId, Is.EqualTo(inside.Id));
-    }
-
-    [Test]
     public void NoEnemy_Heels()
     {
         ReportPet(-Vector3.UnitZ * 3f);
@@ -145,27 +135,6 @@ public sealed class PetSystemTests
         ReportPet(-Vector3.UnitZ * 1.5f);
         Tick(0.1f);
         Assert.That(_intents.PetMoves[1].Velocity, Is.EqualTo(Vector3.Zero));
-    }
-
-    [Test]
-    public void TooFar_DropsTarget_Heels()
-    {
-        EnemyAgent enemy = _enemies.Spawn(EnemyId, Vector3.UnitX);
-        Tick(0f);
-        Assert.That(Lead.QuarryId, Is.EqualTo(enemy.Id));
-
-        ReportPet(-Vector3.UnitZ * 10.1f);
-        Tick(0.1f);
-        Assert.That(Lead.QuarryId, Is.Zero);
-        Assert.That(_events.Of<PetRetargeted>()[1].EnemyId, Is.Zero);
-
-        ReportPet(-Vector3.UnitZ * 9f);
-        Tick(0.6f);
-        Assert.That(Lead.State, Is.EqualTo(PetState.Heel));
-
-        ReportPet(-Vector3.UnitZ * 8f);
-        Tick(0.7f);
-        Assert.That(Lead.QuarryId, Is.EqualTo(enemy.Id));
     }
 
     [Test]
@@ -322,5 +291,5 @@ public sealed class PetSystemTests
         new MovementSkillSpec(MovementSkillKind.Charge, 8f, 0.5f, 2.5f, 0.15f, 20f, 4f, 0.05f),
         pet: hasPet ? Hound() : null);
 
-    private static PetSpec Hound() => new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 1f, 1.4f, 8f, 10f, 1.5f);
+    private static PetSpec Hound() => new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 1f, 1.4f, 1.5f);
 }

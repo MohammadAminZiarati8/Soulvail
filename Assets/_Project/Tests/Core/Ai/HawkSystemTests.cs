@@ -118,7 +118,7 @@ public sealed class HawkSystemTests
     public void NoMarked_Waits()
     {
         EnemyAgent nearby = _enemies.Spawn(Light, Vector3.UnitX);
-        Marked(Heavy, 9f);
+        _enemies.Spawn(Heavy, 9f * Vector3.UnitX);
         Call();
         Tick(1.5f);
         Tick(2f);
@@ -145,7 +145,7 @@ public sealed class HawkSystemTests
         Assert.That(light.Health.Current, Is.EqualTo(before - 30f));
         Assert.That(light.CrowdControl.IsStunned, Is.True);
         Assert.That(_events.Single<HawkStruck>().Amount, Is.EqualTo(30f));
-        Assert.That(_hawk.Position.Y, Is.EqualTo(HawkSystem.Height));
+        Assert.That(_hawk.Position, Is.EqualTo(light.Position), "BT-03: the climb starts at the strike point.");
 
         _enemies.Despawn(light.Id);
         Tick(3f);
@@ -158,7 +158,7 @@ public sealed class HawkSystemTests
     public void TargetDied_NoDamage()
     {
         EnemyAgent target = Marked(Light, 2f);
-        EnemyAgent backup = Marked(Heavy, 3f);
+        EnemyAgent backup = Marked(Heavy, -3f); // Far from the hawk, which circles from +X.
         float before = backup.Health.Current;
         Call();
         Tick(1.5f);

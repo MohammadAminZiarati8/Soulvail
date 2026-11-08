@@ -258,8 +258,6 @@ namespace Soulvail.Game.Authoring
         [SerializeField] private float _petBiteDamage;
         [SerializeField] private float _petBiteInterval;
         [SerializeField] private float _petReach;
-        [SerializeField] private float _petLeash;
-        [SerializeField] private float _petReturnRange;
         [SerializeField] private float _petHeelDistance;
         [SerializeField] private PetView _petPrefab;
 
@@ -454,8 +452,7 @@ namespace Soulvail.Game.Authoring
                     pet: string.IsNullOrEmpty(_petId)
                         ? null
                         : new PetSpec(new ContentId(_petId), _petMaxHp, _petMoveSpeed,
-                            _petBiteDamage, _petBiteInterval, _petReach, _petLeash,
-                            _petReturnRange, _petHeelDistance));
+                            _petBiteDamage, _petBiteInterval, _petReach, _petHeelDistance));
             }
             catch (ArgumentException inner)
             {

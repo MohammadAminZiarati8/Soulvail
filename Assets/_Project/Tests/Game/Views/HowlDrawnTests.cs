@@ -46,7 +46,7 @@ public sealed class HowlDrawnTests
     [Test]
     public void PackHowled_CarriesSeconds()
     {
-        var spec = new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 8f, 10f, 1.5f);
+        var spec = new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 1.5f);
         var pets = new PetSystem(spec, _hub, new RecordingIntents());
         var durations = new List<float>();
         using var subscription = _hub.Subscribe<PackHowled>(evt => durations.Add(evt.Seconds));

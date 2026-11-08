@@ -19,7 +19,7 @@ public sealed class PackHoundTests
     private static readonly ContentId CharacterId = new("character.beastmaster");
     private static readonly ContentId EnemyId = new("enemy.pack_target");
     private static readonly ContentId ModeId = new("mode.pack_test");
-    private static readonly PetSpec Hound = new(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 8f, 10f, 1.5f);
+    private static readonly PetSpec Hound = new(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 1.5f);
 
     private RecordingEvents _events;
     private RecordingIntents _intents;

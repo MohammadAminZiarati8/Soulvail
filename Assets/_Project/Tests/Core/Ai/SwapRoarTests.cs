@@ -32,7 +32,7 @@ public sealed class SwapRoarTests
     {
         _events = new RecordingEvents();
         var intents = new RecordingIntents();
-        var hound = new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 8f, 10f, 1.5f);
+        var hound = new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 1.5f);
         var character = new CharacterSpec(
             new ContentId("character.beastmaster"), new LocKey("character.beastmaster.name"),
             new LocKey("character.beastmaster.description"), 100f,

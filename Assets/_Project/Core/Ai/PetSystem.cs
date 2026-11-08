@@ -43,6 +43,7 @@ public sealed class PetSystem
     private bool _spawnAnnounced;
     private int _count;
     private int _nextId = 1;
+    private int _lastThrowTargetId;
 
     public PetSystem(PetSpec spec, IDomainEvents events, IIntentSink intents)
     {
@@ -109,7 +110,6 @@ public sealed class PetSystem
         pet.Position = position;
         pet.State = PetState.Heel;
         pet.QuarryId = 0;
-        pet.Returning = false;
         pet.RecoveringAtHeel = false;
         pet.RescueProgress = 0f;
         pet.NextBiteAt = _now;
@@ -199,6 +199,10 @@ public sealed class PetSystem
         _playerPosition = player;
         _now = now;
         _enemies = enemies?.Registry;
+        int throwTargetId = combat?.LastThrowTargetId ?? 0;
+        // BT-03 rule 3: a new throw at a marked enemy pulls every hunter onto it this tick.
+        bool switchToThrow = throwTargetId != _lastThrowTargetId && IsMarkedAlive(throwTargetId);
+        _lastThrowTargetId = throwTargetId;
         int inReach = 0;
         for (int index = 0; index < _count; index++)
         {
@@ -243,7 +247,8 @@ public sealed class PetSystem
                 _events.Publish(new PetHeeled(pet.Id));
             }
 
-            EnemyAgent quarry = pet.RecoveringAtHeel ? null : ChooseQuarry(pet, now, player, enemies);
+            EnemyAgent quarry = pet.RecoveringAtHeel ? null
+                : ChooseQuarry(pet, now, player, enemies, throwTargetId, switchToThrow);
             if (pet.State == PetState.Heel && dt > 0f && playerDistanceSquared <= AtHeelRadius * AtHeelRadius)
             {
                 pet.Health.Heal(pet.HeelRegen.Value * pet.MaxHp.Value * dt);
@@ -252,7 +257,7 @@ public sealed class PetSystem
             if (pet.RecoveringAtHeel && pet.Health.Fraction >= pet.ReturnAt.Value)
             {
                 pet.RecoveringAtHeel = false;
-                quarry = ChooseQuarry(pet, now, player, enemies);
+                quarry = ChooseQuarry(pet, now, player, enemies, throwTargetId, false);
                 _events.Publish(new PetReturned(pet.Id));
             }
             Vector2 offset = Offset(pet.Position, quarry?.Position ?? player);
@@ -508,7 +513,7 @@ public sealed class PetSystem
     }
 
     private bool LeadCanPounce() => _count != 0 && _leapUntil == float.NegativeInfinity
-        && _pets[0].State != PetState.Fallen && !_pets[0].RecoveringAtHeel && !_pets[0].Returning;
+        && _pets[0].State != PetState.Fallen && !_pets[0].RecoveringAtHeel;
 
     private EnemyAgent FindPounceTarget(float minReach, float maxReach, EnemyRegistry enemies, out int count)
     {
@@ -521,13 +526,11 @@ public sealed class PetSystem
         Vector3 from = _pets[0].Position;
         float minSquared = minReach * minReach;
         float maxSquared = maxReach * maxReach;
-        float leashSquared = _spec.Leash * _spec.Leash;
         EnemyAgent nearest = null;
         float best = maxSquared;
         foreach (EnemyAgent enemy in enemies.Alive)
         {
-            if (!enemy.IsAlive || !enemy.CrowdControl.IsMarked
-                || !(Offset(_playerPosition, enemy.Position).LengthSquared() <= leashSquared))
+            if (!enemy.IsAlive || !enemy.CrowdControl.IsMarked)
             {
                 continue;
             }
@@ -785,26 +788,21 @@ public sealed class PetSystem
         return -1;
     }
 
-    private EnemyAgent ChooseQuarry(PetAgent pet, float now, Vector3 player, EnemySystem enemies)
+    private EnemyAgent ChooseQuarry(PetAgent pet, float now, Vector3 player, EnemySystem enemies,
+        int throwTargetId, bool switchToThrow)
     {
-        float leashSquared = _spec.Leash * _spec.Leash;
-        float playerDistance = Offset(pet.Position, player).LengthSquared();
-        pet.Returning = pet.Returning
-            ? playerDistance > leashSquared
-            : playerDistance > _spec.ReturnRange * _spec.ReturnRange;
-
         EnemyAgent quarry = null;
-        if (pet.Returning)
+        if (switchToThrow)
         {
-            pet.NextRetargetAt = now;
+            enemies.Registry.TryGet(throwTargetId, out quarry);
+            pet.NextRetargetAt = now + RetargetInterval;
         }
         else if (pet.QuarryId == 0 || now >= pet.NextRetargetAt)
         {
-            quarry = FindQuarry(pet, player, leashSquared, enemies.Registry.Alive);
+            quarry = FindQuarry(pet, player, throwTargetId, enemies.Registry);
             pet.NextRetargetAt = now + RetargetInterval;
         }
-        else if (enemies.Registry.TryGet(pet.QuarryId, out EnemyAgent current) && current.IsAlive
-            && Offset(player, current.Position).LengthSquared() <= leashSquared)
+        else if (enemies.Registry.TryGet(pet.QuarryId, out EnemyAgent current) && current.IsAlive)
         {
             quarry = current;
         }
@@ -815,6 +813,9 @@ public sealed class PetSystem
         return quarry;
     }
 
+    private bool IsMarkedAlive(int enemyId) => enemyId > 0 && _enemies is not null
+        && _enemies.TryGet(enemyId, out EnemyAgent enemy) && enemy.IsAlive && enemy.CrowdControl.IsMarked;
+
     private void SetQuarry(PetAgent pet, int id)
     {
         if (pet.QuarryId != id)
@@ -824,21 +825,27 @@ public sealed class PetSystem
         }
     }
 
-    private static EnemyAgent FindQuarry(PetAgent pet, Vector3 player, float leashSquared,
-        ReadOnlySpan<EnemyAgent> enemies)
+    // BT-03 rule 2: the last throw's target while marked, then the marked enemy nearest the
+    // animal, then the enemy nearest the player — anywhere in the arena.
+    private static EnemyAgent FindQuarry(PetAgent pet, Vector3 player, int throwTargetId, EnemyRegistry enemies)
     {
+        if (enemies.TryGet(throwTargetId, out EnemyAgent thrown) && thrown.IsAlive && thrown.CrowdControl.IsMarked)
+        {
+            return thrown;
+        }
+
         EnemyAgent nearest = null;
         EnemyAgent marked = null;
         float nearestDistance = float.PositiveInfinity;
         float markedDistance = float.PositiveInfinity;
-        foreach (EnemyAgent enemy in enemies)
+        foreach (EnemyAgent enemy in enemies.Alive)
         {
-            float playerDistance = Offset(player, enemy.Position).LengthSquared();
-            if (!enemy.IsAlive || playerDistance > leashSquared)
+            if (!enemy.IsAlive)
             {
                 continue;
             }
 
+            float playerDistance = Offset(player, enemy.Position).LengthSquared();
             if (playerDistance < nearestDistance)
             {
                 nearest = enemy;

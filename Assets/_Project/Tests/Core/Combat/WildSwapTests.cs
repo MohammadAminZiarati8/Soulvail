@@ -50,7 +50,7 @@ public sealed class WildSwapTests
             MoveInput = Vector2.UnitX,
         };
         _character = Character(new PetSpec(new ContentId("pet.hound"),
-            70f, 4f, 7f, 0.25f, 1.4f, 8f, 10f, 1.5f));
+            70f, 4f, 7f, 0.25f, 1.4f, 1.5f));
         _enemies = new EnemySystem(Catalog(_character), _events, new FixedRandom(5),
             new DepthScaling(Scalings.Design()), Capacity);
         _combat = new PlayerCombat(_character, _events, _intents, Capacity);

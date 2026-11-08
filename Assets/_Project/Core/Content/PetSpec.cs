@@ -5,7 +5,7 @@ namespace Soulvail.Core.Content;
 public sealed class PetSpec
 {
     public PetSpec(ContentId id, float maxHp, float moveSpeed, float biteDamage, float biteInterval,
-        float reach, float leash, float returnRange, float heelDistance)
+        float reach, float heelDistance)
     {
         if (id.Value is null)
         {
@@ -17,19 +17,7 @@ public sealed class PetSpec
         RequirePositive(biteDamage, nameof(biteDamage));
         RequirePositive(biteInterval, nameof(biteInterval));
         RequirePositive(reach, nameof(reach));
-        RequirePositive(leash, nameof(leash));
-        RequirePositive(returnRange, nameof(returnRange));
         RequirePositive(heelDistance, nameof(heelDistance));
-
-        if (returnRange < leash)
-        {
-            throw new ArgumentOutOfRangeException(nameof(returnRange), "Return range must cover the leash.");
-        }
-
-        if (heelDistance > leash)
-        {
-            throw new ArgumentOutOfRangeException(nameof(heelDistance), "Heel distance must fit inside the leash.");
-        }
 
         Id = id;
         MaxHp = maxHp;
@@ -37,8 +25,6 @@ public sealed class PetSpec
         BiteDamage = biteDamage;
         BiteInterval = biteInterval;
         Reach = reach;
-        Leash = leash;
-        ReturnRange = returnRange;
         HeelDistance = heelDistance;
     }
 
@@ -55,8 +41,6 @@ public sealed class PetSpec
     public float BiteDamage { get; }
     public float BiteInterval { get; }
     public float Reach { get; }
-    public float Leash { get; }
-    public float ReturnRange { get; }
     public float HeelDistance { get; }
 
     private static void RequirePositive(float value, string name)

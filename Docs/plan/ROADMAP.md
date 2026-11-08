@@ -72,7 +72,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] BT-01 — Two axes at once, attack speed sets the cadence, Swift Hands (M)
 - [x] BT-02 — Axes stop at cover (S)
-- [ ] [BT-03](tasks/BT-03-arena-wide-hunt-and-hawk-climb.md) — Animals hunt the whole arena, your last mark first; the hawk climbs back (M)
+- [x] BT-03 — Animals hunt the whole arena, your last mark first; the hawk climbs back (M)
 - [ ] [BT-04](tasks/BT-04-pack-formation.md) — The pack's formation: slots, spacing, eased following (M)
 - [ ] [BT-05](tasks/BT-05-swap-lands-exactly.md) — Wild Swap lands him exactly where the hound was (S)
 - [ ] [BT-06a](tasks/BT-06a-frenzy-core.md) — Frenzy in core; Howl heals only (M)

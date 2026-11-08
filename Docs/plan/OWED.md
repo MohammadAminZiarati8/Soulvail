@@ -483,3 +483,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Beastmaster: the hound runs to an enemy across the arena, however far from you. With two marked enemies, hit the other one: the pack switches to it at once.
 2. **[Editor]** Hawk (Packleader 17): after each dive it rises back to its circle over about 0.4 s instead of snapping.
+
+### BT-04 — The pack's formation: slots beside him, spacing, eased following
+
+1. **[Editor]** Beastmaster with two pack hounds (Packleader 11), no enemies about: they stand right, left and behind him, never stacked.
+2. **[Editor]** Jiggle the stick: the pack does not twitch round; walk off: they trail and ease into their slots as you stop.

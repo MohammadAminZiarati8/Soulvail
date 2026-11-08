@@ -1473,7 +1473,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // It takes the census to choose from and the player because the kill goes through
         // EnemySystem.ApplyDamage, which resolves a Bloater's blast (M5-04a rule 11).
         State.Minions?.Tick(snapshot.Dt, State.Time, State.Enemies, State.Combat);
-        State.Pets?.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat);
+        State.Pets?.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat, State.Motor.Facing);
         _hawk.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat);
 
         // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).

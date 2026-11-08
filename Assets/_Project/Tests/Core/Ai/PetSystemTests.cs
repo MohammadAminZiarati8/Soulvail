@@ -130,9 +130,12 @@ public sealed class PetSystemTests
 
         Assert.That(Lead.Position, Is.EqualTo(-Vector3.UnitZ * 3f));
         Assert.That(Lead.State, Is.EqualTo(PetState.Heel));
-        Assert.That(_intents.PetMoves[0].Velocity, Is.EqualTo(Vector3.UnitZ * 4f));
+        // BT-04: a heeling animal walks to its slot (the lead's is on his right), not to him.
+        Vector3 slot = new(PackFormation.SlotOffset(0).X, 0f, PackFormation.SlotOffset(0).Y);
+        Vector3 expected = Vector3.Normalize(slot - Lead.Position) * 4f;
+        Assert.That(Vector3.Distance(_intents.PetMoves[0].Velocity, expected), Is.LessThan(1e-4f));
 
-        ReportPet(-Vector3.UnitZ * 1.5f);
+        ReportPet(slot);
         Tick(0.1f);
         Assert.That(_intents.PetMoves[1].Velocity, Is.EqualTo(Vector3.Zero));
     }

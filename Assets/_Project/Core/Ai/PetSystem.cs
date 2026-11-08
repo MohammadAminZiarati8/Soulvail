@@ -30,6 +30,7 @@ public sealed class PetSystem
     private readonly (float Bonus, float Until)[] _howlBuffs = new (float, float)[Capacity];
     private readonly PetAgent[] _pets = new PetAgent[Capacity];
     private readonly int[,] _hunters = new int[Capacity, MaxHunters];
+    private readonly PackFormation _formation = new();
     private EnemyRegistry _enemies;
     private float _now;
     private float _leapUntil = float.NegativeInfinity;
@@ -67,6 +68,7 @@ public sealed class PetSystem
 
     public ReadOnlySpan<PetAgent> Pets => _pets.AsSpan(0, _count);
     public IStatBlock LeadStats => _count == 0 ? null : _pets[0].Stats;
+    public Vector2 FormationFacing => _formation.Facing;
 
     public void SpawnBeside(Vector3 player, float now) => SpawnBeside(player, Vector3.UnitZ, now);
 
@@ -87,6 +89,7 @@ public sealed class PetSystem
         Clear();
         _playerPosition = player;
         _spawnFacing = facing;
+        _formation.Reset(new Vector2(facing.X, facing.Z));
         _now = now;
         PlacePet(0, player - facing * _spec.HeelDistance);
     }
@@ -194,10 +197,16 @@ public sealed class PetSystem
         }
     }
 
-    public void Tick(float dt, float now, Vector3 player, EnemySystem enemies, PlayerCombat combat)
+    public void Tick(float dt, float now, Vector3 player, EnemySystem enemies, PlayerCombat combat,
+        Vector3 playerFacing = default)
     {
         _playerPosition = player;
         _now = now;
+        _formation.Tick(dt, new Vector2(playerFacing.X, playerFacing.Z));
+        // BT-04 rule 5: spacing reads where everyone stood at the start of the tick.
+        Span<Vector2> standing = stackalloc Vector2[Capacity];
+        Span<int> standingSlot = stackalloc int[Capacity];
+        int standingCount = GatherStanding(now, standing, standingSlot);
         _enemies = enemies?.Registry;
         int throwTargetId = combat?.LastThrowTargetId ?? 0;
         // BT-03 rule 3: a new throw at a marked enemy pulls every hunter onto it this tick.
@@ -260,22 +269,39 @@ public sealed class PetSystem
                 quarry = ChooseQuarry(pet, now, player, enemies, throwTargetId, false);
                 _events.Publish(new PetReturned(pet.Id));
             }
-            Vector2 offset = Offset(pet.Position, quarry?.Position ?? player);
-            float distance = offset.Length();
-            float stopAt = quarry is null ? _spec.HeelDistance : _spec.Reach;
-            Vector2 facing = distance > 0.0001f ? offset / distance : Vector2.Zero;
-            float speed = MathF.Max(0f, pet.MoveSpeed.Value);
-            if (distance <= stopAt)
+            Vector2 velocity2;
+            Vector2 facing;
+            float distance;
+            if (quarry is null)
             {
-                speed = 0f;
+                velocity2 = HeelVelocity(pet, index, dt, player, playerDistanceSquared, out facing);
+                distance = float.PositiveInfinity;
             }
-            else if (dt > 0f)
+            else
             {
-                float travel = quarry is null ? MathF.Max(0f, distance - stopAt) : distance;
-                speed = MathF.Min(speed, travel / dt);
+                Vector2 offset = Offset(pet.Position, quarry.Position);
+                distance = offset.Length();
+                facing = distance > 0.0001f ? offset / distance : Vector2.Zero;
+                float speed = MathF.Max(0f, pet.MoveSpeed.Value);
+                if (distance <= _spec.Reach)
+                {
+                    speed = 0f;
+                }
+                else if (dt > 0f)
+                {
+                    speed = MathF.Min(speed, distance / dt);
+                }
+
+                velocity2 = facing * speed;
             }
 
-            var velocity = new Vector3(facing.X * speed, 0f, facing.Y * speed);
+            int standingIndex = standingSlot.Slice(0, standingCount).IndexOf(index);
+            if (standingIndex >= 0)
+            {
+                velocity2 += PackFormation.Separation(standing.Slice(0, standingCount), standingIndex);
+            }
+
+            var velocity = new Vector3(velocity2.X, 0f, velocity2.Y);
             _intents.PetMove(new EnemyMoveIntent(pet.Id, velocity, facing));
 
             if (quarry is not null && distance <= _spec.Reach)
@@ -320,6 +346,51 @@ public sealed class PetSystem
                 }
             }
         }
+    }
+
+    // BT-04 rules 1, 3, 4, 6: walk the lagged slot, ease in, and stand still in the dead zone — but
+    // only inside the heel-regen ring, so a recovering animal never parks where it cannot heal.
+    private Vector2 HeelVelocity(PetAgent pet, int index, float dt, Vector3 player, float playerDistanceSquared,
+        out Vector2 facing)
+    {
+        Vector2 slot = new Vector2(player.X, player.Z) + _formation.WorldOffset(index);
+        Vector2 toSlot = slot - new Vector2(pet.Position.X, pet.Position.Z);
+        float distance = toSlot.Length();
+        bool atHeel = playerDistanceSquared <= AtHeelRadius * AtHeelRadius;
+        if ((distance <= PackFormation.DeadZone && atHeel) || !(distance > 0.0001f))
+        {
+            facing = _formation.Facing;
+            return Vector2.Zero;
+        }
+
+        facing = toSlot / distance;
+        float speed = PackFormation.ArrivalSpeed(distance, MathF.Max(0f, pet.MoveSpeed.Value));
+        if (dt > 0f)
+        {
+            speed = MathF.Min(speed, distance / dt);
+        }
+
+        return facing * speed;
+    }
+
+    private int GatherStanding(float now, Span<Vector2> positions, Span<int> slots)
+    {
+        int count = 0;
+        for (int index = 0; index < _count; index++)
+        {
+            PetAgent pet = _pets[index];
+            bool leaping = pet.IsLead && _leapUntil != float.NegativeInfinity;
+            if (pet.State == PetState.Fallen || leaping)
+            {
+                continue;
+            }
+
+            positions[count] = new Vector2(pet.Position.X, pet.Position.Z);
+            slots[count] = index;
+            count++;
+        }
+
+        return count;
     }
 
     private bool SharesQuarry(int index, int quarryId, int inReach)

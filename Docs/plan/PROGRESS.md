@@ -9,9 +9,9 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-03**. |
-| **Next task** | **BT-04** (BT-04 → BT-07b specced). |
-| **Verified** | EditMode 6161 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **BT-04**. |
+| **Next task** | **BT-05** (→ BT-07b specced). |
+| **Verified** | EditMode 6170 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -20,7 +20,7 @@ Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart (20): spokes, pods, slam, heart ×2; warned vines.
 Mother: shields, lobs, spray, pod. Leap: crouch, ring, arc, bite. Chain: lit bombers, link, fuse.
-From 21 four cousins (Bullfrog, Thorn pitcher, Chain bomber, panther).
+From 21 four cousins (Bullfrog, pitcher, bomber, panther).
 Stalker (22+): lurks, hides, strikes.
 Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
 Gravemaw (25): burrow; ring, bite+throw; tremor|rocks; 50 %: 2 rings, crack Frogs;
@@ -42,7 +42,7 @@ Wind-up blocks hits/debuffs (Immune).
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan, hip quiver.
 
 Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes; Swift Hands;
-Pets hunt arena-wide, last throw's mark first; hawk climbs; Auto Pounce, Quick Swap. Packleader: Hounds/Howl 11, Tactics/Pelts 14, Hawk 17, Stampede 20; war-paint.
+Pets hunt arena-wide, last mark first; idle in spaced slots; hawk climbs; Auto Pounce, Quick Swap. Packleader: Hounds/Howl 11, Tactics/Pelts 14, Hawk 17, Stampede 20; war-paint.
 
 ## Missing
 

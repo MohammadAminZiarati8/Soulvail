@@ -78,6 +78,7 @@ public sealed class CombatBlackboard
 
     /// <summary>Living marked enemies in the lead pet's Pounce band and within its leash.</summary>
     public int MarkedInPounceReach;
+    public float LowestPetHpFraction = 1f;
 
     /// <summary>
     /// The enemy the character is facing, or −1 for none. The same id
@@ -208,6 +209,7 @@ public sealed class CombatBlackboard
         EnemiesInAcquireRange = 0;
         NearestEnemyDistance = float.PositiveInfinity;
         MarkedInPounceReach = 0;
+        LowestPetHpFraction = 1f;
         CurrentTargetId = -1;
         IsTargetBlocked = false;
         HasFocus = false;

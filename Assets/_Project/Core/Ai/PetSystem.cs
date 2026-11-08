@@ -26,6 +26,7 @@ public sealed class PetSystem
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly long[] _biteCounts = new long[Capacity];
+    private readonly (float Bonus, float Until)[] _howlBuffs = new (float, float)[Capacity];
     private readonly PetAgent[] _pets = new PetAgent[Capacity];
     private readonly int[,] _hunters = new int[Capacity, MaxHunters];
     private EnemyRegistry _enemies;
@@ -113,6 +114,7 @@ public sealed class PetSystem
         pet.NextBiteAt = _now;
         pet.NextRetargetAt = _now;
         _biteCounts[index] = 0;
+        _howlBuffs[index] = default;
         _count++;
     }
 
@@ -270,7 +272,7 @@ public sealed class PetSystem
             _intents.PetMove(new EnemyMoveIntent(pet.Id, velocity, facing));
 
             float bite = pet.ContactDamage.Value;
-            if (quarry is not null && distance <= _spec.Reach && now >= pet.NextBiteAt && bite > 0f)
+            if (quarry is not null && distance <= _spec.Reach && bite > 0f && BiteReady(pet, index, now))
             {
                 pet.NextBiteAt = now + _spec.BiteInterval;
                 quarry.Blackboard.LastBitBy = pet.Id;
@@ -287,6 +289,74 @@ public sealed class PetSystem
                 }
             }
         }
+    }
+
+    private bool BiteReady(PetAgent pet, int index, float now)
+    {
+        (float bonus, float until) = _howlBuffs[index];
+        // Keep the base deadline so a buff can change a pending bite only while it is active.
+        float reduction = now < until ? _spec.BiteInterval - _spec.BiteInterval / (1f + bonus) : 0f;
+        return now >= pet.NextBiteAt - reduction;
+    }
+
+    internal bool HasStandingPet()
+    {
+        foreach (PetAgent pet in Pets)
+        {
+            if (pet.State != PetState.Fallen)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal float LowestStandingHpFraction()
+    {
+        float lowest = 1f;
+        foreach (PetAgent pet in Pets)
+        {
+            if (pet.State != PetState.Fallen)
+            {
+                lowest = MathF.Min(lowest, pet.Health.Fraction);
+            }
+        }
+
+        return lowest;
+    }
+
+    public int Howl(float healFraction, float attackSpeedBonus, float seconds, float now)
+    {
+        int standing = 0;
+        for (int index = 0; index < _count; index++)
+        {
+            PetAgent pet = _pets[index];
+            if (pet.State == PetState.Fallen)
+            {
+                continue;
+            }
+
+            standing++;
+            if (healFraction > 0f)
+            {
+                pet.Health.Heal(healFraction * pet.MaxHp.Value);
+            }
+
+            if (seconds > 0f && attackSpeedBonus > 0f)
+            {
+                (float bonus, float until) = _howlBuffs[index];
+                float strongest = now < until ? MathF.Max(bonus, attackSpeedBonus) : attackSpeedBonus;
+                _howlBuffs[index] = (strongest, now + seconds);
+            }
+        }
+
+        if (standing > 0)
+        {
+            _events.Publish(new PackHowled(_pets[0].Position));
+        }
+
+        return standing;
     }
 
     public void Clear()
@@ -318,6 +388,7 @@ public sealed class PetSystem
         if (result.Killed)
         {
             pet.State = PetState.Fallen;
+            _howlBuffs[index] = default;
             pet.QuarryId = 0;
         }
 

@@ -116,6 +116,10 @@ MonoBehaviour:
     _text: Marked enemies in Pounce reach below
   - _key: trigger.markedInPounceReach.atLeast
     _text: Marked enemies in Pounce reach at least
+  - _key: trigger.lowestPetHpFraction.below
+    _text: Lowest pet health below
+  - _key: trigger.lowestPetHpFraction.atLeast
+    _text: Lowest pet health at least
   - _key: ui.hint.firstActive
     _text: "Skills can be set to Manual: Pause \u2192 Skills"
   - _key: ui.xp.max

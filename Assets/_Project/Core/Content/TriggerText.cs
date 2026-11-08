@@ -150,6 +150,10 @@ public static class TriggerText
                 new LocKey("trigger.markedInPounceReach.below"),
             (TriggerField.MarkedInPounceReach, TriggerComparison.AtLeast) =>
                 new LocKey("trigger.markedInPounceReach.atLeast"),
+            (TriggerField.LowestPetHpFraction, TriggerComparison.Below) =>
+                new LocKey("trigger.lowestPetHpFraction.below"),
+            (TriggerField.LowestPetHpFraction, TriggerComparison.AtLeast) =>
+                new LocKey("trigger.lowestPetHpFraction.atLeast"),
 
             _ => throw Unknown(field, comparison),
         };
@@ -187,6 +191,7 @@ public static class TriggerText
         {
             TriggerField.HpFraction => TriggerUnit.Fraction,
             TriggerField.ShieldFraction => TriggerUnit.Fraction,
+            TriggerField.LowestPetHpFraction => TriggerUnit.Fraction,
 
             TriggerField.EnemiesWithin6m => TriggerUnit.Count,
             TriggerField.EnemiesWithin8m => TriggerUnit.Count,

@@ -166,6 +166,8 @@ public sealed class ModifyStatTests
                 PlayerStat.AxeCarry => stats.AxeCarry,
                 PlayerStat.AxeReturnDamage => stats.AxeReturnDamage,
                 PlayerStat.AxeReturnSlow => stats.AxeReturnSlow,
+                PlayerStat.HowlHeal => stats.HowlHeal,
+                PlayerStat.HowlSeconds => stats.HowlSeconds,
                 PlayerStat.StormRunSeconds => stats.StormRunSeconds,
                 PlayerStat.StormRunDamage => stats.StormRunDamage,
                 _ => null,
@@ -195,7 +197,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(59), "Sixty-six members with seven addresses reserved for other combatants.");
+        Assert.That(answered, Is.EqualTo(61), "Seventy members with nine addresses reserved for other combatants.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

@@ -27,8 +27,8 @@ namespace Soulvail.Tests.Core.Content;
 [TestFixture]
 public sealed class TriggerTextTests
 {
-    /// <summary>Twelve fields times two comparisons — the cross product this file walks.</summary>
-    private const int PairCount = 24;
+    /// <summary>Thirteen fields times two comparisons — the cross product this file walks.</summary>
+    private const int PairCount = 26;
 
     [Test]
     public void Trigger_EveryPairHasAKey()
@@ -70,7 +70,7 @@ public sealed class TriggerTextTests
         Assert.That(
             seen.Count,
             Is.EqualTo(PairCount),
-            "Twelve fields after BM-07c and two comparisons give twenty-four keys. If the enum grew, this number grows "
+            "Thirteen fields and two comparisons give twenty-six keys. If the enum grew, this number grows "
                 + "with it — and so does the table.");
     }
 

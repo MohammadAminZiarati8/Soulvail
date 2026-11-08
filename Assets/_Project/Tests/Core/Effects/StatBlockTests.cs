@@ -367,7 +367,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(65), "Only three addresses are shared by these bodies.");
+        Assert.That(refused, Is.EqualTo(67), "Only three addresses are shared by these bodies.");
     }
 
     [Test]
@@ -506,6 +506,8 @@ public sealed class StatBlockTests
             nameof(PlayerStat.SwapRoarSlow),
             nameof(PlayerStat.PackHounds),
             nameof(PlayerStat.PackShare),
+            nameof(PlayerStat.HowlHeal),
+            nameof(PlayerStat.HowlSeconds),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
             + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three, MK-08a's BindStun, "
             + "MK-09a's SnareRoot/SnareDamage, MK-10a's KillshotExecute/KillshotDamage, SK-01a's three stats "

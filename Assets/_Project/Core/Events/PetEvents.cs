@@ -59,6 +59,13 @@ public readonly struct PetRoared
     }
 }
 
+public readonly struct PackHowled
+{
+    public readonly Vector3 Position;
+
+    public PackHowled(Vector3 position) => Position = position;
+}
+
 public readonly struct PetBit
 {
     public readonly int PetId;

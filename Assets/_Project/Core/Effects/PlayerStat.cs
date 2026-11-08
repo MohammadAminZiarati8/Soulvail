@@ -256,6 +256,8 @@ public enum PlayerStat
     SwapRoarSlow,
     PackHounds,
     PackShare,
+    HowlHeal,
+    HowlSeconds,
 }
 
 /// <summary>
@@ -334,6 +336,8 @@ public sealed class PlayerStats : IStatBlock
     public Stat AxeCarry { get; }
     public Stat AxeReturnDamage { get; } = new(1f);
     public Stat AxeReturnSlow { get; } = new(0f);
+    public Stat HowlHeal { get; } = new(0.2f);
+    public Stat HowlSeconds { get; } = new(4f);
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -434,6 +438,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.AxeCarry => AxeCarry,
             PlayerStat.AxeReturnDamage => AxeReturnDamage,
             PlayerStat.AxeReturnSlow => AxeReturnSlow,
+            PlayerStat.HowlHeal => HowlHeal,
+            PlayerStat.HowlSeconds => HowlSeconds,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -523,6 +529,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.AxeCarry => true,
             PlayerStat.AxeReturnDamage => true,
             PlayerStat.AxeReturnSlow => true,
+            PlayerStat.HowlHeal => true,
+            PlayerStat.HowlSeconds => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

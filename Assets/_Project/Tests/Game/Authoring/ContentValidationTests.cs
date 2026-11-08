@@ -120,6 +120,7 @@ public sealed class ContentValidationTests
 
         // RunSession writes the lead pet's Pounce census before SkillRunner ticks.
         TriggerField.MarkedInPounceReach,
+        TriggerField.LowestPetHpFraction,
 
         // PlayerCombat.UpdateBlackboard again, from the army it is handed (M5-06a rule 6).
         TriggerField.MinionCount,
@@ -857,7 +858,7 @@ public sealed class ContentValidationTests
             }
         }
 
-        Assert.That(pairs, Is.EqualTo(24), "Twelve TriggerFields after BM-07c × two comparisons.");
+        Assert.That(pairs, Is.EqualTo(26), "Thirteen TriggerFields × two comparisons.");
 
         AssertNoProblems(problems, "Trigger keys resolvable");
     }

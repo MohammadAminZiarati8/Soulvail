@@ -16,7 +16,7 @@ pack hounds on the floor.
 | `Data/Skills/Packleader/PackHounds*.asset` | — | **New.** Four ranks |
 | `Data/Effects/Packleader/PackHounds*.asset` | — | **New.** Their `ModifyStat`s |
 | `Data/Characters/Beastmaster.asset` | — | First path slot → Packleader; `_pathOpensAtLevel` 11 |
-| `Game/Views/PetViews.cs` | Game | A non-lead body at 0.8 scale with its own smaller bar |
+| `Game/Views/PetViews.cs` | Game | A non-lead body at 0.8 scale with its own smaller bar; `PetDespawned` returns that body and bar (PL-01a publishes it) |
 | `Tests/Game/Authoring/PackleaderPathTests.cs` | Tests.Game | **New** |
 | *small edits* | | `English`/`Pseudo` (path name, card line, skill lines); `SkillIconBook` icon; path card art in the path look |
 

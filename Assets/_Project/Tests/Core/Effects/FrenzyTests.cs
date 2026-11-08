@@ -178,12 +178,14 @@ public sealed class FrenzyTests
     [Test]
     public void PlayerStat_Ordinals_Unchanged()
     {
-        Assert.That(Enum.GetValues(typeof(PlayerStat)).Length, Is.EqualTo(80));
+        Assert.That(Enum.GetValues(typeof(PlayerStat)).Length, Is.EqualTo(83), "BT-07a appended three.");
         Assert.That((int)PlayerStat.HowlHeal, Is.EqualTo(68));
         Assert.That((int)PlayerStat.HowlSeconds, Is.EqualTo(69), "Retired, kept.");
         Assert.That((int)PlayerStat.StampedeHalfWidth, Is.EqualTo(77));
         Assert.That((int)PlayerStat.FrenzySeconds, Is.EqualTo(78));
         Assert.That((int)PlayerStat.FrenzyBonus, Is.EqualTo(79));
+        Assert.That((int)PlayerStat.BoarCount, Is.EqualTo(80));
+        Assert.That((int)PlayerStat.SpitSlow, Is.EqualTo(82));
     }
 
     // ---- Fixtures ---------------------------------------------------------------------------------

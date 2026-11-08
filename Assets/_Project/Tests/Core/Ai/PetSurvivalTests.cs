@@ -249,6 +249,24 @@ public sealed class PetSurvivalTests
         });
     }
 
+    // Moved from PackTacticsTests when BT-07a retired Pack Tactics.
+    [TestCase(0.7f, 7f)]
+    [TestCase(-1f, 1f)]
+    [TestCase(2f, 10f)]
+    public void PetDamageTaken_Scales_Clamped(float multiplier, float expected)
+    {
+        _pets.LeadStats.Resolve(PlayerStat.PackHounds).Base = 1f;
+        _pets.LeadStats.Resolve(PlayerStat.PetDamageTaken).Base = multiplier;
+        Assert.That(_pets.Pets.Length, Is.EqualTo(2));
+        foreach (PetAgent pet in _pets.Pets)
+        {
+            float hp = pet.Health.Current;
+            DamageResult damage = _pets.ApplyDamage(pet.Id, 10f, 0f, 1);
+            Assert.That(damage.Applied, Is.EqualTo(expected).Within(0.001f));
+            Assert.That(pet.Health.Current, Is.EqualTo(hp - expected).Within(0.001f));
+        }
+    }
+
     private void Hurt(float amount) => _pets.ApplyDamage(Lead.Id, amount, 0f, 1);
 
     private void Tick(float now, float dt = 0.1f, Vector3 player = default) =>

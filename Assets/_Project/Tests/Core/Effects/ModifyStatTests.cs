@@ -83,7 +83,8 @@ public sealed class ModifyStatTests
                 or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds
                 or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow
                 or PlayerStat.PackHounds or PlayerStat.PackShare
-                or PlayerStat.PackTactics or PlayerStat.PackTacticsSlow or PlayerStat.PetDamageTaken)
+                or PlayerStat.PackTactics or PlayerStat.PackTacticsSlow or PlayerStat.PetDamageTaken
+                or PlayerStat.BoarCount or PlayerStat.SpitDamage or PlayerStat.SpitSlow)
             {
                 Assert.That(
                     () => stats.Resolve(member),

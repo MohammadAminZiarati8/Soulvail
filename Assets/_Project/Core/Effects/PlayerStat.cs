@@ -259,7 +259,9 @@ public enum PlayerStat
     HowlHeal,
     /// <summary>Retired by BT-06a: Howl heals only, nothing reads it. Kept so ordinals hold.</summary>
     HowlSeconds,
+    /// <summary>Retired by BT-07a with Pack Tactics: nothing reads it. Kept so ordinals hold.</summary>
     PackTactics,
+    /// <summary>Retired by BT-07a with Pack Tactics: nothing reads it. Kept so ordinals hold.</summary>
     PackTacticsSlow,
     PetDamageTaken,
     HawkSeconds,
@@ -272,6 +274,9 @@ public enum PlayerStat
     StampedeHalfWidth,
     FrenzySeconds,
     FrenzyBonus,
+    BoarCount,
+    SpitDamage,
+    SpitSlow,
 }
 
 /// <summary>

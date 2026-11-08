@@ -147,7 +147,8 @@ public sealed class CharacterSpec
         VolleySpec volley = null,
         IReadOnlyList<ContentId> pathIds = null,
         int pathOpensAtLevel = 0,
-        PetSpec pet = null)
+        PetSpec pet = null,
+        PetSpec boar = null)
     {
         if (id.Value is null)
         {
@@ -221,6 +222,7 @@ public sealed class CharacterSpec
         HitIFrames = hitIFrames;
         Minions = minions;
         Pet = pet;
+        Boar = boar;
         Kindling = kindling;
         Veilrot = veilrot;
         Unlock = unlock;
@@ -304,6 +306,9 @@ public sealed class CharacterSpec
     public MinionSpec Minions { get; }
 
     public PetSpec Pet { get; }
+
+    /// <summary>BT-07a: the class's ranged second animal, joined by <c>BoarCount</c>; null for every other class.</summary>
+    public PetSpec Boar { get; }
 
     /// <summary>
     /// The class's stacking signature, or <see langword="null"/> for a class with none. Only the

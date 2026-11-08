@@ -94,6 +94,9 @@ public sealed class StatBlockTests
         PlayerStat.PackTactics,
         PlayerStat.PackTacticsSlow,
         PlayerStat.PetDamageTaken,
+        PlayerStat.BoarCount,
+        PlayerStat.SpitDamage,
+        PlayerStat.SpitSlow,
         PlayerStat.KindlingPerStack,
         PlayerStat.KindlingMaxStacks,
         PlayerStat.PoolDamage,
@@ -370,7 +373,7 @@ public sealed class StatBlockTests
         }
 
         Assert.That(answered, Is.EqualTo(3), "MaxHp, MoveSpeed and ContactDamage, and no fourth.");
-        Assert.That(refused, Is.EqualTo(77), "Only three addresses are shared by these bodies.");
+        Assert.That(refused, Is.EqualTo(80), "Only three addresses are shared by these bodies.");
     }
 
     [Test]
@@ -521,11 +524,14 @@ public sealed class StatBlockTests
             nameof(PlayerStat.StampedeHalfWidth),
             nameof(PlayerStat.FrenzySeconds),
             nameof(PlayerStat.FrenzyBonus),
+            nameof(PlayerStat.BoarCount),
+            nameof(PlayerStat.SpitDamage),
+            nameof(PlayerStat.SpitSlow),
         }), "M4-01a's twelve in the same order, then M6-08's four, RS-03a's FireWhileMoving and "
             + "RS-03b's three volley numbers, MK-02a's five, MK-07a's three, MK-08a's BindStun, "
             + "MK-09a's SnareRoot/SnareDamage, MK-10a's KillshotExecute/KillshotDamage, SK-01a's three stats "
             + "SK-03a's two Ricochet Shot stats, SK-04a's two Second Wind stats, SK-05a's two Whirlwind stats "
-            + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats, EA-01b's two Echo Arrow stats, EA-03a's two Decoy Roll stats and EA-03b's two Fading Burst stats and EA-04a's two Crossfire stats, then EA-05a's three Hall of Mirrors stats, BM-01a's two axe stats, and BM-05a's three pet stats.");
+            + "SK-06a's two Storm Run stats, EA-01a's two Mirror Image stats, EA-01b's two Echo Arrow stats, EA-03a's two Decoy Roll stats and EA-03b's two Fading Burst stats and EA-04a's two Crossfire stats, then EA-05a's three Hall of Mirrors stats, BM-01a's two axe stats, and BM-05a's three pet stats, then BT-07a's three boar stats.");
     }
 
     // ---- Rules 3 and 4: the target, and the default that keeps the ripple at nothing --------------

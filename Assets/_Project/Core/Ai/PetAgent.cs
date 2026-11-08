@@ -7,11 +7,15 @@ namespace Soulvail.Core.Ai;
 
 public enum PetState { Hunt, Heel, Fallen }
 
+/// <summary>What body a pet is: the lead Hound, a Pack Hounds follower, or the ranged Boar (BT-07a).</summary>
+public enum PetKind { Hound, PackHound, Boar }
+
 public sealed class PetAgent
 {
-    internal PetAgent(PetSpec spec, bool isLead)
+    internal PetAgent(PetSpec spec, PetKind kind)
     {
-        IsLead = isLead;
+        Spec = spec;
+        Kind = kind;
         MaxHp = new Stat(spec.MaxHp);
         MoveSpeed = new Stat(spec.MoveSpeed);
         ContactDamage = new Stat(spec.BiteDamage);
@@ -23,7 +27,8 @@ public sealed class PetAgent
         Stats = new PetStats(this);
     }
 
-    public bool IsLead { get; }
+    public PetKind Kind { get; }
+    public bool IsLead => Kind == PetKind.Hound;
     public int Id { get; internal set; }
     public Vector3 Position { get; internal set; }
     public Health Health { get; }
@@ -40,6 +45,7 @@ public sealed class PetAgent
     public Stat RescueSeconds { get; }
     public float RescueProgress { get; internal set; }
 
+    internal PetSpec Spec { get; }
     internal PetStats Stats { get; }
     internal bool RecoveringAtHeel { get; set; }
     internal float NextRetargetAt { get; set; }

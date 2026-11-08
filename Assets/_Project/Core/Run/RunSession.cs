@@ -623,7 +623,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             ? null
             : new MinionRecipe(character.Minions);
 
-        PetSystem pets = character.Pet is null ? null : new PetSystem(character.Pet, _events, _intents);
+        PetSystem pets = character.Pet is null ? null
+            : new PetSystem(character.Pet, character.Boar, _events, _intents);
         pets?.PlaceBeside(Vector3.Zero, motor.Facing, 0f);
 
         // The second block is null for every class but the Gravecaller, and **null is a real answer
@@ -1470,7 +1471,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // It takes the census to choose from and the player because the kill goes through
         // EnemySystem.ApplyDamage, which resolves a Bloater's blast (M5-04a rule 11).
         State.Minions?.Tick(snapshot.Dt, State.Time, State.Enemies, State.Combat);
-        State.Pets?.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat, State.Motor.Facing);
+        State.Pets?.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat, State.Motor.Facing,
+            snapshot.TraceCover);
         _hawk.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat);
 
         // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).

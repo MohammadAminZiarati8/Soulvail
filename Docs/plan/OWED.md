@@ -505,3 +505,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ### BT-06c — Stampede's code removed
 
 1. **[Editor]** Packleader run to Lv 20: Frenzy only at the slot; no console errors and no missing-script warnings when the Run scene loads.
+
+### BT-07a — The boar in core
+
+1. **[Editor]** Packleader at Lv 14 with Pack Tactics ranks: a fight plays exactly as with no Lv-14 pick (no shared-bite bonus or slow); no console errors. The boar itself is not visible until BT-07b.

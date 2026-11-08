@@ -11,7 +11,8 @@ namespace Soulvail.Core.Ai;
 
 public sealed class PetSystem
 {
-    public const int Capacity = 3;
+    public const int Capacity = 4;
+    public const int BoarSlot = 3;
     public const int MaxHunters = 2;
     public const float HuntMemory = 2f;
     public const float RetargetInterval = 0.5f;
@@ -19,11 +20,14 @@ public sealed class PetSystem
     public const float RoarRadius = 3f;
     public const float RoarSlowSeconds = 2f;
 
-    private const float PackSlowSeconds = 1f;
     private const float SwapImmunityTrail = 0.2f;
     private const float SwapRescueHeadStart = 0.5f;
 
     private readonly PetSpec _spec;
+    private readonly PetSpit _spit;
+    private readonly PetAgent[] _live = new PetAgent[Capacity];
+    private int _liveCount;
+    private bool _boarActive;
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly long[] _biteCounts = new long[Capacity];
@@ -47,15 +51,21 @@ public sealed class PetSystem
     private int _lastThrowTargetId;
 
     public PetSystem(PetSpec spec, IDomainEvents events, IIntentSink intents)
+        : this(spec, null, events, intents)
     {
-        _spec = spec;
+    }
+
+    public PetSystem(PetSpec hound, PetSpec boar, IDomainEvents events, IIntentSink intents)
+    {
+        _spec = hound;
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
-        if (spec is not null)
+        _spit = new PetSpit(events);
+        if (hound is not null)
         {
-            for (int index = 0; index < Capacity; index++)
+            for (int index = 0; index < BoarSlot; index++)
             {
-                _pets[index] = new PetAgent(spec, isLead: index == 0);
+                _pets[index] = new PetAgent(hound, index == 0 ? PetKind.Hound : PetKind.PackHound);
             }
 
             PetAgent lead = _pets[0];
@@ -63,10 +73,16 @@ public sealed class PetSystem
             lead.Stats.PackShare.Changed += OnPackShareChanged;
             lead.MaxHp.Changed += OnPackShareChanged;
             lead.ContactDamage.Changed += OnPackShareChanged;
+            if (boar is not null)
+            {
+                _pets[BoarSlot] = new PetAgent(boar, PetKind.Boar);
+                lead.Stats.BoarCount.Changed += OnBoarCountChanged;
+            }
         }
     }
 
-    public ReadOnlySpan<PetAgent> Pets => _pets.AsSpan(0, _count);
+    public ReadOnlySpan<PetAgent> Pets => _live.AsSpan(0, _liveCount);
+    public PetSpit Spit => _spit;
     public IStatBlock LeadStats => _count == 0 ? null : _pets[0].Stats;
     public Vector2 FormationFacing => _formation.Facing;
 
@@ -104,6 +120,7 @@ public sealed class PetSystem
         AnnouncePet(_pets[0]);
         _spawnAnnounced = true;
         MatchPackSize();
+        MatchBoar();
     }
 
     private void PlacePet(int index, Vector3 position)
@@ -119,13 +136,81 @@ public sealed class PetSystem
         pet.NextRetargetAt = _now;
         _biteCounts[index] = 0;
         _frenzyBuffs[index] = default;
-        _count++;
+        if (index == BoarSlot)
+        {
+            _boarActive = true;
+        }
+        else
+        {
+            _count++;
+        }
+
+        RefreshLive();
+    }
+
+    private bool IsActive(int index) => index < _count || (index == BoarSlot && _boarActive);
+
+    // Hounds stay contiguous from slot 0 and the boar keeps slot 3, so Pets is a compact copy made
+    // only when an animal joins or leaves, never on a tick.
+    private void RefreshLive()
+    {
+        _liveCount = 0;
+        for (int index = 0; index < Capacity; index++)
+        {
+            if (IsActive(index))
+            {
+                _live[_liveCount++] = _pets[index];
+            }
+        }
     }
 
     private void AnnouncePet(PetAgent pet)
     {
         pet.Health.Reset();
-        _events.Publish(new PetSpawned(pet.Id, pet.Position, _playerPosition, pet.Health.Fraction, pet.IsLead));
+        _events.Publish(new PetSpawned(pet.Id, pet.Position, _playerPosition, pet.Health.Fraction, pet.IsLead,
+            pet.Kind));
+    }
+
+    private void OnBoarCountChanged(Stat _) => MatchBoar();
+
+    // BT-07a rule 1: BoarCount 1 or more joins one boar at slot 3; 0 sends it away.
+    private void MatchBoar()
+    {
+        PetAgent boar = _pets[BoarSlot];
+        if (!_spawnAnnounced || boar is null)
+        {
+            return;
+        }
+
+        bool wanted = _pets[0].Stats.BoarCount.Value >= 1f;
+        if (wanted && !_boarActive)
+        {
+            UpdateBoarScale(boar);
+            Vector2 slot = _formation.WorldOffset(BoarSlot);
+            PlacePet(BoarSlot, _playerPosition + new Vector3(slot.X, 0f, slot.Y));
+            AnnouncePet(boar);
+        }
+        else if (!wanted && _boarActive)
+        {
+            ReleaseHunters(BoarSlot);
+            _boarActive = false;
+            RefreshLive();
+            _events.Publish(new PetDespawned(boar.Id));
+        }
+    }
+
+    // BT-07a rule 1: the boar grows by the lead's own ratio, so level growth and Thick Hide reach it.
+    private void UpdateBoarScale(PetAgent boar)
+    {
+        PetAgent lead = _pets[0];
+        float previousMax = boar.MaxHp.Value;
+        boar.MaxHp.Base = boar.Spec.MaxHp * (lead.MaxHp.Value / _spec.MaxHp);
+        boar.ContactDamage.Base = boar.Spec.BiteDamage * (lead.ContactDamage.Value / _spec.BiteDamage);
+        float gain = boar.MaxHp.Value - previousMax;
+        if (_boarActive && boar.State != PetState.Fallen && gain > 0f)
+        {
+            boar.Health.Heal(gain);
+        }
     }
 
     private void OnPackHoundsChanged(Stat _) => MatchPackSize();
@@ -137,12 +222,13 @@ public sealed class PetSystem
             return;
         }
 
-        int count = 1 + (int)Math.Clamp(_pets[0].Stats.PackHounds.Value, 0f, Capacity - 1);
+        int count = 1 + (int)Math.Clamp(_pets[0].Stats.PackHounds.Value, 0f, BoarSlot - 1);
         while (_count > count)
         {
             int index = _count - 1;
             ReleaseHunters(index);
             _count--;
+            RefreshLive();
             _events.Publish(new PetDespawned(_pets[index].Id));
         }
 
@@ -163,6 +249,11 @@ public sealed class PetSystem
         for (int index = 1; index < _count; index++)
         {
             UpdateShare(_pets[index]);
+        }
+
+        if (_pets[BoarSlot] is PetAgent boar)
+        {
+            UpdateBoarScale(boar);
         }
     }
 
@@ -198,7 +289,7 @@ public sealed class PetSystem
     }
 
     public void Tick(float dt, float now, Vector3 player, EnemySystem enemies, PlayerCombat combat,
-        Vector3 playerFacing = default)
+        Vector3 playerFacing = default, Func<Vector3, Vector3, Vector3?> traceCover = null)
     {
         _playerPosition = player;
         _now = now;
@@ -212,9 +303,14 @@ public sealed class PetSystem
         // BT-03 rule 3: a new throw at a marked enemy pulls every hunter onto it this tick.
         bool switchToThrow = throwTargetId != _lastThrowTargetId && IsMarkedAlive(throwTargetId);
         _lastThrowTargetId = throwTargetId;
-        int inReach = 0;
-        for (int index = 0; index < _count; index++)
+        int ready = 0;
+        for (int index = 0; index < Capacity; index++)
         {
+            if (!IsActive(index))
+            {
+                continue;
+            }
+
             PetAgent pet = _pets[index];
             float playerDistanceSquared = Offset(pet.Position, player).LengthSquared();
             if (pet.IsLead && now >= _leapUntil && _leapUntil != float.NegativeInfinity)
@@ -234,7 +330,7 @@ public sealed class PetSystem
 
             if (pet.State == PetState.Fallen)
             {
-                if (dt > 0f && playerDistanceSquared <= _spec.RescueRadius * _spec.RescueRadius)
+                if (dt > 0f && playerDistanceSquared <= pet.Spec.RescueRadius * pet.Spec.RescueRadius)
                 {
                     float seconds = _pets[0].RescueSeconds.Value;
                     AdvanceRescue(pet, seconds > 0f ? dt / seconds : 1f);
@@ -271,19 +367,24 @@ public sealed class PetSystem
             }
             Vector2 velocity2;
             Vector2 facing;
-            float distance;
+            bool canStrike;
             if (quarry is null)
             {
                 velocity2 = HeelVelocity(pet, index, dt, player, playerDistanceSquared, out facing);
-                distance = float.PositiveInfinity;
+                canStrike = false;
+            }
+            else if (pet.Spec.IsRanged)
+            {
+                velocity2 = RangedVelocity(pet, index, quarry, dt, now, traceCover, out facing, out canStrike);
             }
             else
             {
                 Vector2 offset = Offset(pet.Position, quarry.Position);
-                distance = offset.Length();
+                float distance = offset.Length();
                 facing = distance > 0.0001f ? offset / distance : Vector2.Zero;
                 float speed = MathF.Max(0f, pet.MoveSpeed.Value) * FrenzyMultiplier(index, now);
-                if (distance <= _spec.Reach)
+                canStrike = distance <= pet.Spec.Reach;
+                if (canStrike)
                 {
                     speed = 0f;
                 }
@@ -304,48 +405,99 @@ public sealed class PetSystem
             var velocity = new Vector3(velocity2.X, 0f, velocity2.Y);
             _intents.PetMove(new EnemyMoveIntent(pet.Id, velocity, facing));
 
-            if (quarry is not null && distance <= _spec.Reach)
+            if (quarry is not null && canStrike)
             {
-                inReach |= 1 << index;
+                ready |= 1 << index;
             }
+        }
+
+        // Globs already in the air move before this tick's are loosed.
+        if (enemies is not null)
+        {
+            _spit.Tick(dt, now, enemies, combat, traceCover);
         }
 
         // Resolve every pet's quarry before biting so both can qualify on the first tick.
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
+            if (!IsActive(index))
+            {
+                continue;
+            }
+
             PetAgent pet = _pets[index];
             float bite = pet.ContactDamage.Value * FrenzyMultiplier(index, now);
-            if ((inReach & (1 << index)) != 0 && bite > 0f && BiteReady(pet, index, now)
-                && _enemies.TryGet(pet.QuarryId, out EnemyAgent quarry) && quarry.IsAlive)
+            if ((ready & (1 << index)) == 0 || !(bite > 0f) || !BiteReady(pet, index, now)
+                || !_enemies.TryGet(pet.QuarryId, out EnemyAgent quarry) || !quarry.IsAlive)
             {
-                pet.NextBiteAt = now + _spec.BiteInterval;
-                quarry.Blackboard.LastBitBy = pet.Id;
-                quarry.Blackboard.LastBitAt = now;
-                PetStats pack = _pets[0].Stats;
-                bool sharedQuarry = SharesQuarry(index, quarry.Id, inReach);
-                if (sharedQuarry)
+                continue;
+            }
+
+            if (pet.Spec.IsRanged)
+            {
+                // BT-07a rule 3: a glob carries the boar's bite times SpitDamage, and SpitSlow.
+                PetStats lead = _pets[0].Stats;
+                float damage = bite * lead.SpitDamage.Value;
+                if (_spit.TryLaunch(pet.Id, pet.Position, quarry.Id, damage, lead.SpitSlow.Value, pet.Spec.SpitSpeed))
                 {
-                    bite *= 1f + pack.PackTactics.Value;
+                    pet.NextBiteAt = now + pet.Spec.SpitInterval;
                 }
 
-                enemies.ApplyDamage(quarry.Id, bite, now, combat);
-                float slow = pack.PackTacticsSlow.Value;
-                if (sharedQuarry && slow > 0f)
-                {
-                    enemies.Slow(quarry.Id, MathF.Min(slow, CrowdControl.MaxSlow), PackSlowSeconds);
-                }
+                continue;
+            }
 
-                long biteCount = ++_biteCounts[index];
-                _events.Publish(new PetBit(pet.Id, quarry.Id, bite));
+            pet.NextBiteAt = now + _spec.BiteInterval;
+            quarry.Blackboard.LastBitBy = pet.Id;
+            quarry.Blackboard.LastBitAt = now;
+            enemies.ApplyDamage(quarry.Id, bite, now, combat);
 
-                int stunEvery = (int)Math.Clamp(pet.Stats.BiteStunEvery.Value, 0f, 10f);
-                float stunSeconds = pet.Stats.BiteStunSeconds.Value;
-                if (pet.IsLead && stunEvery > 0 && biteCount % stunEvery == 0 && stunSeconds > 0f && enemies.IsLight(quarry.Id))
-                {
-                    enemies.Stun(quarry.Id, stunSeconds);
-                }
+            long biteCount = ++_biteCounts[index];
+            _events.Publish(new PetBit(pet.Id, quarry.Id, bite));
+
+            int stunEvery = (int)Math.Clamp(pet.Stats.BiteStunEvery.Value, 0f, 10f);
+            float stunSeconds = pet.Stats.BiteStunSeconds.Value;
+            if (pet.IsLead && stunEvery > 0 && biteCount % stunEvery == 0 && stunSeconds > 0f && enemies.IsLight(quarry.Id))
+            {
+                enemies.Stun(quarry.Id, stunSeconds);
             }
         }
+    }
+
+    // BT-07a rule 2: close until within HoldDistance with a clear line, stand, and back off inside
+    // BackOffDistance. It may spit whenever the line is clear and the quarry is within SpitRange.
+    private Vector2 RangedVelocity(PetAgent pet, int index, EnemyAgent quarry, float dt, float now,
+        Func<Vector3, Vector3, Vector3?> traceCover, out Vector2 facing, out bool canSpit)
+    {
+        PetSpec spec = pet.Spec;
+        Vector2 offset = Offset(pet.Position, quarry.Position);
+        float distance = offset.Length();
+        facing = distance > 0.0001f ? offset / distance : Vector2.Zero;
+        bool clear = traceCover is null || !traceCover(pet.Position, quarry.Position).HasValue;
+        canSpit = clear && distance <= spec.SpitRange;
+        float speed = MathF.Max(0f, pet.MoveSpeed.Value) * FrenzyMultiplier(index, now);
+        float gap;
+        Vector2 direction;
+        if (!clear || distance > spec.HoldDistance)
+        {
+            gap = clear ? distance - spec.HoldDistance : distance;
+            direction = facing;
+        }
+        else if (distance < spec.BackOffDistance)
+        {
+            gap = spec.BackOffDistance - distance;
+            direction = distance > 0.0001f ? -facing : -_formation.Facing;
+        }
+        else
+        {
+            return Vector2.Zero;
+        }
+
+        if (dt > 0f)
+        {
+            speed = MathF.Min(speed, gap / dt);
+        }
+
+        return direction * speed;
     }
 
     // BT-04 rules 1, 3, 4, 6: walk the lagged slot, ease in, and stand still in the dead zone — but
@@ -376,8 +528,13 @@ public sealed class PetSystem
     private int GatherStanding(float now, Span<Vector2> positions, Span<int> slots)
     {
         int count = 0;
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
+            if (!IsActive(index))
+            {
+                continue;
+            }
+
             PetAgent pet = _pets[index];
             bool leaping = pet.IsLead && _leapUntil != float.NegativeInfinity;
             if (pet.State == PetState.Fallen || leaping)
@@ -393,25 +550,12 @@ public sealed class PetSystem
         return count;
     }
 
-    private bool SharesQuarry(int index, int quarryId, int inReach)
-    {
-        int partners = inReach & ~(1 << index);
-        for (int other = 0; other < _count; other++)
-        {
-            if ((partners & (1 << other)) != 0 && _pets[other].QuarryId == quarryId)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private bool BiteReady(PetAgent pet, int index, float now)
     {
         (float bonus, float until) = _frenzyBuffs[index];
+        float interval = pet.Spec.IsRanged ? pet.Spec.SpitInterval : pet.Spec.BiteInterval;
         // Keep the base deadline so a buff can change a pending bite only while it is active.
-        float reduction = now < until ? _spec.BiteInterval - _spec.BiteInterval / (1f + bonus) : 0f;
+        float reduction = now < until ? interval - interval / (1f + bonus) : 0f;
         return now >= pet.NextBiteAt - reduction;
     }
 
@@ -445,10 +589,10 @@ public sealed class PetSystem
     public int Howl(float healFraction, float now)
     {
         int standing = 0;
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
             PetAgent pet = _pets[index];
-            if (pet.State == PetState.Fallen)
+            if (!IsActive(index) || pet.State == PetState.Fallen)
             {
                 continue;
             }
@@ -477,9 +621,9 @@ public sealed class PetSystem
         }
 
         int standing = 0;
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
-            if (_pets[index].State == PetState.Fallen)
+            if (!IsActive(index) || _pets[index].State == PetState.Fallen)
             {
                 continue;
             }
@@ -518,12 +662,18 @@ public sealed class PetSystem
     public void Clear()
     {
         _spawnAnnounced = false;
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
-            ReleaseHunters(index);
+            if (IsActive(index))
+            {
+                ReleaseHunters(index);
+            }
         }
 
         _count = 0;
+        _boarActive = false;
+        _liveCount = 0;
+        _spit.Clear();
         _leapUntil = float.NegativeInfinity;
         _swapImmuneUntil = float.NegativeInfinity;
         _pounce = null;
@@ -744,7 +894,7 @@ public sealed class PetSystem
         _events.Publish(new RescueProgressed(pet.Id, progress));
         if (progress == 1f)
         {
-            pet.Health.Restore(_spec.RiseFraction * pet.MaxHp.Value, 0f);
+            pet.Health.Restore(pet.Spec.RiseFraction * pet.MaxHp.Value, 0f);
             pet.State = PetState.Heel;
             pet.RecoveringAtHeel = true;
             pet.RescueProgress = 0f;
@@ -813,8 +963,13 @@ public sealed class PetSystem
     {
         _enemies = enemies;
         _now = now;
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
+            if (!IsActive(index))
+            {
+                continue;
+            }
+
             for (int slot = 0; slot < MaxHunters; slot++)
             {
                 int enemyId = _hunters[index, slot];
@@ -829,10 +984,10 @@ public sealed class PetSystem
 
     internal PetAgent HuntQuarry(EnemyAgent enemy, Vector3 player)
     {
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
             PetAgent pet = _pets[index];
-            if (!CanHunt(enemy, pet, player))
+            if (!IsActive(index) || !CanHunt(enemy, pet, player))
             {
                 continue;
             }
@@ -888,9 +1043,9 @@ public sealed class PetSystem
 
     private int IndexOf(int petId)
     {
-        for (int index = 0; index < _count; index++)
+        for (int index = 0; index < Capacity; index++)
         {
-            if (_pets[index].Id == petId)
+            if (IsActive(index) && _pets[index].Id == petId)
             {
                 return index;
             }

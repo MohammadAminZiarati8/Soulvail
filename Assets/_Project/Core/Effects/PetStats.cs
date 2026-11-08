@@ -21,9 +21,15 @@ public sealed class PetStats : IStatBlock
     internal Stat PackHounds { get; } = new Stat(0f);
     internal Stat PackShare { get; } = new Stat(0.5f);
 
+    /// <summary>Retired by BT-07a: Pack Tactics is gone, nothing reads it.</summary>
     internal Stat PackTactics { get; } = new Stat(0f);
+    /// <summary>Retired by BT-07a: Pack Tactics is gone, nothing reads it.</summary>
     internal Stat PackTacticsSlow { get; } = new Stat(0f);
     internal Stat PetDamageTaken { get; } = new Stat(1f);
+
+    internal Stat BoarCount { get; } = new Stat(0f);
+    internal Stat SpitDamage { get; } = new Stat(1f);
+    internal Stat SpitSlow { get; } = new Stat(0f);
 
     public Stat Resolve(PlayerStat stat) => stat switch
     {
@@ -41,6 +47,9 @@ public sealed class PetStats : IStatBlock
         PlayerStat.PackTactics => PackTactics,
         PlayerStat.PackTacticsSlow => PackTacticsSlow,
         PlayerStat.PetDamageTaken => PetDamageTaken,
+        PlayerStat.BoarCount when _pet.IsLead => BoarCount,
+        PlayerStat.SpitDamage when _pet.IsLead => SpitDamage,
+        PlayerStat.SpitSlow when _pet.IsLead => SpitSlow,
         _ => throw new ArgumentOutOfRangeException(nameof(stat), stat, "The pet has no such stat."),
     };
 
@@ -49,5 +58,6 @@ public sealed class PetStats : IStatBlock
             or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds
             or PlayerStat.PackTactics or PlayerStat.PackTacticsSlow or PlayerStat.PetDamageTaken
         || (_pet.IsLead && stat is PlayerStat.PackHounds or PlayerStat.PackShare
-                or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow);
+                or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow
+                or PlayerStat.BoarCount or PlayerStat.SpitDamage or PlayerStat.SpitSlow);
 }

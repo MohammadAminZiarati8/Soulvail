@@ -5,7 +5,7 @@ namespace Soulvail.Core.Content;
 public sealed class PetSpec
 {
     public PetSpec(ContentId id, float maxHp, float moveSpeed, float biteDamage, float biteInterval,
-        float reach, float heelDistance)
+        float reach, float heelDistance, bool isRanged = false)
     {
         if (id.Value is null)
         {
@@ -26,6 +26,7 @@ public sealed class PetSpec
         BiteInterval = biteInterval;
         Reach = reach;
         HeelDistance = heelDistance;
+        IsRanged = isRanged;
     }
 
     public float HeelAt { get; } = 0.35f;
@@ -34,6 +35,14 @@ public sealed class PetSpec
     public float RescueSeconds { get; } = 2f;
     public float RescueRadius { get; } = 2.5f;
     public float RiseFraction { get; } = 0.5f;
+
+    /// <summary>BT-07a: a ranged pet holds off and spits instead of biting.</summary>
+    public bool IsRanged { get; }
+    public float SpitRange { get; } = 7f;
+    public float HoldDistance { get; } = 5f;
+    public float BackOffDistance { get; } = 3f;
+    public float SpitInterval { get; } = 1.5f;
+    public float SpitSpeed { get; } = 12f;
 
     public ContentId Id { get; }
     public float MaxHp { get; }

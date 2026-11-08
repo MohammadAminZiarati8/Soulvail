@@ -78,7 +78,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BT-06a — Frenzy in core; Howl heals only (M)
 - [x] BT-06b — Frenzy authored at Lv 20 and drawn (M)
 - [x] BT-06c — Stampede's code removed (S)
-- [ ] [BT-07a](tasks/BT-07a-boar-core.md) — The boar in core: a ranged animal that spits (M)
+- [x] BT-07a — The boar in core: a ranged animal that spits (M)
 - [ ] [BT-07b](tasks/BT-07b-boar-drawn-and-authored.md) — The boar drawn and authored at Lv 14 (M)
 
 - [ ] AM — Axe Master, the second path (titles only; specced on the owner's word)

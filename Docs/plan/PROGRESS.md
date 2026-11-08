@@ -9,8 +9,8 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-06c**. |
-| **Next task** | **BT-07a** (→ BT-07b specced). |
+| **Last merged** | **BT-07a**. |
+| **Next task** | **BT-07b** (specced). |
 | **Verified** | EditMode 6175 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
@@ -21,11 +21,11 @@ Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die
 Thornheart (20): spokes, pods, slam, heart ×2, vines.
 Mother: shields, lobs, spray, pod. Leap: crouch, ring, arc, bite. Chain: lit bombers, link, fuse.
 From 21 four cousins (Bullfrog, pitcher, bomber, panther).
-Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it; crone, lime crown.
+Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it.
 Gravemaw (25): burrow; ring, bite+throw; tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 986 HP, 2.8 m/s, 4 pillars.
 Apex (30): eye tell/feint, streak, +15% window; 1580 HP. Four stones; 2 panthers at 66%, cleared at 33%; win.
-Stone-stops dash/rake. Pack: 3 s cd. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
+Stone-stops dash/rake; pack 3 s cd. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
 Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m; flees <4 m; lime staff/glow.
@@ -37,11 +37,12 @@ Status icons; pooled CC, bosses immune. Marksman trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs (Immune).
-Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20. Silver-cyan; quiver.
+Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes; Swift Hands;
-Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, Quick Swap; exact swap. Packleader: Hounds/Howl (heal) 11, Tactics/Pelts 14, Hawk 17, Frenzy 20; war-paint.
-Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s; glows; no Stampede.
+Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, Quick Swap; exact swap. Packleader: Hounds/Howl (heal) 11, Pelts 14, Hawk 17, Frenzy 20.
+Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s; no Stampede.
+Boar (core only): holds 5 m, spits globs cover stops; Pack Tactics retired.
 
 ## Missing
 

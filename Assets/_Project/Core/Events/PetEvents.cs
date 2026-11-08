@@ -1,4 +1,5 @@
 using System.Numerics;
+using Soulvail.Core.Ai;
 
 namespace Soulvail.Core.Events;
 
@@ -10,15 +11,49 @@ public readonly struct PetSpawned
     public readonly Vector3? PlayerPosition;
     public readonly float HealthFraction;
     public readonly bool IsLead;
+    public readonly PetKind Kind;
 
     public PetSpawned(int id, Vector3 position, Vector3? playerPosition = null, float healthFraction = 1f,
-        bool isLead = true)
+        bool isLead = true, PetKind? kind = null)
     {
         Id = id;
         Position = position;
         PlayerPosition = playerPosition;
         HealthFraction = healthFraction;
         IsLead = isLead;
+        Kind = kind ?? (isLead ? PetKind.Hound : PetKind.PackHound);
+    }
+}
+
+/// <summary>BT-07a: a ranged pet loosed glob <see cref="GlobId"/> from <see cref="From"/> at an enemy.</summary>
+public readonly struct PetSpat
+{
+    public readonly int PetId;
+    public readonly int GlobId;
+    public readonly Vector3 From;
+    public readonly int TargetId;
+
+    public PetSpat(int petId, int globId, Vector3 from, int targetId)
+    {
+        PetId = petId;
+        GlobId = globId;
+        From = from;
+        TargetId = targetId;
+    }
+}
+
+/// <summary>BT-07a: a glob ended — on its quarry (<see cref="Hit"/>), or on cover or a vanished target.</summary>
+public readonly struct GlobLanded
+{
+    public readonly int GlobId;
+    public readonly Vector3 Position;
+    public readonly bool Hit;
+
+    public GlobLanded(int globId, Vector3 position, bool hit)
+    {
+        GlobId = globId;
+        Position = position;
+        Hit = hit;
     }
 }
 

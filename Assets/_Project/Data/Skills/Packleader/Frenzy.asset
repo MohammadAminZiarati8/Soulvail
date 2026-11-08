@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
-  m_Name: Stampede
+  m_Name: Frenzy
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
-  _id: skill.packleader.stampede
-  _nameKey: skill.packleader.stampede.name
-  _descriptionKey: skill.packleader.stampede.description
+  _id: skill.packleader.frenzy
+  _nameKey: skill.packleader.frenzy.name
+  _descriptionKey: skill.packleader.frenzy.description
   _kind: 1
   _effects: []
   _cooldown: 30
@@ -23,7 +23,7 @@ MonoBehaviour:
     _comparison: 1
     _threshold: 1
   _onCast:
-  - {fileID: 11400000, guid: 7f331ac5224d4c14bcf8463f70bf2308, type: 2}
+  - {fileID: 11400000, guid: 063d33519306cc94f8cc76fcba75a503, type: 2}
   _parent: {fileID: 0}
   _icon: {fileID: 21300000, guid: 5fd6f60adec18a442a1a52a17a998509, type: 3}
   _hasPact: 0

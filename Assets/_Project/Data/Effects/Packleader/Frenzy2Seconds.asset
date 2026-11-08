@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cad092e8344e27a43abe6fd33bd71d9a, type: 3}
-  m_Name: Howl3Duration
+  m_Name: Frenzy2Seconds
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.ModifyStatDefinition
-  _stat: 69
+  _stat: 78
   _kind: 0
   _value: 2
   _target: 0

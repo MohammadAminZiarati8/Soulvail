@@ -496,3 +496,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ### BT-06a — Frenzy in core; Howl heals only
 
 1. **[Editor]** Packleader 11, let a hound drop under half: Howl heals and the hounds howl, with no cyan glow and no faster bites (Frenzy is not castable until BT-06b).
+
+### BT-06b — Frenzy authored at Lv 20 and drawn
+
+1. **[Editor]** Packleader at Lv 20, take Frenzy: in a fight it fires, every standing animal glows cyan with the cyan chevron icon over its bar; they bite and run faster; the icon and glow end with the buff (8 s, 10 s at rank 2) or when it falls.
+2. **[Editor]** Howl's tree text reads heal-only (20 / 30 / 40 %, cooldown 11 s).

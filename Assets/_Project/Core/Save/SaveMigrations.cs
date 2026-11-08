@@ -236,7 +236,36 @@ public static class SaveMigrations
                 current.OrdealIds);
         }
 
+        if (version < 7)
+        {
+            // v7: BT-06b put Frenzy in Stampede's Lv-20 slot. Same three ranks, new ids, so a run
+            // holding Stampede ranks loads holding the same Frenzy ranks.
+            current = new RunSnapshot(7, current.ModeId, current.CharacterId, current.Seed,
+                current.StageIndex, current.Random, current.PlayerHp, current.PlayerShield,
+                current.RunTime, current.WrittenAt, current.Level, current.Xp,
+                current.PendingLevelUps, Frenzied(current.TakenNodeIds), Frenzied(current.ManualSkillIds),
+                current.Economy, Frenzied(current.BanishedNodeIds), Frenzied(current.PactedNodeIds),
+                current.OrdealIds);
+        }
+
         return current;
+    }
+
+    private static IReadOnlyList<ContentId> Frenzied(IReadOnlyList<ContentId> ids)
+    {
+        if (ids is null)
+        {
+            return ids;
+        }
+
+        var renamed = new ContentId[ids.Count];
+        for (int i = 0; i < ids.Count; i++)
+        {
+            ContentId id = ids[i];
+            renamed[i] = id == Stampede ? Frenzy : id == Stampede2 ? Frenzy2 : id == Stampede3 ? Frenzy3 : id;
+        }
+
+        return renamed;
     }
 
     private static IReadOnlyList<ContentId> Renamed(IReadOnlyList<ContentId> ids)
@@ -397,6 +426,12 @@ public static class SaveMigrations
     /// </remarks>
     private static readonly ContentId ThirdAxe = new("skill.beastmaster.third-axe");
     private static readonly ContentId SwiftHands = new("skill.beastmaster.swift-hands");
+    private static readonly ContentId Stampede = new("skill.packleader.stampede");
+    private static readonly ContentId Stampede2 = new("skill.packleader.stampede-2");
+    private static readonly ContentId Stampede3 = new("skill.packleader.stampede-3");
+    private static readonly ContentId Frenzy = new("skill.packleader.frenzy");
+    private static readonly ContentId Frenzy2 = new("skill.packleader.frenzy-2");
+    private static readonly ContentId Frenzy3 = new("skill.packleader.frenzy-3");
 
     private static readonly IReadOnlyList<ContentId> GrandfatheredCharacterIds =
         Array.AsReadOnly(new[] { new ContentId("character.gravecaller") });

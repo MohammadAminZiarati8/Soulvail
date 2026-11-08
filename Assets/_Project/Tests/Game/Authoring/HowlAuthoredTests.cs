@@ -51,11 +51,12 @@ public sealed class HowlAuthoredTests
             Is.EqualTo((TriggerField.LowestPetHpFraction, TriggerComparison.Below, 0.5f)));
 
         var heal = (ModifyStat)skills[1].Effects.Single();
-        var duration = (ModifyStat)skills[2].Effects.Single();
+        var heal3 = (ModifyStat)skills[2].Effects.Single();
         Assert.That((heal.Stat, heal.Kind, heal.Value, heal.Target),
             Is.EqualTo((PlayerStat.HowlHeal, ModifierKind.Flat, 0.1f, StatTarget.Player)));
-        Assert.That((duration.Stat, duration.Kind, duration.Value, duration.Target),
-            Is.EqualTo((PlayerStat.HowlSeconds, ModifierKind.Flat, 2f, StatTarget.Player)));
+        // BT-06b: rank 3 heals more instead of lengthening the buff Howl no longer has.
+        Assert.That((heal3.Stat, heal3.Kind, heal3.Value, heal3.Target),
+            Is.EqualTo((PlayerStat.HowlHeal, ModifierKind.Flat, 0.1f, StatTarget.Player)));
         var cooldown = (ModifySkillCooldown)skills[3].Effects.Single();
         Assert.That((cooldown.SkillId, cooldown.Kind, cooldown.Value),
             Is.EqualTo((HowlId, ModifierKind.Flat, -3f)));

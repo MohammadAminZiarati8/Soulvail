@@ -70,7 +70,7 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Gate_AcceptsOneToSixRefusesSeven()
+    public void Gate_AcceptsOneToSevenRefusesEight()
     {
         // The numbers written out, which the four rows around this one deliberately cannot say:
         // they are all phrased against CurrentVersion, so they would keep passing unchanged if the
@@ -83,17 +83,18 @@ public sealed class SaveMigrationTests
         Assert.That(SaveMigrations.CanReadRun(4), Is.True);
         Assert.That(SaveMigrations.CanReadRun(5), Is.True);
         Assert.That(SaveMigrations.CanReadRun(6), Is.True);
-        Assert.That(SaveMigrations.CanReadRun(7), Is.False);
+        Assert.That(SaveMigrations.CanReadRun(7), Is.True);
+        Assert.That(SaveMigrations.CanReadRun(8), Is.False);
 
         Assert.That(SaveMigrations.OldestSupportedRunVersion, Is.EqualTo(1));
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(6));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(7));
 
         // And a version above the current one is refused at the gate *and* at the migration, which
         // are two different answers a downgraded build has to get right: reading a v5 document as
         // though the fields it does not know were absent would silently delete them on the next
         // write. `ProfileGate_AcceptsOneToFourRefusesFive`'s pairing, for this format.
         Assert.Throws<NotSupportedException>(
-            () => SaveMigrations.MigrateRun(7, SnapshotAt(RunSnapshot.CurrentVersion)));
+            () => SaveMigrations.MigrateRun(8, SnapshotAt(RunSnapshot.CurrentVersion)));
     }
 
     [Test]
@@ -169,7 +170,7 @@ public sealed class SaveMigrationTests
         // what a chain whose later steps read `decoded` instead of `current` would produce, and
         // landing at 4 with an earlier step's fields unwritten is what one whose steps ran out of
         // order would — so this single number is load-bearing three times over.
-        Assert.That(migrated.Version, Is.EqualTo(6));
+        Assert.That(migrated.Version, Is.EqualTo(7));
 
         // A v1 run was unlevelled by construction, so its v2 form is the opening state of a run.
         Assert.That(migrated.Level, Is.EqualTo(1));
@@ -283,7 +284,7 @@ public sealed class SaveMigrationTests
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(5, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(6));
+        Assert.That(migrated.Version, Is.EqualTo(7));
         Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, swiftHands }));
         Assert.That(
             migrated.ManualSkillIds,
@@ -293,6 +294,40 @@ public sealed class SaveMigrationTests
         Assert.That(migrated.OrdealIds, Is.EqualTo(new[] { Thinblood }));
         Assert.That(migrated.Level, Is.EqualTo(decoded.Level));
         Assert.That(migrated.Seed, Is.EqualTo(decoded.Seed));
+    }
+
+    [Test]
+    public void Migrate_StampedeRanks_BecomeFrenzy()
+    {
+        // BT-06b rule 6: Frenzy took Stampede's slot rank for rank, so a v6 run holding Stampede
+        // ranks anywhere loads holding the same Frenzy ranks; every other id is left alone.
+        ContentId[] stampede =
+        {
+            new("skill.packleader.stampede"), new("skill.packleader.stampede-2"), new("skill.packleader.stampede-3"),
+        };
+        ContentId[] frenzy =
+        {
+            new("skill.packleader.frenzy"), new("skill.packleader.frenzy-2"), new("skill.packleader.frenzy-3"),
+        };
+        RunSnapshot decoded = SnapshotAt(
+            6,
+            takenNodeIds: new[] { Bulwark, stampede[0], stampede[1], stampede[2] },
+            manualSkillIds: new[] { stampede[0], default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) },
+            banishedNodeIds: new[] { stampede[2] },
+            pactedNodeIds: new[] { Reprisal, stampede[0] },
+            ordealIds: new[] { Thinblood });
+
+        RunSnapshot migrated = SaveMigrations.MigrateRun(6, decoded);
+
+        Assert.That(migrated.Version, Is.EqualTo(7));
+        Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, frenzy[0], frenzy[1], frenzy[2] }));
+        Assert.That(
+            migrated.ManualSkillIds,
+            Is.EqualTo(new[] { frenzy[0], default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) }));
+        Assert.That(migrated.BanishedNodeIds, Is.EqualTo(new[] { frenzy[2] }));
+        Assert.That(migrated.PactedNodeIds, Is.EqualTo(new[] { Reprisal, frenzy[0] }));
+        Assert.That(migrated.OrdealIds, Is.EqualTo(new[] { Thinblood }));
+        Assert.That(migrated.Level, Is.EqualTo(decoded.Level));
     }
 
     [Test]
@@ -314,7 +349,7 @@ public sealed class SaveMigrationTests
 
         // **4 rather than 3 as of M6-01b**: a v2 document walks the v2 → v3 step this row is about
         // and then the v3 → v4 one, which is what a chain being a chain means.
-        Assert.That(migrated.Version, Is.EqualTo(6));
+        Assert.That(migrated.Version, Is.EqualTo(7));
 
         // A v2 run had no loadout by construction, so its v3 form is four empty slots — every skill
         // on Auto, which is also CC §6.1's default (rule 5).
@@ -361,7 +396,7 @@ public sealed class SaveMigrationTests
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(3, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(6));
+        Assert.That(migrated.Version, Is.EqualTo(7));
 
         // A v3 run had no economy by construction — none of the mechanics existed — so its v4 form
         // is `default(RunEconomy)` and three empty lists, which is the opening state of a fresh run
@@ -484,7 +519,7 @@ public sealed class SaveMigrationTests
         // And the two formats still version independently: they read 4 and 4 as of M6-09a, which
         // is a coincidence of arithmetic again rather than a rule — M6-01b bumped the run alone and
         // this task bumps the profile alone.
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(6));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(7));
     }
 
     [Test]

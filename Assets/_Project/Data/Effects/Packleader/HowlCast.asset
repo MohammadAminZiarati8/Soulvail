@@ -12,4 +12,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 268e036b4bbd494d800711423922db94, type: 3}
   m_Name: HowlCast
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.HowlDefinition
-  _attackSpeedBonus: 0.25

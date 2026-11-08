@@ -47,6 +47,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PetHealthBar
   _height: 1.45
+  _icons: {fileID: 11400000, guid: 6c0230d80ef150d41942d581ba0c2384, type: 2}
 --- !u!114 &1342280564543246559
 MonoBehaviour:
   m_ObjectHideFlags: 0

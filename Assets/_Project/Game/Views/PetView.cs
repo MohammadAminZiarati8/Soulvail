@@ -152,6 +152,23 @@ namespace Soulvail.Game.Views
 
             _animator.ResetTrigger(Bite);
             _animator.SetTrigger(RoarTrigger);
+            Glow(seconds, now);
+        }
+
+        /// <summary>BT-06b: the frenzied animal wears the Howl glow and the attack-up icon for the buff.</summary>
+        public void Frenzy(float seconds, float now)
+        {
+            if (_fallen || !(seconds > 0f))
+            {
+                return;
+            }
+
+            Glow(seconds, now);
+            _healthBar.SetFrenzied(true);
+        }
+
+        private void Glow(float seconds, float now)
+        {
             if (!(seconds > 0f))
             {
                 return;
@@ -186,6 +203,8 @@ namespace Soulvail.Game.Views
                 _body.sharedMaterial = _bodyMaterial;
                 _howlGlowing = false;
             }
+
+            _healthBar.SetFrenzied(false);
         }
 
         public void PlayHit()

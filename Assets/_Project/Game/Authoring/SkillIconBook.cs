@@ -22,7 +22,7 @@ namespace Soulvail.Game.Authoring;
 /// </para>
 /// <para>
 /// <b>A skill with no icon is not an error, and not an entry.</b> Path ranks register their
-/// authored icons by rank id, including the shared placeholder for Pack Tactics, Thick Pelts, Hawk and Stampede.
+/// authored icons by rank id, including the shared placeholder for Pack Tactics, Thick Pelts, Hawk and Frenzy.
 /// <see cref="For"/> returns null when there is no art and the row draws its placeholder.
 /// </para>
 /// </remarks>

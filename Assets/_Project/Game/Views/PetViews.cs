@@ -26,6 +26,7 @@ public sealed class PetViews : IDisposable
     private readonly IDisposable _bit;
     private readonly IDisposable _roared;
     private readonly IDisposable _howled;
+    private readonly IDisposable _frenzied;
     private readonly IDisposable _hurt;
     private readonly IDisposable _heeled;
     private readonly IDisposable _returned;
@@ -73,6 +74,15 @@ public sealed class PetViews : IDisposable
             {
                 // BT-06a: Howl heals only, so the hounds howl without the buff's glow.
                 view.Howl(0f, now);
+            }
+        });
+        _frenzied = hub.Subscribe<PetsFrenzied>(evt =>
+        {
+            // Core buffs the standing pack; a fallen view refuses, as core did.
+            float now = Time.time;
+            foreach (PetView view in _active.Values)
+            {
+                view.Frenzy(evt.Seconds, now);
             }
         });
         _hurt = hub.Subscribe<PetHurt>(evt =>
@@ -150,6 +160,7 @@ public sealed class PetViews : IDisposable
         _bit?.Dispose();
         _roared?.Dispose();
         _howled?.Dispose();
+        _frenzied?.Dispose();
         _hurt?.Dispose();
         _heeled?.Dispose();
         _returned?.Dispose();

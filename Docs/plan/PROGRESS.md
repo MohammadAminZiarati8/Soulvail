@@ -9,9 +9,9 @@ _2026-11-08._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **PL-04b**. |
+| **Last merged** | **PL-05b**. |
 | **Next task** | PL-04c on a go. |
-| **Verified** | EditMode 6196 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Verified** | EditMode 6200 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
@@ -41,7 +41,7 @@ Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs with an Immune pop.
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
-Beastmaster: 9 nodes, Auto Pounce, Quick Swap. Packleader: Hounds/Howl (4+4 at 11), Tactics/Pelts (3+3 at 14), Hawk rig.
+Beastmaster: 9 nodes, Auto Pounce, Quick Swap. Packleader: Hounds/Howl (4+4 at 11), Tactics/Pelts (3+3 at 14), Hawk/Boar rigs.
 
 ## Missing
 

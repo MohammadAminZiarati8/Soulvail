@@ -450,3 +450,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## PL-04b — The hawk's model on its own rig
 
 1. **[Editor]** At camera height over Jungle ground: a bird, readable, the cyan bands visible.
+
+## PL-05b — The boar's model
+
+1. **[Editor]** A boar beside a Frog and a Panther: low, heavy, tusked, cyan-striped, nothing like an enemy.

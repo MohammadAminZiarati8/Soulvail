@@ -9,9 +9,9 @@ _2026-11-08._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **PL-02b** — Howl authored. |
-| **Next task** | PL-02c on a go. |
-| **Verified** | EditMode 6161 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **PL-02c** — Howl drawn. |
+| **Next task** | PL-03 on a go. |
+| **Verified** | EditMode 6167 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
@@ -41,7 +41,7 @@ Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs with an Immune pop.
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
-Beastmaster: nine nodes, Auto Pounce, Quick Swap. Packleader Lv 11: Pack Hounds and Howl (4 each).
+Beastmaster: 9 nodes, Auto Pounce, Quick Swap. Packleader 11: Pack Hounds and Howl (4 each), glow and pulse.
 
 ## Missing
 

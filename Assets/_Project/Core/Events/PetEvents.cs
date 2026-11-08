@@ -63,7 +63,13 @@ public readonly struct PackHowled
 {
     public readonly Vector3 Position;
 
-    public PackHowled(Vector3 position) => Position = position;
+    public readonly float Seconds;
+
+    public PackHowled(Vector3 position, float seconds)
+    {
+        Position = position;
+        Seconds = seconds;
+    }
 }
 
 public readonly struct PetBit

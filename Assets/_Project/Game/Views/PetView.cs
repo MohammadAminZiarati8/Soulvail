@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Pooling;
+using Soulvail.Game.Presentation;
 using UnityEngine;
 
 namespace Soulvail.Game.Views
@@ -10,6 +11,7 @@ namespace Soulvail.Game.Views
     {
         private const float RunBlendSpeed = 4f;
         private const float LeapHeight = 0.6f;
+        private const float HowlGlowIntensity = 0.2f;
 
         [SerializeField] private Animator _animator;
         [SerializeField] private PetHealthBar _healthBar;
@@ -32,6 +34,11 @@ namespace Soulvail.Game.Views
         private Func<int, float?> _healthFraction;
         private bool _heeling;
         private bool _fallen;
+        private SkinnedMeshRenderer _body;
+        private Material _bodyMaterial;
+        private Material _howlMaterial;
+        private float _howlUntil;
+        private bool _howlGlowing;
 
         public int Id { get; private set; }
         public Vector3 Velocity { get; private set; }
@@ -136,6 +143,51 @@ namespace Soulvail.Game.Views
             }
         }
 
+        public void Howl(float seconds, float now)
+        {
+            if (_fallen)
+            {
+                return;
+            }
+
+            _animator.ResetTrigger(Bite);
+            _animator.SetTrigger(RoarTrigger);
+            if (!(seconds > 0f))
+            {
+                return;
+            }
+
+            if (_howlMaterial == null)
+            {
+                _body = GetComponentInChildren<SkinnedMeshRenderer>();
+                _bodyMaterial = _body.sharedMaterial;
+                _howlMaterial = new Material(_bodyMaterial);
+                _howlMaterial.EnableKeyword("_EMISSION");
+                _howlMaterial.SetColor("_EmissionColor", Palette.Player * HowlGlowIntensity);
+            }
+
+            _howlUntil = now + seconds;
+            _howlGlowing = true;
+            _body.sharedMaterial = _howlMaterial;
+        }
+
+        public void StepHowl(float now)
+        {
+            if (_howlGlowing && now >= _howlUntil)
+            {
+                ClearHowlGlow();
+            }
+        }
+
+        private void ClearHowlGlow()
+        {
+            if (_howlGlowing)
+            {
+                _body.sharedMaterial = _bodyMaterial;
+                _howlGlowing = false;
+            }
+        }
+
         public void PlayHit()
         {
             _animator.ResetTrigger(Bite);
@@ -152,6 +204,7 @@ namespace Soulvail.Game.Views
         public void Fall(Vector3 position)
         {
             _fallen = true;
+            ClearHowlGlow();
             _leapSeconds = 0f;
             _animator.ResetTrigger(LeapTrigger);
             _animator.ResetTrigger(RoarTrigger);
@@ -171,7 +224,28 @@ namespace Soulvail.Game.Views
             _animator.Play(GetUp, 0, 0f);
         }
 
-        private void LateUpdate() => RefreshHealth();
+        private void LateUpdate()
+        {
+            StepHowl(Time.time);
+            RefreshHealth();
+        }
+
+        private void OnDestroy()
+        {
+            if (_howlMaterial == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(_howlMaterial);
+            }
+            else
+            {
+                DestroyImmediate(_howlMaterial);
+            }
+        }
 
         private void RefreshHealth()
         {
@@ -185,6 +259,7 @@ namespace Soulvail.Game.Views
 
         public void OnDespawn()
         {
+            ClearHowlGlow();
             _healthFraction = null;
             _leapSeconds = 0f;
             Id = 0;

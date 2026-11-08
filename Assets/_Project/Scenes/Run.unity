@@ -987,6 +987,7 @@ MonoBehaviour:
   _crossfireLineMaterial: {fileID: 2100000, guid: 82e51438d7035bfca3464ff7dc2b2637, type: 2}
   _swapStreakPrefab: {fileID: 6193817809933593954, guid: 494298d9e4882574e9acb72b70fc040e, type: 3}
   _roarRingPrefab: {fileID: 4588413256516038720, guid: ec4ec61c08807bf46a2367343bfc7f70, type: 3}
+  _howlPulsePrefab: {fileID: 4588413256516038720, guid: 79aba92814b3b8e438b6e4f6973a4139, type: 3}
   _axePrefab: {fileID: 216999579305513603, guid: 5650f5d006d9be74b9bd7f8d12a4d4f1, type: 3}
   _rescueRingPrefab: {fileID: 11400000, guid: 4917564711fd4da29bd87e271e0a4747, type: 3}
   _markGlyphPrefab: {fileID: 4593902581434423630, guid: d1e3a0485f76d7946bb92ca0eafa818f, type: 3}

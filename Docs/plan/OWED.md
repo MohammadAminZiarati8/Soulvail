@@ -433,3 +433,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] **PL-02b [Editor]** DT-01 at stage 12: learn Howl, let a hound drop below half: Howl fires on its own,
   bars climb, bites quicken for 4 s (no howl animation or pulse until PL-02c).
+
+
+## PL-02c — Howl drawn
+
+1. **[Editor]** Let a hound drop below half: every hound howls, the pulse rolls out, the hounds
+   glow for 4 s, bars climb.
+2. **[device]** The pulse reads at a glance and does not hide enemy tells.

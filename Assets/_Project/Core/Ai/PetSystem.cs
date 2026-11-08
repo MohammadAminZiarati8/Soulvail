@@ -353,7 +353,7 @@ public sealed class PetSystem
 
         if (standing > 0)
         {
-            _events.Publish(new PackHowled(_pets[0].Position));
+            _events.Publish(new PackHowled(_pets[0].Position, seconds));
         }
 
         return standing;

@@ -54,7 +54,7 @@ public sealed class BeastmasterBodyTests
         Assert.That(spec.Weapon.ShotRadius, Is.EqualTo(0.5f));
         Assert.That(spec.Weapon.MarkSeconds, Is.EqualTo(4f));
         Assert.That(spec.Weapon.FiresWhileMoving, Is.True);
-        Assert.That(spec.Unlock, Is.Null);
+        Assert.That(spec.Unlock, Is.Not.Null);
         Assert.That(spec.Minions, Is.Null);
     }
 

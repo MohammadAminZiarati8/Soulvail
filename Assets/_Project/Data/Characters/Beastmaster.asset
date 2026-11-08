@@ -84,9 +84,9 @@ MonoBehaviour:
   _veilrotCleansePriceMultiplier: 1
   _veilrotDamagePerPoint: 0
   _veilrotInstantCastCost: 0
-  _unlockShardPrice: 0
+  _unlockShardPrice: 5000
   _unlockDeedStage: 0
-  _unlockDeedBossId: 
+  _unlockDeedBossId: boss.apex
   _body: {fileID: 5016929437214058246, guid: b84299b5a9fd9994e9e64dd99db05ec8, type: 3}
   _projectile: {fileID: 0}
   _volleyProjectile: {fileID: 0}

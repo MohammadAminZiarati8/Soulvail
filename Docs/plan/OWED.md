@@ -423,3 +423,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - **[Editor]** Learn Quick Swap and swap into frogs. Check that the hound howls on landing and the cyan ring covers exactly the slowed frogs.
 - **[Device]** Check that the ring reads at a glance on a phone and disappears within half a second.
+
+
+## BM-08 — The Beastmaster is the Jungle's reward
+
+- [ ] **Editor:** On a fresh profile, open Heroes and check the Beastmaster card for its padlock, Apex deed and 5,000 Shard price. Use DT-01 to start Jungle stage 30, defeat the Apex, and verify the Beastmaster is unlocked.

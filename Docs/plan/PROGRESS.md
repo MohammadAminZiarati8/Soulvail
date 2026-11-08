@@ -9,9 +9,9 @@ _2026-11-08._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-07e** — Quick Swap howl and ring. |
-| **Next task** | BM-08 on a go. |
-| **Verified** | EditMode 6130 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-08** — Apex deed or 5,000 Shards. |
+| **Next task** | PL-01a on a go. |
+| **Verified** | EditMode 6138 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 

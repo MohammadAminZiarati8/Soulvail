@@ -52,6 +52,7 @@ namespace Soulvail.Game.Presentation
         private static readonly LocKey TitleKey = new LocKey("ui.heroes.title");
         private static readonly LocKey PickedKey = new LocKey("ui.heroes.picked");
         private static readonly LocKey DeedKey = new LocKey("ui.classselect.locked.deed");
+        private static readonly LocKey BossDeedKey = new LocKey("ui.classselect.locked.deedBoss");
 
         [Tooltip("CharacterPage_LockBadge, drawn over a locked card.")]
         [SerializeField] private Sprite _lockSprite;
@@ -330,9 +331,22 @@ namespace Soulvail.Game.Presentation
             card.Price.text = price > 0 ? price.ToString() : string.Empty;
             card.Price.color = Palette.Essence;
 
-            bool deed = !owned && spec.Unlock.DeedStage > 0;
-            card.Deed.gameObject.SetActive(deed);
-            card.Deed.text = deed ? _localizer.Format(DeedKey, spec.Unlock.DeedStage) : string.Empty;
+            string deed = string.Empty;
+            if (!owned)
+            {
+                if (spec.Unlock.DeedStage > 0)
+                {
+                    deed = _localizer.Format(DeedKey, spec.Unlock.DeedStage);
+                }
+                else if (_catalog.TryGetBoss(spec.Unlock.DeedBossId, out BossSpec boss)
+                    && _catalog.TryGetEnemy(boss.EnemySpecId, out EnemySpec enemy))
+                {
+                    deed = _localizer.Format(BossDeedKey, _localizer.Get(enemy.NameKey));
+                }
+            }
+
+            card.Deed.gameObject.SetActive(deed.Length > 0);
+            card.Deed.text = deed;
             card.Deed.color = Palette.Neutral;
         }
 

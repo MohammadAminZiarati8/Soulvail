@@ -98,10 +98,10 @@ public sealed class RunSessionFinishTests
 
         ModeSpec mode = _catalog.Mode(new ContentId(FiniteId));
 
-        Assert.That(awarded.Total, Is.EqualTo(ShardPayout.For(FinalStage, mode)));
+        Assert.That(awarded.Total, Is.EqualTo(ShardPayout.For(FinalStage + 1, mode)));
         Assert.That(awarded.Total, Is.GreaterThan(0));
-        Assert.That(awarded.DeepestStage, Is.EqualTo(FinalStage));
-        Assert.That(awarded.BossesKilled, Is.EqualTo(ShardPayout.BossesKilled(FinalStage, mode)));
+        Assert.That(awarded.DeepestStage, Is.EqualTo(FinalStage + 1));
+        Assert.That(awarded.BossesKilled, Is.EqualTo(ShardPayout.BossesKilled(FinalStage + 1, mode)));
         Assert.That(awarded.ModeId, Is.EqualTo(new ContentId(FiniteId)));
     }
 

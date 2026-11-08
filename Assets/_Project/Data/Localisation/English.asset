@@ -336,6 +336,8 @@ MonoBehaviour:
     _text: 'Unlock: {0} Soul Shards'
   - _key: ui.classselect.locked.deed
     _text: or reach stage {0}
+  - _key: ui.classselect.locked.deedBoss
+    _text: or beat {0}
   - _key: ui.classselect.choose
     _text: Choose
   - _key: ui.classselect.unlock

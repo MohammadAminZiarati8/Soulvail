@@ -2342,18 +2342,20 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private void PublishPayout()
     {
         ModeSpec mode = _catalog.Mode(State.ModeId);
+        // Payout counts stages below depth. A completed mode has also left its final stage.
+        int depth = _flow?.IsModeComplete == true ? State.StageIndex + 1 : State.StageIndex;
 
         int met = ShardPayout.NewArchetypes(
-            State.StageIndex, mode, _archetypesAlreadyMet, _newArchetypeScratch);
+            depth, mode, _archetypesAlreadyMet, _newArchetypeScratch);
 
         ContentId[] newArchetypes = met == 0
             ? Array.Empty<ContentId>()
             : _newArchetypeScratch.AsSpan(0, met).ToArray();
 
         _events.Publish(new ShardsAwarded(
-            ShardPayout.For(State.StageIndex, mode, _archetypesAlreadyMet),
-            State.StageIndex,
-            ShardPayout.BossesKilled(State.StageIndex, mode),
+            ShardPayout.For(depth, mode, _archetypesAlreadyMet),
+            depth,
+            ShardPayout.BossesKilled(depth, mode),
             newArchetypes,
             State.ModeId));
     }

@@ -356,6 +356,8 @@ MonoBehaviour:
     _text: "[\xDB\xF1l\xF4\xE7k: {0} S\xF4\xFBl Sh\xE1rds \xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: ui.classselect.locked.deed
     _text: "[\xF4r r\xE9\xE1\xE7h st\xE1g\xE9 {0} \xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: ui.classselect.locked.deedBoss
+    _text: "[\xF4r b\xE9\xE1t {0} \xB7\xB7\xB7\xB7]"
   - _key: ui.classselect.choose
     _text: "[\xC7h\xF4\xF4s\xE9 \xB7\xB7\xB7]"
   - _key: ui.classselect.unlock

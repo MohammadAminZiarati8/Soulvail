@@ -1,6 +1,6 @@
 # Soulvail — Progress
 
-History: `git log`. Checks: [OWED](OWED.md).
+History: `git log`. [OWED](OWED.md).
 
 _2026-11-08._
 
@@ -9,9 +9,9 @@ _2026-11-08._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **PL-05a**. |
-| **Next task** | PL-05c on a go. |
-| **Verified** | EditMode 6216 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **PL-05c**. |
+| **Next task** | PL-06 on a go. |
+| **Verified** | EditMode 6130 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -41,7 +41,7 @@ Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs with an Immune pop.
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
-Beastmaster: 9 nodes, Auto Pounce, Quick Swap. Packleader: Hounds/Howl (4+4 at 11), Tactics/Pelts (3+3 at 14), Hawk (17), Boar rig, Stampede core.
+Beastmaster: 9 nodes, Auto Pounce, Quick Swap. Packleader: Hounds/Howl (4+4 at 11), Tactics/Pelts (3+3 at 14), Hawk (17), Stampede (20).
 
 ## Missing
 

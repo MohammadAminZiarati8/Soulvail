@@ -65,7 +65,7 @@ _No milestone. The owner is setting the next direction._
 - [x] PL-04c — Hawk drawn and authored (M)
 - [x] PL-05a — Stampede in core (M)
 - [x] PL-05b — The boar's model on `Rig_Panther` (M)
-- [ ] [PL-05c](tasks/PL-05c-stampede-drawn.md) — Stampede drawn and authored (M)
+- [x] PL-05c — Stampede drawn and authored (M)
 - [ ] [PL-06](tasks/PL-06-the-packleaders-look.md) — The Packleader's look: cyan war-paint, data and a pet tint (S)
 - [ ] AM — Axe Master, the second path (titles only; specced on the owner's word)
 - [ ] AB — Apex Bond, the third path (titles only; specced on the owner's word)

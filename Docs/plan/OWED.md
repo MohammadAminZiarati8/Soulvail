@@ -459,3 +459,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Learn Hawk at 17: it circles, dives on marked frogs, stuns them briefly, leaves after 8 s.
 2. **[device]** The hawk and its shadow read at phone zoom.
+
+
+### PL-05c — Stampede drawn and authored
+
+1. **[Editor]** Learn Stampede at level 20 in a crowd. At rank 1, six boars run the crowded line and frogs tumble. At rank 2, nine boars run the line.
+2. **[device]** Check that frame time holds with twelve boars and a full wave.

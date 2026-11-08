@@ -983,3 +983,15 @@ MonoBehaviour:
     _text: "Relentless Hawk"
   - _key: skill.packleader.hawk-3.description
     _text: "The hawk dives 0.5 s sooner between strikes, and Call Hawk recharges 4 s faster."
+  - _key: skill.packleader.stampede.name
+    _text: "Stampede"
+  - _key: skill.packleader.stampede.description
+    _text: "Send six boars down a line. Each deals 100% weapon damage and knocks down light enemies for 0.8 s."
+  - _key: skill.packleader.stampede-2.name
+    _text: "Bigger Herd"
+  - _key: skill.packleader.stampede-2.description
+    _text: "Three more boars join the Stampede."
+  - _key: skill.packleader.stampede-3.name
+    _text: "Wide Stampede"
+  - _key: skill.packleader.stampede-3.description
+    _text: "Each boar deals 30% more weapon damage, and the line is 1 m wider."

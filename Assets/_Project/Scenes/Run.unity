@@ -989,6 +989,9 @@ MonoBehaviour:
   _roarRingPrefab: {fileID: 4588413256516038720, guid: ec4ec61c08807bf46a2367343bfc7f70, type: 3}
   _howlPulsePrefab: {fileID: 4588413256516038720, guid: 79aba92814b3b8e438b6e4f6973a4139, type: 3}
   _hawkPrefab: {fileID: 2468470314381489920, guid: 9c4c4d1ba07e3614fa6e727752115aac, type: 3}
+  _stampedeBoarPrefab: {fileID: 7629042470966942313, guid: de21702b64503ac4da2a6a74e147fe77, type: 3}
+  _stampedeDustPrefab: {fileID: 930479727598333691, guid: 7f331ac5224d4c14bcf8463f70bf2304, type: 3}
+  _stampedeStripMaterial: {fileID: 2100000, guid: 71434d4ebf70e624cb2a0b21d6c00406, type: 2}
   _axePrefab: {fileID: 216999579305513603, guid: 5650f5d006d9be74b9bd7f8d12a4d4f1, type: 3}
   _rescueRingPrefab: {fileID: 11400000, guid: 4917564711fd4da29bd87e271e0a4747, type: 3}
   _markGlyphPrefab: {fileID: 4593902581434423630, guid: d1e3a0485f76d7946bb92ca0eafa818f, type: 3}

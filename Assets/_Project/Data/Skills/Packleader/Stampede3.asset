@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
+  m_Name: Stampede3
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
+  _id: skill.packleader.stampede-3
+  _nameKey: skill.packleader.stampede-3.name
+  _descriptionKey: skill.packleader.stampede-3.description
+  _kind: 2
+  _effects:
+  - {fileID: 11400000, guid: 7f331ac5224d4c14bcf8463f70bf2310, type: 2}
+  - {fileID: 11400000, guid: 7f331ac5224d4c14bcf8463f70bf2311, type: 2}
+  _cooldown: 8
+  _trigger: []
+  _onCast: []
+  _parent: {fileID: 11400000, guid: 7f331ac5224d4c14bcf8463f70bf2306, type: 2}
+  _icon: {fileID: 21300000, guid: 5fd6f60adec18a442a1a52a17a998509, type: 3}
+  _hasPact: 0
+  _pactEffects: []
+  _pactVeilrot: 15
+  _pactDescriptionKey: skill.new.pact.description

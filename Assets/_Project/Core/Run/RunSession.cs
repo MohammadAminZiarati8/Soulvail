@@ -113,6 +113,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private KillshotHandler _killshot;
     private WhirlwindHandler _whirlwind;
     private ShadeSystem _shades;
+    private HawkSystem _hawk;
 
     private TrapSystem _traps;
 
@@ -683,6 +684,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         effects.Register<BindingShot>(new BindingShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
         effects.Register<Pounce>(new PounceHandler(pets, enemies, combat, _clock));
         effects.Register<Howl>(new HowlHandler(pets, playerStats, _clock));
+        _hawk = new HawkSystem(_events, playerStats);
+        effects.Register<CallHawk>(new CallHawkHandler(_hawk, _clock));
 
         // One per run like everything above: a second Start must not inherit the first run's
         // decoys or its ids. It takes no clock and no effect handler, because nothing casts a
@@ -1372,6 +1375,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // At most one cast per tick, and the walk stops on it (rule 6).
         State.Combat.Blackboard.MarkedInPounceReach = State.Pets?.CountMarkedInPounceReach(State.Enemies) ?? 0;
+        State.Combat.Blackboard.MarkedEnemies = _hawk.CountMarkedEnemies(
+            State.PlayerPosition, State.Enemies, State.Combat.Weapon.Range.Value);
         State.Combat.Blackboard.LowestPetHpFraction = State.Pets?.LowestStandingHpFraction() ?? 1f;
         State.Skills.Tick(snapshot.Dt, State.Time);
         _killshot.Tick(State.Time);
@@ -1463,6 +1468,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // EnemySystem.ApplyDamage, which resolves a Bloater's blast (M5-04a rule 11).
         State.Minions?.Tick(snapshot.Dt, State.Time, State.Enemies, State.Combat);
         State.Pets?.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat);
+        _hawk.Tick(snapshot.Dt, State.Time, State.PlayerPosition, State.Enemies, State.Combat);
 
         // After the behaviours and before the death check (M2-07a rule 10, AR §18.1).
         //
@@ -1616,6 +1622,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             bool stageArrived = State.StageIndex != _flow.Stage;
             if (stageArrived)
             {
+                _hawk.Clear();
                 State.Projectiles.ClearRicochets();
                 State.Combat.Axes?.Clear();
                 _whirlwind.Clear();
@@ -2196,6 +2203,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _killshot.Clear();
         _whirlwind.Clear();
         _shades.Clear();
+        _hawk.Clear();
         State.Combat.EndStormRun();
         State.Combat.ClearEchoes();
         State.Combat.ResetDecoy();

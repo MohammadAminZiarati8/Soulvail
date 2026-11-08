@@ -116,6 +116,10 @@ MonoBehaviour:
     _text: Marked enemies in Pounce reach below
   - _key: trigger.markedInPounceReach.atLeast
     _text: Marked enemies in Pounce reach at least
+  - _key: trigger.markedEnemies.below
+    _text: Marked enemies in weapon range below
+  - _key: trigger.markedEnemies.atLeast
+    _text: Marked enemies in weapon range at least
   - _key: trigger.lowestPetHpFraction.below
     _text: Lowest pet health below
   - _key: trigger.lowestPetHpFraction.atLeast

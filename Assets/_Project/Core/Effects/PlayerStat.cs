@@ -261,6 +261,8 @@ public enum PlayerStat
     PackTactics,
     PackTacticsSlow,
     PetDamageTaken,
+    HawkSeconds,
+    HawkDiveInterval,
 }
 
 /// <summary>
@@ -341,6 +343,8 @@ public sealed class PlayerStats : IStatBlock
     public Stat AxeReturnSlow { get; } = new(0f);
     public Stat HowlHeal { get; } = new(0.2f);
     public Stat HowlSeconds { get; } = new(4f);
+    public Stat HawkSeconds { get; } = new(8f);
+    public Stat HawkDiveInterval { get; } = new(1.5f);
 
     internal HitAndRun HitAndRun => _combat.HitAndRun;
 
@@ -443,6 +447,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.AxeReturnSlow => AxeReturnSlow,
             PlayerStat.HowlHeal => HowlHeal,
             PlayerStat.HowlSeconds => HowlSeconds,
+            PlayerStat.HawkSeconds => HawkSeconds,
+            PlayerStat.HawkDiveInterval => HawkDiveInterval,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -534,6 +540,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.AxeReturnSlow => true,
             PlayerStat.HowlHeal => true,
             PlayerStat.HowlSeconds => true,
+            PlayerStat.HawkSeconds => true,
+            PlayerStat.HawkDiveInterval => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

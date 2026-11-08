@@ -78,6 +78,9 @@ public sealed class CombatBlackboard
 
     /// <summary>Living marked enemies in the lead pet's Pounce band and within its leash.</summary>
     public int MarkedInPounceReach;
+
+    /// <summary>Living marked enemies within the player's weapon range.</summary>
+    public int MarkedEnemies;
     public float LowestPetHpFraction = 1f;
 
     /// <summary>
@@ -209,6 +212,7 @@ public sealed class CombatBlackboard
         EnemiesInAcquireRange = 0;
         NearestEnemyDistance = float.PositiveInfinity;
         MarkedInPounceReach = 0;
+        MarkedEnemies = 0;
         LowestPetHpFraction = 1f;
         CurrentTargetId = -1;
         IsTargetBlocked = false;

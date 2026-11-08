@@ -169,6 +169,8 @@ public sealed class ModifyStatTests
                 PlayerStat.AxeReturnSlow => stats.AxeReturnSlow,
                 PlayerStat.HowlHeal => stats.HowlHeal,
                 PlayerStat.HowlSeconds => stats.HowlSeconds,
+                PlayerStat.HawkSeconds => stats.HawkSeconds,
+                PlayerStat.HawkDiveInterval => stats.HawkDiveInterval,
                 PlayerStat.StormRunSeconds => stats.StormRunSeconds,
                 PlayerStat.StormRunDamage => stats.StormRunDamage,
                 _ => null,
@@ -198,7 +200,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(61), "Seventy-three members with twelve addresses reserved for other combatants.");
+        Assert.That(answered, Is.EqualTo(63), "Seventy-five members with twelve addresses reserved for other combatants.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

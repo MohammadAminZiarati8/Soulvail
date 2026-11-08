@@ -121,6 +121,7 @@ public sealed class ContentValidationTests
         // RunSession writes the lead pet's Pounce census before SkillRunner ticks.
         TriggerField.MarkedInPounceReach,
         TriggerField.LowestPetHpFraction,
+        TriggerField.MarkedEnemies, // RunSession.Tick counts living marks within weapon range.
 
         // PlayerCombat.UpdateBlackboard again, from the army it is handed (M5-06a rule 6).
         TriggerField.MinionCount,
@@ -835,7 +836,7 @@ public sealed class ContentValidationTests
     [Test]
     public void EveryTriggerKey_ResolvesInEnglish()
     {
-        // Twenty-four after BM-07c: twelve TriggerFields × two comparisons. A trigger line with no row reads as a key on
+        // Twenty-eight after PL-04a: fourteen TriggerFields × two comparisons. A trigger line with no row reads as a key on
         // the Skills list, which is a screen the player uses constantly — and TriggerText's own
         // Trigger_EveryPairHasAKey proves the *table* is complete, not that the words exist.
         TableLocalizer localizer = English();
@@ -858,7 +859,7 @@ public sealed class ContentValidationTests
             }
         }
 
-        Assert.That(pairs, Is.EqualTo(26), "Thirteen TriggerFields × two comparisons.");
+        Assert.That(pairs, Is.EqualTo(28), "Fourteen TriggerFields × two comparisons.");
 
         AssertNoProblems(problems, "Trigger keys resolvable");
     }

@@ -69,6 +69,7 @@ public enum TriggerField
     /// <summary>Living marked enemies the lead pet can reach with Pounce.</summary>
     MarkedInPounceReach,
     LowestPetHpFraction,
+    MarkedEnemies,
 }
 
 /// <summary>
@@ -219,6 +220,7 @@ public readonly struct TriggerClause
             TriggerField.NearestEnemyDistance => blackboard.NearestEnemyDistance,
             TriggerField.MarkedInPounceReach => blackboard.MarkedInPounceReach,
             TriggerField.LowestPetHpFraction => blackboard.LowestPetHpFraction,
+            TriggerField.MarkedEnemies => blackboard.MarkedEnemies,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(Field),
                 Field,

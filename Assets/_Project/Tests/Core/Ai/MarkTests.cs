@@ -135,13 +135,13 @@ public sealed class MarkTests
         EnemyAgent enemy = Spawn();
         AxeSystem axes = ThrowAxe(MarkSeconds);
 
-        axes.Tick(1f, 1f, Vector3.Zero, _player, _enemies);
+        axes.Tick(1f, 1f, Vector3.Zero, _player, _enemies, null);
         Assert.That(_events.Single<AxeHit>().Pass, Is.EqualTo(AxePass.Out));
         Assert.That(_enemies.Remaining(enemy.Id, _enemies.Statuses.Marked.Id), Is.EqualTo(MarkSeconds));
         Tick(1f);
         _events.Clear();
 
-        axes.Tick(1f, 2f, Vector3.Zero, _player, _enemies);
+        axes.Tick(1f, 2f, Vector3.Zero, _player, _enemies, null);
         Assert.That(_events.Single<AxeHit>().Pass, Is.EqualTo(AxePass.Back));
         Assert.That(_enemies.Remaining(enemy.Id, _enemies.Statuses.Marked.Id), Is.EqualTo(MarkSeconds));
     }
@@ -151,8 +151,8 @@ public sealed class MarkTests
     {
         EnemyAgent enemy = Spawn();
         AxeSystem axes = ThrowAxe(0f);
-        axes.Tick(1f, 1f, Vector3.Zero, _player, _enemies);
-        axes.Tick(1f, 2f, Vector3.Zero, _player, _enemies);
+        axes.Tick(1f, 1f, Vector3.Zero, _player, _enemies, null);
+        axes.Tick(1f, 2f, Vector3.Zero, _player, _enemies, null);
 
         Assert.That(_events.Count<AxeHit>(), Is.EqualTo(2));
         Assert.That(_events.Count<EnemyStatusChanged>(), Is.Zero);

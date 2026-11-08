@@ -9,8 +9,8 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-01**. |
-| **Next task** | **BT-02** (Beastmaster tune, BT-02 → BT-07b specced). |
+| **Last merged** | **BT-02**. |
+| **Next task** | **BT-03** (BT-03 → BT-07b specced). |
 | **Verified** | EditMode 6135 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
@@ -33,15 +33,15 @@ Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m;
 flees <4 m. Haste stacks with slow. Lime staff/glow/ring.
 17–19: healer/guards, wall, gate; XP 32, priority 8.
 Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points; paused free-pick tree, rank pips, Learn; 20 Marksman ranks (Steady Aim 4, Binding Shot 3). Death pays Shards.
-Save run v6; Clash UI/LocKeys. Six-circle arc: tap fires on Auto,
+Save v6; Clash UI/LocKeys. Six-circle arc: tap fires on Auto,
 0.45 s hold toggles; mirrored; legacy saves expand.
-Status/poison icons; pooled CC, bosses immune. Marksman/cyan trim,
+Status icons; pooled CC, bosses immune. Marksman/cyan trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
-Wind-up blocks hits/debuffs (Immune pop).
+Wind-up blocks hits/debuffs (Immune).
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan, hip quiver.
 
-Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; Swift Hands; Auto Pounce, Quick Swap. Packleader: Hounds/Howl 11, Tactics/Pelts 14, Hawk 17, Stampede 20; cyan war-paint.
+Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes, hides targets; Swift Hands; Auto Pounce, Quick Swap. Packleader: Hounds/Howl 11, Tactics/Pelts 14, Hawk 17, Stampede 20; cyan war-paint.
 
 ## Missing
 

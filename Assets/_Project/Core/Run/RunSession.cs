@@ -1358,7 +1358,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             State.Projectiles.Fire(shot, State.Time);
         }
 
-        State.Combat.Axes?.Tick(snapshot.Dt, State.Time, snapshot.PlayerPosition, State.Combat, State.Enemies);
+        State.Combat.Axes?.Tick(snapshot.Dt, State.Time, snapshot.PlayerPosition, State.Combat, State.Enemies,
+            snapshot.TraceCover);
         _shades.Tick(State.Time, State.Enemies, State.Combat);
 
         // **After combat and before the enemy behaviours — which puts it above the projectile step

@@ -49,7 +49,7 @@ public sealed class AxeViewsTests
     public void Thrown_SpawnsOneView_AtCorePosition()
     {
         AxeView view = Throw();
-        _axes.Tick(0.1f, 0.1f, Point.Zero, null, null);
+        _axes.Tick(0.1f, 0.1f, Point.Zero, null, null, null);
         _views.Draw(0.1f);
         Assert.That(view.transform.position, Is.EqualTo(_axes.InFlight[0].Position.ToUnity()));
         Assert.That(_parent.GetComponentsInChildren<AxeView>(), Has.Length.EqualTo(1));
@@ -59,8 +59,8 @@ public sealed class AxeViewsTests
     public void Caught_ReturnsToPool()
     {
         AxeView view = Throw();
-        _axes.Tick(1f, 1f, Point.Zero, null, null);
-        _axes.Tick(1f, 2f, new Point(1f, 0f, 1f), null, null);
+        _axes.Tick(1f, 1f, Point.Zero, null, null, null);
+        _axes.Tick(1f, 2f, new Point(1f, 0f, 1f), null, null, null);
         Assert.That(view.gameObject.activeSelf, Is.False);
         Assert.That(Throw(), Is.SameAs(view));
     }

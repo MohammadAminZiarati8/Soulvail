@@ -24,10 +24,10 @@ public sealed class CleavingReturnTests
 
         stats.Resolve(PlayerStat.AxeReturnSlow).Base = 1f;
         Assert.That(axes.TryThrow(Vector3.Zero, Vector3.UnitX, 10f, 0f), Is.True);
-        axes.Tick(1f, 1f, Vector3.Zero, player, enemies);
+        axes.Tick(1f, 1f, Vector3.Zero, player, enemies, null);
         Assert.That(events.Of<EnemyStatusChanged>(), Is.Empty);
 
-        axes.Tick(1f, 2f, Vector3.Zero, player, enemies);
+        axes.Tick(1f, 2f, Vector3.Zero, player, enemies, null);
 
         Assert.That(events.Of<AxeHit>(), Has.Count.EqualTo(4));
         Assert.That(first.CrowdControl.SlowFraction, Is.EqualTo(0.9f));
@@ -46,8 +46,8 @@ public sealed class CleavingReturnTests
         stats.Resolve(PlayerStat.AxeReturnSlow).Base = 0.35f;
 
         Assert.That(axes.TryThrow(Vector3.Zero, Vector3.UnitX, 10f, 0f), Is.True);
-        axes.Tick(1f, 1f, Vector3.Zero, player, enemies);
-        axes.Tick(1f, 2f, Vector3.Zero, player, enemies);
+        axes.Tick(1f, 1f, Vector3.Zero, player, enemies, null);
+        axes.Tick(1f, 2f, Vector3.Zero, player, enemies, null);
 
         Assert.That(events.Of<AxeHit>(), Has.Count.EqualTo(2));
         Assert.That(events.Of<AxeHit>()[1].Pass, Is.EqualTo(AxePass.Back));

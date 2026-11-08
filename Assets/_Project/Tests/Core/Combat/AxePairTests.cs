@@ -138,7 +138,7 @@ public sealed class AxePairTests
         stats.Resolve(PlayerStat.FireRate).Base = Rate * 1.2f;
         Assert.That(axes.PaceFactor, Is.EqualTo(1.2f).Within(1e-5f));
         axes.TryThrowPair(Vector3.Zero, Vector3.UnitZ, Damage, 0f);
-        axes.Tick(0.1f, 0.1f, Vector3.Zero, player, enemies);
+        axes.Tick(0.1f, 0.1f, Vector3.Zero, player, enemies, null);
 
         float travelled = axes.InFlight[0].Position.Length();
         Assert.That(travelled, Is.EqualTo(Speed * 1.2f * 0.1f).Within(1e-4f));
@@ -160,7 +160,7 @@ public sealed class AxePairTests
         while (axes.InHand < AxeSystem.MaxCarry && now < 10f)
         {
             now += Dt;
-            axes.Tick(Dt, now, Vector3.Zero, player, enemies);
+            axes.Tick(Dt, now, Vector3.Zero, player, enemies, null);
         }
 
         Assert.That(axes.InHand, Is.EqualTo(AxeSystem.MaxCarry));
@@ -199,7 +199,7 @@ public sealed class AxePairTests
             while (axes.InFlight.Length > 0)
             {
                 now += Dt;
-                axes.Tick(Dt, now, Vector3.Zero, player, enemies);
+                axes.Tick(Dt, now, Vector3.Zero, player, enemies, null);
             }
 
             Assert.That(frog.IsAlive, Is.EqualTo(throws == 1), $"After throw {throws}.");

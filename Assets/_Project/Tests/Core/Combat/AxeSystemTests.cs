@@ -66,9 +66,8 @@ public sealed class AxeSystemTests
         Assert.That(_events.Count<AxeThrown>(), Is.EqualTo(1));
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public void Combat_NoAxeInHand_NoSwing(bool behindCover)
+    [Test]
+    public void Combat_NoAxeInHand_NoSwing()
     {
         const int seed = 99;
         var random = new FixedRandom(seed);
@@ -83,7 +82,6 @@ public sealed class AxeSystemTests
         {
             Id = _events.Single<EnemySpawned>().Id,
             Position = new Vector3(3f, 0f, 0f),
-            BehindCover = behindCover,
         };
 
         for (int i = 0; i < 30; i++)
@@ -206,8 +204,8 @@ public sealed class AxeSystemTests
         {
             enemy.Health.Reset();
             axes.TryThrow(Vector3.Zero, Vector3.UnitX, Damage, 0f);
-            axes.Tick(1f, 1f, Vector3.Zero, player, enemies);
-            axes.Tick(1f, 2f, Vector3.Zero, player, enemies);
+            axes.Tick(1f, 1f, Vector3.Zero, player, enemies, null);
+            axes.Tick(1f, 2f, Vector3.Zero, player, enemies, null);
         });
     }
 
@@ -216,7 +214,7 @@ public sealed class AxeSystemTests
     private void Tick(float dt, Vector3 hand = default)
     {
         _now += dt;
-        _axes.Tick(dt, _now, hand, _player, _enemies);
+        _axes.Tick(dt, _now, hand, _player, _enemies, null);
     }
 
     private EnemyAgent Spawn(float x, float z = 0f, float hp = 100f) =>

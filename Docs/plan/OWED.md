@@ -474,3 +474,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Beastmaster, stage 1: both axes leave together, fanned slightly, about every 1.2 s, and nothing is thrown while the stick is held. Axes already out still come home.
 2. **[Editor]** Take Swift Hands (was Third Axe): throws come visibly faster (about 1 s) and the axes are back in time. The throw now leaves on the swing's first frame (damage frame 0), so check the throw animation still reads.
+
+### BT-02 — Axes stop at cover
+
+1. **[Editor]** Beastmaster on a Jungle stage with stones: an axe thrown at a stone turns at the stone and flies home through it; none is ever left behind. An enemy standing behind a stone is not aimed at (he throws at an enemy in the open instead, or not at all).

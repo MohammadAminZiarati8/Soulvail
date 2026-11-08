@@ -2389,8 +2389,8 @@ public sealed class PlayerCombat
         {
             EnemyAgent agent = enemies[i];
 
-            // Hidden enemies cannot be aimed at. Returning axes can fly through cover.
-            if (agent.IsHidden || (agent.Blackboard.IsBehindCover && _weaponSpec.Kind != WeaponKind.ReturningAxe))
+            // Hidden enemies and enemies behind cover cannot be aimed at, by any weapon (BT-02).
+            if (agent.IsHidden || agent.Blackboard.IsBehindCover)
             {
                 continue;
             }

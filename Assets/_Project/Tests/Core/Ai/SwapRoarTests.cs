@@ -128,8 +128,8 @@ public sealed class SwapRoarTests
         var axes = new AxeSystem(_events, _stats, _weapon);
         EnemyAgent enemy = _enemies.Spawn(Husk, Landing);
         Assert.That(axes.TryThrow(Vector3.Zero, Landing, 10f, 0f), Is.True);
-        axes.Tick(1f, 1f, Vector3.Zero, _player, _enemies);
-        axes.Tick(1f, 2f, Vector3.Zero, _player, _enemies);
+        axes.Tick(1f, 1f, Vector3.Zero, _player, _enemies, null);
+        axes.Tick(1f, 2f, Vector3.Zero, _player, _enemies, null);
         Assert.That(_events.Of<AxeHit>(), Has.Count.EqualTo(2));
 
         Assert.That(_pets.SwapTo(Landing, 2f, LeapSeconds), Is.True);

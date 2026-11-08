@@ -139,7 +139,13 @@ public sealed class AxeSystem
         return throwing;
     }
 
-    public void Tick(float dt, float now, Vector3 hand, PlayerCombat player, EnemySystem enemies)
+    /// <summary>
+    /// Flies every axe one step. An out step is traced against cover with
+    /// <paramref name="traceCover"/> and turns where it meets it; the way back is never traced,
+    /// so an axe always comes home (BT-02). A null trace means the arena has no cover.
+    /// </summary>
+    public void Tick(float dt, float now, Vector3 hand, PlayerCombat player, EnemySystem enemies,
+        Func<Vector3, Vector3, Vector3?> traceCover)
     {
         if (!(dt > 0f))
         {
@@ -155,6 +161,15 @@ public sealed class AxeSystem
             Vector3 offset = goal - axe.Position;
             float distance = offset.Length();
             Vector3 end = distance <= step ? goal : axe.Position + (offset * (step / distance));
+            bool turns = outbound && distance <= step;
+            Vector3 turnPoint = axe.TurnPoint;
+            if (outbound && traceCover?.Invoke(axe.Position, end) is Vector3 cover)
+            {
+                end = cover;
+                turnPoint = cover;
+                turns = true;
+            }
+
             float damage = outbound ? axe.Damage : axe.Damage * _returnDamage.Value;
 
             Sweep(i, axe, end, damage, now, player, enemies);
@@ -167,9 +182,9 @@ public sealed class AxeSystem
                 continue;
             }
 
-            if (outbound && distance <= step)
+            if (turns)
             {
-                _axes[i] = new Axe(axe.Id, AxePass.Back, end, axe.TurnPoint, axe.Damage);
+                _axes[i] = new Axe(axe.Id, AxePass.Back, end, turnPoint, axe.Damage);
                 _hitCounts[i] = 0;
                 _events.Publish(new AxeTurned(axe.Id, end));
             }

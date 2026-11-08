@@ -1,50 +1,50 @@
-# PL-02b — Howl drawn and authored
+# PL-02b — Howl authored
 
-**Size:** M · **Depends on:** PL-02a · **Branch:** `dev` (direct)
-**Design refs:** CH §3.7 (Howl); MK-07b
+**Size:** S · **Depends on:** PL-02a · **Branch:** `dev` (direct)
+**Design refs:** CH §3.7 (Howl); MK-07b (an active authored)
 
 ## Goal
 
-Howl in the Packleader's Lv-11 row: every hound throws its head back, a cyan pulse rolls out, the
-bars climb.
+Howl in the Packleader's second Lv-11 row, learnable and auto-cast. It already heals and hastes
+(PL-02a); the bars climbing are its only drawing until PL-02c.
 
 ## Files
 
 | Path (under `Assets/_Project/`) | Assembly | Purpose |
 |---|---|---|
-| `Data/Skills/Packleader/Howl*.asset` | — | **New.** Four ranks; trigger and cooldown from PL-02a |
-| `Data/Effects/Packleader/Howl*.asset` | — | **New** |
-| `Game/Authoring/HowlDefinition.cs` | Game | **New.** The bonus |
-| `Data/Paths/Packleader.asset` | — | Howl in the second Lv-11 row |
-| `Game/Views/PetView.cs` | Game | `Howl` clip on `PackHowled`; a faint cyan glow while the attack-speed buff lasts |
-| `Game/Views/HowlPulseView.cs` | Game | **New.** A cyan ring from the lead to 6 m in 0.5 s |
+| `Data/Skills/Packleader/Howl*.asset` | — | **New.** Four ranks; icon `Icon_Placeholder` |
+| `Data/Effects/Packleader/Howl*.asset` | — | **New.** The `Howl` effect, rank `ModifyStat`s and the cooldown cut |
+| `Game/Authoring/HowlDefinition.cs` | Game | **New.** The bonus (0.25), validated as `Howl` does |
+| `Data/Paths/Packleader.asset` | — | Howl appended as the second row, Lv 11 |
+| `Data/Localisation/English.asset`, `Pseudo.asset` | — | Howl's name and four rank lines |
 | `Tests/Game/Authoring/HowlAuthoredTests.cs` | Tests.Game | **New** |
-| *small edits* | | `Prefabs/Vfx/HowlPulse.prefab`; `RunScope`; `English`/`Pseudo`; `SkillIconBook` |
 
 ## Behaviour
 
-1. Howl is a circle in the arc once learned, auto-cast on by default.
-2. On `PackHowled` every standing hound plays `Howl`; a cyan pulse rolls out from the lead.
-3. Each hound glows faintly cyan while its buff lasts; the glow ends with it.
-4. The heal shows as each bar climbing; no number pops.
+1. **Ranks** (PL-02a rule 6): 1 — the active, bonus 0.25, cooldown 14 s, trigger
+   `LowestPetHpFraction Below 0.5`, auto-cast on; 2 — Player `HowlHeal` +0.1; 3 — Player
+   `HowlSeconds` +2; 4 — cooldown −3 s (`ModifySkillCooldown`).
+2. The path has two rows, Pack Hounds then Howl, both Lv 11.
+3. Howl is a circle in the arc once learned (no code: the arc reads the learned active).
+4. Every rank has a name and a one-line effect in English and Pseudo, from `LocKey`s.
 
 ## Tests
 
 | Test | Given / When / Then |
 |---|---|
-| `Howl_FourRanks_Numbers_Trigger` (1) |
-| `Howled_EveryStandingHoundHowls` (2) |
-| `Pulse_PlayerCyan_SixMetres` (2) |
-| `Glow_EndsWithBuff` (3) |
+| `Howl_FourRanks_Numbers_Trigger` (1) | Each rank's effect, stat, value; trigger, 14 s, auto-cast on |
+| `Path_TwoRows_PackHoundsThenHowl_At11` (2) | Row order and levels |
+| `HowlDefinition_ToEffect_Bonus` (1, 3) | 0.25; a bad bonus is refused, naming the asset |
+| `HowlRanks_HaveLocKeys` (4) | Both tables |
 
 ## Manual verification (Editor / device)
 
-1. **[Editor]** Let a hound drop below half: Howl fires on its own, all hounds howl, bars climb,
-   bites quicken for 4 s.
+1. **[Editor]** DT-01 at stage 12: learn Howl, let a hound drop below half: Howl fires on its own,
+   bars climb, bites quicken for 4 s (no howl animation or pulse until PL-02c).
 
 ## Out of scope
 
-- Pack Tactics, Thick Pelts (PL-03).
+- The howl clip, glow and pulse (PL-02c). Pack Tactics, Thick Pelts (PL-03).
 
 ## As built
 

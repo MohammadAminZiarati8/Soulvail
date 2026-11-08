@@ -12,13 +12,13 @@ pack hounds on the floor.
 
 | Path (under `Assets/_Project/`) | Assembly | Purpose |
 |---|---|---|
-| `Data/Paths/Packleader.asset` | — | **New.** `path.packleader`: six skill rows at Lv 11/11/14/14/17/20, only Pack Hounds filled now |
+| `Data/Paths/Packleader.asset` | — | **New.** `path.packleader`: one skill row, Pack Hounds at Lv 11. `PathDefinition` refuses a row with no ranks, so PL-02b to PL-05c append their rows (11/14/14/17/20) |
 | `Data/Skills/Packleader/PackHounds*.asset` | — | **New.** Four ranks |
 | `Data/Effects/Packleader/PackHounds*.asset` | — | **New.** Their `ModifyStat`s |
 | `Data/Characters/Beastmaster.asset` | — | First path slot → Packleader; `_pathOpensAtLevel` 11 |
 | `Game/Views/PetViews.cs` | Game | A non-lead body at 0.8 scale with its own smaller bar; `PetDespawned` returns that body and bar (PL-01a publishes it) |
 | `Tests/Game/Authoring/PackleaderPathTests.cs` | Tests.Game | **New** |
-| *small edits* | | `English`/`Pseudo` (path name, card line, skill lines); `SkillIconBook` icon; path card art in the path look |
+| *small edits* | | `English`/`Pseudo` (path name, card line, skill lines); Pack Hounds' icon is `Icon_Placeholder`. No `PathLook` yet (PL-06); if a null look is refused, an empty `Data/Paths/PackleaderLook.asset`, named in *As built* |
 
 ## Behaviour
 
@@ -28,8 +28,8 @@ pack hounds on the floor.
 2. **Pack Hounds ranks:** 1 — `PackHounds` +1 (share 0.5); 2 — `PackShare` +0.15; 3 — `PackHounds`
    +1; 4 — `PackShare` +0.15.
 3. Pack hounds are the Hound's body at 0.8 scale with its cyan collar, each with a smaller cyan bar.
-4. The path's rows show their unlock levels; rows not yet authored show locked with their level.
-5. The path holds 4 of its 20 ranks now; PL-02b to PL-05c fill the rest.
+4. The Pack Hounds row shows its unlock level, 11.
+5. The path holds one skill (4 ranks) now; PL-02b to PL-05c append the other five rows.
 
 ## Tests
 
@@ -38,7 +38,7 @@ pack hounds on the floor.
 | `Beastmaster_FirstPathIsPackleader_OpensAt11` (1) |
 | `PackHounds_FourRanks_Numbers` (2) |
 | `PackHoundBody_SmallerScale_OwnBar` (3) |
-| `Path_RowLevels_11_11_14_14_17_20` (4) |
+| `Path_OneRow_PackHoundsAt11` (4, 5) |
 | `Skills_HaveLocKeys` (2) |
 
 ## Manual verification (Editor / device)

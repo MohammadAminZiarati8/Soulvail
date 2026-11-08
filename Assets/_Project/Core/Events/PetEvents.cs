@@ -9,14 +9,24 @@ public readonly struct PetSpawned
 
     public readonly Vector3? PlayerPosition;
     public readonly float HealthFraction;
+    public readonly bool IsLead;
 
-    public PetSpawned(int id, Vector3 position, Vector3? playerPosition = null, float healthFraction = 1f)
+    public PetSpawned(int id, Vector3 position, Vector3? playerPosition = null, float healthFraction = 1f,
+        bool isLead = true)
     {
         Id = id;
         Position = position;
         PlayerPosition = playerPosition;
         HealthFraction = healthFraction;
+        IsLead = isLead;
     }
+}
+
+public readonly struct PetDespawned
+{
+    public readonly int Id;
+
+    public PetDespawned(int id) => Id = id;
 }
 
 public readonly struct Swapped

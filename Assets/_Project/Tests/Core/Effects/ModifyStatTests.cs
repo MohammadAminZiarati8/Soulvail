@@ -81,7 +81,8 @@ public sealed class ModifyStatTests
             // These addresses are reserved for other combatants.
             if (member is PlayerStat.ContactDamage
                 or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds
-                or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow)
+                or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow
+                or PlayerStat.PackHounds or PlayerStat.PackShare)
             {
                 Assert.That(
                     () => stats.Resolve(member),

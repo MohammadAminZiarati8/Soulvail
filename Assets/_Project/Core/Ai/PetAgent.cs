@@ -9,8 +9,9 @@ public enum PetState { Hunt, Heel, Fallen }
 
 public sealed class PetAgent
 {
-    internal PetAgent(PetSpec spec)
+    internal PetAgent(PetSpec spec, bool isLead)
     {
+        IsLead = isLead;
         MaxHp = new Stat(spec.MaxHp);
         MoveSpeed = new Stat(spec.MoveSpeed);
         ContactDamage = new Stat(spec.BiteDamage);
@@ -22,6 +23,7 @@ public sealed class PetAgent
         Stats = new PetStats(this);
     }
 
+    public bool IsLead { get; }
     public int Id { get; internal set; }
     public Vector3 Position { get; internal set; }
     public Health Health { get; }

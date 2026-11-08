@@ -37,7 +37,8 @@ public sealed class PetSystem
     private Pounce _pounce;
     private int _pounceTargetId;
     private float _swapImmuneUntil = float.NegativeInfinity;
-    private Vector3 _spawnPlayerPosition;
+    private Vector3 _spawnFacing;
+    private bool _spawnAnnounced;
     private int _count;
     private int _nextId = 1;
 
@@ -48,7 +49,16 @@ public sealed class PetSystem
         _intents = intents ?? throw new ArgumentNullException(nameof(intents));
         if (spec is not null)
         {
-            _pets[0] = new PetAgent(spec);
+            for (int index = 0; index < Capacity; index++)
+            {
+                _pets[index] = new PetAgent(spec, isLead: index == 0);
+            }
+
+            PetAgent lead = _pets[0];
+            lead.Stats.PackHounds.Changed += OnPackHoundsChanged;
+            lead.Stats.PackShare.Changed += OnPackShareChanged;
+            lead.MaxHp.Changed += OnPackShareChanged;
+            lead.ContactDamage.Changed += OnPackShareChanged;
         }
     }
 
@@ -72,29 +82,95 @@ public sealed class PetSystem
         }
 
         Clear();
-        PetAgent pet = _pets[0];
-        pet.Id = _nextId++;
-        _spawnPlayerPosition = player;
         _playerPosition = player;
-        pet.Position = player - facing * _spec.HeelDistance;
+        _spawnFacing = facing;
+        _now = now;
+        PlacePet(0, player - facing * _spec.HeelDistance);
+    }
+
+    internal void AnnounceSpawn()
+    {
+        if (_count == 0 || _spawnAnnounced)
+        {
+            return;
+        }
+
+        AnnouncePet(_pets[0]);
+        _spawnAnnounced = true;
+        MatchPackSize();
+    }
+
+    private void PlacePet(int index, Vector3 position)
+    {
+        PetAgent pet = _pets[index];
+        pet.Id = _nextId++;
+        pet.Position = position;
         pet.State = PetState.Heel;
         pet.QuarryId = 0;
         pet.Returning = false;
         pet.RecoveringAtHeel = false;
         pet.RescueProgress = 0f;
-        pet.NextBiteAt = now;
-        pet.NextRetargetAt = now;
-        _biteCounts[0] = 0;
-        _count = 1;
+        pet.NextBiteAt = _now;
+        pet.NextRetargetAt = _now;
+        _biteCounts[index] = 0;
+        _count++;
     }
 
-    internal void AnnounceSpawn()
+    private void AnnouncePet(PetAgent pet)
     {
-        if (_count != 0)
+        pet.Health.Reset();
+        _events.Publish(new PetSpawned(pet.Id, pet.Position, _playerPosition, pet.Health.Fraction, pet.IsLead));
+    }
+
+    private void OnPackHoundsChanged(Stat _) => MatchPackSize();
+
+    private void MatchPackSize()
+    {
+        if (!_spawnAnnounced)
         {
-            PetAgent pet = _pets[0];
-            pet.Health.Reset();
-            _events.Publish(new PetSpawned(pet.Id, pet.Position, _spawnPlayerPosition, pet.Health.Fraction));
+            return;
+        }
+
+        int count = 1 + (int)Math.Clamp(_pets[0].Stats.PackHounds.Value, 0f, Capacity - 1);
+        while (_count > count)
+        {
+            int index = _count - 1;
+            ReleaseHunters(index);
+            _count--;
+            _events.Publish(new PetDespawned(_pets[index].Id));
+        }
+
+        Vector3 right = new(_spawnFacing.Z, 0f, -_spawnFacing.X);
+        while (_count < count)
+        {
+            int index = _count;
+            PetAgent pet = _pets[index];
+            UpdateShare(pet);
+            Vector3 side = index == 1 ? right : -right;
+            PlacePet(index, _playerPosition + (side - _spawnFacing) * (_spec.HeelDistance * 0.70710677f));
+            AnnouncePet(pet);
+        }
+    }
+
+    private void OnPackShareChanged(Stat _)
+    {
+        for (int index = 1; index < _count; index++)
+        {
+            UpdateShare(_pets[index]);
+        }
+    }
+
+    private void UpdateShare(PetAgent pet)
+    {
+        PetAgent lead = _pets[0];
+        float share = lead.Stats.PackShare.Value;
+        float previousMax = pet.MaxHp.Value;
+        pet.MaxHp.Base = share * lead.MaxHp.Value;
+        pet.ContactDamage.Base = share * lead.ContactDamage.Value;
+        float gain = pet.MaxHp.Value - previousMax;
+        if (pet.State != PetState.Fallen && gain > 0f)
+        {
+            pet.Health.Heal(gain);
         }
     }
 
@@ -118,11 +194,13 @@ public sealed class PetSystem
     public void Tick(float dt, float now, Vector3 player, EnemySystem enemies, PlayerCombat combat)
     {
         _playerPosition = player;
+        _now = now;
+        _enemies = enemies?.Registry;
         for (int index = 0; index < _count; index++)
         {
             PetAgent pet = _pets[index];
             float playerDistanceSquared = Offset(pet.Position, player).LengthSquared();
-            if (index == 0 && now >= _leapUntil && _leapUntil != float.NegativeInfinity)
+            if (pet.IsLead && now >= _leapUntil && _leapUntil != float.NegativeInfinity)
             {
                 _leapUntil = float.NegativeInfinity;
                 if (_pounce is not null)
@@ -148,13 +226,11 @@ public sealed class PetSystem
                 continue;
             }
 
-            if (pet == _pets[0] && now < _leapUntil)
+            if (pet.IsLead && now < _leapUntil)
             {
                 continue;
             }
 
-            _enemies = enemies.Registry;
-            _now = now;
             if (!pet.RecoveringAtHeel && pet.Health.Fraction < pet.HeelAt.Value)
             {
                 pet.RecoveringAtHeel = true;
@@ -205,7 +281,7 @@ public sealed class PetSystem
 
                 int stunEvery = (int)Math.Clamp(pet.Stats.BiteStunEvery.Value, 0f, 10f);
                 float stunSeconds = pet.Stats.BiteStunSeconds.Value;
-                if (stunEvery > 0 && biteCount % stunEvery == 0 && stunSeconds > 0f && enemies.IsLight(quarry.Id))
+                if (pet.IsLead && stunEvery > 0 && biteCount % stunEvery == 0 && stunSeconds > 0f && enemies.IsLight(quarry.Id))
                 {
                     enemies.Stun(quarry.Id, stunSeconds);
                 }
@@ -215,9 +291,10 @@ public sealed class PetSystem
 
     public void Clear()
     {
-        foreach (PetAgent pet in Pets)
+        _spawnAnnounced = false;
+        for (int index = 0; index < _count; index++)
         {
-            DropHunters(pet.Id);
+            ReleaseHunters(index);
         }
 
         _count = 0;
@@ -236,7 +313,7 @@ public sealed class PetSystem
         }
 
         PetAgent pet = _pets[index];
-        pet.Health.SetExternalInvulnerable(index == 0 && now < _swapImmuneUntil);
+        pet.Health.SetExternalInvulnerable(pet.IsLead && now < _swapImmuneUntil);
         DamageResult result = pet.Health.ApplyDamage(amount, now);
         if (result.Killed)
         {
@@ -251,7 +328,7 @@ public sealed class PetSystem
 
         if (result.Killed)
         {
-            DropHunters(petId);
+            ReleaseHunters(index);
             _events.Publish(new PetFell(petId, pet.Position));
         }
 
@@ -476,12 +553,15 @@ public sealed class PetSystem
 
     public void DropHunters(int petId)
     {
-        int index = IndexOf(petId);
-        if (index < 0)
+        if (_count != 0 && _pets[0].Id == petId)
         {
-            return;
+            ReleaseHunters(0);
         }
+    }
 
+    private void ReleaseHunters(int index)
+    {
+        int petId = _pets[index].Id;
         Span<int> dropped = stackalloc int[MaxHunters];
         for (int slot = 0; slot < MaxHunters; slot++)
         {
@@ -560,7 +640,7 @@ public sealed class PetSystem
             && enemy.Behaviour is not BossBehaviour
             && enemy.Spec.Behaviour is EnemyBehaviourKind.Chaser or EnemyBehaviourKind.Lunger
             && pet.State != PetState.Fallen
-            && (pet != _pets[0] || _pounce is null)
+            && (!pet.IsLead || _pounce is null)
             && _now >= board.PetHuntSuppressedUntil
             && WasBitten(board, pet.Id, _now, HuntMemory)
             && Offset(enemy.Position, pet.Position).LengthSquared()

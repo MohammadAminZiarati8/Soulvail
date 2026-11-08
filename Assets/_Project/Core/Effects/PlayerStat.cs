@@ -254,6 +254,8 @@ public enum PlayerStat
     PetBiteStunSeconds,
     AxeReturnSlow,
     SwapRoarSlow,
+    PackHounds,
+    PackShare,
 }
 
 /// <summary>

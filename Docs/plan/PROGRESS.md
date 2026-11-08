@@ -2,16 +2,16 @@
 
 History: `git log`. Checks: [OWED](OWED.md).
 
-_2026-11-08, the Beastmaster tree is authored._
+_2026-11-08._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **BM-07d** — Beastmaster tree and Pounce in the arc. |
-| **Next task** | BM-07e on a go. |
-| **Verified** | EditMode 6126 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **BM-07e** — Quick Swap howl and ring. |
+| **Next task** | BM-08 on a go. |
+| **Verified** | EditMode 6130 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
@@ -41,7 +41,7 @@ Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs with an Immune pop.
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
-Beastmaster: nine nodes, Pounce on Auto.
+Beastmaster has nine nodes and Pounce on Auto. Quick Swap howls and draws a cyan slow ring.
 
 ## Missing
 

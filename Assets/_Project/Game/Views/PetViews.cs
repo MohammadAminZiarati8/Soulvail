@@ -22,6 +22,7 @@ public sealed class PetViews : IDisposable
     private readonly Camera _camera;
     private readonly IDisposable _spawned;
     private readonly IDisposable _bit;
+    private readonly IDisposable _roared;
     private readonly IDisposable _hurt;
     private readonly IDisposable _heeled;
     private readonly IDisposable _returned;
@@ -48,6 +49,13 @@ public sealed class PetViews : IDisposable
         _pool = new ViewPool<PetView>(resolver, prefab, parent, prewarm: 1);
         _spawned = hub.Subscribe<PetSpawned>(OnSpawned);
         _bit = hub.Subscribe<PetBit>(OnBit);
+        _roared = hub.Subscribe<PetRoared>(evt =>
+        {
+            if (_active.TryGetValue(evt.PetId, out PetView view))
+            {
+                view.Roar();
+            }
+        });
         _hurt = hub.Subscribe<PetHurt>(evt =>
         {
             if (_active.TryGetValue(evt.PetId, out PetView view))
@@ -120,6 +128,7 @@ public sealed class PetViews : IDisposable
     {
         _spawned?.Dispose();
         _bit?.Dispose();
+        _roared?.Dispose();
         _hurt?.Dispose();
         _heeled?.Dispose();
         _returned?.Dispose();

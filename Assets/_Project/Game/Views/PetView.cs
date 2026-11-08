@@ -16,6 +16,7 @@ namespace Soulvail.Game.Views
 
         private static readonly int Speed = Animator.StringToHash("Speed");
         private static readonly int Bite = Animator.StringToHash("Bite");
+        private static readonly int RoarTrigger = Animator.StringToHash("Roar");
         private static readonly int Locomotion = Animator.StringToHash("Base Layer.Locomotion");
         private static readonly int Hit = Animator.StringToHash("Base Layer.Hit");
         private static readonly int Fallen = Animator.StringToHash("Base Layer.Fall");
@@ -44,6 +45,7 @@ namespace Soulvail.Game.Views
             _fallen = false;
             _leapSeconds = 0f;
             _animator.ResetTrigger(LeapTrigger);
+            _animator.ResetTrigger(RoarTrigger);
             SetHeeling(false);
             _healthBar.Bind(healthFraction, camera);
             _animator.ResetTrigger(Bite);
@@ -70,6 +72,7 @@ namespace Soulvail.Game.Views
             }
 
             _animator.ResetTrigger(Bite);
+            _animator.ResetTrigger(RoarTrigger);
             _animator.SetTrigger(LeapTrigger);
         }
 
@@ -124,6 +127,15 @@ namespace Soulvail.Game.Views
             }
         }
 
+        public void Roar()
+        {
+            if (!_fallen && _leapSeconds == 0f)
+            {
+                _animator.ResetTrigger(Bite);
+                _animator.SetTrigger(RoarTrigger);
+            }
+        }
+
         public void PlayHit()
         {
             _animator.ResetTrigger(Bite);
@@ -142,6 +154,7 @@ namespace Soulvail.Game.Views
             _fallen = true;
             _leapSeconds = 0f;
             _animator.ResetTrigger(LeapTrigger);
+            _animator.ResetTrigger(RoarTrigger);
             Velocity = Vector3.zero;
             transform.position = position;
             _healthBar.SetVisible(false);

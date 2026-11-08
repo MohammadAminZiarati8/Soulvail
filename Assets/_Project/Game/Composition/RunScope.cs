@@ -208,6 +208,7 @@ namespace Soulvail.Game.Composition
         [SerializeField] private ShadeBurstView _shadeBurstPrefab;
         [SerializeField] private Material _crossfireLineMaterial;
         [SerializeField] private LineRenderer _swapStreakPrefab;
+        [SerializeField] private LineRenderer _roarRingPrefab;
         [SerializeField] private AxeView _axePrefab;
         [SerializeField] private RescueRingView _rescueRingPrefab;
         [SerializeField] private SpriteRenderer _markGlyphPrefab;
@@ -868,6 +869,16 @@ namespace Soulvail.Game.Composition
 
             builder.RegisterEntryPoint<SwapStreakView>(Lifetime.Scoped)
                 .WithParameter("prefab", _swapStreakPrefab)
+                .WithParameter("parent", _decalRoot);
+
+            if (_roarRingPrefab == null)
+            {
+                throw new MissingReferenceException(
+                    $"{nameof(RunScope)} requires {nameof(_roarRingPrefab)}. Assign the RoarRing prefab.");
+            }
+
+            builder.RegisterEntryPoint<RoarRingView>(Lifetime.Scoped)
+                .WithParameter("prefab", _roarRingPrefab)
                 .WithParameter("parent", _decalRoot);
 
             // The cover raycasts (M2-11b). Sized to the snapshot's capacity for NavPathSense's

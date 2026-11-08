@@ -417,3 +417,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] BM-07c (once Pounce is authored): In the Editor, cast from the arc and in Auto. Check that the trigger label reads in English and Pseudo, a light enemy is knocked down, and a Bullfrog or boss stays upright.
 
 - **BM-07d [Editor]** — Start Beastmaster at stage 8 with DT-01 and banked points. Learn all nine nodes in tier order. Check Pounce appears in the arc with Auto on. Mark a frog 4 m from the hound and check the hound arcs and lands on it. Check that Quick Swap slows frogs near the landing.
+
+
+### BM-07e — Quick Swap roar
+
+- **[Editor]** Learn Quick Swap and swap into frogs. Check that the hound howls on landing and the cyan ring covers exactly the slowed frogs.
+- **[Device]** Check that the ring reads at a glance on a phone and disappears within half a second.

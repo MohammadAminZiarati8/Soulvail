@@ -29,7 +29,7 @@ namespace Soulvail.Game.Presentation
         public string CardText(int index) => _names[index].text;
         public void Confirm() { if (ChooseEnabled) _confirm?.Invoke(); }
 
-        public void Show(CharacterDefinition character, ContentCatalog catalog, SkillIconBook icons, Sprite placeholder,
+        public void Show(CharacterSpec character, ContentCatalog catalog, SkillIconBook icons, Sprite placeholder,
             ILocalizer loc, int level, bool open, ContentId selected, float px,
             Action<int> preview, Action confirm)
         {
@@ -40,14 +40,13 @@ namespace Soulvail.Game.Presentation
             float width = root.rect.width;
             for (int i = 0; i < 3; i++)
             {
-                PathDefinition definition = character.PathSlots[i];
-                PathSpec path = definition == null ? null : catalog.Path(new ContentId(definition.Id));
+                PathSpec path = i < character.PathIds.Count ? catalog.Path(character.PathIds[i]) : null;
                 _cards[i].interactable = path != null;
                 _cards[i].image.color = path != null && path.Id == selected ? Palette.PlayerBlocked : Color.white;
                 Place((RectTransform)_cards[i].transform, 0f, -i * 52f * px, width, 48f * px);
                 _names[i].text = path == null ? loc.Get(new LocKey("ui.tree.coming-soon")) : loc.Get(path.NameKey);
                 _descriptions[i].text = path == null ? string.Empty : loc.Get(path.DescriptionKey);
-                int opens = catalog.Character(new ContentId(character.Id)).PathOpensAtLevel;
+                int opens = character.PathOpensAtLevel;
                 _gates[i].text = level < opens
                     ? loc.Format(new LocKey("ui.tree.unlocks-at"), opens) : string.Empty;
                 Place(_names[i].rectTransform, 10f * px, -3f * px, width * 0.64f, 20f * px);

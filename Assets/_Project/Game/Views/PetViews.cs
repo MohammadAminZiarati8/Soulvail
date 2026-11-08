@@ -20,7 +20,9 @@ public sealed class PetViews : IDisposable
     private readonly PlayerView _player;
     private readonly ArenaPool _arenas;
     private readonly Camera _camera;
+    private readonly Vector3 _bodyScale;
     private readonly IDisposable _spawned;
+    private readonly IDisposable _despawned;
     private readonly IDisposable _bit;
     private readonly IDisposable _roared;
     private readonly IDisposable _hurt;
@@ -45,9 +47,11 @@ public sealed class PetViews : IDisposable
         _player = player;
         _arenas = arenas;
         _camera = camera;
+        _bodyScale = prefab.transform.localScale;
         _healthFraction = healthFraction;
         _pool = new ViewPool<PetView>(resolver, prefab, parent, prewarm: 1);
         _spawned = hub.Subscribe<PetSpawned>(OnSpawned);
+        _despawned = hub.Subscribe<PetDespawned>(OnDespawned);
         _bit = hub.Subscribe<PetBit>(OnBit);
         _roared = hub.Subscribe<PetRoared>(evt =>
         {
@@ -127,6 +131,7 @@ public sealed class PetViews : IDisposable
     public void Dispose()
     {
         _spawned?.Dispose();
+        _despawned?.Dispose();
         _bit?.Dispose();
         _roared?.Dispose();
         _hurt?.Dispose();
@@ -155,8 +160,17 @@ public sealed class PetViews : IDisposable
         }
 
         PetView view = _pool.Get();
+        view.transform.localScale = evt.IsLead ? _bodyScale : _bodyScale * 0.8f;
         view.Bind(evt.Id, position, evt.HealthFraction, _camera, _healthFraction);
         _active.Add(evt.Id, view);
+    }
+
+    private void OnDespawned(PetDespawned evt)
+    {
+        if (_active.Remove(evt.Id, out PetView view))
+        {
+            _pool.Release(view);
+        }
     }
 
     private void SetHeeling(int petId, bool heeling)

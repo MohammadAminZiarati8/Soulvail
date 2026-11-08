@@ -9,9 +9,9 @@ _2026-11-08._
 | | |
 |---|---|
 | **Milestone** | None planned. M0–M6 tagged. |
-| **Last merged** | **PL-01a** — Pack Hounds in core. |
-| **Next task** | PL-01b on a go. |
-| **Verified** | EditMode 6146 passed, 0 failed, 1 inconclusive. Format clean. |
+| **Last merged** | **PL-01b** — Packleader authored. |
+| **Next task** | PL-02a on a go. |
+| **Verified** | EditMode 6151 passed, 0 failed, 1 inconclusive. Format clean. |
 
 ## What works
 
@@ -41,7 +41,7 @@ Killshot: 3 m, 4x arrow, wind/trail; pierces guards, not phases.
 Wind-up blocks hits and debuffs with an Immune pop.
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan look and hip quiver.
 
-Beastmaster has nine nodes, Auto Pounce and Quick Swap. Pack Hounds core is in, with base count 0.
+Beastmaster: nine nodes, Auto Pounce, Quick Swap. Packleader opens at Lv 11 with four Pack Hounds ranks.
 
 ## Missing
 

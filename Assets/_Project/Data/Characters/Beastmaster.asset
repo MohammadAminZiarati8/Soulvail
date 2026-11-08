@@ -15,10 +15,10 @@ MonoBehaviour:
   _id: character.beastmaster
   _nameKey: character.beastmaster.name
   _paths:
+  - {fileID: 11400000, guid: 2cd4365f553c6004eb49c43f859816d1, type: 2}
   - {fileID: 0}
   - {fileID: 0}
-  - {fileID: 0}
-  _pathOpensAtLevel: 0
+  _pathOpensAtLevel: 11
   _descriptionKey: character.beastmaster.description
   _maxHp: 100
   _speed: 3.1

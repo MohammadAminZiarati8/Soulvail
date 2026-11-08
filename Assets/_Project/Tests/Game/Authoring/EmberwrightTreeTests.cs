@@ -620,7 +620,8 @@ public sealed class EmberwrightTreeTests
                 || path.StartsWith("Assets/_Project/Data/Skills/Marksman/", StringComparison.Ordinal)
                 || path.StartsWith("Assets/_Project/Data/Skills/Skirmisher/", StringComparison.Ordinal)
                 || path.StartsWith("Assets/_Project/Data/Skills/EchoArcher/", StringComparison.Ordinal)
-                || path.StartsWith("Assets/_Project/Data/Effects/Beastmaster/", StringComparison.Ordinal))
+                || path.StartsWith("Assets/_Project/Data/Effects/Beastmaster/", StringComparison.Ordinal)
+                || path.StartsWith("Assets/_Project/Data/Effects/Packleader/", StringComparison.Ordinal))
             {
                 continue;
             }
@@ -1088,7 +1089,7 @@ public sealed class EmberwrightTreeTests
             skills.Add(Load<SkillDefinition>(path).ToSpec());
         }
 
-        Assert.That(skills, Has.Count.EqualTo(114), "Three twelve-node classes, nine each for Ranger and Beastmaster, and 60 Ranger path ranks.");
+        Assert.That(skills, Has.Count.EqualTo(118), "Three twelve-node classes, nine each for Ranger and Beastmaster, 60 Ranger path ranks, and four Packleader ranks.");
 
         var enemies = new List<EnemySpec>(EnemyPaths.Length);
 

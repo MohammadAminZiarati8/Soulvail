@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0b38c48bc8f4d54787009501aa08b5d, type: 3}
+  m_Name: Packleader
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.PathDefinition
+  _id: path.packleader
+  _nameKey: path.packleader.name
+  _descriptionKey: path.packleader.description
+  _skills:
+  - _ranks:
+    - {fileID: 11400000, guid: 78e765cf7c06a394fbab090060f54902, type: 2}
+    - {fileID: 11400000, guid: e3a6e709a049efa48a21f2213da4228a, type: 2}
+    - {fileID: 11400000, guid: 17d284f1a9ec66545b5865921a1ce840, type: 2}
+    - {fileID: 11400000, guid: b38e7cab0da1eb64db7acf7dceb4eb9b, type: 2}
+    _unlockLevel: 11
+  _look: {fileID: 0}

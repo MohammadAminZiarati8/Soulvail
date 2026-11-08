@@ -55,7 +55,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BM-07e — Quick Swap's roar drawn: the howl, the cyan ring (S)
 - [x] BM-08 — The Beastmaster is the Jungle's reward: beat the Apex or buy (S)
 - [x] PL-01a — Pack Hounds in core (M)
-- [ ] [PL-01b](tasks/PL-01b-packleader-authored.md) — The Packleader authored: the path slot, its card, Pack Hounds (M)
+- [x] PL-01b — The Packleader authored: the path slot, its card, Pack Hounds (M)
 - [ ] [PL-02a](tasks/PL-02a-howl-core.md) — Howl in core (M)
 - [ ] [PL-02b](tasks/PL-02b-howl-drawn.md) — Howl drawn and authored (M)
 - [ ] [PL-03](tasks/PL-03-pack-tactics-and-thick-pelts.md) — Pack Tactics and Thick Pelts (M)

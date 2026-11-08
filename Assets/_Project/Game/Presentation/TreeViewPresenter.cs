@@ -846,7 +846,10 @@ namespace Soulvail.Game.Presentation
                     _cells[i].Hide();
             }
             float px = PixelsPerDp();
-            ContentId volley = _pathCharacter != null ? _pathCharacter.ToLook().VolleyNode : default;
+            CharacterSpec character = _catalog.Character(state.CharacterId);
+            ContentId volley = _looks.For(character.Id).VolleyNode;
+            if (volley == default && _pathCharacter != null && _pathCharacter.Id == character.Id.Value)
+                volley = _pathCharacter.ToLook().VolleyNode;
             if (_pathCards != null)
             {
                 _pathCards.gameObject.SetActive(choosing);
@@ -858,12 +861,12 @@ namespace Soulvail.Game.Presentation
                     cards.pivot = new Vector2(0.5f, 1f);
                     cards.sizeDelta = new Vector2(-16f * px, 194f * px);
                     cards.anchoredPosition = new Vector2(0f, -8f * px);
-                    _pathCards.Show(_pathCharacter, _catalog, _icons, _block.Placeholder, _localizer, state.Level,
+                    _pathCards.Show(character, _catalog, _icons, _block.Placeholder, _localizer, state.Level,
                         state.IsPathChoiceOpen, _previewPath, px, PreviewPath, ChoosePreview);
                 }
             }
             _block.ArrangeSkills(visible, _skillLevels, choosing ? 204f * px : 0f, px,
-                _localizer, _catalog.Character(state.CharacterId).NameKey);
+                _localizer, character.NameKey);
             _pathCards?.transform.SetAsLastSibling();
             for (int i = 0; i < _skills.Count; i++)
             {
@@ -898,10 +901,10 @@ namespace Soulvail.Game.Presentation
         {
             if (!IsOpen || _session.State.PathId != default)
                 return;
-            PathDefinition path = _pathCharacter.PathSlots[index];
-            if (path == null)
+            IReadOnlyList<ContentId> paths = _catalog.Character(_session.State.CharacterId).PathIds;
+            if (index >= paths.Count)
                 return;
-            _previewPath = new ContentId(path.Id);
+            _previewPath = paths[index];
             _selected = default;
             Draw(_session.State);
         }

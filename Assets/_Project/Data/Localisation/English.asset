@@ -903,3 +903,23 @@ MonoBehaviour:
   - _key: skill.beastmaster.quick-swap.description
     _text: Swap recharges 1 s sooner and slows enemies near the hound's landing by
       30%.
+  - _key: path.packleader.name
+    _text: Packleader
+  - _key: path.packleader.description
+    _text: Lead a pack of hounds into battle.
+  - _key: skill.packleader.pack-hounds.name
+    _text: Pack Hounds
+  - _key: skill.packleader.pack-hounds.description
+    _text: A hound joins your pack with 50% of the lead Hound's health and bite damage.
+  - _key: skill.packleader.pack-hounds-2.description
+    _text: Pack hounds gain another 15% of the lead Hound's health and bite damage.
+  - _key: skill.packleader.pack-hounds-3.description
+    _text: A second hound joins your pack.
+  - _key: skill.packleader.pack-hounds-4.description
+    _text: Pack hounds gain another 15% of the lead Hound's health and bite damage.
+  - _key: skill.packleader.pack-hounds-2.name
+    _text: Pack Hounds 2
+  - _key: skill.packleader.pack-hounds-3.name
+    _text: Pack Hounds 3
+  - _key: skill.packleader.pack-hounds-4.name
+    _text: Pack Hounds 4

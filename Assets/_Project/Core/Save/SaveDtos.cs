@@ -241,7 +241,7 @@ public readonly struct RunEconomy
 public readonly struct RunSnapshot
 {
     /// <summary>The format this build writes. Bumped by the migration that changes the shape.</summary>
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 6;
 
     /// <summary>
     /// The four empty slots, shared: what <see cref="ManualSkillIds"/> answers for

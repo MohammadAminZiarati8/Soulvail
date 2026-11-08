@@ -606,7 +606,7 @@ public sealed class LocalJsonSaveStoreTests
         // order. Asserting it here rather than only on SaveMigrations is the difference between "the
         // steps are correct" and "the steps are wired up", and ledger row 2's trap is precisely that
         // the second can be false while the first is true.
-        Assert.That(run.Version, Is.EqualTo(5));
+        Assert.That(run.Version, Is.EqualTo(6));
 
         // A v1 run was unlevelled by construction (rule 3). The mirror's `level = 1` initialiser is
         // what lets the document reach the constructor at all — a v1 file has no `level` key, and
@@ -826,7 +826,7 @@ public sealed class LocalJsonSaveStoreTests
         // **v4, because this literal is the input to a two-step walk as of M6-01b.** The document is
         // unchanged from M3-01b; what changed is first that loading it became a migration rather
         // than a read, and now that the migration runs a second step over the top.
-        Assert.That(run.Version, Is.EqualTo(5));
+        Assert.That(run.Version, Is.EqualTo(6));
         Assert.That(run.Level, Is.EqualTo(7));
         Assert.That(run.Xp, Is.EqualTo(33.5f));
         Assert.That(run.PendingLevelUps, Is.EqualTo(1));
@@ -863,7 +863,7 @@ public sealed class LocalJsonSaveStoreTests
 
         // **v4, because this literal is now the v3 → v4 step's input.** The document is unchanged
         // from M3-07b; what changed is that loading it is a migration rather than a read.
-        Assert.That(run.Version, Is.EqualTo(5));
+        Assert.That(run.Version, Is.EqualTo(6));
 
         // A v3 run had no economy by construction — none of GD §15's or §13's mechanics existed —
         // so its v4 form is a fresh economy and three empty lists. The document has none of the
@@ -902,7 +902,7 @@ public sealed class LocalJsonSaveStoreTests
 
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
-        Assert.That(run.Version, Is.EqualTo(5));
+        Assert.That(run.Version, Is.EqualTo(6));
         Assert.That(
             run.Economy.Essence,
             Is.Zero,
@@ -917,7 +917,7 @@ public sealed class LocalJsonSaveStoreTests
         RunSnapshot run = Result(_store.LoadRun()).Value;
 
         // No migration ran: this is what the build writes, read back.
-        Assert.That(run.Version, Is.EqualTo(5));
+        Assert.That(run.Version, Is.EqualTo(6));
 
         // **The five scalars and the three lists, each a value no step could have produced.** The
         // step writes zeroes and empties, so every one of these assertions fails the day the mirror
@@ -972,7 +972,7 @@ public sealed class LocalJsonSaveStoreTests
 
         // No migration ran, so the four scalars are still the document's own — which is what makes
         // this a row about the arrays rather than about the step.
-        Assert.That(run.Version, Is.EqualTo(5));
+        Assert.That(run.Version, Is.EqualTo(6));
         Assert.That(run.Economy.Essence, Is.EqualTo(317));
     }
 
@@ -1038,7 +1038,7 @@ public sealed class LocalJsonSaveStoreTests
         Assert.That(run.Economy.Veilrot, Is.EqualTo(42.5f), "the meter as written.");
 
         // No migration ran, and no step was needed: the version is the same four.
-        Assert.That(run.Version, Is.EqualTo(5));
+        Assert.That(run.Version, Is.EqualTo(6));
         Assert.That(run.Economy.Essence, Is.EqualTo(317));
     }
 

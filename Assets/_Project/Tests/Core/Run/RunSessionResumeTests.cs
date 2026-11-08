@@ -604,7 +604,7 @@ public sealed class RunSessionResumeTests
         Assert.That(_session.State.PlayerMaxHp, Is.EqualTo(TreeMaxHp * (1f + (29f * 0.03f))).Within(0.01f));
         Assert.That(_events.Count<LeveledUp>(), Is.Zero);
         Assert.That(_events.Count<NodeTaken>(), Is.Zero);
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(5));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(6));
     }
 
     [Test]

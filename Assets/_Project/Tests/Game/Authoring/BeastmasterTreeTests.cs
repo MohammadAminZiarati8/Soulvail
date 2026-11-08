@@ -17,7 +17,7 @@ public sealed class BeastmasterTreeTests
     private const string Root = "Assets/_Project/";
     private static readonly string[][] Branches =
     {
-        new[] { "HeavyEdge", "ThirdAxe", "CleavingReturn" },
+        new[] { "HeavyEdge", "SwiftHands", "CleavingReturn" },
         new[] { "SharpClaws", "FeralBite", "Pounce" },
         new[] { "ThickHide", "LickWounds", "QuickSwap" },
     };
@@ -26,7 +26,7 @@ public sealed class BeastmasterTreeTests
     public void AxeNodes_Numbers()
     {
         Modifiers("HeavyEdge", (PlayerStat.WeaponDamage, ModifierKind.PercentAdd, 0.12f, StatTarget.Player));
-        Modifiers("ThirdAxe", (PlayerStat.AxeCarry, ModifierKind.Flat, 1f, StatTarget.Player));
+        Modifiers("SwiftHands", (PlayerStat.FireRate, ModifierKind.PercentAdd, 0.2f, StatTarget.Player));
         Modifiers("CleavingReturn",
             (PlayerStat.AxeReturnDamage, ModifierKind.Flat, 0.5f, StatTarget.Player),
             (PlayerStat.AxeReturnSlow, ModifierKind.Flat, 0.25f, StatTarget.Player));

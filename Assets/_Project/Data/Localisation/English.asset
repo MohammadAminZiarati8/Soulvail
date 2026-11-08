@@ -876,10 +876,10 @@ MonoBehaviour:
     _text: Heavy Edge
   - _key: skill.beastmaster.heavy-edge.description
     _text: +12% axe damage.
-  - _key: skill.beastmaster.third-axe.name
-    _text: Third Axe
-  - _key: skill.beastmaster.third-axe.description
-    _text: Carry one more axe.
+  - _key: skill.beastmaster.swift-hands.name
+    _text: Swift Hands
+  - _key: skill.beastmaster.swift-hands.description
+    _text: +20% attack speed.
   - _key: skill.beastmaster.cleaving-return.name
     _text: Cleaving Return
   - _key: skill.beastmaster.cleaving-return.description

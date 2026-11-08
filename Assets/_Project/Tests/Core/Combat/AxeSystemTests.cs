@@ -174,7 +174,7 @@ public sealed class AxeSystemTests
     {
         Throw();
         _stats.AxeCarry.Base = 99f;
-        Assert.That(_axes.InHand, Is.EqualTo(4));
+        Assert.That(_axes.InHand, Is.EqualTo(AxeSystem.MaxCarry - 1));
         Throw();
         _stats.AxeCarry.Base = -5f;
         Assert.That(_axes.InHand, Is.Zero);

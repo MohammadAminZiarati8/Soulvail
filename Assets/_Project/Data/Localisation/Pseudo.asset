@@ -966,10 +966,10 @@ MonoBehaviour:
     _text: "[H\xE9\xE1v\xFD \xC9dg\xE9 \xB7\xB7\xB7\xB7]"
   - _key: skill.beastmaster.heavy-edge.description
     _text: "[+12% \xE1x\xE9 d\xE1m\xE1g\xE9. \xB7\xB7\xB7\xB7\xB7\xB7]"
-  - _key: skill.beastmaster.third-axe.name
-    _text: "[Th\xEErd \xC1x\xE9 \xB7\xB7\xB7\xB7]"
-  - _key: skill.beastmaster.third-axe.description
-    _text: "[\xC7\xE1rr\xFD \xF4\xF1\xE9 m\xF4r\xE9 \xE1x\xE9. \xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: skill.beastmaster.swift-hands.name
+    _text: "[Sw\xEEft H\xE1\xF1ds \xB7\xB7\xB7\xB7]"
+  - _key: skill.beastmaster.swift-hands.description
+    _text: "[+20% \xE1tt\xE1\xE7k sp\xE9\xE9d. \xB7\xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.beastmaster.cleaving-return.name
     _text: "[\xC7l\xE9\xE1v\xEE\xF1g R\xE9t\xFBr\xF1 \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: skill.beastmaster.cleaving-return.description

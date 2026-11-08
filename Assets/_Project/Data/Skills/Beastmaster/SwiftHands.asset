@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
-  m_Name: ThirdAxe
+  m_Name: SwiftHands
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
-  _id: skill.beastmaster.third-axe
-  _nameKey: skill.beastmaster.third-axe.name
-  _descriptionKey: skill.beastmaster.third-axe.description
+  _id: skill.beastmaster.swift-hands
+  _nameKey: skill.beastmaster.swift-hands.name
+  _descriptionKey: skill.beastmaster.swift-hands.description
   _kind: 0
   _effects:
   - {fileID: 11400000, guid: 01f6669ee31932e4fa039b39036e751d, type: 2}

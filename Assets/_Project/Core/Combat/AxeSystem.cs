@@ -31,6 +31,15 @@ public readonly struct Axe
 public sealed class AxeSystem
 {
     public const int Capacity = 8;
+
+    /// <summary>The most axes he carries. A carry modifier past this does nothing (BT-01 rule 1).</summary>
+    public const int MaxCarry = 2;
+
+    /// <summary>Each axe of a pair leaves this far either side of the aim.</summary>
+    public const float PairSpreadDegrees = 8f;
+
+    /// <summary>The slowest a slowed attack speed can make the flight, as a fraction of the base.</summary>
+    public const float MinPaceFactor = 0.1f;
     public const float CatchRadius = 0.3f;
     public const float ReturnSlowSeconds = 1.5f;
 
@@ -40,6 +49,7 @@ public sealed class AxeSystem
     private readonly Stat _returnDamage;
     private readonly Stat _returnSlow;
     private readonly Stat _carry;
+    private readonly Stat _fireRate;
     private readonly Axe[] _axes = new Axe[Capacity];
     private readonly int[][] _hitIds = new int[Capacity][];
     private readonly int[] _hitCounts = new int[Capacity];
@@ -60,6 +70,7 @@ public sealed class AxeSystem
         _returnDamage = stats.AxeReturnDamage;
         _returnSlow = stats.AxeReturnSlow;
         _carry = stats.AxeCarry;
+        _fireRate = stats.Resolve(PlayerStat.FireRate);
         for (int i = 0; i < Capacity; i++)
         {
             _hitIds[i] = new int[weapon.AxeHitsPerPass];
@@ -72,6 +83,20 @@ public sealed class AxeSystem
     public int InHand { get; private set; }
     public ReadOnlySpan<Axe> InFlight => _axes.AsSpan(0, _count);
 
+    /// <summary>
+    /// Attack speed over the weapon's base swings per second: what the flight is multiplied by, so
+    /// a faster cadence brings the axes home just as much sooner (BT-01 rule 5). Floored at
+    /// <see cref="MinPaceFactor"/>, so a slowed or silenced weapon never strands an axe in the air.
+    /// </summary>
+    public float PaceFactor
+    {
+        get
+        {
+            float factor = _fireRate.Value / _weapon.SwingsPerSecond;
+            return factor > MinPaceFactor && !float.IsInfinity(factor) ? factor : MinPaceFactor;
+        }
+    }
+
     public bool TryThrow(Vector3 hand, Vector3 toward, float damage, float now)
     {
         if (InHand == 0 || _count == Capacity)
@@ -79,18 +104,39 @@ public sealed class AxeSystem
             return false;
         }
 
-        Vector3 direction = toward - hand;
-        direction.Y = 0f;
-        float distance = direction.Length();
-        direction = distance > 0f ? direction / distance : Vector3.UnitZ;
-        Vector3 turnPoint = hand + (direction * MathF.Max(0f, _range.Value));
-        int id = ++_nextId;
-        _axes[_count] = new Axe(id, AxePass.Out, hand, turnPoint, damage);
-        _hitCounts[_count] = 0;
-        _count++;
-        InHand--;
-        _events.Publish(new AxeThrown(id, hand, turnPoint));
+        Launch(hand, Flat(toward - hand), damage);
         return true;
+    }
+
+    /// <summary>
+    /// Throws every axe in hand at once, fanned ±<see cref="PairSpreadDegrees"/> about
+    /// <paramref name="toward"/>; a lone axe flies straight at it. Each turns at the full
+    /// weapon range along its own line, whatever the target's distance.
+    /// </summary>
+    /// <returns>How many axes left the hand.</returns>
+    public int TryThrowPair(Vector3 hand, Vector3 toward, float damage, float now)
+    {
+        int throwing = Math.Min(InHand, Capacity - _count);
+        if (throwing <= 0)
+        {
+            return 0;
+        }
+
+        Vector3 aim = Flat(toward - hand);
+        if (throwing == 1)
+        {
+            Launch(hand, aim, damage);
+            return 1;
+        }
+
+        float spread = PairSpreadDegrees * (MathF.PI / 180f);
+        for (int i = 0; i < throwing; i++)
+        {
+            float angle = -spread + (2f * spread * i / (throwing - 1));
+            Launch(hand, Turn(aim, angle), damage);
+        }
+
+        return throwing;
     }
 
     public void Tick(float dt, float now, Vector3 hand, PlayerCombat player, EnemySystem enemies)
@@ -100,7 +146,7 @@ public sealed class AxeSystem
             return;
         }
 
-        float step = _weapon.AxeSpeed * dt;
+        float step = _weapon.AxeSpeed * PaceFactor * dt;
         for (int i = 0; i < _count;)
         {
             Axe axe = _axes[i];
@@ -219,5 +265,30 @@ public sealed class AxeSystem
         _carryLimit = carry;
     }
 
-    private static int CarryLimit(float carry) => (int)Math.Clamp(carry, 1f, 5f);
+    private void Launch(Vector3 hand, Vector3 direction, float damage)
+    {
+        Vector3 turnPoint = hand + (direction * MathF.Max(0f, _range.Value));
+        int id = ++_nextId;
+        _axes[_count] = new Axe(id, AxePass.Out, hand, turnPoint, damage);
+        _hitCounts[_count] = 0;
+        _count++;
+        InHand--;
+        _events.Publish(new AxeThrown(id, hand, turnPoint));
+    }
+
+    private static Vector3 Flat(Vector3 direction)
+    {
+        direction.Y = 0f;
+        float distance = direction.Length();
+        return distance > 0f ? direction / distance : Vector3.UnitZ;
+    }
+
+    private static Vector3 Turn(Vector3 direction, float radians)
+    {
+        float cos = MathF.Cos(radians);
+        float sin = MathF.Sin(radians);
+        return new Vector3((direction.X * cos) + (direction.Z * sin), 0f, (direction.Z * cos) - (direction.X * sin));
+    }
+
+    private static int CarryLimit(float carry) => (int)Math.Clamp(carry, 1f, MaxCarry);
 }

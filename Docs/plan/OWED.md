@@ -469,3 +469,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ### PL-06 — The Packleader's look
 
 1. **[Editor]** Choose Packleader at 11: the hero (arms and chest) and the hound (flanks) take cyan stripes; a pack hound learned later arrives striped; a non-Packleader run shows none.
+
+### BT-01 — Two axes at once, Swift Hands
+
+1. **[Editor]** Beastmaster, stage 1: both axes leave together, fanned slightly, about every 1.2 s, and nothing is thrown while the stick is held. Axes already out still come home.
+2. **[Editor]** Take Swift Hands (was Third Axe): throws come visibly faster (about 1 s) and the axes are back in time. The throw now leaves on the swing's first frame (damage frame 0), so check the throw animation still reads.

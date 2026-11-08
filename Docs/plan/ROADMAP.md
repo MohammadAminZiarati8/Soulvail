@@ -70,7 +70,7 @@ _No milestone. The owner is setting the next direction._
 
 **Beastmaster tune** (owner playtest, 2026-11-08; design CH §3.6–3.7 updated the same day). One at a time on the owner's go, in this order.
 
-- [ ] [BT-01](tasks/BT-01-two-axes-at-once.md) — Two axes at once, attack speed sets the cadence, Swift Hands (M)
+- [x] BT-01 — Two axes at once, attack speed sets the cadence, Swift Hands (M)
 - [ ] [BT-02](tasks/BT-02-axes-stop-at-cover.md) — Axes stop at cover (S)
 - [ ] [BT-03](tasks/BT-03-arena-wide-hunt-and-hawk-climb.md) — Animals hunt the whole arena, your last mark first; the hawk climbs back (M)
 - [ ] [BT-04](tasks/BT-04-pack-formation.md) — The pack's formation: slots, spacing, eased following (M)

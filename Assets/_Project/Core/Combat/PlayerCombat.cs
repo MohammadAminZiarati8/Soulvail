@@ -1854,11 +1854,12 @@ public sealed class PlayerCombat
         }
 
         // And no new swing starts while holding.
-        // A late frame can finish the draw and start its successor. Reserve the last axe for
-        // the pending damage frame so that tick cannot start an empty swing.
-        int axesNeeded = Weapon.IsSwinging && !_swingLanded ? 2 : 1;
+        // BT-01 rule 3: the axes leave as a pair, so a swing starts only with every carried axe
+        // in hand — and never while a draw is still owed its throw, which a late frame that ends
+        // one swing and starts the next would otherwise empty the hand for.
         bool hasAmmo = _weaponSpec.Kind != WeaponKind.ReturningAxe
-            || (Axes is not null && Axes.InHand >= axesNeeded && Axes.InFlight.Length + axesNeeded <= AxeSystem.Capacity);
+            || (Axes is not null && Axes.InFlight.Length == 0 && Axes.InHand > 0
+                && !(Weapon.IsSwinging && !_swingLanded));
         WeaponTick tick = Weapon.Tick(dt, now, hasAmmo && !IsHoldingFire && IsTargetInWeaponRange(count), rateMultiplier);
 
         // The damage frame belongs to the swing that was running, and a start on the same tick is
@@ -1898,7 +1899,7 @@ public sealed class PlayerCombat
                 return;
 
             case WeaponKind.ReturningAxe:
-                Axes.TryThrow(playerPosition, playerPosition + (FaceDirection ?? bodyFacing),
+                Axes.TryThrowPair(playerPosition, playerPosition + (FaceDirection ?? bodyFacing),
                     ShotDamage(Weapon.Damage.Value), now);
                 return;
 

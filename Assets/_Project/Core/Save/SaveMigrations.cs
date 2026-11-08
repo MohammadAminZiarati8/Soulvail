@@ -224,7 +224,35 @@ public static class SaveMigrations
                 current.Economy, current.BanishedNodeIds, current.PactedNodeIds, current.OrdealIds);
         }
 
+        if (version < 6)
+        {
+            // v6: BT-01 turned the Beastmaster's Third Axe into Swift Hands. Same node, new id, so
+            // a run that took it keeps it under its new name; every other id is left alone.
+            current = new RunSnapshot(6, current.ModeId, current.CharacterId, current.Seed,
+                current.StageIndex, current.Random, current.PlayerHp, current.PlayerShield,
+                current.RunTime, current.WrittenAt, current.Level, current.Xp,
+                current.PendingLevelUps, Renamed(current.TakenNodeIds), Renamed(current.ManualSkillIds),
+                current.Economy, Renamed(current.BanishedNodeIds), Renamed(current.PactedNodeIds),
+                current.OrdealIds);
+        }
+
         return current;
+    }
+
+    private static IReadOnlyList<ContentId> Renamed(IReadOnlyList<ContentId> ids)
+    {
+        if (ids is null)
+        {
+            return ids;
+        }
+
+        var renamed = new ContentId[ids.Count];
+        for (int i = 0; i < ids.Count; i++)
+        {
+            renamed[i] = ids[i] == ThirdAxe ? SwiftHands : ids[i];
+        }
+
+        return renamed;
     }
 
     /// <summary>
@@ -367,6 +395,9 @@ public static class SaveMigrations
     /// A read-only array, so the one instance can be handed to every migrated profile; the
     /// profile's constructor copies it regardless.
     /// </remarks>
+    private static readonly ContentId ThirdAxe = new("skill.beastmaster.third-axe");
+    private static readonly ContentId SwiftHands = new("skill.beastmaster.swift-hands");
+
     private static readonly IReadOnlyList<ContentId> GrandfatheredCharacterIds =
         Array.AsReadOnly(new[] { new ContentId("character.gravecaller") });
 }

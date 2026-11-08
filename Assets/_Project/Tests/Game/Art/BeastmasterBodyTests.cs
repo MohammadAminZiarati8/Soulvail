@@ -46,14 +46,15 @@ public sealed class BeastmasterBodyTests
         Assert.That(spec.Movement.Speed, Is.EqualTo(3.1f));
         Assert.That(spec.Weapon.Kind, Is.EqualTo(WeaponKind.ReturningAxe));
         Assert.That(spec.Weapon.Damage, Is.EqualTo(6f));
-        Assert.That(spec.Weapon.SwingsPerSecond, Is.EqualTo(2f));
+        Assert.That(spec.Weapon.SwingsPerSecond, Is.EqualTo(0.8333f));
+        Assert.That(spec.Weapon.DamageFrame, Is.EqualTo(0f));
         Assert.That(spec.Weapon.Range, Is.EqualTo(8f));
         Assert.That(spec.Weapon.AxeSpeed, Is.EqualTo(14f));
         Assert.That(spec.Weapon.AxeCarry, Is.EqualTo(2));
         Assert.That(spec.Weapon.AxeHitsPerPass, Is.EqualTo(3));
         Assert.That(spec.Weapon.ShotRadius, Is.EqualTo(0.5f));
         Assert.That(spec.Weapon.MarkSeconds, Is.EqualTo(4f));
-        Assert.That(spec.Weapon.FiresWhileMoving, Is.True);
+        Assert.That(spec.Weapon.FiresWhileMoving, Is.False);
         Assert.That(spec.Unlock, Is.Not.Null);
         Assert.That(spec.Minions, Is.Null);
     }

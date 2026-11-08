@@ -38,4 +38,9 @@ MonoBehaviour:
     - {fileID: 11400000, guid: ad49c3c70c08f346298854ef44acef11, type: 2}
     - {fileID: 11400000, guid: 7c64292e8ab4346d27fcfe5dbd525178, type: 2}
     _unlockLevel: 14
+  - _ranks:
+    - {fileID: 11400000, guid: ece7e0c4bbae4a66a9122e37e9c57e5b, type: 2}
+    - {fileID: 11400000, guid: 09596c8c884b40f5badebf83630d0647, type: 2}
+    - {fileID: 11400000, guid: 3de02a1913b14f73a5e8f9cc2506a385, type: 2}
+    _unlockLevel: 17
   _look: {fileID: 0}

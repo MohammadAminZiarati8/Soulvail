@@ -62,7 +62,7 @@ _No milestone. The owner is setting the next direction._
 - [x] PL-03 — Pack Tactics and Thick Pelts (M)
 - [x] PL-04a — Hawk in core (M)
 - [x] PL-04b — The hawk's model on `Rig_Hawk` (M)
-- [ ] [PL-04c](tasks/PL-04c-hawk-drawn.md) — Hawk drawn and authored (M)
+- [x] PL-04c — Hawk drawn and authored (M)
 - [ ] [PL-05a](tasks/PL-05a-stampede-core.md) — Stampede in core (M)
 - [x] PL-05b — The boar's model on `Rig_Panther` (M)
 - [ ] [PL-05c](tasks/PL-05c-stampede-drawn.md) — Stampede drawn and authored (M)

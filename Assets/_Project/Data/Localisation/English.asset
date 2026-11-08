@@ -971,3 +971,15 @@ MonoBehaviour:
     _text: "Thick Pelts 3"
   - _key: skill.packleader.thick-pelts-3.description
     _text: "Pets take 30% less damage and can be rescued in 1 s."
+  - _key: skill.packleader.hawk.name
+    _text: "Call Hawk"
+  - _key: skill.packleader.hawk.description
+    _text: "Call a hawk to dive on marked enemies for 200% weapon damage and stun light enemies for 0.4 s."
+  - _key: skill.packleader.hawk-2.name
+    _text: "Long Flight"
+  - _key: skill.packleader.hawk-2.description
+    _text: "The hawk stays for 2 s longer."
+  - _key: skill.packleader.hawk-3.name
+    _text: "Relentless Hawk"
+  - _key: skill.packleader.hawk-3.description
+    _text: "The hawk dives 0.5 s sooner between strikes, and Call Hawk recharges 4 s faster."

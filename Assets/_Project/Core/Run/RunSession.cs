@@ -311,6 +311,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
 
     /// <inheritdoc />
     public RunState State { get; private set; }
+    public Vector3 HawkPosition => _hawk?.Position ?? default;
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException"><paramref name="config"/> is null.</exception>

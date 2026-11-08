@@ -121,6 +121,7 @@ public static class RunInstaller
         // Three ints on one registration is exactly the ambiguity WithParameter<int> would
         // introduce, and is why every one of them is wired by name.
         builder.Register<RunSession>(Lifetime.Scoped)
+            .AsSelf()
             .As<IRunSession>()
             .As<IPlayerCommands>()
             .As<IProgressionCommands>()

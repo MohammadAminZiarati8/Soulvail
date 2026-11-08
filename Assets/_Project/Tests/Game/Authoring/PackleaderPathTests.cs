@@ -153,8 +153,8 @@ public sealed class PackleaderPathTests
         try
         {
             var block = screen.GetComponentInChildren<TreeBlockView>(true);
-            Assert.That(block.RowCount, Is.EqualTo(3));
-            Assert.That(block.GetComponentsInChildren<TMP_Text>().Select(label => label.text), Does.Contain("Lv 11").And.Contain("Lv 14"));
+            Assert.That(block.RowCount, Is.EqualTo(4));
+            Assert.That(block.GetComponentsInChildren<TMP_Text>().Select(label => label.text), Does.Contain("Lv 11").And.Contain("Lv 14").And.Contain("Lv 17"));
         }
         finally
         {
@@ -192,12 +192,12 @@ public sealed class PackleaderPathTests
     }
 
     [Test]
-    public void Path_FourteenRanksAuthored()
+    public void Path_SeventeenRanksAuthored()
     {
         using IObjectResolver boot = Boot();
         var rows = boot.Resolve<ContentCatalog>().Path(Packleader).Skills;
-        Assert.That(rows.Select(row => row.Ranks.TierCount), Is.EqualTo(new[] { 4, 4, 3, 3 }));
-        Assert.That(rows.Select(row => row.UnlockLevel), Is.EqualTo(new[] { 11, 11, 14, 14 }));
+        Assert.That(rows.Select(row => row.Ranks.TierCount), Is.EqualTo(new[] { 4, 4, 3, 3, 3 }));
+        Assert.That(rows.Select(row => row.UnlockLevel), Is.EqualTo(new[] { 11, 11, 14, 14, 17 }));
         Assert.That(rows[2].Ranks.Tier(1).Single(), Is.EqualTo(new ContentId("skill.packleader.pack-tactics")));
         Assert.That(rows[3].Ranks.Tier(1).Single(), Is.EqualTo(new ContentId("skill.packleader.thick-pelts")));
     }

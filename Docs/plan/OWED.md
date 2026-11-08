@@ -454,3 +454,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## PL-05b — The boar's model
 
 1. **[Editor]** A boar beside a Frog and a Panther: low, heavy, tusked, cyan-striped, nothing like an enemy.
+
+## PL-04c — Hawk drawn and authored
+
+1. **[Editor]** Learn Hawk at 17: it circles, dives on marked frogs, stuns them briefly, leaves after 8 s.
+2. **[device]** The hawk and its shadow read at phone zoom.

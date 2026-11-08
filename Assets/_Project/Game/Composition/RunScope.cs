@@ -210,6 +210,7 @@ namespace Soulvail.Game.Composition
         [SerializeField] private LineRenderer _swapStreakPrefab;
         [SerializeField] private LineRenderer _roarRingPrefab;
         [SerializeField] private LineRenderer _howlPulsePrefab;
+        [SerializeField] private HawkView _hawkPrefab;
         [SerializeField] private AxeView _axePrefab;
         [SerializeField] private RescueRingView _rescueRingPrefab;
         [SerializeField] private SpriteRenderer _markGlyphPrefab;
@@ -881,6 +882,16 @@ namespace Soulvail.Game.Composition
             builder.RegisterEntryPoint<RoarRingView>(Lifetime.Scoped)
                 .WithParameter("prefab", _roarRingPrefab)
                 .WithParameter("parent", _decalRoot);
+
+            if (_hawkPrefab != null)
+            {
+                builder.RegisterBuildCallback(resolver =>
+                {
+                    var session = resolver.Resolve<RunSession>();
+                    HawkView hawk = Instantiate(_hawkPrefab, transform, false);
+                    hawk.Bind(resolver.Resolve<DomainEventHub>(), () => session.HawkPosition.ToUnity(), _camera);
+                });
+            }
 
             if (_howlPulsePrefab == null)
             {

@@ -153,8 +153,8 @@ public sealed class PackleaderPathTests
         try
         {
             var block = screen.GetComponentInChildren<TreeBlockView>(true);
-            Assert.That(block.RowCount, Is.EqualTo(2));
-            Assert.That(block.GetComponentsInChildren<TMP_Text>().Select(label => label.text), Does.Contain("Lv 11"));
+            Assert.That(block.RowCount, Is.EqualTo(3));
+            Assert.That(block.GetComponentsInChildren<TMP_Text>().Select(label => label.text), Does.Contain("Lv 11").And.Contain("Lv 14"));
         }
         finally
         {
@@ -166,7 +166,7 @@ public sealed class PackleaderPathTests
     public void Skills_HaveLocKeys()
     {
         PathSpec path = PathAsset().ToSpec(new ContentId("character.beastmaster"));
-        var keys = PathAsset().Skills[0].Ranks.Select(rank => rank.ToSpec())
+        var keys = PathAsset().Skills.SelectMany(row => row.Ranks).Select(rank => rank.ToSpec())
             .SelectMany(skill => new[] { skill.NameKey, skill.DescriptionKey })
             .Concat(new[] { path.NameKey, path.DescriptionKey });
 
@@ -176,6 +176,54 @@ public sealed class PackleaderPathTests
         {
             Assert.That(english[key], Is.Not.Empty, key.Key);
             Assert.That(pseudo[key], Does.StartWith("[").And.EndWith("]"), key.Key);
+        }
+    }
+
+    [Test]
+    public void PackTactics_Ranks()
+    {
+        AssertRanks(2, PlayerStat.PackTactics, new[] { 0.10f, 0.05f, 0.05f }, PlayerStat.PackTacticsSlow, 0.3f);
+    }
+
+    [Test]
+    public void ThickPelts_Ranks_RescueOneSecond()
+    {
+        AssertRanks(3, PlayerStat.PetDamageTaken, new[] { -0.10f, -0.10f, -0.10f }, PlayerStat.PetRescueSeconds, -1f);
+    }
+
+    [Test]
+    public void Path_FourteenRanksAuthored()
+    {
+        using IObjectResolver boot = Boot();
+        var rows = boot.Resolve<ContentCatalog>().Path(Packleader).Skills;
+        Assert.That(rows.Select(row => row.Ranks.TierCount), Is.EqualTo(new[] { 4, 4, 3, 3 }));
+        Assert.That(rows.Select(row => row.UnlockLevel), Is.EqualTo(new[] { 11, 11, 14, 14 }));
+        Assert.That(rows[2].Ranks.Tier(1).Single(), Is.EqualTo(new ContentId("skill.packleader.pack-tactics")));
+        Assert.That(rows[3].Ranks.Tier(1).Single(), Is.EqualTo(new ContentId("skill.packleader.thick-pelts")));
+    }
+
+    private static void AssertRanks(int row, PlayerStat stat, float[] values, PlayerStat finalStat, float finalValue)
+    {
+        using IObjectResolver boot = Boot();
+        var catalog = boot.Resolve<ContentCatalog>();
+        var icons = boot.Resolve<SkillIconBook>();
+        Sprite placeholder = Load<Sprite>("Art/UI/Icons/Icon_Placeholder.png");
+        ContentId parent = default;
+        var ranks = PathAsset().Skills[row].Ranks;
+        for (int i = 0; i < values.Length; i++)
+        {
+            SkillSpec skill = catalog.Skill(new ContentId(ranks[i].Id));
+            Assert.That(skill.Kind, Is.EqualTo(i == 0 ? SkillKind.Passive : SkillKind.Upgrade));
+            Assert.That(skill.ParentId, Is.EqualTo(parent));
+            Assert.That(icons.For(skill.Id), Is.SameAs(placeholder));
+
+            var expected = i == values.Length - 1
+                ? new[] { (stat, values[i]), (finalStat, finalValue) }
+                : new[] { (stat, values[i]) };
+            var effects = skill.Effects.Cast<ModifyStat>().ToArray();
+            Assert.That(effects.Select(effect => (effect.Stat, effect.Value)), Is.EqualTo(expected));
+            Assert.That(effects.All(effect => effect.Kind == ModifierKind.Flat && effect.Target == StatTarget.Pet), Is.True);
+            parent = skill.Id;
         }
     }
 

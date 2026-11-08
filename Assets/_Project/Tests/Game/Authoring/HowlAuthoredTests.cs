@@ -84,10 +84,10 @@ public sealed class HowlAuthoredTests
     }
 
     [Test]
-    public void Path_TwoRows_PackHoundsThenHowl_At11()
+    public void Path_FirstTwoRows_PackHoundsThenHowl_At11()
     {
         using IObjectResolver boot = Boot();
-        var rows = boot.Resolve<ContentCatalog>().Path(PathId).Skills;
+        var rows = boot.Resolve<ContentCatalog>().Path(PathId).Skills.Take(2);
         Assert.That(rows.Select(row => row.Ranks.Tier(1).Single()),
             Is.EqualTo(new[] { new ContentId("skill.packleader.pack-hounds"), HowlId }));
         Assert.That(rows.Select(row => row.UnlockLevel), Is.EqualTo(new[] { 11, 11 }));

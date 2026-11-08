@@ -258,6 +258,9 @@ public enum PlayerStat
     PackShare,
     HowlHeal,
     HowlSeconds,
+    PackTactics,
+    PackTacticsSlow,
+    PetDamageTaken,
 }
 
 /// <summary>

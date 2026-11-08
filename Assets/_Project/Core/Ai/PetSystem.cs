@@ -19,6 +19,7 @@ public sealed class PetSystem
     public const float RoarRadius = 3f;
     public const float RoarSlowSeconds = 2f;
 
+    private const float PackSlowSeconds = 1f;
     private const float SwapImmunityTrail = 0.2f;
     private const float SwapRescueHeadStart = 0.5f;
 
@@ -198,6 +199,7 @@ public sealed class PetSystem
         _playerPosition = player;
         _now = now;
         _enemies = enemies?.Registry;
+        int inReach = 0;
         for (int index = 0; index < _count; index++)
         {
             PetAgent pet = _pets[index];
@@ -221,7 +223,7 @@ public sealed class PetSystem
             {
                 if (dt > 0f && playerDistanceSquared <= _spec.RescueRadius * _spec.RescueRadius)
                 {
-                    float seconds = pet.RescueSeconds.Value;
+                    float seconds = _pets[0].RescueSeconds.Value;
                     AdvanceRescue(pet, seconds > 0f ? dt / seconds : 1f);
                 }
 
@@ -271,13 +273,37 @@ public sealed class PetSystem
             var velocity = new Vector3(facing.X * speed, 0f, facing.Y * speed);
             _intents.PetMove(new EnemyMoveIntent(pet.Id, velocity, facing));
 
+            if (quarry is not null && distance <= _spec.Reach)
+            {
+                inReach |= 1 << index;
+            }
+        }
+
+        // Resolve every pet's quarry before biting so both can qualify on the first tick.
+        for (int index = 0; index < _count; index++)
+        {
+            PetAgent pet = _pets[index];
             float bite = pet.ContactDamage.Value;
-            if (quarry is not null && distance <= _spec.Reach && bite > 0f && BiteReady(pet, index, now))
+            if ((inReach & (1 << index)) != 0 && bite > 0f && BiteReady(pet, index, now)
+                && _enemies.TryGet(pet.QuarryId, out EnemyAgent quarry) && quarry.IsAlive)
             {
                 pet.NextBiteAt = now + _spec.BiteInterval;
                 quarry.Blackboard.LastBitBy = pet.Id;
                 quarry.Blackboard.LastBitAt = now;
+                PetStats pack = _pets[0].Stats;
+                bool sharedQuarry = SharesQuarry(index, quarry.Id, inReach);
+                if (sharedQuarry)
+                {
+                    bite *= 1f + pack.PackTactics.Value;
+                }
+
                 enemies.ApplyDamage(quarry.Id, bite, now, combat);
+                float slow = pack.PackTacticsSlow.Value;
+                if (sharedQuarry && slow > 0f)
+                {
+                    enemies.Slow(quarry.Id, MathF.Min(slow, CrowdControl.MaxSlow), PackSlowSeconds);
+                }
+
                 long biteCount = ++_biteCounts[index];
                 _events.Publish(new PetBit(pet.Id, quarry.Id, bite));
 
@@ -289,6 +315,20 @@ public sealed class PetSystem
                 }
             }
         }
+    }
+
+    private bool SharesQuarry(int index, int quarryId, int inReach)
+    {
+        int partners = inReach & ~(1 << index);
+        for (int other = 0; other < _count; other++)
+        {
+            if ((partners & (1 << other)) != 0 && _pets[other].QuarryId == quarryId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool BiteReady(PetAgent pet, int index, float now)
@@ -384,7 +424,8 @@ public sealed class PetSystem
 
         PetAgent pet = _pets[index];
         pet.Health.SetExternalInvulnerable(pet.IsLead && now < _swapImmuneUntil);
-        DamageResult result = pet.Health.ApplyDamage(amount, now);
+        float damageTaken = Math.Clamp(_pets[0].Stats.PetDamageTaken.Value, 0.1f, 1f);
+        DamageResult result = pet.Health.ApplyDamage(amount * damageTaken, now);
         if (result.Killed)
         {
             pet.State = PetState.Fallen;

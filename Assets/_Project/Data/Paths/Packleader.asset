@@ -28,4 +28,14 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 1c9054798105416c8a071bda8a70e010, type: 2}
     - {fileID: 11400000, guid: eb2c73748811492fad09c5ada60b8300, type: 2}
     _unlockLevel: 11
+  - _ranks:
+    - {fileID: 11400000, guid: 1affa7259bf4bbbf546fdcfd39131a68, type: 2}
+    - {fileID: 11400000, guid: 930f0ea7b1125bf7002359dbbab6abc9, type: 2}
+    - {fileID: 11400000, guid: 7008d5ecdc33742e986c0f15b927753e, type: 2}
+    _unlockLevel: 14
+  - _ranks:
+    - {fileID: 11400000, guid: 169324d64e6f9c27c6842507dcff13f5, type: 2}
+    - {fileID: 11400000, guid: ad49c3c70c08f346298854ef44acef11, type: 2}
+    - {fileID: 11400000, guid: 7c64292e8ab4346d27fcfe5dbd525178, type: 2}
+    _unlockLevel: 14
   _look: {fileID: 0}

@@ -943,3 +943,27 @@ MonoBehaviour:
     _text: "Howl 3"
   - _key: skill.packleader.howl-4.name
     _text: "Howl 4"
+  - _key: skill.packleader.pack-tactics.name
+    _text: "Pack Tactics"
+  - _key: skill.packleader.pack-tactics.description
+    _text: "Pets deal 10% more bite damage when a packmate is in reach of the same quarry."
+  - _key: skill.packleader.pack-tactics-2.name
+    _text: "Pack Tactics 2"
+  - _key: skill.packleader.pack-tactics-2.description
+    _text: "Shared quarry bite damage bonus rises to 15%."
+  - _key: skill.packleader.pack-tactics-3.name
+    _text: "Pack Tactics 3"
+  - _key: skill.packleader.pack-tactics-3.description
+    _text: "Shared quarry bite damage bonus rises to 20%. These bites refresh a 30% slow for 1 s."
+  - _key: skill.packleader.thick-pelts.name
+    _text: "Thick Pelts"
+  - _key: skill.packleader.thick-pelts.description
+    _text: "Pets take 10% less damage."
+  - _key: skill.packleader.thick-pelts-2.name
+    _text: "Thick Pelts 2"
+  - _key: skill.packleader.thick-pelts-2.description
+    _text: "Pets take 20% less damage."
+  - _key: skill.packleader.thick-pelts-3.name
+    _text: "Thick Pelts 3"
+  - _key: skill.packleader.thick-pelts-3.description
+    _text: "Pets take 30% less damage and can be rescued in 1 s."

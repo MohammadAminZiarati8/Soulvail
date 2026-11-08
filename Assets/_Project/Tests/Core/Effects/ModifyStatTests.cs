@@ -82,7 +82,8 @@ public sealed class ModifyStatTests
             if (member is PlayerStat.ContactDamage
                 or PlayerStat.PetHeelRegen or PlayerStat.PetReturnAt or PlayerStat.PetRescueSeconds
                 or PlayerStat.PetBiteStunEvery or PlayerStat.PetBiteStunSeconds or PlayerStat.SwapRoarSlow
-                or PlayerStat.PackHounds or PlayerStat.PackShare)
+                or PlayerStat.PackHounds or PlayerStat.PackShare
+                or PlayerStat.PackTactics or PlayerStat.PackTacticsSlow or PlayerStat.PetDamageTaken)
             {
                 Assert.That(
                     () => stats.Resolve(member),
@@ -197,7 +198,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(61), "Seventy members with nine addresses reserved for other combatants.");
+        Assert.That(answered, Is.EqualTo(61), "Seventy-three members with twelve addresses reserved for other combatants.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

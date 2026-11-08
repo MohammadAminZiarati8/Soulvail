@@ -440,3 +440,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 1. **[Editor]** Let a hound drop below half: every hound howls, the pulse rolls out, the hounds
    glow for 4 s, bars climb.
 2. **[device]** The pulse reads at a glance and does not hide enemy tells.
+
+## PL-03 — Pack Tactics and Thick Pelts
+
+- Choose Packleader in a Beastmaster run. At Lv 14, check that both passives unlock and each row shows three ranks.
+- At Pack Tactics rank 3, watch two hounds bite a common target. Check that an ordinary enemy is slowed and a boss is immune.
+- At Thick Pelts rank 3, let the lead and a pack hound fall. Check that each rescue takes about 1 s while you stand nearby.

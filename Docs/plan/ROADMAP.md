@@ -74,7 +74,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BT-02 — Axes stop at cover (S)
 - [x] BT-03 — Animals hunt the whole arena, your last mark first; the hawk climbs back (M)
 - [x] BT-04 — The pack's formation: slots, spacing, eased following (M)
-- [ ] [BT-05](tasks/BT-05-swap-lands-exactly.md) — Wild Swap lands him exactly where the hound was (S)
+- [x] BT-05 — Wild Swap lands him exactly where the hound was (S)
 - [ ] [BT-06a](tasks/BT-06a-frenzy-core.md) — Frenzy in core; Howl heals only (M)
 - [ ] [BT-06b](tasks/BT-06b-frenzy-authored-and-drawn.md) — Frenzy authored at Lv 20 and drawn (M)
 - [ ] [BT-06c](tasks/BT-06c-stampede-removed.md) — Stampede's code removed (S)

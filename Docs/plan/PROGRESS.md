@@ -9,8 +9,8 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-04**. |
-| **Next task** | **BT-05** (→ BT-07b specced). |
+| **Last merged** | **BT-05**. |
+| **Next task** | **BT-06a** (→ BT-07b specced). |
 | **Verified** | EditMode 6170 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
@@ -42,7 +42,7 @@ Wind-up blocks hits/debuffs (Immune).
 Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan, hip quiver.
 
 Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes; Swift Hands;
-Pets hunt arena-wide, last mark first; idle in spaced slots; hawk climbs; Auto Pounce, Quick Swap. Packleader: Hounds/Howl 11, Tactics/Pelts 14, Hawk 17, Stampede 20; war-paint.
+Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, Quick Swap; exact swap. Packleader: Hounds/Howl 11, Tactics/Pelts 14, Hawk 17, Stampede 20; war-paint.
 
 ## Missing
 

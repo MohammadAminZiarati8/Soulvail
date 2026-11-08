@@ -71,6 +71,9 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private const float GroundedFallSpeed = -1f;
 
+        /// <summary>Flat metres a swap may end off its destination before the last step places it there.</summary>
+        private const float LandingTolerance = 0.001f;
+
         private readonly Collider[] _colliders = new Collider[SweepCapacity];
         private readonly int[] _ids = new int[SweepCapacity];
 
@@ -92,7 +95,13 @@ namespace Soulvail.Game.Views
 
         /// <summary>A dash sweeps enemies; a throw (JG-25b) walks the same way and sweeps nobody.</summary>
         private bool _sweeps;
-        private int _dashCoverMask;
+
+        /// <summary>Layers the controller ignores while walking: Cover and Enemy for a swap, none otherwise.</summary>
+        private int _excludeMask;
+
+        /// <summary>A Wild Swap (BT-05): nothing stops it, and its last step lands on <see cref="_destination"/>.</summary>
+        private bool _lands;
+        private Vector3 _destination;
 
         private bool _warnedAboutCapacity;
 
@@ -157,8 +166,15 @@ namespace Soulvail.Game.Views
             _speed = intent.Distance / intent.Duration;
             _remaining = intent.Duration;
             _sweeps = true;
+
+            // A swap (BT-05) ignores cover and enemies and lands exactly where the hound stood; the
+            // pets carry no collider, so nothing on their (Default, the floor's) layer needs leaving
+            // out. The destination is inside the arena by construction, so no clamp.
+            _lands = intent.PassesCover;
             int coverLayer = LayerMask.NameToLayer(ArenaView.CoverLayerName);
-            _dashCoverMask = intent.PassesCover && coverLayer >= 0 ? 1 << coverLayer : 0;
+            int coverMask = coverLayer >= 0 ? 1 << coverLayer : 0;
+            _excludeMask = _lands ? coverMask | _enemyLayer.value : 0;
+            _destination = transform.position + (_direction * intent.Distance);
 
             transform.rotation = Quaternion.LookRotation(_direction, Vector3.up);
         }
@@ -184,7 +200,8 @@ namespace Soulvail.Game.Views
 
             _session = null;
             _sweeps = false;
-            _dashCoverMask = 0;
+            _excludeMask = 0;
+            _lands = false;
             _direction = direction.normalized;
             _speed = intent.Distance / intent.Duration;
             _remaining = intent.Duration;
@@ -237,14 +254,14 @@ namespace Soulvail.Game.Views
             Vector3 from = transform.position;
 
             Vector3 displacement = ((_direction * _speed) + new Vector3(0f, GroundedFallSpeed, 0f)) * step;
-            if (_dashCoverMask == 0)
+            if (_excludeMask == 0)
             {
                 _controller.Move(displacement);
             }
             else
             {
                 LayerMask previous = _controller.excludeLayers;
-                _controller.excludeLayers = previous.value | _dashCoverMask;
+                _controller.excludeLayers = previous.value | _excludeMask;
                 try
                 {
                     _controller.Move(displacement);
@@ -255,10 +272,36 @@ namespace Soulvail.Game.Views
                 }
             }
 
+            if (_lands && !IsActive)
+            {
+                Land();
+            }
+
             if (_sweeps)
             {
                 Sweep(from, transform.position);
             }
+        }
+
+        /// <summary>
+        /// Puts a finished swap on its destination if anything held it short (BT-05). The
+        /// controller is toggled around the write so it takes the new position with
+        /// <c>autoSyncTransforms</c> off.
+        /// </summary>
+        private void Land()
+        {
+            _lands = false;
+            Vector3 position = transform.position;
+            Vector3 target = new Vector3(_destination.x, position.y, _destination.z);
+
+            if ((target - position).sqrMagnitude <= LandingTolerance * LandingTolerance)
+            {
+                return;
+            }
+
+            _controller.enabled = false;
+            transform.position = target;
+            _controller.enabled = true;
         }
 
         /// <summary>
@@ -271,6 +314,7 @@ namespace Soulvail.Game.Views
         public void Cancel()
         {
             _remaining = 0f;
+            _lands = false;
             _session = null;
         }
 

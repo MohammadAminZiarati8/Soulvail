@@ -60,6 +60,10 @@ public readonly struct ChargeIntent
     /// </summary>
     public readonly float Duration;
 
+    /// <summary>
+    /// This is a Wild Swap: the body ignores cover and enemies and lands exactly
+    /// <see cref="Distance"/> along the line, on the hound's spot (BT-05).
+    /// </summary>
     public readonly bool PassesCover;
 
     public ChargeIntent(Vector2 directionXZ, float distance, float duration, bool passesCover = false)

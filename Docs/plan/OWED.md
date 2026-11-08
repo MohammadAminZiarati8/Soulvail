@@ -488,3 +488,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Beastmaster with two pack hounds (Packleader 11), no enemies about: they stand right, left and behind him, never stacked.
 2. **[Editor]** Jiggle the stick: the pack does not twitch round; walk off: they trail and ease into their slots as you stop.
+
+### BT-05 — Wild Swap lands him exactly where the hound was
+
+1. **[Editor]** Swap with the hound across a crowd: he lands on its spot, the hound on his.

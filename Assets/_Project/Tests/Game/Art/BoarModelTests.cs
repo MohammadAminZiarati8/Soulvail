@@ -36,6 +36,15 @@ public sealed class BoarModelTests
     }
 
     [Test]
+    public void BoarModel_StillImports()
+    {
+        // BT-06c rule 3: Stampede went, its boar stays for BT-07b.
+        Assert.That(AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath), Is.Not.Null, ModelPath);
+        Assert.That(AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath), Is.Not.Null, PrefabPath);
+        Assert.That(AssetDatabase.LoadAssetAtPath<Material>(MaterialPath), Is.Not.Null, MaterialPath);
+    }
+
+    [Test]
     public void Boar_OneModelChild_PantherBones()
     {
         GameObject prefab = Load<GameObject>(PrefabPath);

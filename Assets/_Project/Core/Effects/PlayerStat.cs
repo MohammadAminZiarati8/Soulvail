@@ -264,8 +264,11 @@ public enum PlayerStat
     PetDamageTaken,
     HawkSeconds,
     HawkDiveInterval,
+    /// <summary>Retired by BT-06c with Stampede: nothing reads it. Kept so ordinals hold.</summary>
     StampedeBoars,
+    /// <summary>Retired by BT-06c with Stampede: nothing reads it. Kept so ordinals hold.</summary>
     StampedeDamage,
+    /// <summary>Retired by BT-06c with Stampede: nothing reads it. Kept so ordinals hold.</summary>
     StampedeHalfWidth,
     FrenzySeconds,
     FrenzyBonus,

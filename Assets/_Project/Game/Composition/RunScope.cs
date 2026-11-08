@@ -211,9 +211,6 @@ namespace Soulvail.Game.Composition
         [SerializeField] private LineRenderer _roarRingPrefab;
         [SerializeField] private LineRenderer _howlPulsePrefab;
         [SerializeField] private HawkView _hawkPrefab;
-        [SerializeField] private GameObject _stampedeBoarPrefab;
-        [SerializeField] private ParticleSystem _stampedeDustPrefab;
-        [SerializeField] private Material _stampedeStripMaterial;
         [SerializeField] private AxeView _axePrefab;
         [SerializeField] private RescueRingView _rescueRingPrefab;
         [SerializeField] private SpriteRenderer _markGlyphPrefab;
@@ -893,22 +890,6 @@ namespace Soulvail.Game.Composition
                     var session = resolver.Resolve<RunSession>();
                     HawkView hawk = Instantiate(_hawkPrefab, transform, false);
                     hawk.Bind(resolver.Resolve<DomainEventHub>(), () => session.HawkPosition.ToUnity(), _camera);
-                });
-            }
-
-            if (_stampedeBoarPrefab != null && _stampedeDustPrefab != null && _stampedeStripMaterial != null)
-            {
-                builder.RegisterBuildCallback(resolver =>
-                {
-                    var session = resolver.Resolve<IRunSession>();
-                    var enemies = resolver.Resolve<EnemyViews>();
-                    var root = new GameObject("Stampede");
-                    root.transform.SetParent(transform, false);
-                    root.AddComponent<StampedeView>().Bind(resolver.Resolve<DomainEventHub>(),
-                        _stampedeBoarPrefab, _stampedeDustPrefab, _stampedeStripMaterial,
-                        () => session.State?.Time ?? 0f,
-                        id => enemies.TryGet(id, out EnemyView enemy) ? enemy.transform.position : null,
-                        _cameraShake);
                 });
             }
 

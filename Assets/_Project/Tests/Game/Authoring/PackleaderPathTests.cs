@@ -274,6 +274,19 @@ public sealed class PackleaderPathTests
         return screen;
     }
 
+    // ---- BT-06c: Stampede removed -------------------------------------------------------------------
+
+    [Test]
+    public void NoStampedeTypes_InCoreOrGame()
+    {
+        string[] stampede = typeof(RunSession).Assembly.GetTypes()
+            .Concat(typeof(RunScope).Assembly.GetTypes())
+            .Where(type => type.Name.Contains("Stampede", StringComparison.Ordinal))
+            .Select(type => type.FullName)
+            .ToArray();
+        Assert.That(stampede, Is.Empty);
+    }
+
     internal static T Load<T>(string path) where T : Object
     {
         var asset = AssetDatabase.LoadAssetAtPath<T>(Root + path);

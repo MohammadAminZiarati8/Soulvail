@@ -9,9 +9,9 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-06b**. |
-| **Next task** | **BT-06c** (→ BT-07b specced). |
-| **Verified** | EditMode 6188 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **BT-06c**. |
+| **Next task** | **BT-07a** (→ BT-07b specced). |
+| **Verified** | EditMode 6175 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -37,11 +37,11 @@ Status icons; pooled CC, bosses immune. Marksman trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs (Immune).
-Skirmisher shoots on the run. Ricochet 11, Second Wind 14 (roll guard and pips), Whirlwind 17, Storm Run 20. Silver-cyan, hip quiver.
+Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20. Silver-cyan; quiver.
 
 Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes; Swift Hands;
 Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, Quick Swap; exact swap. Packleader: Hounds/Howl (heal) 11, Tactics/Pelts 14, Hawk 17, Frenzy 20; war-paint.
-Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s; glows.
+Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s; glows; no Stampede.
 
 ## Missing
 

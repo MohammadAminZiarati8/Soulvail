@@ -501,3 +501,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Packleader at Lv 20, take Frenzy: in a fight it fires, every standing animal glows cyan with the cyan chevron icon over its bar; they bite and run faster; the icon and glow end with the buff (8 s, 10 s at rank 2) or when it falls.
 2. **[Editor]** Howl's tree text reads heal-only (20 / 30 / 40 %, cooldown 11 s).
+
+### BT-06c — Stampede's code removed
+
+1. **[Editor]** Packleader run to Lv 20: Frenzy only at the slot; no console errors and no missing-script warnings when the Run scene loads.

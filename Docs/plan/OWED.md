@@ -446,3 +446,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - Choose Packleader in a Beastmaster run. At Lv 14, check that both passives unlock and each row shows three ranks.
 - At Pack Tactics rank 3, watch two hounds bite a common target. Check that an ordinary enemy is slowed and a boss is immune.
 - At Thick Pelts rank 3, let the lead and a pack hound fall. Check that each rescue takes about 1 s while you stand nearby.
+
+## PL-04b — The hawk's model on its own rig
+
+1. **[Editor]** At camera height over Jungle ground: a bird, readable, the cyan bands visible.

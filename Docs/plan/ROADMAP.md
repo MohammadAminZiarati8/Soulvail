@@ -61,7 +61,7 @@ _No milestone. The owner is setting the next direction._
 - [x] PL-02c — Howl drawn: the howl, the glow, the pulse (M)
 - [x] PL-03 — Pack Tactics and Thick Pelts (M)
 - [x] PL-04a — Hawk in core (M)
-- [ ] [PL-04b](tasks/PL-04b-hawk-model.md) — The hawk's model on `Rig_Hawk` (M)
+- [x] PL-04b — The hawk's model on `Rig_Hawk` (M)
 - [ ] [PL-04c](tasks/PL-04c-hawk-drawn.md) — Hawk drawn and authored (M)
 - [ ] [PL-05a](tasks/PL-05a-stampede-core.md) — Stampede in core (M)
 - [ ] [PL-05b](tasks/PL-05b-boar-model.md) — The boar's model on `Rig_Panther` (M)

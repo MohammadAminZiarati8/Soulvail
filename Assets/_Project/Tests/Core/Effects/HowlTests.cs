@@ -21,7 +21,7 @@ public sealed class HowlTests
     private const int Capacity = 8;
     private static readonly ContentId EnemyId = new("enemy.howl_target");
     private static readonly PetSpec Hound = new(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 1.5f);
-    private readonly Howl _howl = new(0.25f);
+    private readonly Howl _howl = new();
     private RecordingEvents _events;
     private RecordingIntents _intents;
     private PetSystem _pets;
@@ -71,30 +71,19 @@ public sealed class HowlTests
     }
 
     [Test]
-    public void Howl_BitesFaster_ForSeconds_AndRefreshesWithoutStacking()
+    public void Howl_HealsOnly_NoRateChange()
     {
         _enemies.Spawn(EnemyId, _pets.Pets[0].Position + 0.1f * Vector3.UnitX);
-        Assert.That(_stats.HowlSeconds.Value, Is.EqualTo(4f));
-        _stats.Resolve(PlayerStat.HowlSeconds).Base = 2f;
         Assert.That(Runner().Cast(0, 0f, auto: false), Is.True);
-        Tick(0f);
-        Tick(0.19f);
-        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(1));
-        Tick(0.21f);
-        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(2));
+        Assert.That(_pets.IsFrenzied(_pets.Pets[0].Id, 0f), Is.False);
 
-        _pets.Howl(0f, 0.5f, 2f, 1.5f);
-        _pets.Howl(0f, 0.25f, 2f, 3f);
-        Tick(4f);
-        Tick(4.15f);
-        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(3));
-        Tick(4.18f);
-        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(4));
-        Tick(4.82f);
-        Tick(5.01f);
-        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(5));
-        Tick(5.08f);
-        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(6));
+        Tick(0f);
+        Tick(0.21f);
+        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(1));
+        Tick(0.25f);
+        Assert.That(_events.Of<PetBit>(), Has.Count.EqualTo(2));
+        Assert.That(_events.Of<PetBit>()[1].Amount, Is.EqualTo(7f));
+        Assert.That(_events.Of<PetsFrenzied>(), Is.Empty);
     }
 
     [Test]

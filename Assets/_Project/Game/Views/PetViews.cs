@@ -71,7 +71,8 @@ public sealed class PetViews : IDisposable
             float now = Time.time;
             foreach (PetView view in _active.Values)
             {
-                view.Howl(evt.Seconds, now);
+                // BT-06a: Howl heals only, so the hounds howl without the buff's glow.
+                view.Howl(0f, now);
             }
         });
         _hurt = hub.Subscribe<PetHurt>(evt =>

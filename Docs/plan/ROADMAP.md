@@ -75,7 +75,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BT-03 — Animals hunt the whole arena, your last mark first; the hawk climbs back (M)
 - [x] BT-04 — The pack's formation: slots, spacing, eased following (M)
 - [x] BT-05 — Wild Swap lands him exactly where the hound was (S)
-- [ ] [BT-06a](tasks/BT-06a-frenzy-core.md) — Frenzy in core; Howl heals only (M)
+- [x] BT-06a — Frenzy in core; Howl heals only (M)
 - [ ] [BT-06b](tasks/BT-06b-frenzy-authored-and-drawn.md) — Frenzy authored at Lv 20 and drawn (M)
 - [ ] [BT-06c](tasks/BT-06c-stampede-removed.md) — Stampede's code removed (S)
 - [ ] [BT-07a](tasks/BT-07a-boar-core.md) — The boar in core: a ranged animal that spits (M)

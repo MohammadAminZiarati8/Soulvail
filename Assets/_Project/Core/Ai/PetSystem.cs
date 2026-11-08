@@ -27,7 +27,7 @@ public sealed class PetSystem
     private readonly IDomainEvents _events;
     private readonly IIntentSink _intents;
     private readonly long[] _biteCounts = new long[Capacity];
-    private readonly (float Bonus, float Until)[] _howlBuffs = new (float, float)[Capacity];
+    private readonly (float Bonus, float Until)[] _frenzyBuffs = new (float, float)[Capacity];
     private readonly PetAgent[] _pets = new PetAgent[Capacity];
     private readonly int[,] _hunters = new int[Capacity, MaxHunters];
     private readonly PackFormation _formation = new();
@@ -118,7 +118,7 @@ public sealed class PetSystem
         pet.NextBiteAt = _now;
         pet.NextRetargetAt = _now;
         _biteCounts[index] = 0;
-        _howlBuffs[index] = default;
+        _frenzyBuffs[index] = default;
         _count++;
     }
 
@@ -282,7 +282,7 @@ public sealed class PetSystem
                 Vector2 offset = Offset(pet.Position, quarry.Position);
                 distance = offset.Length();
                 facing = distance > 0.0001f ? offset / distance : Vector2.Zero;
-                float speed = MathF.Max(0f, pet.MoveSpeed.Value);
+                float speed = MathF.Max(0f, pet.MoveSpeed.Value) * FrenzyMultiplier(index, now);
                 if (distance <= _spec.Reach)
                 {
                     speed = 0f;
@@ -314,7 +314,7 @@ public sealed class PetSystem
         for (int index = 0; index < _count; index++)
         {
             PetAgent pet = _pets[index];
-            float bite = pet.ContactDamage.Value;
+            float bite = pet.ContactDamage.Value * FrenzyMultiplier(index, now);
             if ((inReach & (1 << index)) != 0 && bite > 0f && BiteReady(pet, index, now)
                 && _enemies.TryGet(pet.QuarryId, out EnemyAgent quarry) && quarry.IsAlive)
             {
@@ -364,7 +364,7 @@ public sealed class PetSystem
         }
 
         facing = toSlot / distance;
-        float speed = PackFormation.ArrivalSpeed(distance, MathF.Max(0f, pet.MoveSpeed.Value));
+        float speed = PackFormation.ArrivalSpeed(distance, MathF.Max(0f, pet.MoveSpeed.Value) * FrenzyMultiplier(index, _now));
         if (dt > 0f)
         {
             speed = MathF.Min(speed, distance / dt);
@@ -409,7 +409,7 @@ public sealed class PetSystem
 
     private bool BiteReady(PetAgent pet, int index, float now)
     {
-        (float bonus, float until) = _howlBuffs[index];
+        (float bonus, float until) = _frenzyBuffs[index];
         // Keep the base deadline so a buff can change a pending bite only while it is active.
         float reduction = now < until ? _spec.BiteInterval - _spec.BiteInterval / (1f + bonus) : 0f;
         return now >= pet.NextBiteAt - reduction;
@@ -442,7 +442,7 @@ public sealed class PetSystem
         return lowest;
     }
 
-    public int Howl(float healFraction, float attackSpeedBonus, float seconds, float now)
+    public int Howl(float healFraction, float now)
     {
         int standing = 0;
         for (int index = 0; index < _count; index++)
@@ -458,21 +458,61 @@ public sealed class PetSystem
             {
                 pet.Health.Heal(healFraction * pet.MaxHp.Value);
             }
-
-            if (seconds > 0f && attackSpeedBonus > 0f)
-            {
-                (float bonus, float until) = _howlBuffs[index];
-                float strongest = now < until ? MathF.Max(bonus, attackSpeedBonus) : attackSpeedBonus;
-                _howlBuffs[index] = (strongest, now + seconds);
-            }
         }
 
         if (standing > 0)
         {
-            _events.Publish(new PackHowled(_pets[0].Position, seconds));
+            _events.Publish(new PackHowled(_pets[0].Position));
         }
 
         return standing;
+    }
+
+    /// <summary>BT-06a rule 1: every standing animal bites, runs and hits <paramref name="bonus"/> harder.</summary>
+    public int Frenzy(float bonus, float seconds, float now)
+    {
+        if (!(bonus > 0f) || !(seconds > 0f) || float.IsInfinity(bonus) || float.IsInfinity(seconds))
+        {
+            return 0;
+        }
+
+        int standing = 0;
+        for (int index = 0; index < _count; index++)
+        {
+            if (_pets[index].State == PetState.Fallen)
+            {
+                continue;
+            }
+
+            standing++;
+            (float held, float until) = _frenzyBuffs[index];
+            float strongest = now < until ? MathF.Max(held, bonus) : bonus;
+            _frenzyBuffs[index] = (strongest, now + seconds);
+        }
+
+        if (standing > 0)
+        {
+            _events.Publish(new PetsFrenzied(seconds, bonus));
+        }
+
+        return standing;
+    }
+
+    public bool IsFrenzied(int petId, float now)
+    {
+        int index = IndexOf(petId);
+        return index >= 0 && now < _frenzyBuffs[index].Until;
+    }
+
+    private float FrenzyMultiplier(int index, float now)
+    {
+        if (index < 0)
+        {
+            return 1f;
+        }
+
+        (float bonus, float until) = _frenzyBuffs[index];
+        return now < until ? 1f + bonus : 1f;
     }
 
     public void Clear()
@@ -505,7 +545,7 @@ public sealed class PetSystem
         if (result.Killed)
         {
             pet.State = PetState.Fallen;
-            _howlBuffs[index] = default;
+            _frenzyBuffs[index] = default;
             pet.QuarryId = 0;
         }
 
@@ -636,7 +676,7 @@ public sealed class PetSystem
         pet.Position = _pounceLanding;
         if (enemies.Registry.TryGet(targetId, out EnemyAgent target) && target.IsAlive)
         {
-            float bite = pet.ContactDamage.Value;
+            float bite = pet.ContactDamage.Value * FrenzyMultiplier(IndexOf(pet.Id), now);
             if (bite > 0f)
             {
                 bite *= pounce.BiteMultiplier;

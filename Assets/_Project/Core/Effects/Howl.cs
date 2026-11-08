@@ -4,19 +4,9 @@ using Soulvail.Core.Combat;
 
 namespace Soulvail.Core.Effects;
 
+/// <summary>BT-06a: every standing animal heals <c>HowlHeal</c> × max HP. A heal, not a buff.</summary>
 public sealed class Howl : IEffect
 {
-    public Howl(float attackSpeedBonus)
-    {
-        if (!(attackSpeedBonus > 0f) || float.IsInfinity(attackSpeedBonus))
-        {
-            throw new ArgumentOutOfRangeException(nameof(attackSpeedBonus));
-        }
-
-        AttackSpeedBonus = attackSpeedBonus;
-    }
-
-    public float AttackSpeedBonus { get; }
 }
 
 public sealed class HowlHandler : IEffectHandler<Howl>, IEffectCastGuard<Howl>
@@ -34,8 +24,7 @@ public sealed class HowlHandler : IEffectHandler<Howl>, IEffectCastGuard<Howl>
 
     public bool CanCast(Howl effect) => _pets?.HasStandingPet() == true;
 
-    public void Apply(Howl effect, object source) =>
-        _pets?.Howl(_stats.HowlHeal.Value, effect.AttackSpeedBonus, _stats.HowlSeconds.Value, _clock.Now);
+    public void Apply(Howl effect, object source) => _pets?.Howl(_stats.HowlHeal.Value, _clock.Now);
 
     public void Remove(Howl effect, object source)
     {

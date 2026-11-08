@@ -257,6 +257,7 @@ public enum PlayerStat
     PackHounds,
     PackShare,
     HowlHeal,
+    /// <summary>Retired by BT-06a: Howl heals only, nothing reads it. Kept so ordinals hold.</summary>
     HowlSeconds,
     PackTactics,
     PackTacticsSlow,
@@ -266,6 +267,8 @@ public enum PlayerStat
     StampedeBoars,
     StampedeDamage,
     StampedeHalfWidth,
+    FrenzySeconds,
+    FrenzyBonus,
 }
 
 /// <summary>
@@ -351,6 +354,8 @@ public sealed class PlayerStats : IStatBlock
     public Stat StampedeBoars { get; } = new(6f);
     public Stat StampedeDamage { get; } = new(1f);
     public Stat StampedeHalfWidth { get; } = new(1.5f);
+    public Stat FrenzySeconds { get; } = new(8f);
+    public Stat FrenzyBonus { get; } = new(0.3f);
 
     internal int EnemyCapacity => _combat.EnemyCapacity;
 
@@ -460,6 +465,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.StampedeBoars => StampedeBoars,
             PlayerStat.StampedeDamage => StampedeDamage,
             PlayerStat.StampedeHalfWidth => StampedeHalfWidth,
+            PlayerStat.FrenzySeconds => FrenzySeconds,
+            PlayerStat.FrenzyBonus => FrenzyBonus,
             PlayerStat.StormRunSeconds => StormRunSeconds,
             PlayerStat.StormRunDamage => StormRunDamage,
             PlayerStat.VolleyEvery => RequireVolley(stat).Every,
@@ -556,6 +563,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.StampedeBoars => true,
             PlayerStat.StampedeDamage => true,
             PlayerStat.StampedeHalfWidth => true,
+            PlayerStat.FrenzySeconds => true,
+            PlayerStat.FrenzyBonus => true,
             PlayerStat.StormRunSeconds => true,
             PlayerStat.StormRunDamage => true,
             PlayerStat.VolleyEvery => _combat.Volley is not null,

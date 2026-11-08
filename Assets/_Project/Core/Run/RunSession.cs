@@ -686,6 +686,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         effects.Register<BindingShot>(new BindingShotHandler(projectiles, enemies, playerStats, combat.Blackboard, character, _clock));
         effects.Register<Pounce>(new PounceHandler(pets, enemies, combat, _clock));
         effects.Register<Howl>(new HowlHandler(pets, playerStats, _clock));
+        effects.Register<Frenzy>(new FrenzyHandler(pets, playerStats, _clock));
         _hawk = new HawkSystem(_events, playerStats);
         effects.Register<CallHawk>(new CallHawkHandler(_hawk, _clock));
         _stampede = new StampedeSystem(_events, playerStats);

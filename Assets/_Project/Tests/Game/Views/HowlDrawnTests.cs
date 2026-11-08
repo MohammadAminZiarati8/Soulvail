@@ -1,16 +1,12 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
-using Soulvail.Core.Ai;
-using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Presentation;
 using Soulvail.Game.Views;
-using Soulvail.Tests.Core.Fakes;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -25,7 +21,7 @@ public sealed class HowlDrawnTests
 {
     private const string Root = "Assets/_Project/";
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
-    private readonly PackHowled _howl = new(new Num3(2f, 0f, 4f), 4f);
+    private readonly PackHowled _howl = new(new Num3(2f, 0f, 4f));
     private GameObject _parent;
     private DomainEventHub _hub;
 
@@ -41,21 +37,6 @@ public sealed class HowlDrawnTests
     {
         _hub.Dispose();
         Object.DestroyImmediate(_parent);
-    }
-
-    [Test]
-    public void PackHowled_CarriesSeconds()
-    {
-        var spec = new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 0.25f, 1.4f, 1.5f);
-        var pets = new PetSystem(spec, _hub, new RecordingIntents());
-        var durations = new List<float>();
-        using var subscription = _hub.Subscribe<PackHowled>(evt => durations.Add(evt.Seconds));
-        pets.SpawnBeside(Num3.Zero, 0f);
-
-        pets.Howl(0.2f, 0.25f, 4f, 0f);
-        pets.Howl(0.2f, 0.25f, 5f, 2f);
-
-        Assert.That(durations, Is.EqualTo(new[] { 4f, 5f }));
     }
 
     [Test]
@@ -157,7 +138,7 @@ public sealed class HowlDrawnTests
         Assert.That(fill.anchorMax.x, Is.EqualTo(0.4f));
 
         health = 0.6f;
-        pet.Howl(_howl.Seconds, Time.time);
+        pet.Howl(4f, Time.time);
         _hub.Publish(_howl);
         typeof(PetView).GetMethod("LateUpdate", Private).Invoke(pet, null);
 

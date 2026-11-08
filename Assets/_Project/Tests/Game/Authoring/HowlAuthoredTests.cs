@@ -9,7 +9,6 @@ using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Presentation;
-using UnityEditor;
 using UnityEngine;
 using VContainer;
 using Object = UnityEngine.Object;
@@ -46,8 +45,7 @@ public sealed class HowlAuthoredTests
 
         ActiveSpec active = skills[0].Active;
         Assert.That(active.Cooldown, Is.EqualTo(14f));
-        var cast = (Howl)active.OnCast.Single();
-        Assert.That(cast.AttackSpeedBonus, Is.EqualTo(0.25f));
+        Assert.That(active.OnCast.Single(), Is.TypeOf<Howl>());
         TriggerClause clause = active.Trigger.Clauses.Single();
         Assert.That((clause.Field, clause.Comparison, clause.Threshold),
             Is.EqualTo((TriggerField.LowestPetHpFraction, TriggerComparison.Below, 0.5f)));
@@ -61,20 +59,6 @@ public sealed class HowlAuthoredTests
         var cooldown = (ModifySkillCooldown)skills[3].Effects.Single();
         Assert.That((cooldown.SkillId, cooldown.Kind, cooldown.Value),
             Is.EqualTo((HowlId, ModifierKind.Flat, -3f)));
-
-        var definition = ScriptableObject.CreateInstance<HowlDefinition>();
-        try
-        {
-            definition.name = "Invalid Howl";
-            var serialized = new SerializedObject(definition);
-            serialized.FindProperty("_attackSpeedBonus").floatValue = float.NaN;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-            Assert.That(() => definition.ToEffect(), Throws.ArgumentException.With.Message.Contains(definition.name));
-        }
-        finally
-        {
-            Object.DestroyImmediate(definition);
-        }
 
         using var hub = new DomainEventHub();
         RunSession session = StartRun(catalog, hub, Load<CharacterDefinition>("Data/Characters/Beastmaster.asset"), level: 11);

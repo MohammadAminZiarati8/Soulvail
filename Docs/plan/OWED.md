@@ -492,3 +492,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ### BT-05 — Wild Swap lands him exactly where the hound was
 
 1. **[Editor]** Swap with the hound across a crowd: he lands on its spot, the hound on his.
+
+### BT-06a — Frenzy in core; Howl heals only
+
+1. **[Editor]** Packleader 11, let a hound drop under half: Howl heals and the hounds howl, with no cyan glow and no faster bites (Frenzy is not castable until BT-06b).

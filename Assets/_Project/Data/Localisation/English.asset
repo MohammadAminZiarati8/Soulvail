@@ -927,3 +927,19 @@ MonoBehaviour:
     _text: Pack Hounds 3
   - _key: skill.packleader.pack-hounds-4.name
     _text: Pack Hounds 4
+  - _key: skill.packleader.howl.name
+    _text: "Howl"
+  - _key: skill.packleader.howl.description
+    _text: "Standing hounds heal 20% of max HP and attack 25% faster for 4 s."
+  - _key: skill.packleader.howl-2.description
+    _text: "Howl heals 30% of max HP."
+  - _key: skill.packleader.howl-3.description
+    _text: "Howl boosts attack speed for 6 s."
+  - _key: skill.packleader.howl-4.description
+    _text: "Howl cooldown drops to 11 s."
+  - _key: skill.packleader.howl-2.name
+    _text: "Howl 2"
+  - _key: skill.packleader.howl-3.name
+    _text: "Howl 3"
+  - _key: skill.packleader.howl-4.name
+    _text: "Howl 4"

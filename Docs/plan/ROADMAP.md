@@ -57,7 +57,7 @@ _No milestone. The owner is setting the next direction._
 - [x] PL-01a — Pack Hounds in core (M)
 - [x] PL-01b — The Packleader authored: the path slot, its card, Pack Hounds (M)
 - [x] PL-02a — Howl in core (M)
-- [ ] [PL-02b](tasks/PL-02b-howl-drawn.md) — Howl authored: four ranks, the second Lv-11 row (S)
+- [x] PL-02b — Howl authored: four ranks, the second Lv-11 row (S)
 - [ ] [PL-02c](tasks/PL-02c-howl-pulse-drawn.md) — Howl drawn: the howl, the glow, the pulse (M)
 - [ ] [PL-03](tasks/PL-03-pack-tactics-and-thick-pelts.md) — Pack Tactics and Thick Pelts (M)
 - [ ] [PL-04a](tasks/PL-04a-hawk-core.md) — Hawk in core (M)

@@ -430,3 +430,6 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **Editor:** On a fresh profile, open Heroes and check the Beastmaster card for its padlock, Apex deed and 5,000 Shard price. Use DT-01 to start Jungle stage 30, defeat the Apex, and verify the Beastmaster is unlocked.
 
 - **PL-01b [Editor]** DT-01 at stage 12 with points. Choose Packleader, learn Pack Hounds rank 1, then rank 3. Check that the first and second smaller hounds have cyan bars and heel and fall like the lead Hound.
+
+- [ ] **PL-02b [Editor]** DT-01 at stage 12: learn Howl, let a hound drop below half: Howl fires on its own,
+  bars climb, bites quicken for 4 s (no howl animation or pulse until PL-02c).

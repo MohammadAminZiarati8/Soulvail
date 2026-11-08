@@ -136,11 +136,11 @@ public sealed class PackleaderPathTests
     }
 
     [Test]
-    public void Path_OneRow_PackHoundsAt11()
+    public void Path_FirstRow_PackHoundsAt11()
     {
         using IObjectResolver boot = Boot();
         var catalog = boot.Resolve<ContentCatalog>();
-        PathSkillSpec row = catalog.Path(Packleader).Skills.Single();
+        PathSkillSpec row = catalog.Path(Packleader).Skills[0];
         Assert.That(row.UnlockLevel, Is.EqualTo(11));
         Assert.That(row.Ranks.TierCount, Is.EqualTo(4));
         Assert.That(row.Ranks.Tier(1), Is.EqualTo(new[] { PackHounds }));
@@ -181,7 +181,7 @@ public sealed class PackleaderPathTests
 
     private static PathDefinition PathAsset() => Load<PathDefinition>("Data/Paths/Packleader.asset");
 
-    private static IObjectResolver Boot()
+    internal static IObjectResolver Boot()
     {
         var boot = new SerializedObject(Load<GameObject>("Prefabs/Composition/BootScope.prefab").GetComponent<BootScope>());
         var builder = new ContainerBuilder();
@@ -199,7 +199,7 @@ public sealed class PackleaderPathTests
             .Select(i => (T)array.GetArrayElementAtIndex(i).objectReferenceValue).ToArray();
     }
 
-    private static RunSession StartRun(ContentCatalog catalog, DomainEventHub hub, CharacterDefinition character, int level)
+    internal static RunSession StartRun(ContentCatalog catalog, DomainEventHub hub, CharacterDefinition character, int level)
     {
         var mode = new ContentId("mode.jungle");
         var id = new ContentId(character.Id);
@@ -226,7 +226,7 @@ public sealed class PackleaderPathTests
         return screen;
     }
 
-    private static T Load<T>(string path) where T : Object
+    internal static T Load<T>(string path) where T : Object
     {
         var asset = AssetDatabase.LoadAssetAtPath<T>(Root + path);
         Assert.That(asset, Is.Not.Null, path);

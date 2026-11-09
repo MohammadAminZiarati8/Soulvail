@@ -509,3 +509,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ### BT-07a — The boar in core
 
 1. **[Editor]** Packleader at Lv 14 with Pack Tactics ranks: a fight plays exactly as with no Lv-14 pick (no shared-bite bonus or slow); no console errors. The boar itself is not visible until BT-07b.
+
+### BT-07b — The boar drawn and authored
+
+1. **[Editor]** Packleader at Lv 14, take Boar: the boar (cyan flank stripes, cyan bar) stands back from the fight and spits green globs with a thin cyan trail; a small green splat where one hits; stones stop them with no splat. No console errors.
+2. **[Editor]** On a phone-sized Game view the glob never reads as the Shaman's lime or an enemy shot.
+3. **[Editor]** The boar's clips read right: Prowl walk, Idle, Lunge (2× speed) as the spit, Death as the fall, Crouch as the get-up and the howl. If Lunge or Crouch reads wrong, that is the out-of-scope animation pass.
+4. **[Editor]** A saved run holding Pack Tactics ranks (v7) continues holding the same Boar ranks.

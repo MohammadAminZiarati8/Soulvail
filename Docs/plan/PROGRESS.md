@@ -9,9 +9,9 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-07a**. |
-| **Next task** | **BT-07b** (specced). |
-| **Verified** | EditMode 6175 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **BT-07b**. |
+| **Next task** | Unspecced (AM on the owner's word). |
+| **Verified** | EditMode 6190 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -28,10 +28,10 @@ Apex (30): eye tell/feint, streak, +15% window; 1580 HP. Four stones; 2 panthers
 Stone-stops dash/rake; pack 3 s cd. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
 ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
-Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m; flees <4 m; lime staff/glow.
+Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m; flees <4 m; lime staff.
 17–19: healer/guards, wall, gate; XP 32, priority 8.
 Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points; paused free-pick tree, rank pips, Learn; 20 Marksman ranks (Steady Aim 4, Binding Shot 3). Death pays Shards.
-Save v7; Clash UI/LocKeys. Six-circle arc: tap fires on Auto,
+Save v8; Clash UI/LocKeys. Six-circle arc: tap fires on Auto,
 0.45 s hold toggles; mirrored; legacy saves expand.
 Status icons; pooled CC, bosses immune. Marksman trim,
 Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
@@ -40,9 +40,9 @@ Wind-up blocks hits/debuffs (Immune).
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes; Swift Hands;
-Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, Quick Swap; exact swap. Packleader: Hounds/Howl (heal) 11, Pelts 14, Hawk 17, Frenzy 20.
-Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s; no Stampede.
-Boar (core only): holds 5 m, spits globs cover stops; Pack Tactics retired.
+Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, exact Quick Swap. Packleader: Hounds/Howl (heal) 11, Boar/Pelts 14, Hawk 17, Frenzy 20.
+Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s.
+Boar: holds 5 m, green globs (cyan trail, splat), cover stops; +30% dmg, 25% slow.
 
 ## Missing
 

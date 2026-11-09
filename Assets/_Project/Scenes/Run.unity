@@ -988,6 +988,7 @@ MonoBehaviour:
   _swapStreakPrefab: {fileID: 6193817809933593954, guid: 494298d9e4882574e9acb72b70fc040e, type: 3}
   _roarRingPrefab: {fileID: 4588413256516038720, guid: ec4ec61c08807bf46a2367343bfc7f70, type: 3}
   _howlPulsePrefab: {fileID: 4588413256516038720, guid: 79aba92814b3b8e438b6e4f6973a4139, type: 3}
+  _petGlobPrefab: {fileID: 6267037587791837781, guid: d77fb6b1161f0524ea898c70bd7f61df, type: 3}
   _hawkPrefab: {fileID: 2468470314381489920, guid: 9c4c4d1ba07e3614fa6e727752115aac, type: 3}
   _axePrefab: {fileID: 216999579305513603, guid: 5650f5d006d9be74b9bd7f8d12a4d4f1, type: 3}
   _rescueRingPrefab: {fileID: 11400000, guid: 4917564711fd4da29bd87e271e0a4747, type: 3}

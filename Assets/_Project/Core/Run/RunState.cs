@@ -1079,6 +1079,9 @@ public sealed class RunState
     public System.ReadOnlySpan<Axe> InFlightAxes =>
         Combat.Axes is AxeSystem axes ? axes.InFlight : default;
 
+    /// <summary>BT-07b: the boar's globs in flight, for the glob view to draw.</summary>
+    public System.ReadOnlySpan<PetGlob> InFlightGlobs => Pets is PetSystem pets ? pets.Spit.InFlight : default;
+
     /// <summary>
     /// How many enemies are registered in the run.
     /// </summary>

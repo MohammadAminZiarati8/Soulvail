@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aba53057ee7f828418c0472ade3e38ae, type: 3}
   m_Name: English
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.LocalizationTable
-  _locale:
+  _locale: 
   _rows:
   - _key: skill.oathbound.long-reach.name
     _text: Long Reach
@@ -588,15 +588,18 @@ MonoBehaviour:
   - _key: skill.marksman.steady-aim-2.name
     _text: Steady Aim 2
   - _key: skill.marksman.steady-aim-2.description
-    _text: "Standing arrows add 14% damage per stack, up to 5 stacks. The first arrow after stopping deals double damage. Moving or rolling resets stacks."
+    _text: Standing arrows add 14% damage per stack, up to 5 stacks. The first arrow
+      after stopping deals double damage. Moving or rolling resets stacks.
   - _key: skill.marksman.steady-aim-3.name
     _text: Steady Aim 3
   - _key: skill.marksman.steady-aim-3.description
-    _text: "Standing arrows add 16% damage per stack, up to 5 stacks. The first arrow after stopping still deals double damage."
+    _text: Standing arrows add 16% damage per stack, up to 5 stacks. The first arrow
+      after stopping still deals double damage.
   - _key: skill.marksman.steady-aim-4.name
     _text: Steady Aim 4
   - _key: skill.marksman.steady-aim-4.description
-    _text: "At 5 standing-arrow stacks, take 20% less damage. Moving or rolling resets the stacks."
+    _text: At 5 standing-arrow stacks, take 20% less damage. Moving or rolling resets
+      the stacks.
   - _key: skill.marksman.eagle-eye.name
     _text: Eagle Eye 1
   - _key: skill.marksman.eagle-eye.description
@@ -612,13 +615,13 @@ MonoBehaviour:
   - _key: ui.tree.path.choose
     _text: Choose
   - _key: ui.tree.path.rank
-    _text: 'Rank {0:0}/{1:0}'
+    _text: Rank {0:0}/{1:0}
   - _key: ui.tree.path.max
     _text: MAX
   - _key: ui.tree.coming-soon
     _text: Coming soon
   - _key: ui.tree.unlocks-at
-    _text: 'Lv {0:0}'
+    _text: Lv {0:0}
   - _key: skill.marksman.rain-of-arrows.name
     _text: Rain of Arrows
   - _key: skill.marksman.rain-of-arrows.description
@@ -643,11 +646,11 @@ MonoBehaviour:
   - _key: skill.marksman.binding-shot-2.name
     _text: Binding Shot 2
   - _key: skill.marksman.binding-shot-2.description
-    _text: "Bound stun lasts 1.0 s longer."
+    _text: Bound stun lasts 1.0 s longer.
   - _key: skill.marksman.binding-shot-3.name
     _text: Binding Shot 3
   - _key: skill.marksman.binding-shot-3.description
-    _text: "Binding Shot cooldown is reduced by 3 s."
+    _text: Binding Shot cooldown is reduced by 3 s.
   - _key: skill.marksman.hunters-snare.name
     _text: Hunter's Snare
   - _key: skill.marksman.hunters-snare.description
@@ -663,33 +666,35 @@ MonoBehaviour:
     _text: Snare roots another 0.5 s longer. Hunter's Snare cooldown is reduced by
       2 s.
   - _key: skill.marksman.killshot.name
-    _text: 'Killshot'
+    _text: Killshot
   - _key: skill.marksman.killshot.description
-    _text: 'Kneel and loose one arrow across the whole arena. It weakens through each enemy and kills the badly wounded outright.'
+    _text: Kneel and loose one arrow across the whole arena. It weakens through each
+      enemy and kills the badly wounded outright.
   - _key: skill.marksman.killshot-2.name
-    _text: 'Killshot 2'
+    _text: Killshot 2
   - _key: skill.marksman.killshot-2.description
-    _text: 'Killshot deals 25% more damage and executes non-bosses at 20% HP or below.'
+    _text: Killshot deals 25% more damage and executes non-bosses at 20% HP or below.
   - _key: skill.marksman.killshot-3.name
-    _text: 'Killshot 3'
+    _text: Killshot 3
   - _key: skill.marksman.killshot-3.description
-    _text: 'Killshot executes non-bosses at 25% HP or below. Cooldown is reduced by 8 s.'
+    _text: Killshot executes non-bosses at 25% HP or below. Cooldown is reduced by
+      8 s.
   - _key: enemy.shaman.name
-    _text: 'Moss Shaman'
+    _text: Moss Shaman
   - _key: enemy.bullfrog.name
     _text: Bullfrog
   - _key: enemy.thorn_pitcher.name
-    _text: 'Thorn Pitcher'
+    _text: Thorn Pitcher
   - _key: enemy.chain_bomber.name
-    _text: 'Chain Bomber'
+    _text: Chain Bomber
   - _key: enemy.shadow_panther.name
-    _text: 'Shadow Panther'
+    _text: Shadow Panther
   - _key: enemy.stalker.name
-    _text: 'Chameleon Stalker'
+    _text: Chameleon Stalker
   - _key: enemy.thornweaver.name
-    _text: 'Thornweaver'
+    _text: Thornweaver
   - _key: enemy.apex.name
-    _text: 'The Apex'
+    _text: The Apex
   - _key: ui.combat.immune
     _text: Immune
   - _key: path.ranger.skirmisher.name
@@ -713,21 +718,21 @@ MonoBehaviour:
   - _key: skill.skirmisher.running-shot-4.description
     _text: "125% \u2014 faster on the run than standing."
   - _key: skill.skirmisher.ricochet-shot.name
-    _text: "Ricochet Shot"
+    _text: Ricochet Shot
   - _key: skill.skirmisher.ricochet-shot.description
-    _text: "An arrow that bounces between 3 enemies within 5 m."
+    _text: An arrow that bounces between 3 enemies within 5 m.
   - _key: skill.skirmisher.ricochet-shot-2.name
-    _text: "Ricochet Shot 2"
+    _text: Ricochet Shot 2
   - _key: skill.skirmisher.ricochet-shot-2.description
-    _text: "Bounces between 4 enemies."
+    _text: Bounces between 4 enemies.
   - _key: skill.skirmisher.ricochet-shot-3.name
-    _text: "Ricochet Shot 3"
+    _text: Ricochet Shot 3
   - _key: skill.skirmisher.ricochet-shot-3.description
-    _text: "+25% damage."
+    _text: +25% damage.
   - _key: skill.skirmisher.ricochet-shot-4.name
-    _text: "Ricochet Shot 4"
+    _text: Ricochet Shot 4
   - _key: skill.skirmisher.ricochet-shot-4.description
-    _text: "Bounces between 5. Cooldown 6 s."
+    _text: Bounces between 5. Cooldown 6 s.
   - _key: skill.skirmisher.hit-and-run.name
     _text: Hit and Run
   - _key: skill.skirmisher.hit-and-run.description
@@ -735,69 +740,70 @@ MonoBehaviour:
   - _key: skill.skirmisher.hit-and-run-2.name
     _text: Hit and Run 2
   - _key: skill.skirmisher.hit-and-run-2.description
-    _text: '+20% speed. Momentum: +2% damage per metre moved in the last 2 s, up to 8 m.'
+    _text: '+20% speed. Momentum: +2% damage per metre moved in the last 2 s, up
+      to 8 m.'
   - _key: skill.skirmisher.hit-and-run-3.name
     _text: Hit and Run 3
   - _key: skill.skirmisher.hit-and-run-3.description
     _text: +25% speed; +3% per metre.
   - _key: ui.combat.dodged
-    _text: "Dodged"
+    _text: Dodged
   - _key: skill.skirmisher.second-wind.name
-    _text: "Second Wind"
+    _text: Second Wind
   - _key: skill.skirmisher.second-wind.description
     _text: "Roll cooldown \u22120.5 s."
   - _key: skill.skirmisher.second-wind-2.name
-    _text: "Second Wind 2"
+    _text: Second Wind 2
   - _key: skill.skirmisher.second-wind-2.description
     _text: "Roll cooldown \u22121 s. The first hit within 1 s after a roll misses."
   - _key: skill.skirmisher.second-wind-3.name
-    _text: "Second Wind 3"
+    _text: Second Wind 3
   - _key: skill.skirmisher.second-wind-3.description
-    _text: "Two roll charges."
+    _text: Two roll charges.
   - _key: skill.skirmisher.whirlwind.name
-    _text: "Whirlwind"
+    _text: Whirlwind
   - _key: skill.skirmisher.whirlwind.description
-    _text: "Spin and loose two rings of 12 arrows all round."
+    _text: Spin and loose two rings of 12 arrows all round.
   - _key: skill.skirmisher.whirlwind-2.name
-    _text: "Whirlwind 2"
+    _text: Whirlwind 2
   - _key: skill.skirmisher.whirlwind-2.description
-    _text: "16 arrows a ring."
+    _text: 16 arrows a ring.
   - _key: skill.skirmisher.whirlwind-3.name
-    _text: "Whirlwind 3"
+    _text: Whirlwind 3
   - _key: skill.skirmisher.whirlwind-3.description
-    _text: "Three rings. Cooldown 8 s."
+    _text: Three rings. Cooldown 8 s.
   - _key: skill.skirmisher.storm-run.name
-    _text: "Storm Run"
+    _text: Storm Run
   - _key: skill.skirmisher.storm-run.description
-    _text: "For 6 s every roll ends in a volley and the roll recharges twice as fast."
+    _text: For 6 s every roll ends in a volley and the roll recharges twice as fast.
   - _key: skill.skirmisher.storm-run-2.name
-    _text: "Storm Run 2"
+    _text: Storm Run 2
   - _key: skill.skirmisher.storm-run-2.description
-    _text: "Lasts 8 s."
+    _text: Lasts 8 s.
   - _key: skill.skirmisher.storm-run-3.name
-    _text: "Storm Run 3"
+    _text: Storm Run 3
   - _key: skill.skirmisher.storm-run-3.description
-    _text: "Storm volley +30% damage."
+    _text: Storm volley +30% damage.
   - _key: path.ranger.echo-archer.name
-    _text: "Echo Archer"
+    _text: Echo Archer
   - _key: path.ranger.echo-archer.description
-    _text: "Be in many places. Shades of you shoot, lure and burst."
+    _text: Be in many places. Shades of you shoot, lure and burst.
   - _key: skill.echo-archer.echo-arrow.name
-    _text: "Echo Arrow"
+    _text: Echo Arrow
   - _key: skill.echo-archer.echo-arrow.description
-    _text: "Every 4th arrow is loosed again by a shade, for 60% damage."
+    _text: Every 4th arrow is loosed again by a shade, for 60% damage.
   - _key: skill.echo-archer.echo-arrow-2.name
-    _text: "Echo Arrow 2"
+    _text: Echo Arrow 2
   - _key: skill.echo-archer.echo-arrow-2.description
-    _text: "Every 3rd arrow."
+    _text: Every 3rd arrow.
   - _key: skill.echo-archer.echo-arrow-3.name
-    _text: "Echo Arrow 3"
+    _text: Echo Arrow 3
   - _key: skill.echo-archer.echo-arrow-3.description
-    _text: "80% damage."
+    _text: 80% damage.
   - _key: skill.echo-archer.echo-arrow-4.name
-    _text: "Echo Arrow 4"
+    _text: Echo Arrow 4
   - _key: skill.echo-archer.echo-arrow-4.description
-    _text: "Every 2nd arrow."
+    _text: Every 2nd arrow.
   - _key: skill.echo-archer.mirror-image.name
     _text: Mirror Image
   - _key: skill.echo-archer.mirror-image.description
@@ -815,53 +821,55 @@ MonoBehaviour:
   - _key: skill.echo-archer.mirror-image-4.description
     _text: 3 shades. Cooldown 11 s.
   - _key: skill.echo-archer.decoy-roll.name
-    _text: "Decoy Roll"
+    _text: Decoy Roll
   - _key: skill.echo-archer.decoy-roll.description
-    _text: "A roll leaves a shade enemies chase for 2 s, at most every 8 s. Bosses ignore it."
+    _text: A roll leaves a shade enemies chase for 2 s, at most every 8 s. Bosses
+      ignore it.
   - _key: skill.echo-archer.decoy-roll-2.name
-    _text: "Decoy Roll 2"
+    _text: Decoy Roll 2
   - _key: skill.echo-archer.decoy-roll-2.description
-    _text: "3 s, every 6 s."
+    _text: 3 s, every 6 s.
   - _key: skill.echo-archer.decoy-roll-3.name
-    _text: "Decoy Roll 3"
+    _text: Decoy Roll 3
   - _key: skill.echo-archer.decoy-roll-3.description
-    _text: "Every 5 s."
+    _text: Every 5 s.
   - _key: skill.echo-archer.fading-burst.name
-    _text: "Fading Burst"
+    _text: Fading Burst
   - _key: skill.echo-archer.fading-burst.description
-    _text: "Shades burst when they fade: 1.5× weapon damage within 3 m."
+    _text: "Shades burst when they fade: 1.5\xD7 weapon damage within 3 m."
   - _key: skill.echo-archer.fading-burst-2.name
-    _text: "Fading Burst 2"
+    _text: Fading Burst 2
   - _key: skill.echo-archer.fading-burst-2.description
-    _text: "2×."
+    _text: "2\xD7."
   - _key: skill.echo-archer.fading-burst-3.name
-    _text: "Fading Burst 3"
+    _text: Fading Burst 3
   - _key: skill.echo-archer.fading-burst-3.description
-    _text: "2.5×, and the burst slows."
+    _text: "2.5\xD7, and the burst slows."
   - _key: skill.echo-archer.crossfire.name
-    _text: "Crossfire"
+    _text: Crossfire
   - _key: skill.echo-archer.crossfire.description
-    _text: "Two shades appear, and every shade looses a heavy arrow at your target: 1.5× weapon damage each."
+    _text: "Two shades appear, and every shade looses a heavy arrow at your target:
+      1.5\xD7 weapon damage each."
   - _key: skill.echo-archer.crossfire-2.name
-    _text: "Crossfire 2"
+    _text: Crossfire 2
   - _key: skill.echo-archer.crossfire-2.description
-    _text: "Three shades appear."
+    _text: Three shades appear.
   - _key: skill.echo-archer.crossfire-3.name
-    _text: "Crossfire 3"
+    _text: Crossfire 3
   - _key: skill.echo-archer.crossfire-3.description
-    _text: "2× damage. Cooldown 9 s."
+    _text: "2\xD7 damage. Cooldown 9 s."
   - _key: skill.echo-archer.hall-of-mirrors.name
-    _text: "Hall of Mirrors"
+    _text: Hall of Mirrors
   - _key: skill.echo-archer.hall-of-mirrors.description
-    _text: "4 shades rise around you and shoot for 5 s, at 70% damage."
+    _text: 4 shades rise around you and shoot for 5 s, at 70% damage.
   - _key: skill.echo-archer.hall-of-mirrors-2.name
-    _text: "Hall of Mirrors 2"
+    _text: Hall of Mirrors 2
   - _key: skill.echo-archer.hall-of-mirrors-2.description
-    _text: "6 shades."
+    _text: 6 shades.
   - _key: skill.echo-archer.hall-of-mirrors-3.name
-    _text: "Hall of Mirrors 3"
+    _text: Hall of Mirrors 3
   - _key: skill.echo-archer.hall-of-mirrors-3.description
-    _text: "7 s, 100% damage."
+    _text: 7 s, 100% damage.
   - _key: character.beastmaster.name
     _text: Beastmaster
   - _key: character.beastmaster.description
@@ -932,66 +940,69 @@ MonoBehaviour:
   - _key: skill.packleader.pack-hounds-4.name
     _text: Pack Hounds 4
   - _key: skill.packleader.howl.name
-    _text: "Howl"
+    _text: Howl
   - _key: skill.packleader.howl.description
-    _text: "Every animal heals 20% of max HP."
+    _text: Every animal heals 20% of max HP.
   - _key: skill.packleader.howl-2.description
-    _text: "Howl heals 30% of max HP."
+    _text: Howl heals 30% of max HP.
   - _key: skill.packleader.howl-3.description
-    _text: "Howl heals 40% of max HP."
+    _text: Howl heals 40% of max HP.
   - _key: skill.packleader.howl-4.description
-    _text: "Howl cooldown drops to 11 s."
+    _text: Howl cooldown drops to 11 s.
   - _key: skill.packleader.howl-2.name
-    _text: "Howl 2"
+    _text: Howl 2
   - _key: skill.packleader.howl-3.name
-    _text: "Howl 3"
+    _text: Howl 3
   - _key: skill.packleader.howl-4.name
-    _text: "Howl 4"
-  - _key: skill.packleader.pack-tactics.name
-    _text: "Pack Tactics"
-  - _key: skill.packleader.pack-tactics.description
-    _text: "Pets deal 10% more bite damage when a packmate is in reach of the same quarry."
-  - _key: skill.packleader.pack-tactics-2.name
-    _text: "Pack Tactics 2"
-  - _key: skill.packleader.pack-tactics-2.description
-    _text: "Shared quarry bite damage bonus rises to 15%."
-  - _key: skill.packleader.pack-tactics-3.name
-    _text: "Pack Tactics 3"
-  - _key: skill.packleader.pack-tactics-3.description
-    _text: "Shared quarry bite damage bonus rises to 20%. These bites refresh a 30% slow for 1 s."
+    _text: Howl 4
+  - _key: skill.packleader.boar.name
+    _text: Boar
+  - _key: skill.packleader.boar.description
+    _text: A jungle boar joins the pack. It hangs back and spits a toxic glob at
+      its target every 1.5 s; stones stop the glob.
+  - _key: skill.packleader.boar-2.name
+    _text: Boar 2
+  - _key: skill.packleader.boar-2.description
+    _text: The boar's globs deal 30% more damage.
+  - _key: skill.packleader.boar-3.name
+    _text: Boar 3
+  - _key: skill.packleader.boar-3.description
+    _text: The boar's globs slow what they hit by 25% for 1.5 s.
   - _key: skill.packleader.thick-pelts.name
-    _text: "Thick Pelts"
+    _text: Thick Pelts
   - _key: skill.packleader.thick-pelts.description
-    _text: "Pets take 10% less damage."
+    _text: Pets take 10% less damage.
   - _key: skill.packleader.thick-pelts-2.name
-    _text: "Thick Pelts 2"
+    _text: Thick Pelts 2
   - _key: skill.packleader.thick-pelts-2.description
-    _text: "Pets take 20% less damage."
+    _text: Pets take 20% less damage.
   - _key: skill.packleader.thick-pelts-3.name
-    _text: "Thick Pelts 3"
+    _text: Thick Pelts 3
   - _key: skill.packleader.thick-pelts-3.description
-    _text: "Pets take 30% less damage and can be rescued in 1 s."
+    _text: Pets take 30% less damage and can be rescued in 1 s.
   - _key: skill.packleader.hawk.name
-    _text: "Call Hawk"
+    _text: Call Hawk
   - _key: skill.packleader.hawk.description
-    _text: "Call a hawk to dive on marked enemies for 200% weapon damage and stun light enemies for 0.4 s."
+    _text: Call a hawk to dive on marked enemies for 200% weapon damage and stun
+      light enemies for 0.4 s.
   - _key: skill.packleader.hawk-2.name
-    _text: "Long Flight"
+    _text: Long Flight
   - _key: skill.packleader.hawk-2.description
-    _text: "The hawk stays for 2 s longer."
+    _text: The hawk stays for 2 s longer.
   - _key: skill.packleader.hawk-3.name
-    _text: "Relentless Hawk"
+    _text: Relentless Hawk
   - _key: skill.packleader.hawk-3.description
-    _text: "The hawk dives 0.5 s sooner between strikes, and Call Hawk recharges 4 s faster."
+    _text: The hawk dives 0.5 s sooner between strikes, and Call Hawk recharges 4
+      s faster.
   - _key: skill.packleader.frenzy.name
-    _text: "Frenzy"
+    _text: Frenzy
   - _key: skill.packleader.frenzy.description
-    _text: "Every standing animal attacks, runs and bites 30% harder for 8 s."
+    _text: Every standing animal attacks, runs and bites 30% harder for 8 s.
   - _key: skill.packleader.frenzy-2.name
-    _text: "Frenzy 2"
+    _text: Frenzy 2
   - _key: skill.packleader.frenzy-2.description
-    _text: "Frenzy lasts 10 s."
+    _text: Frenzy lasts 10 s.
   - _key: skill.packleader.frenzy-3.name
-    _text: "Frenzy 3"
+    _text: Frenzy 3
   - _key: skill.packleader.frenzy-3.description
-    _text: "Frenzy grants +40%, and its cooldown drops to 24 s."
+    _text: Frenzy grants +40%, and its cooldown drops to 24 s.

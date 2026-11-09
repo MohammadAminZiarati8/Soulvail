@@ -17,6 +17,9 @@ public sealed class PetViews : IDisposable
 {
     private readonly Dictionary<int, PetView> _active = new();
     private readonly ViewPool<PetView> _pool;
+    private readonly ViewPool<PetView> _boarPool;
+    private readonly HashSet<int> _boars = new();
+    private readonly Vector3 _boarScale;
     private readonly PlayerView _player;
     private readonly ArenaPool _arenas;
     private readonly Camera _camera;
@@ -24,6 +27,7 @@ public sealed class PetViews : IDisposable
     private readonly IDisposable _spawned;
     private readonly IDisposable _despawned;
     private readonly IDisposable _bit;
+    private readonly IDisposable _spat;
     private readonly IDisposable _roared;
     private readonly IDisposable _howled;
     private readonly IDisposable _frenzied;
@@ -44,7 +48,7 @@ public sealed class PetViews : IDisposable
 
     public PetViews(IObjectResolver resolver, PetView prefab, Transform parent, DomainEventHub hub,
         PlayerView player = null, ArenaPool arenas = null, Camera camera = null,
-        Func<int, float?> healthFraction = null)
+        Func<int, float?> healthFraction = null, PetView boarPrefab = null)
     {
         if (prefab == null)
         {
@@ -57,9 +61,24 @@ public sealed class PetViews : IDisposable
         _bodyScale = prefab.transform.localScale;
         _healthFraction = healthFraction;
         _pool = new ViewPool<PetView>(resolver, prefab, parent, prewarm: 1);
+        // BT-07b rule 3: the boar wears its own body; a class without one falls back to the hound's.
+        if (boarPrefab != null)
+        {
+            _boarScale = boarPrefab.transform.localScale;
+            _boarPool = new ViewPool<PetView>(resolver, boarPrefab, parent, prewarm: 1);
+        }
+
         _spawned = hub.Subscribe<PetSpawned>(OnSpawned);
         _despawned = hub.Subscribe<PetDespawned>(OnDespawned);
         _bit = hub.Subscribe<PetBit>(OnBit);
+        // The boar never bites; its spit plays the same short strike (Lunge on its controller).
+        _spat = hub.Subscribe<PetSpat>(evt =>
+        {
+            if (_active.TryGetValue(evt.PetId, out PetView view))
+            {
+                view.PlayBite();
+            }
+        });
         _roared = hub.Subscribe<PetRoared>(evt =>
         {
             if (_active.TryGetValue(evt.PetId, out PetView view))
@@ -158,6 +177,7 @@ public sealed class PetViews : IDisposable
         _spawned?.Dispose();
         _despawned?.Dispose();
         _bit?.Dispose();
+        _spat?.Dispose();
         _roared?.Dispose();
         _howled?.Dispose();
         _frenzied?.Dispose();
@@ -169,7 +189,9 @@ public sealed class PetViews : IDisposable
         _arrived?.Dispose();
         _ended?.Dispose();
         _active.Clear();
+        _boars.Clear();
         _pool?.Dispose();
+        _boarPool?.Dispose();
     }
 
     private void OnSpawned(PetSpawned evt)
@@ -186,8 +208,14 @@ public sealed class PetViews : IDisposable
             position += _arenaEntryPosition.Value - evt.PlayerPosition.Value.ToUnity();
         }
 
-        PetView view = _pool.Get();
-        view.transform.localScale = evt.IsLead ? _bodyScale : _bodyScale * 0.8f;
+        bool boar = evt.Kind == PetKind.Boar && _boarPool != null;
+        PetView view = boar ? _boarPool.Get() : _pool.Get();
+        if (boar)
+        {
+            _boars.Add(evt.Id);
+        }
+
+        view.transform.localScale = boar ? _boarScale : evt.IsLead ? _bodyScale : _bodyScale * 0.8f;
         view.Bind(evt.Id, position, evt.HealthFraction, _camera, _healthFraction);
         _active.Add(evt.Id, view);
         Spawned?.Invoke(view);
@@ -196,6 +224,18 @@ public sealed class PetViews : IDisposable
     private void OnDespawned(PetDespawned evt)
     {
         if (_active.Remove(evt.Id, out PetView view))
+        {
+            Release(evt.Id, view);
+        }
+    }
+
+    private void Release(int id, PetView view)
+    {
+        if (_boars.Remove(id))
+        {
+            _boarPool.Release(view);
+        }
+        else
         {
             _pool.Release(view);
         }
@@ -228,9 +268,9 @@ public sealed class PetViews : IDisposable
 
     private void Clear()
     {
-        foreach (PetView view in _active.Values)
+        foreach (KeyValuePair<int, PetView> pair in _active)
         {
-            _pool.Release(view);
+            Release(pair.Key, pair.Value);
         }
 
         _active.Clear();

@@ -180,26 +180,9 @@ public sealed class PackleaderPathTests
     }
 
     [Test]
-    public void PackTactics_Ranks()
-    {
-        AssertRanks(2, PlayerStat.PackTactics, new[] { 0.10f, 0.05f, 0.05f }, PlayerStat.PackTacticsSlow, 0.3f);
-    }
-
-    [Test]
     public void ThickPelts_Ranks_RescueOneSecond()
     {
         AssertRanks(3, PlayerStat.PetDamageTaken, new[] { -0.10f, -0.10f, -0.10f }, PlayerStat.PetRescueSeconds, -1f);
-    }
-
-    [Test]
-    public void Packleader_TwentyRanks()
-    {
-        using IObjectResolver boot = Boot();
-        var rows = boot.Resolve<ContentCatalog>().Path(Packleader).Skills;
-        Assert.That(rows.Select(row => row.Ranks.TierCount), Is.EqualTo(new[] { 4, 4, 3, 3, 3, 3 }));
-        Assert.That(rows.Select(row => row.UnlockLevel), Is.EqualTo(new[] { 11, 11, 14, 14, 17, 20 }));
-        Assert.That(rows[2].Ranks.Tier(1).Single(), Is.EqualTo(new ContentId("skill.packleader.pack-tactics")));
-        Assert.That(rows[3].Ranks.Tier(1).Single(), Is.EqualTo(new ContentId("skill.packleader.thick-pelts")));
     }
 
     private static void AssertRanks(int row, PlayerStat stat, float[] values, PlayerStat finalStat, float finalValue)

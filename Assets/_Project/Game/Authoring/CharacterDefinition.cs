@@ -261,6 +261,17 @@ namespace Soulvail.Game.Authoring
         [SerializeField] private float _petHeelDistance;
         [SerializeField] private PetView _petPrefab;
 
+        [Header("Boar")]
+        [Tooltip("BT-07b: the class's ranged second animal, joined by BoarCount. Empty id: none.")]
+        [SerializeField] private string _boarId;
+        [SerializeField] private float _boarMaxHp;
+        [SerializeField] private float _boarMoveSpeed;
+        [SerializeField] private float _boarSpitDamage;
+        [SerializeField] private float _boarSpitInterval;
+        [SerializeField] private float _boarReach;
+        [SerializeField] private float _boarHeelDistance;
+        [SerializeField] private PetView _boarPrefab;
+
         [Tooltip("The tree node the HUD draws this class's volley as (UI-01e): its icon heads the " +
                  "auto-cast row once a node has given the volley. The Ranger's is Volley. Empty is " +
                  "not an error: a class with no volley has no cell to draw, and one with a volley " +
@@ -452,7 +463,12 @@ namespace Soulvail.Game.Authoring
                     pet: string.IsNullOrEmpty(_petId)
                         ? null
                         : new PetSpec(new ContentId(_petId), _petMaxHp, _petMoveSpeed,
-                            _petBiteDamage, _petBiteInterval, _petReach, _petHeelDistance));
+                            _petBiteDamage, _petBiteInterval, _petReach, _petHeelDistance),
+                    boar: string.IsNullOrEmpty(_boarId)
+                        ? null
+                        : new PetSpec(new ContentId(_boarId), _boarMaxHp, _boarMoveSpeed,
+                            _boarSpitDamage, _boarSpitInterval, _boarReach, _boarHeelDistance,
+                            isRanged: true));
             }
             catch (ArgumentException inner)
             {
@@ -488,7 +504,7 @@ namespace Soulvail.Game.Authoring
             _portrait,
             string.IsNullOrEmpty(_attackNameKey) ? default : new LocKey(_attackNameKey),
             string.IsNullOrEmpty(_attackDescriptionKey) ? default : new LocKey(_attackDescriptionKey),
-            _volleyProjectile, _petPrefab);
+            _volleyProjectile, _petPrefab, _boarPrefab);
 
         /// <summary>Only filled cards cross into core as available paths.</summary>
         private IReadOnlyList<ContentId> PathIds()

@@ -248,7 +248,36 @@ public static class SaveMigrations
                 current.OrdealIds);
         }
 
+        if (version < 8)
+        {
+            // v8: BT-07b put Boar in Pack Tactics' Lv-14 slot. Same three ranks, new ids, so a run
+            // holding Pack Tactics ranks loads holding the same Boar ranks.
+            current = new RunSnapshot(8, current.ModeId, current.CharacterId, current.Seed,
+                current.StageIndex, current.Random, current.PlayerHp, current.PlayerShield,
+                current.RunTime, current.WrittenAt, current.Level, current.Xp,
+                current.PendingLevelUps, Boared(current.TakenNodeIds), Boared(current.ManualSkillIds),
+                current.Economy, Boared(current.BanishedNodeIds), Boared(current.PactedNodeIds),
+                current.OrdealIds);
+        }
+
         return current;
+    }
+
+    private static IReadOnlyList<ContentId> Boared(IReadOnlyList<ContentId> ids)
+    {
+        if (ids is null)
+        {
+            return ids;
+        }
+
+        var renamed = new ContentId[ids.Count];
+        for (int i = 0; i < ids.Count; i++)
+        {
+            ContentId id = ids[i];
+            renamed[i] = id == PackTactics ? Boar : id == PackTactics2 ? Boar2 : id == PackTactics3 ? Boar3 : id;
+        }
+
+        return renamed;
     }
 
     private static IReadOnlyList<ContentId> Frenzied(IReadOnlyList<ContentId> ids)
@@ -432,6 +461,12 @@ public static class SaveMigrations
     private static readonly ContentId Frenzy = new("skill.packleader.frenzy");
     private static readonly ContentId Frenzy2 = new("skill.packleader.frenzy-2");
     private static readonly ContentId Frenzy3 = new("skill.packleader.frenzy-3");
+    private static readonly ContentId PackTactics = new("skill.packleader.pack-tactics");
+    private static readonly ContentId PackTactics2 = new("skill.packleader.pack-tactics-2");
+    private static readonly ContentId PackTactics3 = new("skill.packleader.pack-tactics-3");
+    private static readonly ContentId Boar = new("skill.packleader.boar");
+    private static readonly ContentId Boar2 = new("skill.packleader.boar-2");
+    private static readonly ContentId Boar3 = new("skill.packleader.boar-3");
 
     private static readonly IReadOnlyList<ContentId> GrandfatheredCharacterIds =
         Array.AsReadOnly(new[] { new ContentId("character.gravecaller") });

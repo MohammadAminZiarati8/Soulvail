@@ -210,6 +210,8 @@ namespace Soulvail.Game.Composition
         [SerializeField] private LineRenderer _swapStreakPrefab;
         [SerializeField] private LineRenderer _roarRingPrefab;
         [SerializeField] private LineRenderer _howlPulsePrefab;
+        [Tooltip("BT-07b: the boar's glob, Prefabs/Vfx/PetGlob. Empty: globs fly unseen.")]
+        [SerializeField] private GameObject _petGlobPrefab;
         [SerializeField] private HawkView _hawkPrefab;
         [SerializeField] private AxeView _axePrefab;
         [SerializeField] private RescueRingView _rescueRingPrefab;
@@ -694,7 +696,8 @@ namespace Soulvail.Game.Composition
                 ContentCatalog catalog = resolver.Resolve<ContentCatalog>();
                 ContentId characterId = RunCharacter.Choose(resolver.Resolve<PendingRun>(), catalog,
                     resolver.Resolve<ClassSelectRoster>());
-                PetView prefab = resolver.Resolve<CharacterLookBook>().For(characterId).Pet;
+                CharacterLook look = resolver.Resolve<CharacterLookBook>().For(characterId);
+                PetView prefab = look.Pet;
                 DomainEventHub hub = resolver.Resolve<DomainEventHub>();
                 if (prefab != null && _rescueRingPrefab != null &&
                     catalog.TryGetCharacter(characterId, out CharacterSpec character) && character.Pet is PetSpec pet)
@@ -706,7 +709,8 @@ namespace Soulvail.Game.Composition
 
                 IRunSession session = resolver.Resolve<IRunSession>();
                 return new PetViews(resolver, prefab, transform, hub,
-                    resolver.Resolve<PlayerView>(), arenas, _camera, id => session.State?.PetHealthFraction(id));
+                    resolver.Resolve<PlayerView>(), arenas, _camera, id => session.State?.PetHealthFraction(id),
+                    look.Boar);
             }, Lifetime.Scoped);
             builder.Register<SnapshotBuilder>(Lifetime.Scoped);
 
@@ -902,6 +906,18 @@ namespace Soulvail.Game.Composition
             builder.RegisterEntryPoint<HowlPulseView>(Lifetime.Scoped)
                 .WithParameter("prefab", _howlPulsePrefab)
                 .WithParameter("parent", _decalRoot);
+
+            if (_petGlobPrefab != null)
+            {
+                builder.RegisterEntryPoint<PetGlobView>(Lifetime.Scoped)
+                    .WithParameter("prefab", _petGlobPrefab)
+                    .WithParameter("parent", _projectileParent)
+                    .WithParameter("readFlight", resolver =>
+                    {
+                        IRunSession session = resolver.Resolve<IRunSession>();
+                        return (PetGlobView.ReadFlight)(() => session.State is { } state ? state.InFlightGlobs : default);
+                    });
+            }
 
             // The cover raycasts (M2-11b). Sized to the snapshot's capacity for NavPathSense's
             // reason — the cache is keyed by enemy id and evicts only what stopped asking — and

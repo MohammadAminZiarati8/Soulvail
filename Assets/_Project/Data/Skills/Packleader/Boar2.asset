@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 11f96711bcbe82a42abe9278aaa8aad3, type: 3}
-  m_Name: PackTactics
+  m_Name: Boar2
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.SkillDefinition
-  _id: skill.packleader.pack-tactics
-  _nameKey: skill.packleader.pack-tactics.name
-  _descriptionKey: skill.packleader.pack-tactics.description
-  _kind: 0
+  _id: skill.packleader.boar-2
+  _nameKey: skill.packleader.boar-2.name
+  _descriptionKey: skill.packleader.boar-2.description
+  _kind: 2
   _effects:
-  - {fileID: 11400000, guid: 28f37f8d2a195f579aba7d9da1f86c9a, type: 2}
+  - {fileID: 11400000, guid: 7e9788b1397af458b4a14123f0b403c7, type: 2}
   _cooldown: 8
   _trigger: []
   _onCast: []
-  _parent: {fileID: 0}
+  _parent: {fileID: 11400000, guid: 1affa7259bf4bbbf546fdcfd39131a68, type: 2}
   _icon: {fileID: 21300000, guid: 5fd6f60adec18a442a1a52a17a998509, type: 3}
   _hasPact: 0
   _pactEffects: []

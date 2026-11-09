@@ -98,6 +98,14 @@ MonoBehaviour:
   _petReach: 1.4
   _petHeelDistance: 1.5
   _petPrefab: {fileID: 1342280564543246559, guid: c36791b06fa96a2468ad7e93d624ec53, type: 3}
+  _boarId: pet.boar
+  _boarMaxHp: 60
+  _boarMoveSpeed: 3.6
+  _boarSpitDamage: 6
+  _boarSpitInterval: 1.5
+  _boarReach: 1.4
+  _boarHeelDistance: 1.5
+  _boarPrefab: {fileID: 4272007423656460433, guid: de21702b64503ac4da2a6a74e147fe77, type: 3}
   _volleyNode: {fileID: 0}
   _emblem: {fileID: 0}
   _spaceIcon: {fileID: 0}

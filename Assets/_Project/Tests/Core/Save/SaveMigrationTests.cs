@@ -70,7 +70,7 @@ public sealed class SaveMigrationTests
     }
 
     [Test]
-    public void Gate_AcceptsOneToSevenRefusesEight()
+    public void Gate_AcceptsOneToEightRefusesNine()
     {
         // The numbers written out, which the four rows around this one deliberately cannot say:
         // they are all phrased against CurrentVersion, so they would keep passing unchanged if the
@@ -84,17 +84,18 @@ public sealed class SaveMigrationTests
         Assert.That(SaveMigrations.CanReadRun(5), Is.True);
         Assert.That(SaveMigrations.CanReadRun(6), Is.True);
         Assert.That(SaveMigrations.CanReadRun(7), Is.True);
-        Assert.That(SaveMigrations.CanReadRun(8), Is.False);
+        Assert.That(SaveMigrations.CanReadRun(8), Is.True);
+        Assert.That(SaveMigrations.CanReadRun(9), Is.False);
 
         Assert.That(SaveMigrations.OldestSupportedRunVersion, Is.EqualTo(1));
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(7));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(8));
 
         // And a version above the current one is refused at the gate *and* at the migration, which
         // are two different answers a downgraded build has to get right: reading a v5 document as
         // though the fields it does not know were absent would silently delete them on the next
         // write. `ProfileGate_AcceptsOneToFourRefusesFive`'s pairing, for this format.
         Assert.Throws<NotSupportedException>(
-            () => SaveMigrations.MigrateRun(8, SnapshotAt(RunSnapshot.CurrentVersion)));
+            () => SaveMigrations.MigrateRun(9, SnapshotAt(RunSnapshot.CurrentVersion)));
     }
 
     [Test]
@@ -170,7 +171,7 @@ public sealed class SaveMigrationTests
         // what a chain whose later steps read `decoded` instead of `current` would produce, and
         // landing at 4 with an earlier step's fields unwritten is what one whose steps ran out of
         // order would — so this single number is load-bearing three times over.
-        Assert.That(migrated.Version, Is.EqualTo(7));
+        Assert.That(migrated.Version, Is.EqualTo(8));
 
         // A v1 run was unlevelled by construction, so its v2 form is the opening state of a run.
         Assert.That(migrated.Level, Is.EqualTo(1));
@@ -284,7 +285,7 @@ public sealed class SaveMigrationTests
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(5, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(7));
+        Assert.That(migrated.Version, Is.EqualTo(8));
         Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, swiftHands }));
         Assert.That(
             migrated.ManualSkillIds,
@@ -319,13 +320,48 @@ public sealed class SaveMigrationTests
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(6, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(7));
+        Assert.That(migrated.Version, Is.EqualTo(8));
         Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, frenzy[0], frenzy[1], frenzy[2] }));
         Assert.That(
             migrated.ManualSkillIds,
             Is.EqualTo(new[] { frenzy[0], default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) }));
         Assert.That(migrated.BanishedNodeIds, Is.EqualTo(new[] { frenzy[2] }));
         Assert.That(migrated.PactedNodeIds, Is.EqualTo(new[] { Reprisal, frenzy[0] }));
+        Assert.That(migrated.OrdealIds, Is.EqualTo(new[] { Thinblood }));
+        Assert.That(migrated.Level, Is.EqualTo(decoded.Level));
+    }
+
+    [Test]
+    public void Migrate_PackTacticsRanks_BecomeBoar()
+    {
+        // BT-07b rule 5: Boar took Pack Tactics' slot rank for rank, so a v7 run holding Pack
+        // Tactics ranks anywhere loads holding the same Boar ranks; every other id is left alone.
+        ContentId[] tactics =
+        {
+            new("skill.packleader.pack-tactics"), new("skill.packleader.pack-tactics-2"),
+            new("skill.packleader.pack-tactics-3"),
+        };
+        ContentId[] boar =
+        {
+            new("skill.packleader.boar"), new("skill.packleader.boar-2"), new("skill.packleader.boar-3"),
+        };
+        RunSnapshot decoded = SnapshotAt(
+            7,
+            takenNodeIds: new[] { Bulwark, tactics[0], tactics[1], tactics[2] },
+            manualSkillIds: new[] { tactics[0], default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) },
+            banishedNodeIds: new[] { tactics[2] },
+            pactedNodeIds: new[] { Reprisal, tactics[0] },
+            ordealIds: new[] { Thinblood });
+
+        RunSnapshot migrated = SaveMigrations.MigrateRun(7, decoded);
+
+        Assert.That(migrated.Version, Is.EqualTo(8));
+        Assert.That(migrated.TakenNodeIds, Is.EqualTo(new[] { Bulwark, boar[0], boar[1], boar[2] }));
+        Assert.That(
+            migrated.ManualSkillIds,
+            Is.EqualTo(new[] { boar[0], default(ContentId), Consecrate, default(ContentId), default(ContentId), default(ContentId) }));
+        Assert.That(migrated.BanishedNodeIds, Is.EqualTo(new[] { boar[2] }));
+        Assert.That(migrated.PactedNodeIds, Is.EqualTo(new[] { Reprisal, boar[0] }));
         Assert.That(migrated.OrdealIds, Is.EqualTo(new[] { Thinblood }));
         Assert.That(migrated.Level, Is.EqualTo(decoded.Level));
     }
@@ -349,7 +385,7 @@ public sealed class SaveMigrationTests
 
         // **4 rather than 3 as of M6-01b**: a v2 document walks the v2 → v3 step this row is about
         // and then the v3 → v4 one, which is what a chain being a chain means.
-        Assert.That(migrated.Version, Is.EqualTo(7));
+        Assert.That(migrated.Version, Is.EqualTo(8));
 
         // A v2 run had no loadout by construction, so its v3 form is four empty slots — every skill
         // on Auto, which is also CC §6.1's default (rule 5).
@@ -396,7 +432,7 @@ public sealed class SaveMigrationTests
 
         RunSnapshot migrated = SaveMigrations.MigrateRun(3, decoded);
 
-        Assert.That(migrated.Version, Is.EqualTo(7));
+        Assert.That(migrated.Version, Is.EqualTo(8));
 
         // A v3 run had no economy by construction — none of the mechanics existed — so its v4 form
         // is `default(RunEconomy)` and three empty lists, which is the opening state of a fresh run
@@ -519,7 +555,7 @@ public sealed class SaveMigrationTests
         // And the two formats still version independently: they read 4 and 4 as of M6-09a, which
         // is a coincidence of arithmetic again rather than a rule — M6-01b bumped the run alone and
         // this task bumps the profile alone.
-        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(7));
+        Assert.That(RunSnapshot.CurrentVersion, Is.EqualTo(8));
     }
 
     [Test]

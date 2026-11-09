@@ -55,7 +55,8 @@ public readonly struct CharacterLook
         LocKey attackNameKey = default,
         LocKey attackDescriptionKey = default,
         ProjectileView volleyProjectile = null,
-        PetView pet = null)
+        PetView pet = null,
+        PetView boar = null)
     {
         Body = body;
         Projectile = projectile;
@@ -69,6 +70,7 @@ public readonly struct CharacterLook
         AttackDescriptionKey = attackDescriptionKey;
         VolleyProjectile = volleyProjectile;
         Pet = pet;
+        Boar = boar;
     }
 
     /// <summary>The body prefab, or null for the run's default body.</summary>
@@ -79,6 +81,9 @@ public readonly struct CharacterLook
     public GameObject Body { get; }
 
     public PetView Pet { get; }
+
+    /// <summary>BT-07b: the boar's body, or null for a class with no boar (it then wears <see cref="Pet"/>).</summary>
+    public PetView Boar { get; }
 
     /// <summary>The shot prefab, or null for the run's default shot.</summary>
     /// <remarks>

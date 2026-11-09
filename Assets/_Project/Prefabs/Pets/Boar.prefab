@@ -9,6 +9,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8880415343884825557}
+  - component: {fileID: 7396807552966601443}
+  - component: {fileID: 4272007423656460433}
   m_Layer: 0
   m_Name: Boar
   m_TagString: Untagged
@@ -32,6 +34,34 @@ Transform:
   - {fileID: 7723626806020441847}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7396807552966601443
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7629042470966942313}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f7555f5c6e74f04892ba349a1c17c28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PetHealthBar
+  _height: 1.15
+  _icons: {fileID: 11400000, guid: 6c0230d80ef150d41942d581ba0c2384, type: 2}
+--- !u!114 &4272007423656460433
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7629042470966942313}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f59729461b44d17b5ea887541b72d7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.PetView
+  _animator: {fileID: 4454052867798817933}
+  _healthBar: {fileID: 7396807552966601443}
 --- !u!1001 &7828783193233154332
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -86,11 +116,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3321539563720213755, guid: 33ee33d975606ab49be692c5bceabcc6, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
-      value:
+      value: 
       objectReference: {fileID: 2100000, guid: 74ec551bdd635af40b090775c68e5fb1, type: 2}
     - target: {fileID: 5866666021909216657, guid: 33ee33d975606ab49be692c5bceabcc6, type: 3}
       propertyPath: m_Controller
-      value:
+      value: 
       objectReference: {fileID: 9100000, guid: 7f331ac5224d4c14bcf8463f70bf2303, type: 2}
     - target: {fileID: 5866666021909216657, guid: 33ee33d975606ab49be692c5bceabcc6, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -101,6 +131,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 33ee33d975606ab49be692c5bceabcc6, type: 3}
+--- !u!95 &4454052867798817933 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 33ee33d975606ab49be692c5bceabcc6, type: 3}
+  m_PrefabInstance: {fileID: 7828783193233154332}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &7723626806020441847 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 33ee33d975606ab49be692c5bceabcc6, type: 3}

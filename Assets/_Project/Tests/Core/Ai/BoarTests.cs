@@ -126,7 +126,7 @@ public sealed class BoarTests
     {
         Vector3 player = Vector3.UnitX * -6f;
         PetAgent boar = JoinBoarAlone();
-        EnemyAgent enemy = _enemies.Spawn(EnemyId, Vector3.UnitX * 4f);
+        _enemies.Spawn(EnemyId, Vector3.UnitX * 4f);
 
         for (int i = 0; i <= 3; i++)
         {
@@ -134,8 +134,8 @@ public sealed class BoarTests
         }
 
         Assert.That(_events.Count<GlobLanded>(), Is.EqualTo(1));
-        Assert.That(enemy.Blackboard.LastBitBy, Is.EqualTo(boar.Id));
-        Assert.That(enemy.Blackboard.LastBitAt, Is.EqualTo(3 * Dt).Within(0.0001f));
+        // The bite mark is internal to core; the hunt below is its public consequence.
+        Assert.That(_events.Of<GlobLanded>()[0].Hit, Is.True);
 
         _enemies.Ingest(new WorldSnapshot(Capacity) { PlayerPosition = player }, pets: _pets, now: 3 * Dt);
         Assert.That(_pets.HuntersOf(boar.Id), Is.EqualTo(1));

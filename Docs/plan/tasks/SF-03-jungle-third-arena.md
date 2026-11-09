@@ -26,7 +26,7 @@ None — content only (`arena.jungle.grove`).
 ## Behaviour
 
 1. Roster: Hollow 1–4, Grove from 2, Clearing from 5, all open-ended past their first stage except Hollow.
-2. The Grove is 44 × 28 like the Clearing, so every boss's stones and Thornheart's 14 m ring fit. Gate 1.5 m in from the east wall, start 4 m in from the west wall, entry 0.5 m in from the west wall (SF-02), all on the centre line; open (no cover pillars), GD §7.2.
+2. The Grove is 36 × 36 like the Clearing (`_halfSize` 18, 18), so every boss's stones and Thornheart's 14 m ring fit. Square, run south to north, start, gate and entry (SF-02) placed as in the Clearing; open (no cover pillars), GD §7.2.
 3. It must look like another place at first glance: KayKit Jungle dressing (a different ground tint and canopy edge from the Clearing), and no new models.
 
 ## Tests
@@ -35,7 +35,7 @@ None — content only (`arena.jungle.grove`).
 |---|---|
 | `Jungle_NoStageRepeatsTheLast` | Jungle asset, seeds 1–200 / `ArenaFor(s)` vs `ArenaFor(s−1)`, s 2–30 / never equal |
 | `Jungle_EveryRosteredArenaIsShipped` | roster / `_arenaPrefabs` / each id found |
-| `Grove_IsLandscapeAndValid` | prefab / `DescribeFaults` / empty, 44 × 28 |
+| `Grove_IsValid` | prefab / `DescribeFaults` / empty, `_halfSize` 18, 18 |
 
 ## Manual verification (Editor / device)
 

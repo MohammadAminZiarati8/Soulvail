@@ -9,9 +9,9 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SF-01** — slow-mo clear, gate beam and trail. |
+| **Last merged** | LS-02/03 reverted (device-only landscape); **SF-01** clear guide. |
 | **Next task** | SF-02 on go. |
-| **Verified** | EditMode 6264 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Verified** | EditMode 6242 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

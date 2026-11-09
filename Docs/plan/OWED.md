@@ -560,3 +560,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 2. [Editor] Idle for 4 s at the gate. Check that both guides pulse faster and brighter, then calm when you move.
 3. [Editor] Level up on the last kill. Check that the tree freezes the run and the slow-motion beat finishes after the pick.
 4. [Device] Check the guide is readable in landscape.
+
+- **LS-02 / LS-03 reverted (2026-11-09).** Their arena checks (wide Hollow/Clearing, Descent and Courtyard west-to-east) are void. Play stage 1 and stage 5: the Hollow (24 × 24) and Clearing (36 × 36) are square again, start south, gate north, and the landscape camera stops 2 m past their walls.

@@ -233,7 +233,7 @@ Design and rationale in [Characters.md §4](Characters.md); full implementation 
 
 ### 7.1 Anatomy of a stage
 
-1. **Arrival** (≥ 2s) — a quick cyan-white flash out of the last gate; the hero appears in the west doorway and walks in on their own, the door drops shut behind them, the boundary seals, and after a short beat (1s) the first wave telegraphs. Arenas never repeat the previous stage's (SF-02, SF-03).
+1. **Arrival** (≥ 2s) — a quick cyan-white flash out of the last gate; the hero appears in the doorway opposite the Gate and walks in on their own, the door drops shut behind them, the boundary seals, and after a short beat (1s) the first wave telegraphs. Arenas never repeat the previous stage's (SF-02, SF-03).
 2. **Waves** (2–5) — enemies spawn from ground portals with a 0.8s telegraph ring. Never within 6m of the player.
 3. **Clear** — the last kill plays ~1s of slow motion; barrier drops, remaining Essence auto-collects, the **Gate** wakes with a tall cyan beam seen from anywhere in the arena and a glowing floor trail from the hero to it. Standing still ~4s makes both pulse harder (SF-01). All cyan, never gold (§16.4).
 4. **Sanctum** (§13) — appears after every stage. Untimed. This is the breathing room, and where the run's identity is decided.
@@ -241,8 +241,8 @@ Design and rationale in [Characters.md §4](Characters.md); full implementation 
 
 ### 7.2 Arena design rules
 
-- **Wider than deep**, for a landscape screen: roughly **44 m × 28 m**, a small room **30 m × 22 m**; bounded, flat or gently tiered. Run **west to east**: the player enters 4 m in from the west wall, the Gate stands 1.5 m in from the east wall, both on the centre line (LS-02).
-- The camera follows but **stops 2 m past the walls**; on any axis the arena fits the screen, it does not move (LS-01). At 19.5:9 a small room is framed whole — the fixed whole-arena camera, reached through arena size rather than a second camera.
+- Roughly **36m × 36m** (a small room 24m × 24m), bounded, flat or gently tiered, run **south to north**: the player starts at the south end, the Gate stands at the north. Landscape is the phone's orientation only; it does not change the arenas' shape (owner, 2026-11-09).
+- The camera follows but **stops 2 m past the walls**; on any axis the arena fits the screen, it does not move (LS-01).
 - **3–6 cover pillars** placed off-center, or **none**: an open arena (the Jungle's are, by the owner's call, 2026-10-26). One or two is a half-built room. Cover blocks enemy projectiles but not pathing.
 - No dead ends. The player must always have a circle-strafe route.
 - Camera never collides with geometry. No ceilings, no corridors.

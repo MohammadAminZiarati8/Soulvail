@@ -142,11 +142,11 @@ _No milestone. The owner is setting the next direction._
 
 ### Landscape
 
-**Landscape** (owner, 2026-11-06; scope ruled 2026-11-09: orientation, camera and arenas only, no menu or UI; design [GD §5.2, §7.2](../GameDesign.md)). Arenas become wide rectangles run west → east, and the follow camera stops at their walls — on a 19.5:9 phone the Hollow is framed whole. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from LS-01 (the Clearing still square until LS-02).
+**Landscape** (owner, 2026-11-06; scope ruled 2026-11-09: the device orientation and the camera only, no menu or UI; design [GD §5.2, §7.2](../GameDesign.md)). The phone turns sideways; the arenas keep their square, south-to-north shape, and the follow camera stops at their walls. LS-02 and LS-03 widened the arenas on a misread of "landscape" and were reverted the same day (owner, 2026-11-09).
 
 - [x] LS-01 — Landscape orientation; the camera stays within 2 m of the arena's walls (M)
-- [x] LS-02 — The Jungle's arenas go wide: Hollow 30 × 22, Clearing 44 × 28, west to east (M)
-- [x] LS-03 — Descent and Courtyard go wide, west to east; all shipped arenas covered by test (M)
+- [x] ~~LS-02 — The Jungle's arenas go wide~~ — reverted: landscape is the device only
+- [x] ~~LS-03 — Descent and Courtyard go wide~~ — reverted: landscape is the device only
 
 **For the UI rework** — listed only, never specced or fixed under LS. What will look wrong or break once the phone is sideways:
 
@@ -168,7 +168,7 @@ _No milestone. The owner is setting the next direction._
 **Stage flow** (owner, 2026-11-09; world side only, no menu or UI; design [GD §7.1](../GameDesign.md)). After a clear the way on must be obvious, and an arrival must read as a new stage. All cyan, never gold; readable at first look on a phone. Core decides every beat (slow motion, idle hint, walk-in, seal, spawn delay, arena choice); Unity renders. The UI pieces are listed under Landscape › *For the UI rework*. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from SF-01.
 
 - [x] SF-01 — Clear guide: ~1 s slow-mo beat, tall gate beam, floor trail, idle pulse (M)
-- [ ] [SF-02](tasks/SF-02-entry-transition.md) — Entry: cyan-white flash, walk-in from the west door, door shuts, a beat before waves (M)
+- [ ] [SF-02](tasks/SF-02-entry-transition.md) — Entry: cyan-white flash, walk-in through the door opposite the gate, door shuts, a beat before waves (M)
 - [ ] [SF-03](tasks/SF-03-jungle-third-arena.md) — The Grove: a third Jungle arena, so no stage repeats the last (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

@@ -295,13 +295,11 @@ public sealed class ThornheartViewTests
             var floor = new Bounds(surface.position + arenas.Active.Surface.navMeshData.sourceBounds.center,
                 arenas.Active.Surface.navMeshData.sourceBounds.size);
 
-            Assert.That(ThornheartBehaviour.RingStartRadius + ThornheartView.BandWidth, Is.LessThan(Mathf.Min(floor.extents.x, floor.extents.z)),
+            Assert.That(ThornheartBehaviour.RingStartRadius + ThornheartView.BandWidth, Is.LessThan(Mathf.Min(floor.extents.x, floor.extents.z) - 1f),
                 "Round a centred boss the ring opens on the floor, inside the walls, where a player can see it.");
 
             // Off-centre towards +x, so the ring overruns the east wall but not the west.
-            float distanceFromWall = ThornheartBehaviour.RingRadius - 1f;
-            float nearEastWall = floor.max.x - distanceFromWall;
-            _body.transform.position = new Vector3(nearEastWall, 0f, 0f);
+            _body.transform.position = new Vector3(10f, 0f, 0f);
             _hub.Publish(new StrangleRing(Id, ThornheartBehaviour.RingStartRadius, ThornheartBehaviour.RingRadius, 6f));
             _view.Step(7f);
 
@@ -318,11 +316,10 @@ public sealed class ThornheartViewTests
             Assert.That(vertices.Min(v => at.x + v.x), Is.EqualTo(floor.min.x).Within(1e-3f), "And the west wall.");
             Assert.That(Radii()[West * 4], Is.EqualTo(ThornheartBehaviour.RingRadius).Within(1e-3f), "The open side keeps the core radius.");
 
-            float nearWestWall = floor.min.x + distanceFromWall;
-            _body.transform.position = new Vector3(nearWestWall, 0f, 0f);
+            _body.transform.position = new Vector3(-10f, 0f, 0f);
             _view.Step(0.1f);
-            Assert.That(_view.Ring.transform.position.x, Is.EqualTo(nearWestWall), "It follows the boss.");
-            Assert.That(_view.Ring.GetComponent<MeshFilter>().sharedMesh.vertices.Min(v => nearWestWall + v.x),
+            Assert.That(_view.Ring.transform.position.x, Is.EqualTo(-10f), "It follows the boss.");
+            Assert.That(_view.Ring.GetComponent<MeshFilter>().sharedMesh.vertices.Min(v => -10f + v.x),
                 Is.EqualTo(floor.min.x).Within(1e-3f), "And clips again where the boss now stands.");
         }
         finally

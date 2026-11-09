@@ -81,7 +81,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BT-07a — The boar in core: a ranged animal that spits (M)
 - [x] BT-07b — The boar drawn and authored at Lv 14 (M)
 - [x] BT-08 — Bond Barrier: every swap shields him; Quick Swap shoves (M)
-- [ ] [BT-09a](tasks/BT-09a-axe-pair-and-swap-shove.md) — The axe pair closes on its target; the swap shoves nobody (S)
+- [x] BT-09a — The axe pair closes on its target; the swap shoves nobody (S)
 - [ ] [BT-09b](tasks/BT-09b-guard-judges-the-source.md) — A frontal guard judges where a pet's hit comes from (M)
 
 - [ ] AM — Axe Master, the second path (titles only; specced on the owner's word)

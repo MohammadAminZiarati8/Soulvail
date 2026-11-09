@@ -523,3 +523,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 2. **[Editor]** Swap into Frogs: HP holds until the bubble pops (a flash and swell); once it times out it fades, no pop.
 3. **[Editor]** With Quick Swap the pop pushes Frogs ~2 m, the Warlord not at all.
 4. **[Editor]** Bubble size/height on his body reads right at phone size (child `BondBubble`, sized to the Bulwark shell).
+
+### BT-09a — Axe pair closes; swap harmless
+
+1. **[Editor]** Beastmaster vs a Frog at 6–8 m: every throw's two axes both hit it on the way out (two hit numbers per throw).
+2. **[Editor]** Swap through a pack: no one is hit or pushed. With Quick Swap, a barrier break still shoves Frogs ~2 m.

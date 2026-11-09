@@ -97,6 +97,14 @@ public sealed class BeastmasterTreeTests
     }
 
     [Test]
+    public void Beastmaster_Swap_DealsNothing()
+    {
+        CharacterSpec beastmaster = Load<CharacterDefinition>("Data/Characters/Beastmaster.asset").ToSpec();
+        Assert.That(beastmaster.MovementSkill.Damage, Is.Zero, "Wild Swap hurts no one it passes (BT-09a rule 5).");
+        Assert.That(beastmaster.MovementSkill.Knockback, Is.Zero, "…and shoves no one.");
+    }
+
+    [Test]
     public void Tree_ThreeBranches_ThreeTiers_NineNodes()
     {
         SkillTreeDefinition definition = Load<SkillTreeDefinition>("Data/Trees/Beastmaster.asset");

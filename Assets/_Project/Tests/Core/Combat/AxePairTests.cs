@@ -16,7 +16,7 @@ using Soulvail.Tests.Core.Support;
 
 namespace Soulvail.Tests.Core.Combat;
 
-/// <summary>BT-01: two axes at once, attack speed sets the cadence, Swift Hands.</summary>
+/// <summary>BT-01: two axes at once, attack speed sets the cadence, Swift Hands. BT-09a: the pair closes on its target.</summary>
 [TestFixture]
 public sealed class AxePairTests
 {
@@ -52,7 +52,7 @@ public sealed class AxePairTests
 
         IReadOnlyList<AxeThrown> thrown = events.Of<AxeThrown>();
         Assert.That(thrown, Has.Count.EqualTo(2));
-        float spread = AxeSystem.PairSpreadDegrees * MathF.PI / 180f;
+        float spread = MathF.Asin(AxeSystem.PairCloseOffset / 3f);
         float side = Range * MathF.Sin(spread);
         float ahead = Range * MathF.Cos(spread);
         Assert.That(MathF.Abs(thrown[0].TurnPoint.X), Is.EqualTo(side).Within(1e-4f));
@@ -60,6 +60,72 @@ public sealed class AxePairTests
         Assert.That(thrown[0].TurnPoint.Z, Is.EqualTo(ahead).Within(1e-4f));
         Assert.That(thrown[1].TurnPoint.Z, Is.EqualTo(ahead).Within(1e-4f));
         Assert.That(axes.InHand, Is.Zero);
+    }
+
+    [Test]
+    public void ThrowPair_FarTarget_BothHitIt()
+    {
+        var events = new RecordingEvents();
+        (PlayerCombat player, _, EnemySystem enemies, AxeSystem axes) = Build(events);
+        EnemyAgent frog = enemies.Registry.Spawn(Husk(100000f), new Vector3(0f, 0f, 7f));
+
+        Assert.That(axes.TryThrowPair(Vector3.Zero, frog.Position, Damage, 0f), Is.EqualTo(2));
+        IReadOnlyList<AxeThrown> thrown = events.Of<AxeThrown>();
+        float now = 0f;
+        while (events.Count<AxeTurned>() < 2 && now < 5f)
+        {
+            now += Dt;
+            axes.Tick(Dt, now, Vector3.Zero, player, enemies, null);
+        }
+
+        int outHits = 0;
+        foreach (AxeHit hit in events.Of<AxeHit>())
+        {
+            if (hit.Pass == AxePass.Out && hit.EnemyId == frog.Id)
+            {
+                outHits++;
+            }
+        }
+
+        Assert.That(thrown, Has.Count.EqualTo(2));
+        Assert.That(outHits, Is.EqualTo(2), "Both axes reach the Frog on the way out.");
+    }
+
+    [Test]
+    public void ThrowPair_FarTarget_LinesPassWithinOffset()
+    {
+        var events = new RecordingEvents();
+        (_, _, _, AxeSystem axes) = Build(events);
+        Vector3 hand = new(1f, 0f, -2f);
+        Vector3 target = hand + new Vector3(4.2f, 0.7f, 5.6f);
+
+        axes.TryThrowPair(hand, target, Damage, 0f);
+
+        foreach (AxeThrown thrown in events.Of<AxeThrown>())
+        {
+            var from = new Vector2(thrown.From.X, thrown.From.Z);
+            Vector2 line = Vector2.Normalize(new Vector2(thrown.TurnPoint.X, thrown.TurnPoint.Z) - from);
+            Vector2 toTarget = new Vector2(target.X, target.Z) - from;
+            float off = MathF.Abs((line.X * toTarget.Y) - (line.Y * toTarget.X));
+            Assert.That(off, Is.LessThanOrEqualTo(AxeSystem.PairCloseOffset + 1e-4f));
+            Assert.That(off, Is.EqualTo(AxeSystem.PairCloseOffset).Within(1e-3f), "Spread, not stacked.");
+        }
+    }
+
+    [Test]
+    public void ThrowPair_NearTarget_KeepsFullSpread()
+    {
+        var events = new RecordingEvents();
+        (_, _, _, AxeSystem axes) = Build(events);
+
+        axes.TryThrowPair(Vector3.Zero, 0.2f * Vector3.UnitZ, Damage, 0f);
+
+        float spread = AxeSystem.PairSpreadDegrees * MathF.PI / 180f;
+        foreach (AxeThrown thrown in events.Of<AxeThrown>())
+        {
+            float angle = MathF.Atan2(MathF.Abs(thrown.TurnPoint.X), thrown.TurnPoint.Z);
+            Assert.That(angle, Is.EqualTo(spread).Within(1e-4f));
+        }
     }
 
     [Test]

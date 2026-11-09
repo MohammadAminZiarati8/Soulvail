@@ -35,8 +35,14 @@ public sealed class AxeSystem
     /// <summary>The most axes he carries. A carry modifier past this does nothing (BT-01 rule 1).</summary>
     public const int MaxCarry = 2;
 
-    /// <summary>Each axe of a pair leaves this far either side of the aim.</summary>
+    /// <summary>The widest each axe of a pair leaves either side of the aim.</summary>
     public const float PairSpreadDegrees = 8f;
+
+    /// <summary>
+    /// How far either side of the target each axe of a pair passes, at the target's distance
+    /// (BT-09a rule 1), so both reach it.
+    /// </summary>
+    public const float PairCloseOffset = 0.25f;
 
     /// <summary>The slowest a slowed attack speed can make the flight, as a fraction of the base.</summary>
     public const float MinPaceFactor = 0.1f;
@@ -109,9 +115,11 @@ public sealed class AxeSystem
     }
 
     /// <summary>
-    /// Throws every axe in hand at once, fanned ±<see cref="PairSpreadDegrees"/> about
-    /// <paramref name="toward"/>; a lone axe flies straight at it. Each turns at the full
-    /// weapon range along its own line, whatever the target's distance.
+    /// Throws every axe in hand at once, fanned about <paramref name="toward"/> at a half-angle of
+    /// <c>min(PairSpreadDegrees, asin(PairCloseOffset / d))</c>, so each line passes within
+    /// <see cref="PairCloseOffset"/> of the target; a target closer than that offset, or a
+    /// non-finite distance, takes the full spread (BT-09a). A lone axe flies straight at it. Each
+    /// turns at the full weapon range along its own line, whatever the target's distance.
     /// </summary>
     /// <returns>How many axes left the hand.</returns>
     public int TryThrowPair(Vector3 hand, Vector3 toward, float damage, float now)
@@ -122,14 +130,16 @@ public sealed class AxeSystem
             return 0;
         }
 
-        Vector3 aim = Flat(toward - hand);
+        Vector3 offset = toward - hand;
+        offset.Y = 0f;
+        Vector3 aim = Flat(offset);
         if (throwing == 1)
         {
             Launch(hand, aim, damage);
             return 1;
         }
 
-        float spread = PairSpreadDegrees * (MathF.PI / 180f);
+        float spread = PairHalfAngle(offset.Length());
         for (int i = 0; i < throwing; i++)
         {
             float angle = -spread + (2f * spread * i / (throwing - 1));
@@ -289,6 +299,18 @@ public sealed class AxeSystem
         _count++;
         InHand--;
         _events.Publish(new AxeThrown(id, hand, turnPoint));
+    }
+
+    /// <summary>BT-09a rules 1–2: the pair closes on a target at <paramref name="distance"/>.</summary>
+    private static float PairHalfAngle(float distance)
+    {
+        float widest = PairSpreadDegrees * (MathF.PI / 180f);
+        if (!(distance > PairCloseOffset) || float.IsInfinity(distance))
+        {
+            return widest;
+        }
+
+        return MathF.Min(widest, MathF.Asin(PairCloseOffset / distance));
     }
 
     private static Vector3 Flat(Vector3 direction)

@@ -9,9 +9,9 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-08** — Beastmaster tune block done. |
-| **Next task** | [BT-09a](tasks/BT-09a-axe-pair-and-swap-shove.md), then [BT-09b](tasks/BT-09b-guard-judges-the-source.md), on the owner's go. |
-| **Verified** | EditMode 6200 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **BT-09a** — axe pair closes; swap harmless. |
+| **Next task** | [BT-09b](tasks/BT-09b-guard-judges-the-source.md). |
+| **Verified** | EditMode 6204 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -22,7 +22,7 @@ Thornheart: spokes, pods, slam, heart ×2, vines. Mother: shields, lobs, spray, 
 From 21 four cousins (Bullfrog, pitcher, bomber, panther).
 Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it.
 Gravemaw (25): burrow; ring, bite+throw; tremor|rocks; 50 %: 2 rings, crack Frogs;
-past cover, up in the open; trail, rise/dive, lit maw; 986 HP, 2.8 m/s, 4 pillars.
+past cover, up in the open; trail, rise/dive, lit maw; 986 HP, 4 pillars.
 Apex (30): eye tell/feint, streak, +15% window; 1580 HP. Four stones; 2 panthers at 66%, cleared at 33%; win.
 Stone-stops dash/rake. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
 Warlord: guard, sweep/charge, stone daze, adds, phase-2 shatter/combo; glaive, 5 stones.
@@ -32,16 +32,16 @@ Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points
 Save v8; Clash UI/LocKeys. Six-circle arc: tap fires on Auto,
 0.45 s hold toggles; mirrored; legacy saves expand.
 Status icons; pooled CC, bosses immune. Marksman trim,
-Quiver, lit arrows, Volley, roll/flinch; silent resume, plain menu.
+Quiver, lit arrows, Volley, roll/flinch; silent resume.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs (Immune).
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
-Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes; Swift Hands;
-Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, exact Quick Swap. Packleader: Hounds/Howl (heal) 11, Boar/Pelts 14, Hawk 17, Frenzy 20.
+Beastmaster: axe pair per 1.2 s, standing, closes on target, pace = atk speed; cover turns axes; Swift Hands;
+Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, exact Quick Swap. Packleader: Hounds/Howl 11, Boar/Pelts 14, Hawk 17, Frenzy 20.
 Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s.
 Boar: holds 5 m, green globs (cyan trail, splat), cover stops; +30% dmg, 25% slow.
-Bond Barrier: swap shields 15% HP, landing+3 s, pale bubble, pops; Quick Swap 25%, 2 m shove.
+Bond Barrier: swap shields 15% HP, landing+3 s, pale bubble, pops; Quick Swap 25%, 2 m shove. Swap: 0 dmg.
 
 ## Missing
 

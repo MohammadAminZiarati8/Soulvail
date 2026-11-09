@@ -57,8 +57,8 @@ MonoBehaviour:
   _movementSkillDuration: 0.25
   _movementSkillCooldown: 6
   _movementSkillInputBuffer: 0.15
-  _movementSkillDamage: 20
-  _movementSkillKnockback: 5
+  _movementSkillDamage: 0
+  _movementSkillKnockback: 0
   _movementSkillIFrameTrail: 0.2
   _movementSkillDecoyDuration: 0
   _movementSkillPoolRadius: 0

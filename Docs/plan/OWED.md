@@ -585,3 +585,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **Editor** — Stand still for about four seconds. Check that the portal swells and pulses faster.
 - [ ] **Editor** — Walk through the gate. Check for the flash and the hero walking in from the south, with no door or slab dropping behind them.
 - [ ] **Phone** — From the far end of the arena, check that the portal reads as the way out at first glance.
+
+
+## SF-05 — Stage arrival card
+
+- [ ] **[Editor]** Start a run. As the flash clears, STAGE 1 fades in, holds for about 1.5 seconds, then fades out.
+- [ ] **[Editor]** Walk through a gate. STAGE 2 follows the same timing and the joystick still works under the card.
+- [ ] **[device]** Check that the card is readable on a landscape phone and stays clear of the hero.

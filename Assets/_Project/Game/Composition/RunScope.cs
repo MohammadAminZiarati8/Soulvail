@@ -497,6 +497,12 @@ namespace Soulvail.Game.Composition
             if (_hudPresenter != null)
             {
                 builder.RegisterComponent(_hudPresenter);
+
+                var stageCard = _hudPresenter.GetComponentInChildren<StageCardView>(true);
+                if (stageCard != null)
+                {
+                    builder.RegisterComponent(stageCard);
+                }
             }
 
             // The other three readouts on Hud.prefab (M3-10b), all optional on the HUD's terms and

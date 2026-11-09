@@ -444,6 +444,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Arena.ArenaView
   _id: arena.jungle.hollow
+  _halfSize: {x: 12, y: 12}
   _playerStart: {fileID: 1038412725657496400}
   _gate: {fileID: 6777210843762841632}
   _spawnPoints:

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
@@ -44,6 +45,69 @@ public sealed class ArenaViewTests
                 yield return path;
             }
         }
+    }
+
+    [Test]
+    public void PlayBounds_IsHalfSizeAroundTransform()
+    {
+        var root = new GameObject("Arena");
+        try
+        {
+            root.transform.position = new Vector3(5f, 0f, 3f);
+            ArenaView arena = root.AddComponent<ArenaView>();
+            SetField(arena, "_halfSize", new Vector2(10f, 6f));
+
+            Assert.That(arena.PlayBounds, Is.EqualTo(Rect.MinMaxRect(-5f, -3f, 15f, 9f)));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [Test]
+    public void DescribeFaults_ZeroHalfSize()
+    {
+        var root = new GameObject("Arena");
+        try
+        {
+            ArenaView arena = root.AddComponent<ArenaView>();
+            SetField(arena, "_halfSize", new Vector2(0f, 6f));
+
+            Assert.That(arena.DescribeFaults(), Does.Contain("half size must be positive"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    [TestCase("_gate", "the gate")]
+    [TestCase("_playerStart", "the player start")]
+    [TestCase("_spawnPoints", "spawn point 0")]
+    public void DescribeFaults_MarkerOutside(string field, string markerName)
+    {
+        var root = new GameObject("Arena");
+        try
+        {
+            ArenaView arena = root.AddComponent<ArenaView>();
+            SetField(arena, "_halfSize", new Vector2(10f, 6f));
+            var marker = new GameObject("Outside");
+            marker.transform.SetParent(root.transform, false);
+            marker.transform.localPosition = new Vector3(0f, 0f, 7f);
+            SetField(arena, field, field == "_spawnPoints" ? new[] { marker.transform } : (object)marker.transform);
+
+            Assert.That(arena.DescribeFaults(), Does.Contain($"{markerName} is outside the play bounds"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+        }
+    }
+
+    private static void SetField(ArenaView arena, string field, object value)
+    {
+        typeof(ArenaView).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(arena, value);
     }
 
     [Test]

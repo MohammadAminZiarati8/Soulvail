@@ -2132,6 +2132,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Arena.ArenaView
   _id: arena.tiered
+  _halfSize: {x: 18, y: 18}
   _playerStart: {fileID: 4699307917538782981}
   _gate: {fileID: 3428629844964990493}
   _spawnPoints:

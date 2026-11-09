@@ -144,7 +144,7 @@ _No milestone. The owner is setting the next direction._
 
 **Landscape** (owner, 2026-11-06; scope ruled 2026-11-09: orientation, camera and arenas only, no menu or UI; design [GD §5.2, §7.2](../GameDesign.md)). Arenas become wide rectangles run west → east, and the follow camera stops at their walls — on a 19.5:9 phone the Hollow is framed whole. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from LS-01 (the Clearing still square until LS-02).
 
-- [ ] [LS-01](tasks/LS-01-landscape-and-bounded-camera.md) — Landscape orientation; the camera stays within 2 m of the arena's walls (M)
+- [x] LS-01 — Landscape orientation; the camera stays within 2 m of the arena's walls (M)
 - [ ] [LS-02](tasks/LS-02-jungle-arenas-go-wide.md) — The Jungle's arenas go wide: Hollow 30 × 22, Clearing 44 × 28, west to east (M)
 - [ ] [LS-03](tasks/LS-03-remaining-arenas-go-wide.md) — Descent's and the Sunscar's arenas go wide; every arena landscape, by test (M)
 

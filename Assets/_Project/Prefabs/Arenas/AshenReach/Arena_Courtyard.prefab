@@ -360,6 +360,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Arena.ArenaView
   _id: arena.ashen-reach.courtyard
+  _halfSize: {x: 18, y: 18}
   _playerStart: {fileID: 4464316146394401895}
   _gate: {fileID: 5344451591732191614}
   _spawnPoints:

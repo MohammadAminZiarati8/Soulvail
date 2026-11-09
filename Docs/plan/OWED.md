@@ -533,3 +533,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Stage 17–19: stand in front of a Mossguard while the hound bites its back. Its HP drops.
 2. **[Editor]** Stage 15 Warlord: the same from behind. During a phase change nothing lands.
+
+## LS-01 — Landscape and bounded camera (2026-11-09)
+
+- [ ] [Editor] 2400×1080, Jungle stage 1: gate visible from the start, no sideways pan.
+- [ ] [Editor] Same resolution, stage 5: move north and south to check the 2 m limits. At the east and west walls, check that horizontal framing stays centred on the current square arena.
+- [ ] [Device] Flip the phone between landscape orientations and verify the game follows. Hold it upright and verify it stays in landscape.

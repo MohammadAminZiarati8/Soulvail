@@ -1513,6 +1513,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Arena.ArenaView
   _id: arena.pillars
+  _halfSize: {x: 18, y: 18}
   _playerStart: {fileID: 7683027518334846695}
   _gate: {fileID: 3272540119143600082}
   _spawnPoints:

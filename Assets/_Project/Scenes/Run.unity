@@ -958,6 +958,7 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   _playerView: {fileID: 1102459965}
+  _followCamera: {fileID: 1167978318}
   _defaultBody: {fileID: 7313650281335692003, guid: 8f85ef81fe1efa2469dc734466861726, type: 3}
   _chargeMotion: {fileID: 1102459968}
   _skillButton: {fileID: 2052539125}
@@ -1298,6 +1299,7 @@ MonoBehaviour:
   _smoothTime: 0.12
   _shortSideFovDeg: 60
   _shake: {fileID: 1167978319}
+  _boundsMarginM: 2
 --- !u!114 &1167978319
 MonoBehaviour:
   m_ObjectHideFlags: 0

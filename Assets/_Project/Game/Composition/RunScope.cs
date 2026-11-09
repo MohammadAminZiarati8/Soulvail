@@ -90,6 +90,7 @@ namespace Soulvail.Game.Composition
         private const int ClassShotPrewarm = 2 * VolleySpec.MaxArrows;
 
         [SerializeField] private PlayerView _playerView;
+        [SerializeField] private FollowCamera _followCamera;
 
         [Tooltip("The body a run wears when its class names none: Prefabs/Player/Bodies/Knight. " +
                  "Required, like the Player View — the body is raised under it at the start of " +
@@ -686,6 +687,11 @@ namespace Soulvail.Game.Composition
             builder.Register<ArenaPool>(Lifetime.Scoped)
                 .WithParameter("prefabs", (IReadOnlyList<ArenaView>)_arenaPrefabs)
                 .WithParameter("parent", _arenaRoot);
+
+            if (_followCamera != null)
+            {
+                builder.RegisterComponent(_followCamera);
+            }
 
             // The gate parameter is gone: where the door is became a question about whichever arena
             // is standing, so the builder takes the pool above and asks it every frame (M2-11a).

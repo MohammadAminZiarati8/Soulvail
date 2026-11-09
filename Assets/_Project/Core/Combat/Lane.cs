@@ -18,7 +18,7 @@ namespace Soulvail.Core.Combat;
 /// window, which is a constant here because the bite is a strike rather than a crack left behind.
 /// </para>
 /// <para>
-/// <b>A lane, not a cone</b>: on a portrait screen a strip along the player's line reads whole, and
+/// <b>A lane, not a cone</b>: a strip along the player's line reads whole, and
 /// the safe answer is one sidestep (GD §9.1 rule 2).
 /// </para>
 /// <para>Containment is XZ only (AR §18.4).</para>

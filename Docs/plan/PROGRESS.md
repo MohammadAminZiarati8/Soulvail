@@ -9,9 +9,9 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-09b** — guards judge a pet hit's source. |
-| **Next task** | LS-01 landscape; LS-02, LS-03 specced. |
-| **Verified** | EditMode 6216 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **LS-01** — landscape and bounded camera. |
+| **Next task** | LS-02 wide Jungle; LS-03 specced. |
+| **Verified** | EditMode 6229 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

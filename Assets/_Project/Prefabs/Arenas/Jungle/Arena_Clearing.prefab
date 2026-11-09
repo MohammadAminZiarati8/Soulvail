@@ -1056,6 +1056,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Arena.ArenaView
   _id: arena.jungle.clearing
+  _halfSize: {x: 18, y: 18}
   _playerStart: {fileID: 5209417721068930957}
   _gate: {fileID: 3782869569475942137}
   _spawnPoints:

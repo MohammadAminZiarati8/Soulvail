@@ -67,6 +67,9 @@ namespace Soulvail.Game.Arena
                  "SpawnDirector.MinPlayerDistance of clearance (GD §12.4).")]
         [SerializeField] private Transform _playerStart;
 
+        [Tooltip("Metres from the arena origin to the inside faces of its walls, on XZ.")]
+        [SerializeField] private Vector2 _halfSize;
+
         [Tooltip("The door out. What core tests the player's distance against — an arena without " +
                  "one is playable and cannot be left, which parks the stage flow at its gate.")]
         [SerializeField] private Transform _gate;
@@ -129,6 +132,17 @@ namespace Soulvail.Game.Arena
                 }
 
                 return _parsedId;
+            }
+        }
+
+        /// <summary>The playable rectangle in world XZ, centred at the arena origin.</summary>
+        public Rect PlayBounds
+        {
+            get
+            {
+                Vector3 centre = transform.position;
+                return new Rect(centre.x - _halfSize.x, centre.z - _halfSize.y,
+                    _halfSize.x * 2f, _halfSize.y * 2f);
             }
         }
 
@@ -364,9 +378,32 @@ namespace Soulvail.Game.Arena
             }
 
             Vector3 start = PlayerStart;
+            Rect bounds = PlayBounds;
+            bool validSize = _halfSize.x > 0f && _halfSize.y > 0f;
+            if (!validSize)
+            {
+                faults.Add("its half size must be positive on both XZ axes");
+            }
+            else
+            {
+                if (_playerStart != null && !ContainsPoint(bounds, start))
+                {
+                    faults.Add("the player start is outside the play bounds");
+                }
+
+                if (HasGate && !ContainsPoint(bounds, GatePosition))
+                {
+                    faults.Add("the gate is outside the play bounds");
+                }
+            }
 
             for (int i = 0; i < points.Count; i++)
             {
+                if (validSize && !ContainsPoint(bounds, points[i]))
+                {
+                    faults.Add($"spawn point {i} is outside the play bounds");
+                }
+
                 float dx = points[i].x - start.x;
                 float dz = points[i].z - start.z;
                 float distance = Mathf.Sqrt((dx * dx) + (dz * dz));
@@ -401,6 +438,12 @@ namespace Soulvail.Game.Arena
             }
 
             return faults.Count == 0 ? null : string.Join("; ", faults);
+        }
+
+        private static bool ContainsPoint(Rect bounds, Vector3 point)
+        {
+            return point.x >= bounds.xMin && point.x <= bounds.xMax
+                && point.z >= bounds.yMin && point.z <= bounds.yMax;
         }
 
         /// <summary>

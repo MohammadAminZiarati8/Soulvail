@@ -2,15 +2,15 @@
 
 History: `git log`. [OWED](OWED.md).
 
-_2026-11-10, SF-05._
+_2026-11-10._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SF-05** — Stage arrival card. |
-| **Next task** | Awaiting next go. |
+| **Last merged** | **SS-00** — Sunscar design (docs). |
+| **Next task** | SS-01, on the owner's go. |
 | **Verified** | EditMode 6267 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works

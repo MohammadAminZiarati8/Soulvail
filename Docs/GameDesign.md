@@ -73,6 +73,15 @@ Biome changes every 10 stages. Beyond 40 the Abyss loops previous layers with st
 
 **Places (owner's ruling, 2026-10-15; supersedes the layers above for the shipped build).** The player picks a *place*, and each place is a finite mode that ends on a boss kill (the Jungle: stage 30, a Warden stage). **Every place opens when the one before it is finished** — its final stage cleared. The first place is open from the start. Descent stays in the catalog but unlisted.
 
+### The Sunscar (place 2)
+
+The second place (owner, 2026-11-09). A golden desert of wind-cut sandstone. It opens when the Jungle's stage 30 is cleared (`UnlockedBy` the Jungle) and, like the Jungle, runs 30 stages to a final boss.
+
+- **Palette.** Golden sand, pale sandstone, dusty ochre, bleached bone, long blue-grey shadows. **No cyan anywhere in the place** — cyan is the player's (§16.4). Sand gold stays dusty and pale so it never reads as reward gold, and no rock or cloth comes near danger red-orange `#FF4A1F`.
+- **Arenas.** Square and south→north, like the Jungle's (§7.2): enter from the south, the portal opens to the north, the device turned sideways with the camera following as before. Low dunes, rock spurs and ruins as cover; open ground first.
+- **Weather is visual only.** Sandstorms and quicksand are scenery. They never slow, push, hurt or root the hero or an enemy, and never hide or dim a telegraph, an enemy, a projectile or the portal: a storm thins around the play space, and quicksand is a ground texture with no rule. Any weather that changes play is a new ruling from the owner.
+- **Enemies are open.** The Sunscar gets its own roster, decided one enemy at a time as each is built — no roster is planned ahead.
+
 ---
 
 ## 4. Core loop

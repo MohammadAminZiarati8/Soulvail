@@ -173,6 +173,16 @@ _No milestone. The owner is setting the next direction._
 - [x] SF-04 — The gate is a glowing cyan portal; no entry door, no floor trail (owner correction, 2026-11-10) (M)
 - [x] SF-05 — A STAGE N card on every arrival (owner, 2026-11-10) (S)
 
+### Sunscar
+
+**The Sunscar, place 2** (owner, 2026-11-09; design [GD §3 › The Sunscar](../GameDesign.md#the-sunscar-place-2)). A golden desert after the Jungle: 30 stages, its own enemies decided one at a time, weather visual only. Titles only; each spec is written and built on the owner's go, one at a time.
+
+- [x] SS-00 — The Sunscar design pass, docs only (S)
+- [ ] [SS-01](tasks/SS-01-sunscar-first-arena.md) — The first Sunscar arena, walkable with the Ranger, no enemies (M)
+- [ ] SS-02 — The sandstorm: drifting sand that thins around the play space (S)
+- [ ] SS-03 — Quicksand patches, ground dressing with no rule (S)
+- [ ] SS-04 — The first Sunscar enemy (decided when built)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

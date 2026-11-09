@@ -9,13 +9,13 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-01** — First Sunscar arena. |
-| **Next task** | SS-02, on the owner's go. |
-| **Verified** | EditMode 6283 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-02** — Sunscar sandstorm. |
+| **Next task** | SS-03, on the owner's go. |
+| **Verified** | EditMode 6287 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar opens after Jungle with one empty arena. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar opens next with the Dunes sandstorm. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 30 Apex. 11 enemies. Boss adds die with boss, 0 XP.

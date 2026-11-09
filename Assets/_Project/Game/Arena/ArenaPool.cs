@@ -301,6 +301,7 @@ public sealed class ArenaPool : IDisposable
         view.name = prefab.name;
 #endif
 
+        view.GetComponentInChildren<SunscarSandstormView>(includeInactive: true)?.Bind(view, _player.transform);
         _built[id] = view;
 
         return view;

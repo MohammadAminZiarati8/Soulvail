@@ -179,7 +179,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SS-00 — The Sunscar design pass, docs only (S)
 - [x] SS-01 — The first Sunscar arena, walkable with the Ranger, no enemies (M)
-- [ ] SS-02 — The sandstorm: drifting sand that thins around the play space (S)
+- [x] SS-02 — The sandstorm: drifting sand that thins around the play space (S)
 - [ ] SS-03 — Quicksand patches, ground dressing with no rule (S)
 - [ ] SS-04 — The first Sunscar enemy (decided when built)
 

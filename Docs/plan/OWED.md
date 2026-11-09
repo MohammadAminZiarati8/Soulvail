@@ -598,3 +598,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [ ] [Editor] In DT-01, cycle to the Sunscar and start stage 1 with the Ranger. Check the golden sand and sandstone, check that scenery has no cyan, walk from the start to the north portal, then pause and quit. Check that no enemies spawn.
 - [ ] [Editor] Check that the Places tab keeps the Sunscar locked until the Jungle is finished.
+
+
+### SS-02 — Sunscar sandstorm
+
+1. **[Editor]** Start Sunscar through Test Start. Walk from entry to both edges and toward the north gate. Check ground drift, a clear radius around the Ranger, a clear gate area and a readable STAGE card. Compare with Jungle and Descent.
+2. **[Editor]** Inspect the Frame Debugger and Profiler. Expect one particle renderer with no new lights or managed allocations in the update. Verify the ground pass draws before transparent combat cues.
+3. **[device]** On a landscape phone, check that the pale drift reads at first look and that the hero, telegraphs, enemies, projectiles, portal and STAGE card stay readable. Recheck with live Sunscar combat when it lands.

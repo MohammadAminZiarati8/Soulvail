@@ -516,3 +516,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 2. **[Editor]** On a phone-sized Game view the glob never reads as the Shaman's lime or an enemy shot.
 3. **[Editor]** The boar's clips read right: Prowl walk, Idle, Lunge (2× speed) as the spit, Death as the fall, Crouch as the get-up and the howl. If Lunge or Crouch reads wrong, that is the out-of-scope animation pass.
 4. **[Editor]** A saved run holding Pack Tactics ranks (v7) continues holding the same Boar ranks.
+
+### BT-08 — Bond Barrier
+
+1. **[Editor]** Beastmaster, swap: a pale (not cyan) bubble on him and an HP-bar segment for ~3 s; the Bulwark's cyan shell does not appear.
+2. **[Editor]** Swap into Frogs: HP holds until the bubble pops (a flash and swell); once it times out it fades, no pop.
+3. **[Editor]** With Quick Swap the pop pushes Frogs ~2 m, the Warlord not at all.
+4. **[Editor]** Bubble size/height on his body reads right at phone size (child `BondBubble`, sized to the Bulwark shell).

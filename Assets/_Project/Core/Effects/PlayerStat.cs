@@ -277,6 +277,12 @@ public enum PlayerStat
     BoarCount,
     SpitDamage,
     SpitSlow,
+
+    /// <summary>BT-08: Bond Barrier as a fraction of max HP, on the movement skill.</summary>
+    SwapBarrier,
+
+    /// <summary>BT-08: metres a broken Bond Barrier shoves non-bosses within 3 m.</summary>
+    SwapBarrierShove,
 }
 
 /// <summary>
@@ -432,6 +438,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MovementSkillCooldown => _combat.Charge.Cooldown,
             PlayerStat.MovementSkillCharges => _combat.Charge.BonusCharges,
             PlayerStat.RollGuardSeconds => _combat.Charge.RollGuardSeconds,
+            PlayerStat.SwapBarrier => _combat.Charge.Barrier,
+            PlayerStat.SwapBarrierShove => _combat.Charge.BarrierShove,
             PlayerStat.XpGain => _progression.XpGain,
             PlayerStat.WeaponRange => _combat.Weapon.Range,
             PlayerStat.WeaponConeAngle => _combat.Weapon.ConeAngleDeg,
@@ -530,6 +538,8 @@ public sealed class PlayerStats : IStatBlock
             PlayerStat.MovementSkillCooldown => true,
             PlayerStat.MovementSkillCharges => true,
             PlayerStat.RollGuardSeconds => true,
+            PlayerStat.SwapBarrier => true,
+            PlayerStat.SwapBarrierShove => true,
             PlayerStat.XpGain => true,
             PlayerStat.WeaponRange => true,
             PlayerStat.WeaponConeAngle => true,

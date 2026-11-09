@@ -64,6 +64,8 @@ MonoBehaviour:
   _movementSkillPoolRadius: 0
   _movementSkillPoolDuration: 0
   _movementSkillPoolDamagePerPulse: 0
+  _movementSkillBarrierFraction: 0.15
+  _movementSkillBarrierSeconds: 3
   _minionCap: 0
   _minionSpecId: minion.new
   _minionNameKey: minion.new.name

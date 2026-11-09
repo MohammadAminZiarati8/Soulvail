@@ -917,8 +917,7 @@ MonoBehaviour:
   - _key: skill.beastmaster.quick-swap.name
     _text: Quick Swap
   - _key: skill.beastmaster.quick-swap.description
-    _text: Swap recharges 1 s sooner and slows enemies near the hound's landing by
-      30%.
+    _text: "Swap recharges 1 s sooner and slows enemies near the hound's landing by 30%. Its barrier rises to 25% and shoves enemies 2 m when it breaks."
   - _key: path.packleader.name
     _text: Packleader
   - _key: path.packleader.description

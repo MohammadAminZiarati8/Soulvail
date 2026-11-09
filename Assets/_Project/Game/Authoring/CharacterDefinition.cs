@@ -159,6 +159,12 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _movementSkillPoolDuration;
         [SerializeField, Min(0f)] private float _movementSkillPoolDamagePerPulse;
 
+        [Tooltip("A Swap's Bond Barrier (BT-08): the fraction of max HP every swap grants as shield, " +
+                 "and the seconds it stands after landing — 0.15 and 3 for the Beastmaster. Every " +
+                 "other kind must have both at exactly 0.")]
+        [SerializeField, Range(0f, 1f)] private float _movementSkillBarrierFraction;
+        [SerializeField, Min(0f)] private float _movementSkillBarrierSeconds;
+
         [Tooltip("The class's minions (CH §3.2's Rise). Cap 0 means this class has none — only " +
                  "the Gravecaller's Wights do in V1, and every field below is ignored at 0. The " +
                  "cap is the switch for the reason the shield max above is: a zeroed block would " +
@@ -418,7 +424,9 @@ namespace Soulvail.Game.Authoring
                         _movementSkillDecoyDuration,
                         _movementSkillPoolRadius,
                         _movementSkillPoolDuration,
-                        _movementSkillPoolDamagePerPulse),
+                        _movementSkillPoolDamagePerPulse,
+                        _movementSkillBarrierFraction,
+                        _movementSkillBarrierSeconds),
                     _shieldMax > 0f
                         ? new ShieldSpec(_shieldMax, _shieldRechargeDelay, _shieldRefillPerSecond)
                         : null,

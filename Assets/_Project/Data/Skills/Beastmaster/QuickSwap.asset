@@ -19,6 +19,8 @@ MonoBehaviour:
   _effects:
   - {fileID: 11400000, guid: ec9441b87728276459f74aaf820e75c9, type: 2}
   - {fileID: 11400000, guid: 59e0238d75ce6b34d8e9de17c5d3e90d, type: 2}
+  - {fileID: 11400000, guid: 591f19d31e2b4316912f3a386a40796e, type: 2}
+  - {fileID: 11400000, guid: 8f1dd0c250a7452eb84c21dfaf945067, type: 2}
   _cooldown: 8
   _trigger: []
   _onCast: []

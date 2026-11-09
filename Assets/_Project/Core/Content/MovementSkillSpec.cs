@@ -162,6 +162,14 @@ public sealed class MovementSkillSpec
     /// </param>
     /// <param name="poolDuration">How long the pool burns, in simulated seconds — 3.</param>
     /// <param name="poolDamagePerPulse">What one pulse of it takes off — 4.</param>
+    /// <param name="barrierFraction">
+    /// A <see cref="MovementSkillKind.Swap"/>'s Bond Barrier, as a fraction of max HP in
+    /// <c>[0, 1]</c> — 0.15 (BT-08). Exactly zero on every other kind.
+    /// </param>
+    /// <param name="barrierSeconds">
+    /// Seconds the barrier stands after the swap lands, zero or more — 3. Exactly zero on every
+    /// other kind.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="distance"/>, <paramref name="duration"/> or <paramref name="cooldown"/> is
     /// not a finite number greater than zero; <paramref name="inputBuffer"/>,
@@ -181,7 +189,9 @@ public sealed class MovementSkillSpec
         float decoyDuration = 0f,
         float poolRadius = 0f,
         float poolDuration = 0f,
-        float poolDamagePerPulse = 0f)
+        float poolDamagePerPulse = 0f,
+        float barrierFraction = 0f,
+        float barrierSeconds = 0f)
     {
         Kind = kind;
         Distance = Positive(distance, nameof(distance));
@@ -195,6 +205,8 @@ public sealed class MovementSkillSpec
         PoolRadius = Pool(kind, poolRadius, nameof(poolRadius));
         PoolDuration = Pool(kind, poolDuration, nameof(poolDuration));
         PoolDamagePerPulse = Pool(kind, poolDamagePerPulse, nameof(poolDamagePerPulse));
+        BarrierFraction = Barrier(kind, barrierFraction, 1f, nameof(barrierFraction));
+        BarrierSeconds = Barrier(kind, barrierSeconds, float.MaxValue, nameof(barrierSeconds));
     }
 
     /// <summary>Simulated seconds between a pool's pulses. Half a second, and a constant.</summary>
@@ -258,6 +270,12 @@ public sealed class MovementSkillSpec
     /// how many events a second the pool publishes.
     /// </remarks>
     public float PoolDamagePerPulse { get; }
+
+    /// <summary>A Swap's Bond Barrier, as a fraction of max HP in <c>[0, 1]</c>; zero on every other kind.</summary>
+    public float BarrierFraction { get; }
+
+    /// <summary>Seconds a Swap's Bond Barrier stands after landing; zero on every other kind.</summary>
+    public float BarrierSeconds { get; }
 
     /// <remarks>
     /// `!(x &gt; 0f)` rather than `x &lt;= 0f`, so NaN is refused with everything else — the
@@ -382,5 +400,26 @@ public sealed class MovementSkillSpec
         }
 
         return 0f;
+    }
+
+    private static float Barrier(MovementSkillKind kind, float value, float max, string paramName)
+    {
+        if (!(value >= 0f) || !(value <= max) || float.IsInfinity(value))
+        {
+            throw new ArgumentOutOfRangeException(
+                paramName,
+                value,
+                $"A Bond Barrier's {paramName} must be a finite number from zero to {max}.");
+        }
+
+        if (kind != MovementSkillKind.Swap && value != 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                paramName,
+                value,
+                $"A {kind} raises no Bond Barrier, so its {paramName} must be exactly zero (BT-08).");
+        }
+
+        return value;
     }
 }

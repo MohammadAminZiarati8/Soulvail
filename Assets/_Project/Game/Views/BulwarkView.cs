@@ -199,6 +199,12 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnGranted(ShieldGranted evt)
         {
+            // BT-08: the Bond Barrier draws its own pale bubble, never this cyan shell.
+            if (evt.BondBarrier)
+            {
+                return;
+            }
+
             _up = true;
 
             Apply();
@@ -207,7 +213,7 @@ namespace Soulvail.Game.Views
         /// <summary>Rule 6: the shell comes down on the <em>total</em> reaching zero, never on a removal.</summary>
         private void OnExpired(ShieldGrantExpired evt)
         {
-            if (evt.Total > 0f)
+            if (evt.Total > 0f || evt.BondBarrier)
             {
                 return;
             }

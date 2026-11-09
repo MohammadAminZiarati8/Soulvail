@@ -150,6 +150,8 @@ public sealed class ModifyStatTests
                 PlayerStat.RicochetDamage => stats.RicochetDamage,
                 PlayerStat.MovementSkillCharges => combat.Charge.BonusCharges,
                 PlayerStat.RollGuardSeconds => combat.Charge.RollGuardSeconds,
+                PlayerStat.SwapBarrier => combat.Charge.Barrier,
+                PlayerStat.SwapBarrierShove => combat.Charge.BarrierShove,
                 PlayerStat.WhirlwindArrows => stats.WhirlwindArrows,
                 PlayerStat.WhirlwindRings => stats.WhirlwindRings,
                 PlayerStat.MirrorImageShades => stats.MirrorImageShades,
@@ -206,7 +208,7 @@ public sealed class ModifyStatTests
             answered++;
         }
 
-        Assert.That(answered, Is.EqualTo(68), "Eighty members with twelve addresses reserved for other combatants.");
+        Assert.That(answered, Is.EqualTo(70), "Eighty-five members, fifteen of them reserved for other combatants.");
 
         // RS-03b rule 8: a class without a volley has none of the three, and says so both ways.
         var plain = new PlayerStats(Ember(), motor, progression);

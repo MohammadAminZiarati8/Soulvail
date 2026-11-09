@@ -243,6 +243,8 @@ There is no red-orange, violet, gold or lime anywhere on it. Its bar is a small 
 
 Space: he and the hound **leap past each other** in 0.25 s and land in each other's places. Both stay visible, and a cyan streak joins the two points for 0.3 s. It is a leap, not a cut, because the Echo Archer ruled that a teleport on a phone loses the hero. Both are immune during the leap and for 0.2 s after. The leap arcs, so nothing stops it — no cover, no enemy, no animal — and each lands exactly on the other's spot. Every enemy hunting the hound loses it. Cooldown **6 s**. With the hound fallen, he leaps onto the body and the rescue starts half done. Clips: `Jump_Full_Short` for him, a lunge for the hound.
 
+**Bond Barrier** *(BT-08)*: every swap shields him for **15% max HP**, standing until 3 s after landing — a pale bubble on his body and a granted-shield segment on the HP bar. A new swap replaces what is left rather than stacking. It absorbs like any granted shield, bosses included; a hit spent past it lands the difference. A hit that empties it pops the bubble; running out of time does not.
+
 #### 3.6.4 Tree — levels 2 to 10
 
 Free-pick, tier *N* needs *N−1* in its branch (§5). The Lv-10 tree costs 9 points, exactly as the Ranger's does.
@@ -251,7 +253,7 @@ Free-pick, tier *N* needs *N−1* in its branch (§5). The Lv-10 tree costs 9 po
 |---|---|---|---|
 | 1 | **Heavy Edge** — +12% axe damage | **Sharp Claws** — +15% hound damage | **Thick Hide** — +10% max HP, for you and the hound |
 | 2 | **Swift Hands** — +20% attack speed: a throw every 1.0 s, axes 20% faster *(replaced Third Axe, owner 2026-11-08)* | **Feral Bite** — every 3rd bite stuns a light enemy 0.5 s | **Lick Wounds** — the hound heals twice as fast at heel (12%/s) and goes back in at 60% instead of 80% |
-| 3 | **Cleaving Return** — the return pass deals +50% and slows 25% for 1.5 s | **Pounce** — *active.* The hound leaps up to 6 m at a marked enemy: 2× bite, and knocks a light enemy down 0.8 s. Cooldown 8 s | **Quick Swap** — swap cooldown −1 s; the hound lands with a roar that slows enemies within 3 m by 30% for 2 s |
+| 3 | **Cleaving Return** — the return pass deals +50% and slows 25% for 1.5 s | **Pounce** — *active.* The hound leaps up to 6 m at a marked enemy: 2× bite, and knocks a light enemy down 0.8 s. Cooldown 8 s | **Quick Swap** — swap cooldown −1 s; the hound lands with a roar that slows enemies within 3 m by 30% for 2 s; the Bond Barrier rises to 25%, and when a hit breaks it every non-boss within 3 m is shoved 2 m away |
 
 **Light** is a flag each enemy's content carries: Frog, Rootling, Puffball, Spitter, Panther and their kind. It excludes Bullfrog, Mossguard, Shaman, every elite and every boss. Pounce's trigger is a marked enemy 3–6 m from the hound.
 

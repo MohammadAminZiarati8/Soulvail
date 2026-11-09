@@ -9,25 +9,23 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **BT-07b**. |
-| **Next task** | [BT-08](tasks/BT-08-bond-barrier.md), on the owner's go. |
-| **Verified** | EditMode 6190 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **BT-08** — Beastmaster tune block done. |
+| **Next task** | None specced; AM / AB paths on the owner's word. |
+| **Verified** | EditMode 6200 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
 Heroes/Places; Jungle 30 stages. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
 Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
-Thornheart (20): spokes, pods, slam, heart ×2, vines.
-Mother: shields, lobs, spray, pod. Leap: crouch, ring, arc, bite. Chain: lit bombers, link, fuse.
+Thornheart: spokes, pods, slam, heart ×2, vines. Mother: shields, lobs, spray, pod.
 From 21 four cousins (Bullfrog, pitcher, bomber, panther).
 Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it.
 Gravemaw (25): burrow; ring, bite+throw; tremor|rocks; 50 %: 2 rings, crack Frogs;
 past cover, up in the open; trail, rise/dive, lit maw; 986 HP, 2.8 m/s, 4 pillars.
 Apex (30): eye tell/feint, streak, +15% window; 1580 HP. Four stones; 2 panthers at 66%, cleared at 33%; win.
-Stone-stops dash/rake; pack 3 s cd. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
-Warlord: frontal guard, slow turn, warned sweep/charge, stone daze, adds,
-ringed spears, phase-2 shatter/speed/combo; painted body, glaive, 5 stones.
+Stone-stops dash/rake. Hunt: +30% speed, 3 lanes, double pounce; 0.9 s window/0.6 s gap.
+Warlord: guard, sweep/charge, stone daze, adds, phase-2 shatter/combo; glaive, 5 stones.
 Shaman: guards ≤12 m, holds 11 m; heals 10%, hastes 25% in 8 m; flees <4 m; lime staff.
 17–19: healer/guards, wall, gate; XP 32, priority 8.
 Per level +3 % HP (heals)/+2 % dmg; cap 30 at stage 25, MAX strip. Banked points; paused free-pick tree, rank pips, Learn; 20 Marksman ranks (Steady Aim 4, Binding Shot 3). Death pays Shards.
@@ -43,6 +41,7 @@ Beastmaster: axe pair per 1.2 s, standing, pace = attack speed; cover turns axes
 Pets hunt arena-wide, last mark first; idle in slots; hawk climbs; Auto Pounce, exact Quick Swap. Packleader: Hounds/Howl (heal) 11, Boar/Pelts 14, Hawk 17, Frenzy 20.
 Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s.
 Boar: holds 5 m, green globs (cyan trail, splat), cover stops; +30% dmg, 25% slow.
+Bond Barrier: swap shields 15% HP, landing+3 s, pale bubble, pops; Quick Swap 25%, 2 m shove.
 
 ## Missing
 

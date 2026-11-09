@@ -86,6 +86,20 @@ internal sealed class GrantedShieldPool
         }
     }
 
+    /// <summary>What <paramref name="source"/> still holds; zero for a source holding nothing.</summary>
+    internal float Of(object source)
+    {
+        for (int i = 0; i < _count; i++)
+        {
+            if (ReferenceEquals(_sources[i], source))
+            {
+                return _remaining[i];
+            }
+        }
+
+        return 0f;
+    }
+
     /// <summary>
     /// Sets <paramref name="source"/>'s contribution to <paramref name="amount"/>, adding it to the
     /// pool if it is not already held.

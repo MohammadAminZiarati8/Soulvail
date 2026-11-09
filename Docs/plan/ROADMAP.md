@@ -80,7 +80,7 @@ _No milestone. The owner is setting the next direction._
 - [x] BT-06c — Stampede's code removed (S)
 - [x] BT-07a — The boar in core: a ranged animal that spits (M)
 - [x] BT-07b — The boar drawn and authored at Lv 14 (M)
-- [ ] [BT-08](tasks/BT-08-bond-barrier.md) — Bond Barrier: every swap shields him; Quick Swap shoves (M)
+- [x] BT-08 — Bond Barrier: every swap shields him; Quick Swap shoves (M)
 
 - [ ] AM — Axe Master, the second path (titles only; specced on the owner's word)
 - [ ] AB — Apex Bond, the third path (titles only; specced on the owner's word)

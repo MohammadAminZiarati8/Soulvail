@@ -251,6 +251,14 @@ public sealed class PlayerCombat
     /// </summary>
     private float _chargeHitWindowUntil = float.NegativeInfinity;
 
+    // BT-08's Bond Barrier: the grant's identity in the pool, when it comes off, and the shove a
+    // break owes the next tick (ApplyDamage has no enemy list; Tick does).
+    private readonly object _bondBarrier = new();
+    private float _bondBarrierUntil = float.NegativeInfinity;
+    private bool _bondShovePending;
+    private Vector3 _bondShoveFrom;
+    private float _bondShoveDistance;
+
     /// <summary>
     /// Whether <see cref="ChargeSkill.IsInvulnerable"/> was true as of the previous tick. The edge
     /// this class watches for: it is what turns a property anyone can read into the one
@@ -478,6 +486,12 @@ public sealed class PlayerCombat
 
     /// <summary>HP, the Aegis, i-frames and death. The player's, and nobody else's.</summary>
     public Health Health { get; }
+
+    /// <summary>How far a broken Bond Barrier shoves, in metres around the player (BT-08 rule 4).</summary>
+    public const float BondBarrierShoveRadius = 3f;
+
+    /// <summary>What the Bond Barrier still holds, in shield points; zero while none stands.</summary>
+    public float BondBarrier => Health.GrantedShieldOf(_bondBarrier);
 
     /// <summary>Which enemy the character is facing, and why. Ticked from <see cref="Tick"/>.</summary>
     /// <remarks>
@@ -852,6 +866,7 @@ public sealed class PlayerCombat
     public DamageResult ApplyDamage(float amount, float now)
     {
         amount *= SteadyAim.IncomingMultiplier;
+        float barrierBefore = BondBarrier;
         bool guarded = false;
         if (amount > 0f && !IsDead && Charge.IsGuardingAt(now))
         {
@@ -868,10 +883,19 @@ public sealed class PlayerCombat
             ? new DamageResult(0f, 0f, blocked: true, killed: false)
             : Health.ApplyDamage(amount, now);
 
+        // BT-08 rule 4. Read here because a hit the granted pool took whole reports Applied 0 and
+        // leaves below, and that hit breaks the barrier as surely as one that bled through.
+        bool barrierBroke = barrierBefore > 0f && !(BondBarrier > 0f);
+
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future
         // DamageResult field cannot quietly change what counts as silence.
         if (!result.Blocked && !(result.Applied > 0f))
         {
+            if (barrierBroke)
+            {
+                BreakBondBarrier();
+            }
+
             return result;
         }
 
@@ -907,6 +931,12 @@ public sealed class PlayerCombat
                 // Reject this hit's debuffs through its blocked-damage notification.
                 SyncSecondWindStatus();
             }
+        }
+
+        // BT-08 rule 4: after the hit is announced, so the break reads as its consequence.
+        if (barrierBroke)
+        {
+            BreakBondBarrier();
         }
 
         // **Routed through the one publisher rather than publishing here** (M6-04 rule 8). Killed is
@@ -1398,6 +1428,8 @@ public sealed class PlayerCombat
         // counted as another tick of standing still.
         _stormRun?.ExpireBeforeRoll(now);
         bool rollEnded = TickCharge(dt, now, snapshot.MoveInput, bodyFacing, snapshot.PlayerPosition, lures, zones, pets);
+        ExpireBondBarrier(now);
+        ResolveBondShove(enemies);
 
         // Then the ramp, and before DpsOneSecond is read below. It is the only thing in the tick
         // that changes the fire rate, so running it here is what lets the rest of the tick — the
@@ -1564,6 +1596,8 @@ public sealed class PlayerCombat
         _wasChargeInvulnerable = false;
         _chargeHitWindowUntil = float.NegativeInfinity;
         _chargeHitCount = 0;
+        _bondBarrierUntil = float.NegativeInfinity;
+        _bondShovePending = false;
 
         Blackboard.Reset();
 
@@ -1682,6 +1716,7 @@ public sealed class PlayerCombat
             if (swap)
             {
                 pets.SwapTo(playerPosition, now, _movementSkill.Duration);
+                GrantBondBarrier(now);
             }
 
             if (_movementSkill.Kind == MovementSkillKind.Charge && _weaponSpec.Kind == WeaponKind.Projectile)
@@ -1733,6 +1768,102 @@ public sealed class PlayerCombat
 
         // A buffered roll can start on the same tick the previous roll ends.
         return wasActive && (started || !Charge.IsActive);
+    }
+
+    /// <summary>
+    /// BT-08 rules 1, 2 and 5: a swap that starts grants <c>Barrier × MaxHp</c> through the granted
+    /// pool, replacing whatever the last one left, held until landing plus
+    /// <see cref="MovementSkillSpec.BarrierSeconds"/>.
+    /// </summary>
+    private void GrantBondBarrier(float now)
+    {
+        float fraction = Charge.Barrier.Value;
+        if (!(fraction > 0f))
+        {
+            return;
+        }
+
+        float amount = MathF.Min(1f, fraction) * MathF.Max(0f, Health.MaxHp.Value);
+        if (!(amount > 0f) || float.IsInfinity(amount))
+        {
+            return;
+        }
+
+        float seconds = _movementSkill.Duration + _movementSkill.BarrierSeconds;
+        Health.GrantShield(amount, _bondBarrier);
+        _bondBarrierUntil = now + seconds;
+        _events.Publish(new ShieldGranted(amount, Health.GrantedShield, seconds, bondBarrier: true));
+    }
+
+    /// <summary>BT-08 rule 4: the deadline takes what is left off, and an expiry is not a break.</summary>
+    private void ExpireBondBarrier(float now)
+    {
+        if (now < _bondBarrierUntil)
+        {
+            return;
+        }
+
+        _bondBarrierUntil = float.NegativeInfinity;
+        float before = Health.GrantedShield;
+        if (Health.RemoveGrantedShield(_bondBarrier))
+        {
+            float total = Health.GrantedShield;
+            _events.Publish(new ShieldGrantExpired(before - total, total, bondBarrier: true));
+        }
+    }
+
+    /// <summary>
+    /// BT-08 rule 4: a hit that spent the barrier to zero breaks it — the event, the empty grant
+    /// taken off, and a shove booked for the next tick while <see cref="ChargeSkill.BarrierShove"/>
+    /// is above zero.
+    /// </summary>
+    private void BreakBondBarrier()
+    {
+        Vector3 position = Blackboard.PlayerPosition;
+        _bondBarrierUntil = float.NegativeInfinity;
+        Health.RemoveGrantedShield(_bondBarrier);
+
+        float shove = Charge.BarrierShove.Value;
+        if (shove > 0f && !float.IsInfinity(shove))
+        {
+            _bondShovePending = true;
+            _bondShoveFrom = position;
+            _bondShoveDistance = shove;
+        }
+
+        _events.Publish(new BondBarrierBroke(position));
+        _events.Publish(new ShieldGrantExpired(0f, Health.GrantedShield, bondBarrier: true));
+    }
+
+    /// <summary>Every living non-boss within <see cref="BondBarrierShoveRadius"/> is pushed away.</summary>
+    private void ResolveBondShove(ReadOnlySpan<EnemyAgent> enemies)
+    {
+        if (!_bondShovePending)
+        {
+            return;
+        }
+
+        _bondShovePending = false;
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            EnemyAgent agent = enemies[i];
+            if (!agent.IsAlive || agent.Behaviour is BossBehaviour)
+            {
+                continue;
+            }
+
+            var offset = new Vector2(agent.Position.X - _bondShoveFrom.X, agent.Position.Z - _bondShoveFrom.Z);
+            float distanceSquared = offset.LengthSquared();
+            if (distanceSquared > BondBarrierShoveRadius * BondBarrierShoveRadius)
+            {
+                continue;
+            }
+
+            Vector2 away = distanceSquared > MinDirectionDistanceSquared
+                ? offset / MathF.Sqrt(distanceSquared)
+                : Vector2.UnitY;
+            _intents.EnemyKnockback(new EnemyKnockbackIntent(agent.Id, away, _bondShoveDistance));
+        }
     }
 
     private void DropDecoy(Vector3 position, float now)

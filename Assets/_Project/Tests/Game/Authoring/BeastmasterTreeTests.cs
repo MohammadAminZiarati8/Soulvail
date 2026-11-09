@@ -69,7 +69,31 @@ public sealed class BeastmasterTreeTests
             (PlayerStat.PetReturnAt, ModifierKind.Flat, -0.2f, StatTarget.Pet));
         Modifiers("QuickSwap",
             (PlayerStat.MovementSkillCooldown, ModifierKind.Flat, -1f, StatTarget.Player),
-            (PlayerStat.SwapRoarSlow, ModifierKind.Flat, 0.3f, StatTarget.Pet));
+            (PlayerStat.SwapRoarSlow, ModifierKind.Flat, 0.3f, StatTarget.Pet),
+            (PlayerStat.SwapBarrier, ModifierKind.Flat, 0.1f, StatTarget.Player),
+            (PlayerStat.SwapBarrierShove, ModifierKind.Flat, 2f, StatTarget.Player));
+    }
+
+    [Test]
+    public void QuickSwap_RaisesBarrierAndShove()
+    {
+        CharacterSpec beastmaster = Load<CharacterDefinition>("Data/Characters/Beastmaster.asset").ToSpec();
+        Assert.That(beastmaster.MovementSkill.BarrierFraction, Is.EqualTo(0.15f));
+        Assert.That(beastmaster.MovementSkill.BarrierSeconds, Is.EqualTo(3f));
+        var events = new RecordingEvents();
+        var combat = new PlayerCombat(beastmaster, events, new RecordingIntents(), 8);
+        var stats = new PlayerStats(combat, new PlayerMotor(beastmaster.Movement, System.Numerics.Vector3.UnitZ),
+            new LevelTracker(new XpCurve(20f, 12f, 1.4f), events));
+        var handler = new ModifyStatHandler(stats);
+
+        foreach (ModifyStat effect in Node("QuickSwap").ToSpec().Effects.OfType<ModifyStat>()
+            .Where(effect => effect.Target == StatTarget.Player))
+        {
+            handler.Apply(effect, this);
+        }
+
+        Assert.That(combat.Charge.Barrier.Value, Is.EqualTo(0.25f).Within(0.0001f));
+        Assert.That(combat.Charge.BarrierShove.Value, Is.EqualTo(2f));
     }
 
     [Test]

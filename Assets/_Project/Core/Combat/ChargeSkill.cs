@@ -120,6 +120,10 @@ public sealed class ChargeSkill
         PoolRadius = new Stat(spec.PoolRadius);
         PoolDuration = new Stat(spec.PoolDuration);
         PoolDamagePerPulse = new Stat(spec.PoolDamagePerPulse);
+
+        // BT-08: the Bond Barrier's fraction and the shove its break deals, both reachable by
+        // Quick Swap. The seconds stay authored on the spec.
+        Barrier = new Stat(spec.BarrierFraction);
     }
 
     /// <summary>
@@ -180,6 +184,15 @@ public sealed class ChargeSkill
 
     /// <summary>What one pulse of a Blink's fire pool takes off, live.</summary>
     public Stat PoolDamagePerPulse { get; }
+
+    /// <summary>
+    /// A swap's Bond Barrier as a fraction of max HP, live. Base
+    /// <see cref="MovementSkillSpec.BarrierFraction"/>; read clamped to <c>[0, 1]</c> (BT-08).
+    /// </summary>
+    public Stat Barrier { get; }
+
+    /// <summary>Metres a broken Bond Barrier shoves non-bosses within 3 m. Base 0.</summary>
+    public Stat BarrierShove { get; } = new(0f);
 
     /// <summary>
     /// The direction of the current dash, or of the last one — a unit vector on the ground plane,

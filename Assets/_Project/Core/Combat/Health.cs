@@ -200,6 +200,12 @@ public sealed class Health
     public float GrantedShield => _granted.Total;
 
     /// <summary>
+    /// What <paramref name="source"/>'s grant still holds — zero for a source holding nothing.
+    /// BT-08's Bond Barrier reads its own remainder through this.
+    /// </summary>
+    public float GrantedShieldOf(object source) => _granted.Of(source);
+
+    /// <summary>
     /// HP has reached zero. Spelled as the negation of "alive" so that a maximum which somehow
     /// went non-finite reads as dead — loudly wrong — rather than as permanently unkillable.
     /// </summary>

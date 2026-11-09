@@ -453,11 +453,18 @@ public readonly struct ShieldGranted
     /// <summary>How long these points stand, in simulated seconds.</summary>
     public readonly float Duration;
 
-    public ShieldGranted(float amount, float total, float duration)
+    /// <summary>
+    /// BT-08: the grant is the Beastmaster's Bond Barrier, which <c>BondBarrierView</c> draws and
+    /// <c>BulwarkView</c>'s cyan shell ignores.
+    /// </summary>
+    public readonly bool BondBarrier;
+
+    public ShieldGranted(float amount, float total, float duration, bool bondBarrier = false)
     {
         Amount = amount;
         Total = total;
         Duration = duration;
+        BondBarrier = bondBarrier;
     }
 }
 
@@ -485,10 +492,31 @@ public readonly struct ShieldGrantExpired
     /// <summary>Granted shield across every remaining source. Zero when this was the last.</summary>
     public readonly float Total;
 
-    public ShieldGrantExpired(float removed, float total)
+    /// <summary>BT-08: the grant that came off was the Bond Barrier.</summary>
+    public readonly bool BondBarrier;
+
+    public ShieldGrantExpired(float removed, float total, bool bondBarrier = false)
     {
         Removed = removed;
         Total = total;
+        BondBarrier = bondBarrier;
+    }
+}
+
+/// <summary>
+/// BT-08: a hit spent the Bond Barrier to zero. Published by <c>PlayerCombat.ApplyDamage</c>, after
+/// the hit's <see cref="PlayerDamaged"/> when there is one (a hit the pool took whole has none), and
+/// before the <see cref="ShieldGrantExpired"/> that takes the empty grant off. An expiry is not a
+/// break and says nothing here.
+/// </summary>
+public readonly struct BondBarrierBroke
+{
+    /// <summary>Where the player stood when it broke — the centre of the shove.</summary>
+    public readonly Vector3 Position;
+
+    public BondBarrierBroke(Vector3 position)
+    {
+        Position = position;
     }
 }
 

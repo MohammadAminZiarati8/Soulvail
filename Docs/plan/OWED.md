@@ -570,3 +570,11 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 1. **[Editor]** Cross a gate. Check the cyan-white flash covers the black fade, the hero walks in from the south, the door drops, and the wave starts after the beat.
 2. **[Editor]** Repeat as Beastmaster. Check the pets arrive inside the wall and follow the hero.
 3. **[Device]** Repeat on a phone in landscape and check the flash, entry, door and wave timing.
+
+
+## SF-03 — The Grove
+
+- [ ] **Editor** — Use DT-01 to check stages 1–6. The arena changes on every stage.
+- [ ] **Editor** — Use seeds that place stages 10, 15, 20, 25 and 30 in the Grove. Check that the boss stones and Thornheart’s 14 m ring sit inside the walls.
+- [ ] **Phone** — Check the stage transition into the Grove in landscape. Confirm that the greener ground and canopy distinguish the room and that the south entry and north gate stay readable.
+

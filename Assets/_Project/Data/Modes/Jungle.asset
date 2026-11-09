@@ -103,6 +103,9 @@ MonoBehaviour:
   - _arenaId: arena.jungle.hollow
     _firstStage: 1
     _lastStage: 4
+  - _arenaId: arena.jungle.grove
+    _firstStage: 2
+    _lastStage: 0
   - _arenaId: arena.jungle.clearing
     _firstStage: 5
     _lastStage: 0

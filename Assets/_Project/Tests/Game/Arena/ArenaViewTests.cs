@@ -115,7 +115,7 @@ public sealed class ArenaViewTests
     {
         // The list below drives every row here, so an empty one would make all of them pass by
         // measuring nothing.
-        Assert.That(ArenaPaths(), Is.Not.Empty);
+        Assert.That(ArenaPaths(), Does.Contain(ArenaFolder + "/Jungle/Arena_Grove.prefab"));
     }
 
     [TestCaseSource(nameof(ArenaPaths))]

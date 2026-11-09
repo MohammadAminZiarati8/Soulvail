@@ -169,7 +169,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SF-01 — Clear guide: ~1 s slow-mo beat, tall gate beam, floor trail, idle pulse (M)
 - [x] SF-02 — Entry: cyan-white flash, walk-in through the door opposite the gate, door shuts, a beat before waves (M)
-- [ ] [SF-03](tasks/SF-03-jungle-third-arena.md) — The Grove: a third Jungle arena, so no stage repeats the last (M)
+- [x] SF-03 — The Grove: a third Jungle arena, so no stage repeats the last (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

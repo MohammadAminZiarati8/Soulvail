@@ -2,20 +2,20 @@
 
 History: `git log`. [OWED](OWED.md).
 
-_2026-11-09, SF-02._
+_2026-11-10, SF-03._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SF-02** — Gate flash, walk-in and door beat. |
-| **Next task** | SF-03 on go. |
-| **Verified** | EditMode 6250 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SF-03** — The Grove and Jungle rotation. |
+| **Next task** | Awaiting go. |
+| **Verified** | EditMode 6260 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
-Heroes/Places; Jungle 30 stages. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
+Heroes/Places; Jungle rotates 3 arenas. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
 Waves → door, idle hint; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart: spokes, pods, slam, heart ×2. Mother: shields, lobs, spray, pod.

@@ -1665,6 +1665,7 @@ public sealed class JungleTests
         Assert.That(jungle.Arenas.Select(a => (a.ArenaId.Value, a.FirstStage, a.LastStage)), Is.EqualTo(new[]
         {
             ("arena.jungle.hollow", 1, 4),
+            ("arena.jungle.grove", 2, ArenaEntry.NoLastStage),
             ("arena.jungle.clearing", 5, ArenaEntry.NoLastStage),
         }));
 

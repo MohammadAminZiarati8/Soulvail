@@ -10,7 +10,7 @@ _2026-11-09._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **BT-07b**. |
-| **Next task** | Unspecced (AM on the owner's word). |
+| **Next task** | [BT-08](tasks/BT-08-bond-barrier.md), on the owner's go. |
 | **Verified** | EditMode 6190 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works

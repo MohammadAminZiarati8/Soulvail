@@ -160,7 +160,7 @@ _No milestone. The owner is setting the next direction._
 - Run overlays: `LevelUpPresenter`, `SanctumPresenter`, `PausePresenter`, `RunEndPresenter`, `SplashPresenter`, `FirstActiveHint`, `PointBadge`.
 - Debug: `TestStartPanel` scales by a portrait `ReferenceHeight`; `DebugOverlay` IMGUI rects.
 - `HudLayoutTests`, `SkillsPresenterTests` and the tree tests assert 9:20 layouts.
-- Stage flow (owner, 2026-11-09; world side is SF below): a STAGE CLEAR banner on the last kill; a STAGE N / BOSS card on arrival; a run progress strip; an off-screen edge arrow to the open gate.
+- Stage flow (owner, 2026-11-09; world side is SF below): a STAGE CLEAR banner on the last kill; a BOSS label on the arrival card (STAGE N is SF-05); a run progress strip; an off-screen edge arrow to the open gate.
 - `HudPresenter`'s black stage fade (`_fade`): retire it once SF-02's `GateFlashView` covers the transition.
 
 ### Stage flow
@@ -170,6 +170,8 @@ _No milestone. The owner is setting the next direction._
 - [x] SF-01 — Clear guide: ~1 s slow-mo beat, tall gate beam, floor trail, idle pulse (M)
 - [x] SF-02 — Entry: cyan-white flash, walk-in through the door opposite the gate, door shuts, a beat before waves (M)
 - [x] SF-03 — The Grove: a third Jungle arena, so no stage repeats the last (M)
+- [ ] [SF-04](tasks/SF-04-portal-gate.md) — The gate is a glowing cyan portal; no entry door, no floor trail (owner correction, 2026-11-10) (M)
+- [ ] [SF-05](tasks/SF-05-stage-card.md) — A STAGE N card on every arrival (owner, 2026-11-10) (S)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

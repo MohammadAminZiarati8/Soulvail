@@ -10,7 +10,7 @@ _2026-11-10, SF-03._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **SF-03** — The Grove and Jungle rotation. |
-| **Next task** | Awaiting go. |
+| **Next task** | SF-04 on go, then SF-05. |
 | **Verified** | EditMode 6260 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works

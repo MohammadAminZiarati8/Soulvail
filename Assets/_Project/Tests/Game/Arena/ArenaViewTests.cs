@@ -15,7 +15,7 @@ namespace Soulvail.Tests.Game.Arena;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Every rule here is also in <c>ArenaView.OnValidate</c>, and that is the point rather than a
+/// <b>Every shared arena validity rule is also in <c>ArenaView.OnValidate</c>, and that is the point rather than a
 /// duplication.</b> The Inspector warning is what a designer sees while dragging a pillar; these
 /// rows are what stops a prefab shipping with the warning ignored. Both read the same
 /// <c>DescribeFaults</c>, so the two accounts of what a legal arena is cannot drift.
@@ -46,6 +46,77 @@ public sealed class ArenaViewTests
             }
         }
     }
+
+    [TestCase("Hollow", 30f, 22f)]
+    [TestCase("Clearing", 44f, 28f)]
+    public void JungleArenas_FloorSizes(string room, float width, float depth)
+    {
+        ArenaView arena = JungleArena(room);
+        BoxCollider floor = arena.transform.Find("Collision/Floor").GetComponent<BoxCollider>();
+
+        Assert.That(Vector3.Scale(floor.size, floor.transform.lossyScale).x, Is.EqualTo(width));
+        Assert.That(Vector3.Scale(floor.size, floor.transform.lossyScale).z, Is.EqualTo(depth));
+        Assert.That(arena.PlayBounds.size, Is.EqualTo(new Vector2(width, depth)));
+    }
+
+    [TestCase("Hollow", 15f)]
+    [TestCase("Clearing", 22f)]
+    public void JungleArenas_RunWestToEast(string room, float halfWidth)
+    {
+        ArenaView arena = JungleArena(room);
+
+        Assert.That(arena.PlayerStart.x, Is.EqualTo(-halfWidth + 4f));
+        Assert.That(arena.PlayerStart.z, Is.Zero);
+        Assert.That(arena.GatePosition.x, Is.EqualTo(halfWidth - 1.5f));
+        Assert.That(arena.GatePosition.z, Is.Zero);
+
+        foreach (string path in new[] { "Gate/Door", "Gate/Barrier" })
+        {
+            Transform part = arena.transform.Find(path);
+            Assert.That(part.position.x, Is.EqualTo(halfWidth).Within(0.001f), path);
+            Assert.That(part.position.z, Is.EqualTo(0f).Within(0.001f), path);
+            Assert.That(Vector3.Dot(part.forward, Vector3.left), Is.EqualTo(1f).Within(0.001f), path);
+        }
+    }
+
+    [TestCase("Hollow", 7)]
+    [TestCase("Clearing", 8)]
+    public void JungleArenas_SpawnsKeepClearance(string room, int count)
+    {
+        ArenaView arena = JungleArena(room);
+        Rect bounds = arena.PlayBounds;
+        Vector3 start = arena.PlayerStart;
+
+        Assert.That(arena.SpawnPoints, Has.Count.EqualTo(count));
+        foreach (Vector3 spawn in arena.SpawnPoints)
+        {
+            Assert.That(spawn.x, Is.InRange(bounds.xMin + 1.5f, bounds.xMax - 1.5f));
+            Assert.That(spawn.z, Is.InRange(bounds.yMin + 1.5f, bounds.yMax - 1.5f));
+            Assert.That(Vector2.Distance(new Vector2(spawn.x, spawn.z), new Vector2(start.x, start.z)),
+                Is.GreaterThanOrEqualTo(SpawnDirector.MinPlayerDistance));
+        }
+    }
+
+    [TestCase("Hollow")]
+    [TestCase("Clearing")]
+    public void JungleArenas_BoundsOnPerimeter(string room)
+    {
+        ArenaView arena = JungleArena(room);
+        Rect bounds = arena.PlayBounds;
+
+        Assert.That(WallInnerFace(arena, "East", Vector3.left).x, Is.EqualTo(bounds.xMax));
+        Assert.That(WallInnerFace(arena, "West", Vector3.right).x, Is.EqualTo(bounds.xMin));
+        Assert.That(WallInnerFace(arena, "North", Vector3.back).z, Is.EqualTo(bounds.yMax));
+        Assert.That(WallInnerFace(arena, "South", Vector3.forward).z, Is.EqualTo(bounds.yMin));
+    }
+
+    private static Vector3 WallInnerFace(ArenaView arena, string wall, Vector3 inward)
+    {
+        BoxCollider collider = arena.transform.Find($"Collision/Bound_{wall}").GetComponent<BoxCollider>();
+        return collider.transform.TransformPoint(collider.center + Vector3.Scale(collider.size / 2f, inward));
+    }
+
+    private static ArenaView JungleArena(string room) => Arena($"{ArenaFolder}/Jungle/Arena_{room}.prefab");
 
     [Test]
     public void PlayBounds_IsHalfSizeAroundTransform()

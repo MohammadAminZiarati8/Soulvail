@@ -77,11 +77,9 @@ public sealed class JungleTests
     private const string ArenaFolder = "Assets/_Project/Prefabs/Arenas";
 
     /// <summary>
-    /// The widest floor a place may open in: GD §7.2's 36 m square is the full room, and the owner's
-    /// direction of 2026-09-27 is a smaller one for the first stages. 24 m holds the spawn clearance
-    /// (M7-05e); 26 allows a room a little larger than the Hollow.
+    /// The widest floor a place may open in, matching the 30 m small room in GD §7.2.
     /// </summary>
-    private const float SmallRoomFloor = 26f;
+    private const float SmallRoomFloor = 30f;
 
     /// <summary>What a Frog is worth since JG-01: three of them reach level 2 (CH §5.2's 51.7).</summary>
     private const float FrogXp = 18f;

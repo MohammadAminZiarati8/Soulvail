@@ -539,3 +539,11 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] [Editor] 2400×1080, Jungle stage 1: gate visible from the start, no sideways pan.
 - [ ] [Editor] Same resolution, stage 5: move north and south to check the 2 m limits. At the east and west walls, check that horizontal framing stays centred on the current square arena.
 - [ ] [Device] Flip the phone between landscape orientations and verify the game follows. Hold it upright and verify it stays in landscape.
+
+
+## LS-02 — Wide Jungle arenas (2026-11-09)
+
+1. [Editor] At 2400×1080, start stage 1. Check that the whole Hollow fits and the gate is on the right.
+2. [Editor] Walk the Hollow and Clearing perimeters at stages 1 and 5. Check that the walls are closed and the dressing covers every edge.
+3. [Editor] Clear stage 5 and walk to the east gate. Check that stage 6 loads.
+4. [Editor] Use DT-01 at stages 10, 15, 20, 25 and 30. Check that boss cover is inside the floor and that Thornheart's ring reads at the north and south walls at stage 20.

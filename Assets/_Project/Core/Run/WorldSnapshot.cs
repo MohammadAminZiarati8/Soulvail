@@ -70,6 +70,8 @@ public sealed class WorldSnapshot
     /// fixture that never intends to leave stage 1 are both legal arenas.
     /// </remarks>
     public bool HasGate;
+    public bool HasEntry;
+    public Vector3 PlayerStart;
 
     /// <summary>
     /// Where the director may put a body in the arena that is standing right now, in world metres.
@@ -269,6 +271,8 @@ public sealed class WorldSnapshot
         // an arena that no longer has one, and the flow would walk the player through it.
         GatePosition = Vector3.Zero;
         HasGate = false;
+        HasEntry = false;
+        PlayerStart = default;
 
         // Dropped with the gate and for the same reason: an arena's spawn points left standing in a
         // snapshot nobody refilled would be places in a room that has been torn down, and the

@@ -563,3 +563,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - **LS-02 / LS-03 reverted (2026-11-09).** Their arena checks (wide Hollow/Clearing, Descent and Courtyard west-to-east) are void. Play stage 1 and stage 5: the Hollow (24 × 24) and Clearing (36 × 36) are square again, start south, gate north, and the landscape camera stops 2 m past their walls.
 - **LS-01 camera bound reverted (2026-11-09).** The camera follows the hero freely again; ignore every "stops 2 m past the walls" check (LS-01's and the line above). Play stage 1 in landscape: the camera follows as it did before LS-01; the phone still turns sideways.
+
+
+### SF-02 — Entry
+
+1. **[Editor]** Cross a gate. Check the cyan-white flash covers the black fade, the hero walks in from the south, the door drops, and the wave starts after the beat.
+2. **[Editor]** Repeat as Beastmaster. Check the pets arrive inside the wall and follow the hero.
+3. **[Device]** Repeat on a phone in landscape and check the flash, entry, door and wave timing.

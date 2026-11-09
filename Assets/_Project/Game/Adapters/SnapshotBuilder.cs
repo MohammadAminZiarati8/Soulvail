@@ -232,6 +232,12 @@ public sealed class SnapshotBuilder
             }
         }
 
+        snapshot.HasEntry = arena != null && arena.HasEntry;
+        if (snapshot.HasEntry)
+        {
+            snapshot.PlayerStart = arena.PlayerStart.ToNum();
+        }
+
         snapshot.HasGate = arena != null && arena.HasGate;
 
         if (snapshot.HasGate)

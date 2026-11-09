@@ -116,6 +116,7 @@ namespace Soulvail.Game.Composition
                  "the same, it just cannot say how the player is doing. The way out of a death is " +
                  "the run-end screen's as of M4-06, and that one is required.")]
         [SerializeField] private HudPresenter _hudPresenter;
+        [SerializeField] private GateFlashView _gateFlash;
 
         [Tooltip("The run-end screen: the payout and one button back to the Menu, on its own canvas " +
                  "above every other. Required, unlike every optional screen below it — a scene " +
@@ -409,6 +410,11 @@ namespace Soulvail.Game.Composition
             // not construct, so registering the live component is exactly right: the container
             // injects it and destroys nothing.
             builder.RegisterComponent(_playerView);
+            if (_gateFlash != null)
+            {
+                builder.RegisterComponent(_gateFlash);
+            }
+
             builder.RegisterEntryPoint<TimeScaleDriver>(Lifetime.Scoped);
             if (_gateGuidePrefab != null)
             {

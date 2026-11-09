@@ -109,8 +109,8 @@ public sealed class ArenaPoolTests
 
         Arrive(1, Pillars);
 
-        Assert.That(_playerObject.transform.position, Is.EqualTo(_pool.Active.PlayerStart),
-            "A stage boundary puts the player at the start of the room it opens (rule 6). Core " +
+        Assert.That(_playerObject.transform.position, Is.EqualTo(_pool.Active.EntryPosition),
+            "A stage boundary puts the player at the entry of the room it opens. Core " +
             "holds no player position, so nothing has to be told: it reads the new one off the " +
             "next snapshot.");
     }

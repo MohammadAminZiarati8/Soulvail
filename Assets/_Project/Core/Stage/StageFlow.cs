@@ -188,6 +188,9 @@ public sealed class StageFlow
     private float _now;
 
     private bool _begun;
+    private bool _entryWalking;
+    private bool _entrySealed;
+    private float _entrySealedAt;
 
     /// <param name="mode">Whose curves the stages are composed from and whose <c>HasStage</c> ends a finite run.</param>
     /// <param name="composer">Turns a depth into waves, into the one plan below.</param>
@@ -405,10 +408,7 @@ public sealed class StageFlow
         switch (Phase)
         {
             case StagePhase.Arrival:
-                if (PhaseElapsed >= ArrivalTime)
-                {
-                    EnterWaves(now, snapshot);
-                }
+                TickArrival(now, snapshot);
 
                 break;
 
@@ -482,10 +482,58 @@ public sealed class StageFlow
     /// </remarks>
     private void EnterArrival(float now)
     {
+        _entryWalking = false;
+        _entrySealed = false;
         Enter(StagePhase.Arrival, now);
 
         _events.Publish(new StageArrived(Stage, ArenaFor(Stage)));
     }
+
+    private void TickArrival(float now, WorldSnapshot snapshot)
+    {
+        if (!_entrySealed)
+        {
+            Vector2 offset = EntryOffset(snapshot);
+            float radius = _tuning.EntryArriveRadius;
+            _entryWalking = snapshot.HasEntry && PhaseElapsed < _tuning.EntryWalkMaxTime
+                && offset.LengthSquared() > radius * radius;
+            if (_entryWalking)
+            {
+                return;
+            }
+
+            _entrySealed = true;
+            // A room without an entry has no walk, even if its first snapshot arrived late.
+            _entrySealedAt = snapshot.HasEntry ? now : _phaseEnteredAt;
+            _events.Publish(new StageEntrySealed(Stage));
+        }
+
+        if (PhaseElapsed >= ArrivalTime && now >= _entrySealedAt + _tuning.EntryBeatTime)
+        {
+            EnterWaves(now, snapshot);
+        }
+    }
+
+    public bool TryEntryInput(WorldSnapshot snapshot, out Vector2 input)
+    {
+        if (Phase == StagePhase.Arrival && _entryWalking && snapshot.HasEntry)
+        {
+            Vector2 offset = EntryOffset(snapshot);
+            float radius = _tuning.EntryArriveRadius;
+            if (offset.LengthSquared() > radius * radius)
+            {
+                input = Vector2.Normalize(offset);
+                return true;
+            }
+        }
+
+        input = Vector2.Zero;
+        return false;
+    }
+
+    private static Vector2 EntryOffset(WorldSnapshot snapshot) =>
+        new(snapshot.PlayerStart.X - snapshot.PlayerPosition.X,
+            snapshot.PlayerStart.Z - snapshot.PlayerPosition.Z);
 
     /// <summary>
     /// Hands the director this stage's plan and lets it run.

@@ -2,16 +2,16 @@
 
 History: `git log`. [OWED](OWED.md).
 
-_2026-11-09._
+_2026-11-09, SF-02._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | LS-01 camera + LS-02/03 reverted (device-only landscape); **SF-01**. |
-| **Next task** | SF-02 on go. |
-| **Verified** | EditMode 6242 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SF-02** — Gate flash, walk-in and door beat. |
+| **Next task** | SF-03 on go. |
+| **Verified** | EditMode 6250 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

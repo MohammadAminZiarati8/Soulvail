@@ -158,7 +158,8 @@ public sealed class PetViewsTests
 
             Assert.That(_snapshot.PetCount, Is.EqualTo(1));
             Assert.That(_snapshot.Pets[0].Id, Is.EqualTo(stage));
-            Assert.That(_snapshot.Pets[0].Position, Is.EqualTo(player.Position.ToNum() + heelOffset));
+            Assert.That(player.Position, Is.EqualTo(arenas.Active.EntryPosition));
+            Assert.That(_snapshot.Pets[0].Position, Is.EqualTo(player.Position.ToNum() - heelOffset));
         }
     }
 

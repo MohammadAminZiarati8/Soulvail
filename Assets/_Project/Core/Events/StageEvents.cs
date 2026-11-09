@@ -3,6 +3,16 @@ using Soulvail.Core.Content;
 
 namespace Soulvail.Core.Events;
 
+public readonly struct StageEntrySealed
+{
+    public readonly int Stage;
+
+    public StageEntrySealed(int stage)
+    {
+        Stage = stage;
+    }
+}
+
 // Stage flow's domain events. Grouped per module like SpawnEvents, EnemyEvents and RunEvents, for
 // the same reason: an event is three lines, and reading a module's vocabulary in one place is worth
 // more than one type per file. See AR §5, §8 and <../../../../Docs/adr/0004-scoped-domain-events.md>.

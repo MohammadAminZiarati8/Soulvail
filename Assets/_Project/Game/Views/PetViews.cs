@@ -205,7 +205,13 @@ public sealed class PetViews : IDisposable
         // Core places the pet beside its last player pose. ArenaPool has since moved that pose.
         if (_arenaEntryPosition.HasValue && evt.PlayerPosition.HasValue)
         {
-            position += _arenaEntryPosition.Value - evt.PlayerPosition.Value.ToUnity();
+            Vector3 entry = _arenaEntryPosition.Value;
+            position += entry - evt.PlayerPosition.Value.ToUnity();
+            if (_arenas.Active.HasEntry)
+            {
+                // The usual heel offset can reach through the south wall from the doorway.
+                position.z = entry.z + Mathf.Abs(position.z - entry.z);
+            }
         }
 
         bool boar = evt.Kind == PetKind.Boar && _boarPool != null;

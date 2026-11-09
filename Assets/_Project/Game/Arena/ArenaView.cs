@@ -3,29 +3,31 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
+using Soulvail.Core.Stage;
+using Soulvail.Game.Views;
 using Unity.AI.Navigation;
 using UnityEngine;
 
-// Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer cannot
+// Block namespace, deliberately â€” see the note in BootScope.cs. Unity 6.3's script importer cannot
 // find the type in a file-scoped namespace, so every arena prefab's reference to this component
-// would silently deserialise as null, with nothing reported anywhere (M0-11, Traps §5).
+// would silently deserialise as null, with nothing reported anywhere (M0-11, Traps آ§5).
 namespace Soulvail.Game.Arena
 {
     /// <summary>
-    /// One hand-built arena (GD §7.2). It decides nothing and ticks nothing: it is a set of named
+    /// One hand-built arena (GD آ§7.2). It decides nothing and ticks nothing: it is a set of named
     /// places, a barrier, a door, and the NavMesh those places are true about.
     /// </summary>
     /// <remarks>
     /// <para>
     /// <b>Nothing here has an <c>Update</c>, nothing subscribes and nothing decides.</b>
     /// <see cref="ArenaPool"/> reads it when a stage arrives, and core is told the two facts it
-    /// needs — the door and the spawn points — through the snapshot, the same way it is told where
+    /// needs â€” the door and the spawn points â€” through the snapshot, the same way it is told where
     /// the player is. An arena that answered core directly would be a second brain in a room.
     /// </para>
     /// <para>
-    /// <b>It validates itself against GD §7.2, in the Editor, as a warning.</b> The spec asks for an
+    /// <b>It validates itself against GD آ§7.2, in the Editor, as a warning.</b> The spec asks for an
     /// error; a warning is what the three <c>*Definition</c> ScriptableObjects already use for
-    /// exactly this job, and an error here would fail every test that builds an arena fixture —
+    /// exactly this job, and an error here would fail every test that builds an arena fixture â€”
     /// Unity's test framework treats an unexpected <c>LogError</c> as a failure. The hard assertions
     /// are <c>ArenaViewTests</c>, which run the same rules against the shipped prefabs; this is the
     /// copy a designer sees while dragging a pillar.
@@ -33,18 +35,18 @@ namespace Soulvail.Game.Arena
     /// <para>
     /// <b>The NavMesh is the surface's own business.</b> <see cref="NavMeshSurface"/> adds its baked
     /// data when it is enabled and removes it when it is disabled, so raising and parking an arena
-    /// is all the wiring rule 7 needs — and no arena ever bakes at runtime, which on a phone would
+    /// is all the wiring rule 7 needs â€” and no arena ever bakes at runtime, which on a phone would
     /// be a multi-frame hitch behind a 0.3 s fade.
     /// </para>
     /// </remarks>
     public sealed class ArenaView : MonoBehaviour
     {
-        /// <summary>The layer every cover pillar sits on — <see href="../../../../Docs/plan/ROADMAP.md">ledger row 13</see>.</summary>
+        /// <summary>The layer every cover pillar sits on â€” <see href="../../../../Docs/plan/ROADMAP.md">ledger row 13</see>.</summary>
         /// <remarks>
         /// A layer rather than a tag or a component because the consumer is a <c>Physics.Raycast</c>
         /// mask (M2-11b), and a mask is the one form of that question that costs nothing per call.
         /// The name is here rather than a serialized <c>LayerMask</c> because this class only ever
-        /// <em>counts</em> pillars for validation — the mask that will actually be raycast against is
+        /// <em>counts</em> pillars for validation â€” the mask that will actually be raycast against is
         /// authored on the scope, where a renamed layer is a visible diff (M1-12's rule for the
         /// enemy mask).
         /// </remarks>
@@ -53,24 +55,26 @@ namespace Soulvail.Game.Arena
         /// <summary>Fewest spawn points an arena may author (rule 2).</summary>
         public const int MinSpawnPoints = 3;
 
-        /// <summary>GD §7.2's cover band: 3–6 pillars, placed off-centre — or none, for an open arena.</summary>
+        /// <summary>GD آ§7.2's cover band: 3â€“6 pillars, placed off-centre â€” or none, for an open arena.</summary>
         public const int MinCoverPillars = 3;
 
         /// <inheritdoc cref="MinCoverPillars" />
         public const int MaxCoverPillars = 6;
 
         [Tooltip("This arena's content id, e.g. 'arena.pillars'. It must match the mode's roster " +
-                 "and the asset's own name — Arena_Pillars.prefab ↔ arena.pillars.")]
+                 "and the asset's own name â€” Arena_Pillars.prefab â†” arena.pillars.")]
         [SerializeField] private string _id = "arena.new";
 
         [Tooltip("Where the player stands when this arena is raised. Every spawn point owes it " +
-                 "SpawnDirector.MinPlayerDistance of clearance (GD §12.4).")]
+                 "SpawnDirector.MinPlayerDistance of clearance (GD آ§12.4).")]
         [SerializeField] private Transform _playerStart;
+        [SerializeField] private Transform _entry;
+        [SerializeField] private EntryDoorView _entryDoor;
 
         [Tooltip("Metres from the arena origin to the inside faces of its walls, on XZ.")]
         [SerializeField] private Vector2 _halfSize;
 
-        [Tooltip("The door out. What core tests the player's distance against — an arena without " +
+        [Tooltip("The door out. What core tests the player's distance against â€” an arena without " +
                  "one is playable and cannot be left, which parks the stage flow at its gate.")]
         [SerializeField] private Transform _gate;
 
@@ -79,20 +83,20 @@ namespace Soulvail.Game.Arena
         [SerializeField] private Transform[] _spawnPoints = Array.Empty<Transform>();
 
         [Tooltip("Shown while the arena is sealed: the wall across the door for the length of the " +
-                 "fight. Optional — an arena without one still seals as far as core is concerned.")]
+                 "fight. Optional â€” an arena without one still seals as far as core is concerned.")]
         [SerializeField] private GameObject _barrier;
 
         [Tooltip("Shown once the stage is cleared: the door the player walks into. Optional on " +
                  "the same terms as the barrier.")]
         [SerializeField] private GameObject _door;
 
-        [Tooltip("This arena's baked NavMesh. Baked per prefab and never at runtime — a bake at a " +
+        [Tooltip("This arena's baked NavMesh. Baked per prefab and never at runtime â€” a bake at a " +
                  "stage boundary is a multi-frame hitch behind a 0.3 s fade.")]
         [SerializeField] private NavMeshSurface _surface;
 
-        [Tooltip("GD §9.1 rule 6's things in the room a boss can set off: a shockwave that reaches " +
+        [Tooltip("GD آ§9.1 rule 6's things in the room a boss can set off: a shockwave that reaches " +
                  "one topples it. Optional, and deliberately authored on one arena rather than on " +
-                 "all of them — an arena without any is the ordinary room.")]
+                 "all of them â€” an arena without any is the ordinary room.")]
         [SerializeField] private Transform[] _hazards = Array.Empty<Transform>();
 
         /// <summary>
@@ -151,7 +155,7 @@ namespace Soulvail.Game.Arena
         /// prefab playable rather than teleporting the player to nowhere.</remarks>
         public Vector3 PlayerStart => _playerStart == null ? transform.position : _playerStart.position;
 
-        /// <summary>Where the door out is — what core tests the player's distance against.</summary>
+        /// <summary>Where the door out is â€” what core tests the player's distance against.</summary>
         public Vector3 GatePosition => _gate == null ? transform.position : _gate.position;
 
         /// <summary>Whether this arena has a door at all.</summary>
@@ -160,13 +164,31 @@ namespace Soulvail.Game.Arena
         /// what every grey box was and what a scene dressed for one experiment still wants.
         /// </remarks>
         public bool HasGate => _gate != null;
+        public bool HasEntry => _entry != null;
+        public Vector3 EntryPosition => HasEntry ? _entry.position : PlayerStart;
+
+        public void OpenEntry()
+        {
+            if (_entryDoor != null)
+            {
+                _entryDoor.Open();
+            }
+        }
+
+        public void CloseEntry()
+        {
+            if (_entryDoor != null)
+            {
+                _entryDoor.Close();
+            }
+        }
 
         /// <summary>
         /// Where the director may put a body, in world metres, in the order they were authored.
         /// </summary>
         /// <remarks>
         /// <b>Read from the markers on every call, into a buffer sized once.</b> An arena's points
-        /// do not move, so a cache would be correct — but it would also be a copy that a reparented
+        /// do not move, so a cache would be correct â€” but it would also be a copy that a reparented
         /// or repositioned arena could silently disagree with, and the read costs one
         /// <c>transform.position</c> per point, once a stage. Unassigned elements are skipped, so a
         /// hole in the array shows up as a short list that validation refuses rather than as a
@@ -205,7 +227,7 @@ namespace Soulvail.Game.Arena
         /// <remarks>
         /// Counted by layer rather than from an authored list, and that is the whole point: a list
         /// can disagree with the scene, while the layer is the same fact M2-11b's raycast mask will
-        /// read. A pillar that was never put on the layer is therefore invisible here too — which
+        /// read. A pillar that was never put on the layer is therefore invisible here too â€” which
         /// is exactly the failure worth reporting.
         /// </remarks>
         public int CoverCount
@@ -233,12 +255,12 @@ namespace Soulvail.Game.Arena
         public NavMeshSurface Surface => _surface;
 
         /// <summary>
-        /// How many things in this room a boss can set off (GD §9.1 rule 6). Zero for an arena that
+        /// How many things in this room a boss can set off (GD آ§9.1 rule 6). Zero for an arena that
         /// authors none, which is every arena but one.
         /// </summary>
         /// <remarks>
         /// <b>The count is the authored list's, not the standing ones'.</b> A toppled hazard is still
-        /// a hazard this arena has — it is simply on its side until the arena is sealed again — so a
+        /// a hazard this arena has â€” it is simply on its side until the arena is sealed again â€” so a
         /// count that shrank would make <c>Arena_HazardIsOnOneArenaOnly</c> depend on when it was
         /// asked.
         /// </remarks>
@@ -268,7 +290,7 @@ namespace Soulvail.Game.Arena
         }
 
         /// <summary>
-        /// Knocks hazard <paramref name="index"/> over — what a shockwave reaching it does.
+        /// Knocks hazard <paramref name="index"/> over â€” what a shockwave reaching it does.
         /// </summary>
         /// <returns>
         /// True when this call is what put it on its side. False for an index that names nothing and
@@ -278,7 +300,7 @@ namespace Soulvail.Game.Arena
         /// <remarks>
         /// <b>It costs the player nothing, and that is stated rather than implied.</b> Rule 6's
         /// hazard is authored on the arena and knocked over by the boss; <em>hurting</em> somebody
-        /// would need a place in core to live — an id, a circle and a damage number — and there is
+        /// would need a place in core to live â€” an id, a circle and a damage number â€” and there is
         /// no such system, so this task draws the arena participating and claims no damage it does
         /// not do. See the task's <em>As built</em>.
         /// </remarks>
@@ -303,7 +325,7 @@ namespace Soulvail.Game.Arena
         /// <remarks>
         /// <b>The hazards are restored here and nowhere else.</b> An arena is parked and raised again
         /// at every stage boundary and the same instance is reused (<see cref="ArenaPool"/>), so a
-        /// brazier knocked over in a boss fight would still be lying down five stages later — the
+        /// brazier knocked over in a boss fight would still be lying down five stages later â€” the
         /// pooling rule <c>IPoolable.OnDespawn</c> keeps, reached by the one method every arrival
         /// already calls.
         /// </remarks>
@@ -345,10 +367,10 @@ namespace Soulvail.Game.Arena
         }
 
         /// <summary>
-        /// Every way this arena breaks GD §7.2, as one string, or null when it breaks none.
+        /// Every way this arena breaks GD آ§7.2, as one string, or null when it breaks none.
         /// </summary>
         /// <remarks>
-        /// One method for both readers — <see cref="OnValidate"/> and <c>ArenaViewTests</c> — so
+        /// One method for both readers â€” <see cref="OnValidate"/> and <c>ArenaViewTests</c> â€” so
         /// the rule a designer is warned about and the rule the suite asserts cannot drift apart.
         /// It allocates freely: it runs in the Editor, against an asset, never in a run.
         /// </remarks>
@@ -359,7 +381,7 @@ namespace Soulvail.Game.Arena
             if (!ContentId.IsValid(_id))
             {
                 faults.Add(
-                    $"'{_id}' is not a valid content id — expected lowercase dot-separated "
+                    $"'{_id}' is not a valid content id â€” expected lowercase dot-separated "
                         + "segments, at least two, e.g. 'arena.pillars'");
             }
 
@@ -412,8 +434,25 @@ namespace Soulvail.Game.Arena
                 {
                     faults.Add(
                         $"spawn point {i} is {distance:F1} m from the player start on XZ, inside "
-                            + $"GD §12.4's {SpawnDirector.MinPlayerDistance} m clearance — the "
+                            + $"GD آ§12.4's {SpawnDirector.MinPlayerDistance} m clearance â€” the "
                             + "director can never use it");
+                }
+            }
+
+            if (HasEntry)
+            {
+                Vector3 entry = EntryPosition;
+                if (validSize && !ContainsPoint(bounds, entry))
+                {
+                    faults.Add("the entry is outside the play bounds");
+                }
+
+                float dx = entry.x - start.x;
+                float dz = entry.z - start.z;
+                float radius = StageFlowTuning.Default.EntryArriveRadius;
+                if ((dx * dx) + (dz * dz) <= radius * radius)
+                {
+                    faults.Add("the entry is within the arrival radius of the player start");
                 }
             }
 
@@ -423,8 +462,8 @@ namespace Soulvail.Game.Arena
             if (cover != 0 && (cover < MinCoverPillars || cover > MaxCoverPillars))
             {
                 faults.Add(
-                    $"it has {cover} object(s) on the '{CoverLayerName}' layer and GD §7.2 wants "
-                        + $"none or {MinCoverPillars}–{MaxCoverPillars} cover pillars");
+                    $"it has {cover} object(s) on the '{CoverLayerName}' layer and GD آ§7.2 wants "
+                        + $"none or {MinCoverPillars}â€“{MaxCoverPillars} cover pillars");
             }
 
             if (_surface == null)
@@ -433,7 +472,7 @@ namespace Soulvail.Game.Arena
             }
             else if (_surface.navMeshData == null)
             {
-                faults.Add("its NavMeshSurface has no baked data — bake it on the prefab; nothing "
+                faults.Add("its NavMeshSurface has no baked data â€” bake it on the prefab; nothing "
                            + "bakes at runtime");
             }
 
@@ -505,7 +544,7 @@ namespace Soulvail.Game.Arena
         /// </remarks>
         private void OnValidate()
         {
-            // An arena nobody has dressed yet is being authored rather than being broken — and the
+            // An arena nobody has dressed yet is being authored rather than being broken â€” and the
             // first moment this runs is the frame the component is added, before a single field
             // could have been filled in. Reporting there would make adding the component to a new
             // prefab an error, and every fixture that builds one noisy.

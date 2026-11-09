@@ -1595,6 +1595,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         //
         // Null for a mode with nothing to compose, which is a run with no waves rather than a run
         // with no stage — the depth is still the config's and everything priced against it still is.
+        bool stageArrived = false;
         if (_flow is not null)
         {
             // Read before the flow moves, compared after: the *edge* into Clear is the write point,
@@ -1624,7 +1625,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // Copied rather than owned, because the two numbers answer different questions: the
             // flow's is what the stage machine is running, and this is what the run reports and
             // saves (M2-13). They agree because this is the one line that moves the second one.
-            bool stageArrived = State.StageIndex != _flow.Stage;
+            stageArrived = State.StageIndex != _flow.Stage;
             if (stageArrived)
             {
                 _hawk.Clear();
@@ -1710,7 +1711,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // mode with nothing to compose still counts its living.
         State.EnemiesLeft = State.Enemies.LivingCount() + _director.Unspawned;
 
-        TickBody(snapshot);
+        TickBody(snapshot, stageArrived);
     }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -2312,7 +2313,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     /// a tick that emitted nothing would leave the view applying whatever it last read.
     /// </para>
     /// </remarks>
-    private void TickBody(WorldSnapshot snapshot)
+    private void TickBody(WorldSnapshot snapshot, bool stageArrived)
     {
         if (State.Combat.IsHeld)
         {
@@ -2327,8 +2328,9 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             return;
         }
 
-        if (_wasCharging)
+        if (_wasCharging || stageArrived)
         {
+            // StageArrived has already teleported the view. This snapshot still describes the old room.
             _wasCharging = false;
 
             State.Motor.Stop();
@@ -2338,7 +2340,13 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // The character now looks at what it is aiming at. Null when there is nothing to aim
             // at, which the motor reads as "face the way you are moving" — M0's behaviour, still
             // correct for an empty arena.
-            State.Motor.Tick(snapshot.Dt, snapshot.MoveInput, State.Combat.FaceDirection);
+            Vector2 move = snapshot.MoveInput;
+            if (_flow is not null && _flow.TryEntryInput(snapshot, out Vector2 entryInput))
+            {
+                move = entryInput;
+            }
+
+            State.Motor.Tick(snapshot.Dt, move, State.Combat.FaceDirection);
         }
 
         _intents.PlayerMove(new PlayerMoveIntent(State.Motor.Velocity, State.Motor.Facing));

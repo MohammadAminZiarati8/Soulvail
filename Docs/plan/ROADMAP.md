@@ -168,7 +168,7 @@ _No milestone. The owner is setting the next direction._
 **Stage flow** (owner, 2026-11-09; world side only, no menu or UI; design [GD §7.1](../GameDesign.md)). After a clear the way on must be obvious, and an arrival must read as a new stage. All cyan, never gold; readable at first look on a phone. Core decides every beat (slow motion, idle hint, walk-in, seal, spawn delay, arena choice); Unity renders. The UI pieces are listed under Landscape › *For the UI rework*. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from SF-01.
 
 - [x] SF-01 — Clear guide: ~1 s slow-mo beat, tall gate beam, floor trail, idle pulse (M)
-- [ ] [SF-02](tasks/SF-02-entry-transition.md) — Entry: cyan-white flash, walk-in through the door opposite the gate, door shuts, a beat before waves (M)
+- [x] SF-02 — Entry: cyan-white flash, walk-in through the door opposite the gate, door shuts, a beat before waves (M)
 - [ ] [SF-03](tasks/SF-03-jungle-third-arena.md) — The Grove: a third Jungle arena, so no stage repeats the last (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

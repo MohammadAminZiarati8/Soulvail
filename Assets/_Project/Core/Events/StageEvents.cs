@@ -147,3 +147,26 @@ public readonly struct StageTransitionStarted
         Duration = duration;
     }
 }
+
+public readonly struct SlowMotionStarted
+{
+    public readonly float Scale;
+    public float RealSeconds { get; }
+
+    public SlowMotionStarted(float scale, float realSeconds = 1f)
+    {
+        Scale = scale;
+        RealSeconds = realSeconds;
+    }
+}
+
+public readonly struct SlowMotionEnded
+{
+}
+
+public readonly struct GateHintChanged
+{
+    public readonly bool Strong;
+
+    public GateHintChanged(bool strong) => Strong = strong;
+}

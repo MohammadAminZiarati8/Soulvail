@@ -9,14 +9,14 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **LS-03** — all shipped arenas wide, west to east. |
-| **Next task** | SF-01 (SF-01..03 specced), on go. |
-| **Verified** | EditMode 6251 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SF-01** — slow-mo clear, gate beam and trail. |
+| **Next task** | SF-02 on go. |
+| **Verified** | EditMode 6264 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
 Heroes/Places; Jungle 30 stages. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
-Waves → door; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
+Waves → door, idle hint; bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
 Thornheart: spokes, pods, slam, heart ×2. Mother: shields, lobs, spray, pod.
 From 21 four cousins (Bullfrog, pitcher, bomber, panther).

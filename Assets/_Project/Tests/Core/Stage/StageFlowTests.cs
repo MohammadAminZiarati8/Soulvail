@@ -41,7 +41,7 @@ namespace Soulvail.Tests.Core.Stage;
 /// </para>
 /// </remarks>
 [TestFixture]
-public sealed class StageFlowTests
+public sealed partial class StageFlowTests
 {
     private const string HuskId = "enemy.husk";
     private const string ExecutionerId = "enemy.executioner";
@@ -369,7 +369,8 @@ public sealed class StageFlowTests
         Assert.That(_flow.Phase, Is.EqualTo(StagePhase.Gate),
             "Ten seconds of standing still, and nothing happens — which is why a stage is GD "
                 + "§7.3's commute unit rather than a timer.");
-        Assert.That(_events.All, Is.Empty);
+        Assert.That(_events.All, Has.Count.EqualTo(1));
+        Assert.That(_events.Single<GateHintChanged>().Strong, Is.True);
     }
 
     [Test]
@@ -1907,7 +1908,7 @@ public sealed class StageFlowTests
     }
 
     /// <summary>The fixture's <see cref="StageFlow"/>, over everything <see cref="Build"/> made.</summary>
-    private StageFlow Flow() => new StageFlow(
+    private StageFlow Flow(StageFlowTuning tuning = null) => new StageFlow(
         _mode,
         _composer,
         _director,
@@ -1921,7 +1922,8 @@ public sealed class StageFlowTests
         _plan,
         seed: 0,
         lures: null,
-        minions: _minions);
+        minions: _minions,
+        tuning: tuning);
 
     /// <summary>
     /// The Gravecaller's authored Wight (M5-02) — twenty seconds, which is ten times the two a

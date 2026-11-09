@@ -90,6 +90,7 @@ namespace Soulvail.Game.Composition
         private const int ClassShotPrewarm = 2 * VolleySpec.MaxArrows;
 
         [SerializeField] private PlayerView _playerView;
+        [SerializeField] private GateGuideView _gateGuidePrefab;
         [SerializeField] private FollowCamera _followCamera;
 
         [Tooltip("The body a run wears when its class names none: Prefabs/Player/Bodies/Knight. " +
@@ -409,6 +410,11 @@ namespace Soulvail.Game.Composition
             // not construct, so registering the live component is exactly right: the container
             // injects it and destroys nothing.
             builder.RegisterComponent(_playerView);
+            builder.RegisterEntryPoint<TimeScaleDriver>(Lifetime.Scoped);
+            if (_gateGuidePrefab != null)
+            {
+                builder.RegisterBuildCallback(resolver => resolver.Instantiate(_gateGuidePrefab, transform));
+            }
 
             // The body (RS-02b rule 4). A build callback, because which body is a question about
             // the class, and the class is known only once the container exists: PendingRun and the

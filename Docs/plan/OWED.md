@@ -553,3 +553,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** At 2400×1080, run Descent through Pillars and Tiered. Check wide framing and cover clearance, then reach each east gate.
 2. **[Editor]** Open `Arena_Courtyard`. Check that the walls close around the arena and dressing runs all the way around.
+
+## SF-01 — Clear guide
+
+1. [Editor] Clear stage 1. Check roughly 1 s of slow motion, a beam visible from the west wall, and a floor trail that follows the hero around cover.
+2. [Editor] Idle for 4 s at the gate. Check that both guides pulse faster and brighter, then calm when you move.
+3. [Editor] Level up on the last kill. Check that the tree freezes the run and the slow-motion beat finishes after the pick.
+4. [Device] Check the guide is readable in landscape.

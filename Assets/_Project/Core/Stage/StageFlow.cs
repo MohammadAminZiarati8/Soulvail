@@ -141,6 +141,11 @@ public sealed class StageFlow
     /// </remarks>
     private readonly IRandomStream _affixes;
 
+    private readonly StageFlowTuning _tuning;
+    private double _slowMotionRemaining;
+    private float _idleTime;
+    private bool _hintStrong;
+
     private readonly IDomainEvents _events;
     private readonly WavePlan _plan;
 
@@ -213,7 +218,8 @@ public sealed class StageFlow
     /// The Wights, or null for a class that raises none — which is every class but the Gravecaller.
     /// Optional for <paramref name="lures"/>' reason.
     /// </param>
-    /// <exception cref="ArgumentNullException">Any dependency is null.</exception>
+    /// <param name="tuning">Clear guide tuning, or the shared defaults.</param>
+    /// <exception cref="ArgumentNullException">A required dependency is null.</exception>
     public StageFlow(
         ModeSpec mode,
         WaveComposer composer,
@@ -228,7 +234,8 @@ public sealed class StageFlow
         WavePlan plan,
         int seed,
         LureSystem lures = null,
-        MinionSystem minions = null)
+        MinionSystem minions = null,
+        StageFlowTuning tuning = null)
     {
         _mode = mode ?? throw new ArgumentNullException(nameof(mode));
         _composer = composer ?? throw new ArgumentNullException(nameof(composer));
@@ -242,7 +249,7 @@ public sealed class StageFlow
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _plan = plan ?? throw new ArgumentNullException(nameof(plan));
 
-        // **Optional, and the only two arguments here that are** (M5-03, M5-04b). A run has a
+        // Optional cleanup collaborators (M5-03, M5-04b). A run has a
         // LureSystem, but a fixture asserting on waves and doors has nothing to say about corpse
         // decoys, so a null means "no decoys to clear" rather than a refusal — the same reading
         // `EnemySystem.Ingest` gives the same object. Defaulted so that the existing constructions
@@ -253,6 +260,7 @@ public sealed class StageFlow
         // than a fixture's convenience.
         _lures = lures;
         _minions = minions;
+        _tuning = tuning ?? StageFlowTuning.Default;
 
         // Every int is a legal seed — it is a bit pattern, not a quantity — so there is nothing here
         // for a guard to reject.
@@ -380,7 +388,19 @@ public sealed class StageFlow
         // was in, for ever, with nothing in the log (AR §18.3).
         RequireFinite(now, nameof(now));
 
+        float elapsed = now - _now;
         _now = now;
+        if (_slowMotionRemaining > 0f)
+        {
+            if (elapsed >= _slowMotionRemaining)
+            {
+                EndSlowMotion();
+            }
+            else
+            {
+                _slowMotionRemaining -= elapsed;
+            }
+        }
 
         switch (Phase)
         {
@@ -431,6 +451,10 @@ public sealed class StageFlow
                 if (IsInsideTheDoor(snapshot))
                 {
                     EnterTransition(now);
+                }
+                else
+                {
+                    UpdateGateHint(snapshot);
                 }
 
                 break;
@@ -544,6 +568,43 @@ public sealed class StageFlow
         Vector3 gate = snapshot.HasGate ? snapshot.GatePosition : Vector3.Zero;
 
         _events.Publish(new StageCleared(Stage, gate, hasNext ? ArenaFor(Stage + 1) : default));
+        _slowMotionRemaining = (double)_tuning.SlowMotionScale * _tuning.SlowMotionTime;
+        _events.Publish(new SlowMotionStarted(_tuning.SlowMotionScale, _tuning.SlowMotionTime));
+    }
+
+    private void EndSlowMotion()
+    {
+        if (_slowMotionRemaining > 0f)
+        {
+            _slowMotionRemaining = 0f;
+            _events.Publish(new SlowMotionEnded());
+        }
+    }
+
+    private void UpdateGateHint(WorldSnapshot snapshot)
+    {
+        if (snapshot.MoveInput.Length() < _tuning.IdleInputDeadzone)
+        {
+            _idleTime += snapshot.Dt;
+            if (_idleTime >= _tuning.IdleHintTime)
+            {
+                SetGateHint(true);
+            }
+        }
+        else
+        {
+            _idleTime = 0f;
+            SetGateHint(false);
+        }
+    }
+
+    private void SetGateHint(bool strong)
+    {
+        if (_hintStrong != strong)
+        {
+            _hintStrong = strong;
+            _events.Publish(new GateHintChanged(strong));
+        }
     }
 
     /// <summary>
@@ -630,6 +691,8 @@ public sealed class StageFlow
     /// </summary>
     private void EnterTransition(float now)
     {
+        _idleTime = 0f;
+        SetGateHint(false);
         Enter(StagePhase.Transition, now);
 
         _events.Publish(new StageTransitionStarted(Stage, FadeTime));
@@ -662,6 +725,7 @@ public sealed class StageFlow
     /// </remarks>
     private void Advance(float now, IRandomStream spawn)
     {
+        EndSlowMotion();
         int next = Stage + 1;
 
         Stage = next;

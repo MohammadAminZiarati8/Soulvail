@@ -10,7 +10,7 @@ _2026-11-09._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **BT-08** — Beastmaster tune block done. |
-| **Next task** | None specced; AM / AB paths on the owner's word. |
+| **Next task** | [BT-09a](tasks/BT-09a-axe-pair-and-swap-shove.md), then [BT-09b](tasks/BT-09b-guard-judges-the-source.md), on the owner's go. |
 | **Verified** | EditMode 6200 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works

@@ -52,7 +52,12 @@ public sealed class ArenaViewTests
     public void JungleArenas_FloorSizes(string room, float width, float depth)
     {
         ArenaView arena = JungleArena(room);
-        BoxCollider floor = arena.transform.Find("Collision/Floor").GetComponent<BoxCollider>();
+        AssertFloorSize(arena, arena.transform.Find("Collision/Floor"), width, depth);
+    }
+
+    private static void AssertFloorSize(ArenaView arena, Transform floorTransform, float width, float depth)
+    {
+        BoxCollider floor = floorTransform.GetComponent<BoxCollider>();
 
         Assert.That(Vector3.Scale(floor.size, floor.transform.lossyScale).x, Is.EqualTo(width));
         Assert.That(Vector3.Scale(floor.size, floor.transform.lossyScale).z, Is.EqualTo(depth));
@@ -63,8 +68,11 @@ public sealed class ArenaViewTests
     [TestCase("Clearing", 22f)]
     public void JungleArenas_RunWestToEast(string room, float halfWidth)
     {
-        ArenaView arena = JungleArena(room);
+        AssertWestToEast(JungleArena(room), halfWidth);
+    }
 
+    private static void AssertWestToEast(ArenaView arena, float halfWidth)
+    {
         Assert.That(arena.PlayerStart.x, Is.EqualTo(-halfWidth + 4f));
         Assert.That(arena.PlayerStart.z, Is.Zero);
         Assert.That(arena.GatePosition.x, Is.EqualTo(halfWidth - 1.5f));
@@ -83,7 +91,11 @@ public sealed class ArenaViewTests
     [TestCase("Clearing", 8)]
     public void JungleArenas_SpawnsKeepClearance(string room, int count)
     {
-        ArenaView arena = JungleArena(room);
+        AssertSpawnClearance(JungleArena(room), count);
+    }
+
+    private static void AssertSpawnClearance(ArenaView arena, int count)
+    {
         Rect bounds = arena.PlayBounds;
         Vector3 start = arena.PlayerStart;
 
@@ -101,22 +113,118 @@ public sealed class ArenaViewTests
     [TestCase("Clearing")]
     public void JungleArenas_BoundsOnPerimeter(string room)
     {
-        ArenaView arena = JungleArena(room);
+        AssertBoundsOnPerimeter(JungleArena(room), "Collision/Bound_");
+    }
+
+    private static void AssertBoundsOnPerimeter(ArenaView arena, string prefix)
+    {
         Rect bounds = arena.PlayBounds;
 
-        Assert.That(WallInnerFace(arena, "East", Vector3.left).x, Is.EqualTo(bounds.xMax));
-        Assert.That(WallInnerFace(arena, "West", Vector3.right).x, Is.EqualTo(bounds.xMin));
-        Assert.That(WallInnerFace(arena, "North", Vector3.back).z, Is.EqualTo(bounds.yMax));
-        Assert.That(WallInnerFace(arena, "South", Vector3.forward).z, Is.EqualTo(bounds.yMin));
+        Assert.That(WallInnerFace(arena, prefix + "East", Vector3.left).x, Is.EqualTo(bounds.xMax));
+        Assert.That(WallInnerFace(arena, prefix + "West", Vector3.right).x, Is.EqualTo(bounds.xMin));
+        Assert.That(WallInnerFace(arena, prefix + "North", Vector3.back).z, Is.EqualTo(bounds.yMax));
+        Assert.That(WallInnerFace(arena, prefix + "South", Vector3.forward).z, Is.EqualTo(bounds.yMin));
     }
 
     private static Vector3 WallInnerFace(ArenaView arena, string wall, Vector3 inward)
     {
-        BoxCollider collider = arena.transform.Find($"Collision/Bound_{wall}").GetComponent<BoxCollider>();
+        BoxCollider collider = arena.transform.Find(wall).GetComponent<BoxCollider>();
         return collider.transform.TransformPoint(collider.center + Vector3.Scale(collider.size / 2f, inward));
     }
 
     private static ArenaView JungleArena(string room) => Arena($"{ArenaFolder}/Jungle/Arena_{room}.prefab");
+
+    [TestCase("Arena_Pillars")]
+    [TestCase("Arena_Tiered")]
+    [TestCase("AshenReach/Arena_Courtyard")]
+    public void RemainingArenas_FloorSize(string room)
+    {
+        ArenaView arena = Arena($"{ArenaFolder}/{room}.prefab");
+        Transform collision = arena.transform.Find("Collision");
+        Transform floor = (collision ?? arena.transform).Find("Floor");
+        AssertFloorSize(arena, floor, 44f, 28f);
+        AssertBoundsOnPerimeter(arena, collision == null ? "Wall_" : "Collision/Bound_");
+    }
+
+    [TestCase("Arena_Pillars", 8)]
+    [TestCase("Arena_Tiered", 7)]
+    [TestCase("AshenReach/Arena_Courtyard", 8)]
+    public void RemainingArenas_RunWestToEast(string room, int spawnCount)
+    {
+        ArenaView arena = Arena($"{ArenaFolder}/{room}.prefab");
+        AssertWestToEast(arena, 22f);
+        AssertSpawnClearance(arena, spawnCount);
+    }
+
+    [Test]
+    public void Pillars_PillarsAtTenSix()
+    {
+        ArenaView arena = Arena($"{ArenaFolder}/Arena_Pillars.prefab");
+        foreach (float x in new[] { -10f, 10f })
+        {
+            foreach (float z in new[] { -6f, 6f })
+            {
+                string name = $"Pillar_{(z > 0f ? "N" : "S")}{(x > 0f ? "E" : "W")}";
+                Vector3 position = arena.transform.Find(name).localPosition;
+                Assert.That(new Vector2(position.x, position.z), Is.EqualTo(new Vector2(x, z)), name);
+            }
+        }
+    }
+
+    [Test]
+    public void Tiered_PillarsInsideWalls()
+    {
+        ArenaView arena = Arena($"{ArenaFolder}/Arena_Tiered.prefab");
+        Rect bounds = arena.PlayBounds;
+        Assert.That(arena.CoverCount, Is.EqualTo(5));
+        for (int i = 0; i < 5; i++)
+        {
+            Transform pillar = arena.transform.Find($"Pillar_{i:00}");
+            BoxCollider box = pillar.GetComponent<BoxCollider>();
+            foreach (float x in new[] { -0.5f, 0.5f })
+            {
+                foreach (float z in new[] { -0.5f, 0.5f })
+                {
+                    Vector3 edge = pillar.TransformPoint(box.center + new Vector3(box.size.x * x, 0f, box.size.z * z));
+                    Assert.That(edge.x, Is.InRange(bounds.xMin + 2f, bounds.xMax - 2f), pillar.name);
+                    Assert.That(edge.z, Is.InRange(bounds.yMin + 2f, bounds.yMax - 2f), pillar.name);
+                }
+            }
+        }
+
+        Vector3 dais = arena.transform.Find("Dais").localPosition;
+        Assert.That(new Vector2(dais.x, dais.z), Is.EqualTo(Vector2.zero));
+    }
+
+    [Test]
+    public void Courtyard_CoverTurnsClockwise()
+    {
+        ArenaView arena = Arena($"{ArenaFolder}/AshenReach/Arena_Courtyard.prefab");
+        Transform cover = arena.transform.Find("Cover");
+        Assert.That(cover.childCount, Is.EqualTo(4));
+        AssertCoverPose(cover.Find("Cover_00"), 7f, 8f, 90f);
+        AssertCoverPose(cover.Find("Cover_01"), 6f, -9f, 90f);
+        AssertCoverPose(cover.Find("Cover_02"), -6f, 9f, 115f);
+        AssertCoverPose(cover.Find("Cover_03"), -7f, -8f, 180f);
+    }
+
+    private static void AssertCoverPose(Transform cover, float x, float z, float yaw)
+    {
+        Assert.That(cover.localPosition.x, Is.EqualTo(x), cover.name);
+        Assert.That(cover.localPosition.z, Is.EqualTo(z), cover.name);
+        Assert.That(Quaternion.Angle(cover.localRotation, Quaternion.Euler(0f, yaw, 0f)),
+            Is.EqualTo(0f).Within(0.1f), cover.name);
+    }
+
+    [TestCaseSource(nameof(ArenaPaths))]
+    public void Arenas_AllShippedAreLandscape(string path)
+    {
+        ArenaView arena = Arena(path);
+        Rect bounds = arena.PlayBounds;
+        Assert.That(bounds.width, Is.GreaterThan(bounds.height));
+        Assert.That(arena.PlayerStart.x, Is.LessThan(bounds.center.x));
+        Assert.That(arena.GatePosition.x, Is.GreaterThan(bounds.center.x));
+    }
 
     [Test]
     public void PlayBounds_IsHalfSizeAroundTransform()

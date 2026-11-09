@@ -146,7 +146,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] LS-01 — Landscape orientation; the camera stays within 2 m of the arena's walls (M)
 - [x] LS-02 — The Jungle's arenas go wide: Hollow 30 × 22, Clearing 44 × 28, west to east (M)
-- [ ] [LS-03](tasks/LS-03-remaining-arenas-go-wide.md) — Descent's and the Sunscar's arenas go wide; every arena landscape, by test (M)
+- [x] LS-03 — Descent and Courtyard go wide, west to east; all shipped arenas covered by test (M)
 
 **For the UI rework** — listed only, never specced or fixed under LS. What will look wrong or break once the phone is sideways:
 

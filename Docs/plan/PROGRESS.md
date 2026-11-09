@@ -9,9 +9,9 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **LS-02** — wide Jungle arenas, west to east. |
-| **Next task** | LS-03 — widen the remaining arenas. |
-| **Verified** | EditMode 6237 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **LS-03** — all shipped arenas wide, west to east. |
+| **Next task** | Awaiting owner direction. |
+| **Verified** | EditMode 6251 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

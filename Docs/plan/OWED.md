@@ -547,3 +547,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 2. [Editor] Walk the Hollow and Clearing perimeters at stages 1 and 5. Check that the walls are closed and the dressing covers every edge.
 3. [Editor] Clear stage 5 and walk to the east gate. Check that stage 6 loads.
 4. [Editor] Use DT-01 at stages 10, 15, 20, 25 and 30. Check that boss cover is inside the floor and that Thornheart's ring reads at the north and south walls at stage 20.
+
+
+## LS-03 — Remaining arenas go wide
+
+1. **[Editor]** At 2400×1080, run Descent through Pillars and Tiered. Check wide framing and cover clearance, then reach each east gate.
+2. **[Editor]** Open `Arena_Courtyard`. Check that the walls close around the arena and dressing runs all the way around.

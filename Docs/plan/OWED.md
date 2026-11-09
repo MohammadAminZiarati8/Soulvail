@@ -578,3 +578,10 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **Editor** — Use seeds that place stages 10, 15, 20, 25 and 30 in the Grove. Check that the boss stones and Thornheart’s 14 m ring sit inside the walls.
 - [ ] **Phone** — Check the stage transition into the Grove in landscape. Confirm that the greener ground and canopy distinguish the room and that the south entry and north gate stay readable.
 
+
+## SF-04 — Portal gate
+
+- [ ] **Editor** — Clear a stage. Look for a cyan oval portal at the north gate with a turning inner ring and floor glow. Check that the beam and floor trail are absent.
+- [ ] **Editor** — Stand still for about four seconds. Check that the portal swells and pulses faster.
+- [ ] **Editor** — Walk through the gate. Check for the flash and the hero walking in from the south, with no door or slab dropping behind them.
+- [ ] **Phone** — From the far end of the arena, check that the portal reads as the way out at first glance.

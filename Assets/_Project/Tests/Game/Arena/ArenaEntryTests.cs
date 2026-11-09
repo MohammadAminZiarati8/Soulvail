@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Content;
@@ -9,6 +11,7 @@ using Soulvail.Game.Arena;
 using Soulvail.Game.Views;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using VContainer;
 
 namespace Soulvail.Tests.Game.Arena;
@@ -51,8 +54,8 @@ public sealed class ArenaEntryTests
         Assert.That(player.Position, Is.EqualTo(pool.Active.EntryPosition));
     }
 
-    [Test]
-    public void Pool_Sealed_ClosesEntry()
+    [UnityTest]
+    public IEnumerator Pool_Sealed_NothingMoves()
     {
         using IObjectResolver resolver = new ContainerBuilder().Build();
         var playerObject = new GameObject("Player");
@@ -60,18 +63,18 @@ public sealed class ArenaEntryTests
         PlayerView player = playerObject.AddComponent<PlayerView>();
         using var pool = new ArenaPool(resolver, new[] { LoadArena(HollowPath) }, _root.transform, _hub, player);
         _hub.Publish(new StageArrived(1, Hollow));
-        EntryDoorView door = pool.Active.GetComponentInChildren<EntryDoorView>();
-        Transform slab = door.transform.GetChild(0);
-        Assert.That(slab.localPosition.y, Is.EqualTo(3f));
+        Transform entry = pool.Active.transform.GetComponentsInChildren<Transform>(true)
+            .Single(child => child.name == "Entry");
+        var before = EntryTransforms(entry);
 
         _hub.Publish(new StageEntrySealed(1));
-        Step(door, 0.125f);
-        Assert.That(slab.localPosition.y, Is.EqualTo(1.5f));
-        Step(door, 0.125f);
-        Assert.That(slab.localPosition.y, Is.Zero);
+        double end = EditorApplication.timeSinceStartup + 1d;
+        while (EditorApplication.timeSinceStartup < end)
+        {
+            yield return null;
+        }
 
-        _hub.Publish(new StageArrived(2, Hollow));
-        Assert.That(slab.localPosition.y, Is.EqualTo(3f));
+        Assert.That(EntryTransforms(entry), Is.EqualTo(before));
     }
 
     [TestCase("Arena_Pillars.prefab", 3.5f)]
@@ -79,19 +82,27 @@ public sealed class ArenaEntryTests
     [TestCase("AshenReach/Arena_Courtyard.prefab", 3.5f)]
     [TestCase("Jungle/Arena_Clearing.prefab", 3.5f)]
     [TestCase(HollowPath, 3.5f)]
-    public void Arenas_EntryValid(string path, float walkLength)
+    [TestCase("Jungle/Arena_Grove.prefab", 3.5f)]
+    public void Arenas_NoEntryDoor(string path, float walkLength)
     {
         ArenaView arena = LoadArena(path);
 
         Assert.That(arena.DescribeFaults(), Is.Null);
         Assert.That(arena.HasEntry, Is.True);
-        Assert.That(arena.GetComponentInChildren<EntryDoorView>(true), Is.Not.Null);
+        string[] names = arena.GetComponentsInChildren<Transform>(true).Select(child => child.name).ToArray();
+        Assert.That(names, Does.Contain("Entry"));
+        Assert.That(names, Does.Not.Contain("Entry Door").And.Not.Contain("Slab"));
         Assert.That(arena.EntryPosition.z, Is.EqualTo(arena.PlayBounds.yMin + 0.5f));
         Assert.That(arena.PlayerStart.z - arena.EntryPosition.z, Is.EqualTo(walkLength));
         Assert.That(arena.EntryPosition.x, Is.EqualTo(arena.PlayerStart.x));
         Assert.That(arena.EntryPosition.x, Is.EqualTo(arena.GatePosition.x));
         Assert.That(arena.GatePosition.z, Is.GreaterThan(arena.PlayerStart.z));
     }
+
+    private static (Transform, Vector3, Quaternion, Vector3, bool)[] EntryTransforms(Transform entry) =>
+        entry.GetComponentsInChildren<Transform>(true)
+            .Select(child => (child, child.localPosition, child.localRotation, child.localScale, child.gameObject.activeSelf))
+            .ToArray();
 
     [Test]
     public void Flash_RampsAndClears()

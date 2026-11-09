@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using Soulvail.Core.Content;
 using Soulvail.Core.Director;
 using Soulvail.Core.Stage;
-using Soulvail.Game.Views;
 using Unity.AI.Navigation;
 using UnityEngine;
 
@@ -69,7 +68,6 @@ namespace Soulvail.Game.Arena
                  "SpawnDirector.MinPlayerDistance of clearance (GD آ§12.4).")]
         [SerializeField] private Transform _playerStart;
         [SerializeField] private Transform _entry;
-        [SerializeField] private EntryDoorView _entryDoor;
 
         [Tooltip("Metres from the arena origin to the inside faces of its walls, on XZ.")]
         [SerializeField] private Vector2 _halfSize;
@@ -166,22 +164,6 @@ namespace Soulvail.Game.Arena
         public bool HasGate => _gate != null;
         public bool HasEntry => _entry != null;
         public Vector3 EntryPosition => HasEntry ? _entry.position : PlayerStart;
-
-        public void OpenEntry()
-        {
-            if (_entryDoor != null)
-            {
-                _entryDoor.Open();
-            }
-        }
-
-        public void CloseEntry()
-        {
-            if (_entryDoor != null)
-            {
-                _entryDoor.Close();
-            }
-        }
 
         /// <summary>
         /// Where the director may put a body, in world metres, in the order they were authored.

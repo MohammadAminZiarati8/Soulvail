@@ -70,7 +70,6 @@ public sealed class ArenaPool : IDisposable
 
     private readonly IDisposable _arrivedSubscription;
     private readonly IDisposable _clearedSubscription;
-    private readonly IDisposable _entrySealedSubscription;
 
     /// <summary>
     /// The standing arena's spawn points in core's own vectors, refilled when one is raised.
@@ -143,7 +142,6 @@ public sealed class ArenaPool : IDisposable
         // from inside that call (AR §18.1).
         _arrivedSubscription = hub.Subscribe<StageArrived>(OnStageArrived);
         _clearedSubscription = hub.Subscribe<StageCleared>(OnStageCleared);
-        _entrySealedSubscription = hub.Subscribe<StageEntrySealed>(OnEntrySealed);
     }
 
     /// <summary>The arena currently standing, or null before the first <see cref="StageArrived"/>.</summary>
@@ -177,7 +175,6 @@ public sealed class ArenaPool : IDisposable
 
         _arrivedSubscription.Dispose();
         _clearedSubscription.Dispose();
-        _entrySealedSubscription.Dispose();
 
         foreach (ArenaView view in _built.Values)
         {
@@ -225,7 +222,6 @@ public sealed class ArenaPool : IDisposable
         }
 
         _player.Teleport(next.HasEntry ? next.EntryPosition : next.PlayerStart);
-        next.OpenEntry();
 
         next.Seal();
 
@@ -355,14 +351,6 @@ public sealed class ArenaPool : IDisposable
         for (int i = 0; i < points.Count; i++)
         {
             _points[i] = points[i].ToNum();
-        }
-    }
-
-    private void OnEntrySealed(StageEntrySealed evt)
-    {
-        if (Active != null)
-        {
-            Active.CloseEntry();
         }
     }
 

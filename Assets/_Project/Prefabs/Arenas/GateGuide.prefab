@@ -40,12 +40,13 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   _material: {fileID: 2100000, guid: b1d1032adff646b8be96284171692945, type: 2}
-  _beamHeightM: 14
-  _beamWidthM: 1.6
-  _trailLiftM: 0.05
-  _repathS: 0.25
+  _ringSizeM: {x: 2.4, y: 3.2}
+  _ringWidthM: 0.18
+  _innerSizeMultiplier: 0.8
+  _innerDegreesPerSecond: 90
+  _floorDiameterM: 3.2
   _calmPulseHz: 0.8
   _calmAlpha: 0.55
   _strongPulseHz: 2
   _strongAlpha: 1
-  _strongWidthMul: 1.5
+  _strongScale: 1.15

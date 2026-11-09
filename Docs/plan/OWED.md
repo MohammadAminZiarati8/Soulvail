@@ -592,3 +592,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - [ ] **[Editor]** Start a run. As the flash clears, STAGE 1 fades in, holds for about 1.5 seconds, then fades out.
 - [ ] **[Editor]** Walk through a gate. STAGE 2 follows the same timing and the joystick still works under the card.
 - [ ] **[device]** Check that the card is readable on a landscape phone and stays clear of the hero.
+
+
+## SS-01 — The first Sunscar arena
+
+- [ ] [Editor] In DT-01, cycle to the Sunscar and start stage 1 with the Ranger. Check the golden sand and sandstone, check that scenery has no cyan, walk from the start to the north portal, then pause and quit. Check that no enemies spawn.
+- [ ] [Editor] Check that the Places tab keeps the Sunscar locked until the Jungle is finished.

@@ -519,6 +519,8 @@ MonoBehaviour:
     _text: Rootling
   - _key: mode.jungle.name
     _text: Jungle
+  - _key: mode.sunscar.name
+    _text: The Sunscar
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

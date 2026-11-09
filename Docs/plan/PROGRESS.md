@@ -9,15 +9,16 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-00** — Sunscar design (docs). |
-| **Next task** | SS-01, on the owner's go. |
-| **Verified** | EditMode 6267 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-01** — First Sunscar arena. |
+| **Next task** | SS-02, on the owner's go. |
+| **Verified** | EditMode 6283 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
-Heroes/Places; Jungle rotates 3 arenas. Ranger, Oathbound, Beastmaster; Veilrot/Sanctum/disc off.
-Waves → cyan portal with idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
-Scripted 1–29 except bosses; 30 Apex; 11 bodied enemies. Boss adds: no XP, die with it.
+Jungle rotates 3 arenas. Sunscar opens after Jungle with one empty arena. DT-01 starts any place.
+Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
+Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
+Scripted 1–29 except bosses. 30 Apex. 11 enemies. Boss adds die with boss, 0 XP.
 Thornheart: spokes, pods, slam, heart ×2. Mother: shields, lobs, spray, pod.
 From 21 four cousins (Bullfrog, pitcher, bomber, panther).
 Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it.
@@ -46,18 +47,18 @@ Guards judge pet hits by source: back/side land, hawk always.
 
 ## Missing
 
-1. Balance: Gravecaller over, Emberwright under; Warden passes 120 s near stage 33; no natural run past 19.
+1. Gravecaller over, Emberwright under. Warden >120 s near 33. No natural run past 19.
 2. Sanctum plays as zero; Pact ~1 in 62.
 3. No audio, Elites, feel pass or second language.
 
 ## Known issues
 
-1. ArenaView zero-spawn reload warning; TimeManager reserialises.
-2. ContactDamage ruling pending. Invalid tree saves strand Continue.
+1. ArenaView warns on zero-spawn reload. TimeManager rewrites.
+2. ContactDamage pending. Invalid tree saves strand Continue.
 3. Boundary non-binding bolts leave bodies; pooled Bind/Move snap with autoSyncTransforms off.
 4. Sanctum draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
-5. HUD ~15 draw calls; no PlayMode Continue row; disk near full; bosses unprofiled.
-6. Mother pod Frogs survive phase beats (JG-12h). Unload can reactivate destroyed cover (MK-02b).
+5. HUD ~15 draws. No PlayMode Continue test. Low disk. Bosses unprofiled.
+6. Mother pod Frogs survive phases (JG-12h). Unload can restore destroyed cover (MK-02b).
 7. RangerSandbox scope lacks IRunSession and EnemyViews.
-8. Warlord's death dissolve shows the unpainted atlas.
-9. PlayMode unload: destroyed cover/VFX/player; teardown errors.
+8. Warlord death dissolve shows unpainted atlas.
+9. PlayMode unload can destroy cover, VFX, player and log errors.

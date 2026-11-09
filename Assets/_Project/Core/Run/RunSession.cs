@@ -1190,11 +1190,17 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _director = new SpawnDirector(enemies, _events);
 
         // A mode with an empty roster composed nothing above, so there is no stage to pace: the
-        // arena is whatever the spawn plan dressed into it and it stays that way. The director is
+        // run stays in its starting arena. The director is
         // built anyway, one line up, for rule 12's reason — an inert director is a director.
         if (plan is null)
         {
             _flow = null;
+            ContentId arena = mode.ArenaFor(config.StageIndex, seed);
+            if (arena.Value is not null)
+            {
+                _events.Publish(new StageArrived(config.StageIndex, arena));
+            }
+
             pets?.AnnounceSpawn();
 
             return;

@@ -1695,16 +1695,16 @@ public sealed class JungleTests
     [Test]
     public void Boot_TheJungleIsTheFirstPlace()
     {
-        // A run plays the first mode the catalog holds (ClassSelectPresenter, RunTicker), and there is
-        // no place-select screen yet: the Jungle first is what makes a new run a Jungle run, and
-        // Descent second is what keeps a saved Descent run resuming.
+        // Jungle stays the default place, and Descent remains available to saved runs.
+        // The Sunscar follows Jungle in the listed catalog.
         var boot = AssetDatabase.LoadAssetAtPath<GameObject>(BootScopePath).GetComponentInChildren<BootScope>(true);
         var serialized = new SerializedObject(boot);
 
         SerializedProperty modes = serialized.FindProperty("_modes");
-        Assert.That(modes.arraySize, Is.EqualTo(2));
+        Assert.That(modes.arraySize, Is.EqualTo(3));
         Assert.That(modes.GetArrayElementAtIndex(0).objectReferenceValue, Is.EqualTo(Load<ModeDefinition>(JunglePath)));
         Assert.That(modes.GetArrayElementAtIndex(1).objectReferenceValue, Is.EqualTo(Load<ModeDefinition>(DescentPath)));
+        Assert.That(modes.GetArrayElementAtIndex(2).objectReferenceValue, Is.EqualTo(Load<ModeDefinition>("Assets/_Project/Data/Modes/Sunscar.asset")));
 
         SerializedProperty enemies = serialized.FindProperty("_enemies");
         var listed = Enumerable.Range(0, enemies.arraySize).Select(i => enemies.GetArrayElementAtIndex(i).objectReferenceValue).ToList();

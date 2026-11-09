@@ -178,7 +178,7 @@ _No milestone. The owner is setting the next direction._
 **The Sunscar, place 2** (owner, 2026-11-09; design [GD §3 › The Sunscar](../GameDesign.md#the-sunscar-place-2)). A golden desert after the Jungle: 30 stages, its own enemies decided one at a time, weather visual only. Titles only; each spec is written and built on the owner's go, one at a time.
 
 - [x] SS-00 — The Sunscar design pass, docs only (S)
-- [ ] [SS-01](tasks/SS-01-sunscar-first-arena.md) — The first Sunscar arena, walkable with the Ranger, no enemies (M)
+- [x] SS-01 — The first Sunscar arena, walkable with the Ranger, no enemies (M)
 - [ ] SS-02 — The sandstorm: drifting sand that thins around the play space (S)
 - [ ] SS-03 — Quicksand patches, ground dressing with no rule (S)
 - [ ] SS-04 — The first Sunscar enemy (decided when built)

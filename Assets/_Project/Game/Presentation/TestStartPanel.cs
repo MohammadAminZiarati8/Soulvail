@@ -12,7 +12,7 @@ using VContainer;
 namespace Soulvail.Game.Presentation
 {
     /// <summary>
-    /// DT-01's development start: pick a stage on the menu and begin there, with the XP the stages
+    /// DT-01's development start: pick a place and stage on the menu and begin there, with the XP the stages
     /// before it would have paid banked as picks, so the tree opens on the first frame.
     /// </summary>
     /// <remarks>
@@ -47,6 +47,7 @@ namespace Soulvail.Game.Presentation
         private ContentCatalog _catalog;
         private MenuPresenter _menu;
         private TestStart _start;
+        private int _modeIndex;
         private bool _starting;
 
         /// <summary>Whether the panel draws: the switch is on and this is a development build.</summary>
@@ -65,19 +66,35 @@ namespace Soulvail.Game.Presentation
 
         private void OnGUI()
         {
-            if (!IsShown || _start is null || !_catalog.TryGetMode(_menu.SelectedMode, out ModeSpec mode))
+            if (!IsShown || _start is null || _catalog.Modes.Count == 0)
             {
                 return;
             }
 
-            int last = Math.Min(mode.FinalStage, 999);
-            _stage = Math.Clamp(_stage, mode.StartingStage, last);
-
             float scale = Screen.height / ReferenceHeight;
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
-            GUILayout.BeginArea(new Rect(8f, 8f, 230f, 80f), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(8f, 8f, 270f, 105f), GUI.skin.box);
             GUILayout.Label("Test start (dev)");
+            GUILayout.BeginHorizontal();
+
+            if (GUILayout.Button("<", GUILayout.Width(28f)))
+            {
+                CyclePlace(-1);
+            }
+
+            GUILayout.Label(_catalog.Modes[_modeIndex].Id.Value);
+
+            if (GUILayout.Button(">", GUILayout.Width(28f)))
+            {
+                CyclePlace(1);
+            }
+
+            GUILayout.EndHorizontal();
+
+            ModeSpec mode = _catalog.Modes[_modeIndex];
+            int last = Math.Min(mode.FinalStage, 999);
+            _stage = Math.Clamp(_stage, mode.StartingStage, last);
             GUILayout.BeginHorizontal();
 
             if (GUILayout.Button("-5", GUILayout.Width(36f)))
@@ -108,7 +125,7 @@ namespace Soulvail.Game.Presentation
 
             if (GUILayout.Button("Start"))
             {
-                Begin(mode.Id);
+                Begin();
             }
 
             GUI.enabled = true;
@@ -116,13 +133,19 @@ namespace Soulvail.Game.Presentation
             GUI.matrix = Matrix4x4.identity;
         }
 
+        private void CyclePlace(int direction)
+        {
+            int count = _catalog.Modes.Count;
+            _modeIndex = (_modeIndex + direction + count) % count;
+        }
+
         /// <summary>
         /// Hands the stage's snapshot to the Continue path and loads the Run scene.
         /// </summary>
         /// <remarks><c>async void</c> for <c>MenuPresenter.Play</c>'s reason: an event handler.</remarks>
-        private async void Begin(ContentId modeId)
+        private async void Begin()
         {
-            if (_starting)
+            if (!IsShown || _starting || _start is null || _catalog.Modes.Count == 0)
             {
                 return;
             }
@@ -134,7 +157,8 @@ namespace Soulvail.Game.Presentation
                 int seed = Environment.TickCount;
                 RandomState random = new SeededRandom(seed).Capture();
 
-                _pending.Resume(_start.At(modeId, _menu.SelectedCharacter, seed, random, _stage));
+                ModeSpec mode = _catalog.Modes[_modeIndex];
+                _pending.Resume(_start.At(mode.Id, _menu.SelectedCharacter, seed, random, _stage));
 
                 await _loader.LoadAsync(SceneLoader.Run);
             }

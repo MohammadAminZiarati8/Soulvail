@@ -83,6 +83,7 @@ MonoBehaviour:
   _modes:
   - {fileID: 11400000, guid: 32056a066ee69b94cb162eb829ecd93f, type: 2}
   - {fileID: 11400000, guid: 71f7c681caa781d48b49d2befadd82d2, type: 2}
+  - {fileID: 11400000, guid: 96fb6a77a83c4f39a5cf5f4dbc94c734, type: 2}
   _skills:
   - {fileID: 11400000, guid: 5def8132428443d4db119e04abe745ee, type: 2}
   - {fileID: 11400000, guid: a3e82daa34d034c4db4bcdee5eb7456b, type: 2}

@@ -605,3 +605,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 1. **[Editor]** Start Sunscar through Test Start. Walk from entry to both edges and toward the north gate. Check ground drift, a clear radius around the Ranger, a clear gate area and a readable STAGE card. Compare with Jungle and Descent.
 2. **[Editor]** Inspect the Frame Debugger and Profiler. Expect one particle renderer with no new lights or managed allocations in the update. Verify the ground pass draws before transparent combat cues.
 3. **[device]** On a landscape phone, check that the pale drift reads at first look and that the hero, telegraphs, enemies, projectiles, portal and STAGE card stay readable. Recheck with live Sunscar combat when it lands.
+
+### SS-03 — Sunscar quicksand patches
+
+1. **[Editor]** Start Dunes via DT-01 and cross all three patches. Check that the static patches read as damp ground scenery, that cues and movement read normally, and that the sandstorm draws above them.
+2. **[device]** In portrait at play zoom, check that the soft edges stay subdued and clear of entry, start and portal. Profile the added draws and GPU time.

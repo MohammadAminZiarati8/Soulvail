@@ -180,7 +180,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-00 — The Sunscar design pass, docs only (S)
 - [x] SS-01 — The first Sunscar arena, walkable with the Ranger, no enemies (M)
 - [x] SS-02 — The sandstorm: drifting sand that thins around the play space (S)
-- [ ] SS-03 — Quicksand patches, ground dressing with no rule (S)
+- [x] SS-03 — Quicksand patches, ground dressing with no rule (S)
 - [ ] SS-04 — The first Sunscar enemy (decided when built)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

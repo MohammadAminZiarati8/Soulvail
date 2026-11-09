@@ -26,6 +26,7 @@ public sealed class SunscarTests
 {
     private const string Root = "Assets/_Project/";
     private const string DunesPath = Root + "Prefabs/Arenas/Sunscar/Arena_Dunes.prefab";
+    private const string QuicksandGroup = "Quicksand patches";
     private const string GrovePath = Root + "Prefabs/Arenas/Jungle/Arena_Grove.prefab";
     private const string CourtyardPath = Root + "Prefabs/Arenas/AshenReach/Arena_Courtyard.prefab";
     private static readonly ContentId Sunscar = new("mode.sunscar");
@@ -96,6 +97,84 @@ public sealed class SunscarTests
         finally
         {
             session.End();
+        }
+    }
+
+    [Test]
+    public void Quicksand_Arenas_OnlyDunesWithClearFootprints()
+    {
+        const float margin = 4f;
+        const string arenas = Root + "Prefabs/Arenas";
+        int dunesFound = 0;
+        foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { arenas }))
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
+            if (!prefab.TryGetComponent(out ArenaView arena))
+            {
+                continue;
+            }
+
+            Transform patches = arena.transform.Find(QuicksandGroup);
+            if (arena.Id != Dunes)
+            {
+                Assert.That(patches, Is.Null, arena.name);
+                continue;
+            }
+
+            dunesFound++;
+            Assert.That(patches, Is.Not.Null);
+            Assert.That(patches.childCount, Is.InRange(2, 4));
+            Vector3[] anchors = { arena.EntryPosition, arena.PlayerStart, arena.GatePosition };
+            foreach (Transform patch in patches)
+            {
+                Bounds footprint = patch.GetComponent<MeshRenderer>().bounds;
+                Assert.That(footprint.size.x, Is.GreaterThan(1f), patch.name);
+                Assert.That(footprint.size.z, Is.GreaterThan(1f), patch.name);
+                foreach (Vector3 anchor in anchors)
+                {
+                    var groundAnchor = new Vector3(anchor.x, footprint.center.y, anchor.z);
+                    Assert.That(footprint.SqrDistance(groundAnchor), Is.GreaterThanOrEqualTo(margin * margin), patch.name);
+                }
+
+                foreach (string coverGroup in new[] { "Sandstone spurs", "Wind-carved rim", "Gate" })
+                {
+                    foreach (var cover in arena.transform.Find(coverGroup).GetComponentsInChildren<MeshRenderer>(true))
+                    {
+                        Bounds coverFootprint = cover.bounds;
+                        coverFootprint.Encapsulate(new Vector3(coverFootprint.center.x, footprint.center.y, coverFootprint.center.z));
+                        Assert.That(footprint.Intersects(coverFootprint), Is.False, $"{patch.name} overlaps {cover.name}");
+                    }
+                }
+            }
+        }
+
+        Assert.That(dunesFound, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Quicksand_Renderers_UseSharedGroundMaterialOnly()
+    {
+        Transform patches = Arena(DunesPath).transform.Find(QuicksandGroup);
+        Assert.That(patches, Is.Not.Null);
+        Assert.That(patches.GetComponents<Component>(), Has.Length.EqualTo(1));
+        var shared = AssetDatabase.LoadAssetAtPath<Material>(Root + "Materials/Environment/M_SunscarQuicksand.mat");
+        Assert.That(shared, Is.Not.Null);
+        Assert.That(shared.shader.name, Is.EqualTo("Universal Render Pipeline/Particles/Unlit"));
+        Assert.That(shared.mainTexture, Is.EqualTo(
+            AssetDatabase.LoadAssetAtPath<Texture2D>(Root + "Art/UI/Hud/Glow_Soft.png")));
+        Assert.That(shared.renderQueue, Is.LessThan((int)UnityEngine.Rendering.RenderQueue.Transparent - 100));
+        foreach (Transform patch in patches)
+        {
+            Assert.That(patch.gameObject.layer, Is.EqualTo(LayerMask.NameToLayer("Ignore Raycast")));
+            Assert.That(patch.childCount, Is.Zero);
+            Assert.That(patch.GetComponents<Component>().Select(component => component.GetType()),
+                Is.EquivalentTo(new[] { typeof(Transform), typeof(MeshFilter), typeof(MeshRenderer) }));
+            var mesh = patch.GetComponent<MeshFilter>().sharedMesh;
+            Assert.That(mesh.vertexCount, Is.EqualTo(4));
+            Assert.That(Mathf.Abs(Vector3.Dot(patch.forward, Vector3.up)), Is.GreaterThan(0.999f));
+            Material[] materials = patch.GetComponent<MeshRenderer>().sharedMaterials;
+            Assert.That(materials.Select(material => material.shader.name), Has.No.Member("Soulvail/Cloak"));
+            Assert.That(materials, Is.EqualTo(new[] { shared }));
         }
     }
 

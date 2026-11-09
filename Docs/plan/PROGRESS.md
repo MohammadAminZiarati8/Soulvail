@@ -10,7 +10,7 @@ _2026-11-09._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **LS-03** — all shipped arenas wide, west to east. |
-| **Next task** | Awaiting owner direction. |
+| **Next task** | SF-01 (SF-01..03 specced), on go. |
 | **Verified** | EditMode 6251 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works

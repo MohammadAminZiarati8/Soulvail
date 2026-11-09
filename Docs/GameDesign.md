@@ -233,11 +233,11 @@ Design and rationale in [Characters.md §4](Characters.md); full implementation 
 
 ### 7.1 Anatomy of a stage
 
-1. **Arrival** (2s) — arena boundary seals with a visible soul-barrier, stage number appears and fades.
+1. **Arrival** (≥ 2s) — a quick cyan-white flash out of the last gate; the hero appears in the west doorway and walks in on their own, the door drops shut behind them, the boundary seals, and after a short beat (1s) the first wave telegraphs. Arenas never repeat the previous stage's (SF-02, SF-03).
 2. **Waves** (2–5) — enemies spawn from ground portals with a 0.8s telegraph ring. Never within 6m of the player.
-3. **Clear** — barrier drops, remaining Essence auto-collects, **Gate** materializes.
+3. **Clear** — the last kill plays ~1s of slow motion; barrier drops, remaining Essence auto-collects, the **Gate** wakes with a tall cyan beam seen from anywhere in the arena and a glowing floor trail from the hero to it. Standing still ~4s makes both pulse harder (SF-01). All cyan, never gold (§16.4).
 4. **Sanctum** (§13) — appears after every stage. Untimed. This is the breathing room, and where the run's identity is decided.
-5. **Gate** — walk through, next stage loads.
+5. **Gate** — walk into it; the flash carries you to the next stage.
 
 ### 7.2 Arena design rules
 

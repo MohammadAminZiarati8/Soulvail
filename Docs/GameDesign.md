@@ -242,7 +242,7 @@ Design and rationale in [Characters.md §4](Characters.md); full implementation 
 ### 7.2 Arena design rules
 
 - Roughly **36m × 36m** (a small room 24m × 24m), bounded, flat or gently tiered, run **south to north**: the player starts at the south end, the Gate stands at the north. Landscape is the phone's orientation only; it does not change the arenas' shape (owner, 2026-11-09).
-- The camera follows but **stops 2 m past the walls**; on any axis the arena fits the screen, it does not move (LS-01).
+- The camera follows the hero freely, as before LS-01; its wall bound was reverted (owner, 2026-11-09).
 - **3–6 cover pillars** placed off-center, or **none**: an open arena (the Jungle's are, by the owner's call, 2026-10-26). One or two is a half-built room. Cover blocks enemy projectiles but not pathing.
 - No dead ends. The player must always have a circle-strafe route.
 - Camera never collides with geometry. No ceilings, no corridors.

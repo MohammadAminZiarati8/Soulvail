@@ -142,9 +142,9 @@ _No milestone. The owner is setting the next direction._
 
 ### Landscape
 
-**Landscape** (owner, 2026-11-06; scope ruled 2026-11-09: the device orientation and the camera only, no menu or UI; design [GD §5.2, §7.2](../GameDesign.md)). The phone turns sideways; the arenas keep their square, south-to-north shape, and the follow camera stops at their walls. LS-02 and LS-03 widened the arenas on a misread of "landscape" and were reverted the same day (owner, 2026-11-09).
+**Landscape** (owner, 2026-11-06; scope ruled 2026-11-09: the device orientation only, no menu or UI; design [GD §5.2, §7.2](../GameDesign.md)). The phone turns sideways; the arenas keep their square, south-to-north shape and the camera follows as before. LS-01's camera bound and LS-02/03's wide arenas came from a misread of "landscape" and were reverted the same day (owner, 2026-11-09).
 
-- [x] LS-01 — Landscape orientation; the camera stays within 2 m of the arena's walls (M)
+- [x] LS-01 — Landscape orientation (its camera bound reverted: landscape is the device only) (M)
 - [x] ~~LS-02 — The Jungle's arenas go wide~~ — reverted: landscape is the device only
 - [x] ~~LS-03 — Descent and Courtyard go wide~~ — reverted: landscape is the device only
 

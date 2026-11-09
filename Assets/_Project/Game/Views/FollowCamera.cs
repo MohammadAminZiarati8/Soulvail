@@ -1,6 +1,4 @@
-using Soulvail.Game.Arena;
 using UnityEngine;
-using VContainer;
 
 // Block namespace, deliberately — see the note in BootScope.cs. Unity 6.3's script importer
 // cannot find the type in a file-scoped namespace, and the Run scene's reference to this
@@ -13,7 +11,7 @@ namespace Soulvail.Game.Views
     /// </summary>
     /// <remarks>
     /// <para>
-    /// It follows within the active arena. The rotation is authored, not derived — the camera never
+    /// It follows and nothing else. The rotation is authored, not derived — the camera never
     /// re-aims, never rolls and never leads the player, so the ground plane keeps one orientation
     /// for the whole run and a pillar is the same shape wherever it sits on screen. Every ounce of
     /// "where is the camera looking" in this game is a constant; what moves is only where it is.
@@ -63,9 +61,6 @@ namespace Soulvail.Game.Views
                  "never shakes.")]
         [SerializeField] private CameraShake _shake;
 
-        [SerializeField] private float _boundsMarginM = 2f;
-
-        private ArenaPool _arenas;
         private Camera _camera;
         private float _appliedAspect;
         private Vector3 _followVelocity;
@@ -127,9 +122,7 @@ namespace Soulvail.Game.Views
             transform.SetPositionAndRotation(_followPosition, Rotation());
         }
 
-        private void LateUpdate() => Step(Time.deltaTime);
-
-        private void Step(float dt)
+        private void LateUpdate()
         {
             // Unity's == rather than `is null`: on scene unload the player may be destroyed before
             // this camera is, leaving a live reference that only compares equal to null through the
@@ -143,44 +136,23 @@ namespace Soulvail.Game.Views
             ApplyAspect();
 
             Quaternion rotation = Rotation();
-            Vector3 offset = rotation * Vector3.back * _distance;
-            Vector3 desired = _target.position + offset;
-            ArenaView arena = _arenas?.Active;
-            Rect bounds = arena != null ? arena.PlayBounds : default;
-            bool bounded = _camera != null && bounds.width > 0f && bounds.height > 0f;
-            Rect footprint = default;
-            if (bounded)
-            {
-                footprint = Footprint(_pitchDeg, _distance, _camera.fieldOfView, _camera.aspect);
-                desired = BoundPosition(desired, offset, footprint, bounds);
-            }
 
-            _followPosition = Vector3.SmoothDamp(
-                _followPosition, desired, ref _followVelocity, _smoothTime, Mathf.Infinity, dt);
+            // Time.deltaTime, not the snapshot's clamped Dt, and the distinction matters. Everything
+            // downstream of SnapshotBuilder integrates a step and would diverge from core if it used
+            // a different one; this chases a position that is already correct, so a longer step only
+            // means the camera arrives sooner. There is nothing here to accumulate.
+            _followPosition = Vector3.SmoothDamp(_followPosition, Desired(rotation), ref _followVelocity, _smoothTime);
 
             Vector3 shake = Vector3.zero;
 
             // Unity's ==: the shake is optional, and stepped here so it is always read fresh.
             if (_shake != null)
             {
-                _shake.Step(dt);
+                _shake.Step(Time.deltaTime);
                 shake = _shake.Offset;
             }
 
-            if (bounded)
-            {
-                // Stage and aspect changes can put the previous smoothed position outside the
-                // new limits. Shake also respects those limits on XZ.
-                _followPosition = BoundPosition(_followPosition, offset, footprint, bounds);
-            }
-
-            Vector3 position = _followPosition + shake;
-            if (bounded && shake != Vector3.zero)
-            {
-                position = BoundPosition(position, offset, footprint, bounds);
-            }
-
-            transform.SetPositionAndRotation(position, rotation);
+            transform.SetPositionAndRotation(_followPosition + shake, rotation);
         }
 
         /// <summary>
@@ -211,59 +183,6 @@ namespace Soulvail.Game.Views
         private Quaternion Rotation()
         {
             return Quaternion.Euler(_pitchDeg, _yawDeg, 0f);
-        }
-
-        [Inject]
-        public void Construct(ArenaPool arenas)
-        {
-            _arenas = arenas;
-        }
-
-        /// <summary>The ground footprint relative to a focus on the ground plane, with yaw zero.</summary>
-        public static Rect Footprint(float pitchDeg, float distance, float verticalFovDeg, float aspect)
-        {
-            float halfFovDeg = verticalFovDeg * 0.5f;
-            float pitch = pitchDeg * Mathf.Deg2Rad;
-            float height = distance * Mathf.Sin(pitch);
-            float setback = distance * Mathf.Cos(pitch);
-            float halfWidth = distance * Mathf.Tan(halfFovDeg * Mathf.Deg2Rad) * aspect;
-            float near = height / Mathf.Tan((pitchDeg + halfFovDeg) * Mathf.Deg2Rad) - setback;
-            float far = pitchDeg <= halfFovDeg
-                ? float.PositiveInfinity
-                : height / Mathf.Tan((pitchDeg - halfFovDeg) * Mathf.Deg2Rad) - setback;
-            return Rect.MinMaxRect(-halfWidth, near, halfWidth, far);
-        }
-
-        /// <summary>Keep each axis within the grown bounds, or centre the footprint if it is wider.</summary>
-        public static Vector2 ClampFocus(Vector2 focus, Rect footprint, Rect bounds, float margin)
-        {
-            return new Vector2(
-                ClampAxis(focus.x, footprint.xMin, footprint.xMax, bounds.xMin - margin, bounds.xMax + margin),
-                ClampAxis(focus.y, footprint.yMin, footprint.yMax, bounds.yMin - margin, bounds.yMax + margin));
-        }
-
-        private static float ClampAxis(float focus, float near, float far, float min, float max)
-        {
-            if (float.IsPositiveInfinity(far))
-            {
-                // A footprint that reaches the horizon has no finite midpoint.
-                return (min + max) * 0.5f;
-            }
-
-            float minFocus = min - near;
-            float maxFocus = max - far;
-            return minFocus >= maxFocus
-                ? (minFocus + maxFocus) * 0.5f
-                : Mathf.Clamp(focus, minFocus, maxFocus);
-        }
-
-        private Vector3 BoundPosition(Vector3 position, Vector3 offset, Rect footprint, Rect bounds)
-        {
-            Vector3 focus = position - offset;
-            Vector2 bounded = ClampFocus(new Vector2(focus.x, focus.z), footprint, bounds, _boundsMarginM);
-            position.x = bounded.x + offset.x;
-            position.z = bounded.y + offset.z;
-            return position;
         }
 
         /// <summary>Where the camera wants to be: back along its own view axis from the player.</summary>

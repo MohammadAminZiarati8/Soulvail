@@ -9,7 +9,7 @@ _2026-11-09._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | LS-02/03 reverted (device-only landscape); **SF-01** clear guide. |
+| **Last merged** | LS-01 camera + LS-02/03 reverted (device-only landscape); **SF-01**. |
 | **Next task** | SF-02 on go. |
 | **Verified** | EditMode 6242 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 

@@ -145,7 +145,8 @@ public sealed class HawkSystem
         }
 
         float damage = _damageOfWeapon * combat.Weapon.Damage.Value;
-        DamageResult result = enemies.ApplyDamage(targetId, damage, now, combat);
+        // BT-09b rule 6: a dive comes from above, so no frontal guard covers it.
+        DamageResult result = enemies.ApplyGuardPiercingDamage(targetId, damage, now, combat);
         if (_stunSeconds > 0f && enemies.IsLight(targetId))
         {
             enemies.Stun(targetId, _stunSeconds);

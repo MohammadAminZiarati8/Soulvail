@@ -449,7 +449,7 @@ public sealed class PetSystem
             pet.NextBiteAt = now + _spec.BiteInterval;
             quarry.Blackboard.LastBitBy = pet.Id;
             quarry.Blackboard.LastBitAt = now;
-            enemies.ApplyDamage(quarry.Id, bite, now, combat);
+            enemies.ApplyDamageFrom(quarry.Id, bite, now, combat, pet.Position);
 
             long biteCount = ++_biteCounts[index];
             _events.Publish(new PetBit(pet.Id, quarry.Id, bite));
@@ -833,7 +833,7 @@ public sealed class PetSystem
                 pet.NextBiteAt = now + _spec.BiteInterval;
                 target.Blackboard.LastBitBy = pet.Id;
                 target.Blackboard.LastBitAt = now;
-                enemies.ApplyDamage(targetId, bite, now, combat);
+                enemies.ApplyDamageFrom(targetId, bite, now, combat, pet.Position);
                 _events.Publish(new PetBit(pet.Id, targetId, bite));
             }
 

@@ -14,7 +14,8 @@ public enum WarlordMove { None, Sweep = 1, Charge = 2, WarCry = 3, Lob = 4, Comb
 /// A slow turning frontal guard with a committed sweep, shield charge and war cry; spear lobs from
 /// phase 1, and from phase 2 a shattered shield: no guard, faster, and a two-hit combo.
 /// </summary>
-public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneStopListener, IBossAddOwner
+public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILaneStopListener, IBossAddOwner,
+    IFrontalGuard
 {
     public const float HalfArcDeg = 60f, TurnRateDeg = 40f, WalkConeDeg = 45f;
     public const float AttackGapSeconds = 1.4f, RecoverSeconds = 0.8f;
@@ -70,6 +71,10 @@ public sealed class WarlordBehaviour : IEnemyBehaviour, IBossPhaseListener, ILan
     public WarlordMove Move { get; private set; }
     public float GuardHalfArcDeg { get; private set; } = HalfArcDeg;
     public Vector2 Facing { get; private set; } = Vector2.UnitY;
+
+    /// <summary>BT-09b rule 4: no guard while dazed or shattered (arc 0), else the source inside the arc.</summary>
+    bool IFrontalGuard.Covers(Vector2 towardSource) =>
+        GuardHalfArcDeg > 0f && InArc(Facing, towardSource, GuardHalfArcDeg);
     public bool IsDazed { get; private set; }
     public int GuardCount { get; private set; }
     public bool IsLocked { get; private set; }

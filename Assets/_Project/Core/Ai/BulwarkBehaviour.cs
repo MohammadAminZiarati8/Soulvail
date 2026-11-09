@@ -19,7 +19,7 @@ public enum BulwarkState
 }
 
 /// <summary>A turning frontal shield; its bash and recovery keep the front it warned with.</summary>
-public sealed class BulwarkBehaviour : IEnemyBehaviour
+public sealed class BulwarkBehaviour : IEnemyBehaviour, IFrontalGuard
 {
     private readonly EnemyAgent _agent;
     private readonly StateMachine<BulwarkState> _machine;
@@ -47,6 +47,10 @@ public sealed class BulwarkBehaviour : IEnemyBehaviour
     public BulwarkState State => _machine.Current;
 
     private BulwarkSpec Shield => _agent.Spec.Bulwark;
+
+    /// <summary>BT-09b rule 4: raised against the player, and the source inside the same arc.</summary>
+    bool IFrontalGuard.Covers(Vector2 towardSource) =>
+        !_agent.IsVulnerable && InArc(towardSource, Shield.ShieldHalfArcDegrees);
 
     public void Tick(in EnemyTickContext ctx)
     {

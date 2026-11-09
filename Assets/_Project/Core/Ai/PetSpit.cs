@@ -97,7 +97,9 @@ public sealed class PetSpit
 
             target.Blackboard.LastBitBy = glob.PetId;
             target.Blackboard.LastBitAt = now;
-            enemies.ApplyDamage(target.Id, glob.Damage, now, combat);
+            // BT-09b rule 5: judged from where the glob was before it arrived; the hit point is
+            // the target's centre, which has no direction to give.
+            enemies.ApplyDamageFrom(target.Id, glob.Damage, now, combat, glob.Position);
             if (glob.Slow > 0f)
             {
                 enemies.Slow(target.Id, glob.Slow, SlowSeconds);

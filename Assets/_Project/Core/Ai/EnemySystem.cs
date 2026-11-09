@@ -860,6 +860,24 @@ public sealed class EnemySystem
     public DamageResult ApplyDamage(int enemyId, float amount, float now, PlayerCombat player)
         => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true);
 
+    /// <summary>
+    /// BT-09b: damage that knows where it came from. A frontal guard judges <paramref name="from"/>
+    /// against its arc: a hit it does not cover takes the guard-piercing path, one it covers is
+    /// blocked as today. Without a guard, or with a source on top of the enemy or non-finite, this
+    /// is <see cref="ApplyDamage"/>.
+    /// </summary>
+    public DamageResult ApplyDamageFrom(int enemyId, float amount, float now, PlayerCombat player, Vector3 from)
+    {
+        if (player is null)
+        {
+            throw new ArgumentNullException(nameof(player));
+        }
+
+        bool pierce = Registry.TryGet(enemyId, out EnemyAgent agent) && agent.IsAlive
+            && FindGuard(agent) is IFrontalGuard guard && !Covers(guard, agent.Position, from);
+        return ResolveDamage(enemyId, amount, now, player, execute: false, explode: true, pierceGuard: pierce);
+    }
+
     /// <summary>Killshot ignores frontal guards, while phase beats and other immunity still block it.</summary>
     public DamageResult ApplyGuardPiercingDamage(int enemyId, float amount, float now, PlayerCombat player)
         => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true, pierceGuard: true);
@@ -867,6 +885,22 @@ public sealed class EnemySystem
     /// <summary>Kill a living non-boss through the same reward and announcement path as damage.</summary>
     public DamageResult Execute(int enemyId, float now, PlayerCombat player)
         => ResolveDamage(enemyId, 0f, now, player, execute: true, explode: true);
+
+    // BT-09b rule 1: the behaviour itself, or a boss's fighting behaviour outside its phase beat.
+    private static IFrontalGuard FindGuard(EnemyAgent agent) => agent.Behaviour switch
+    {
+        IFrontalGuard guard => guard,
+        BossBehaviour { IsInBeat: false, Inner: IFrontalGuard inner } => inner,
+        _ => null,
+    };
+
+    // BT-09b rule 3: a source with no direction to give is inside the arc — today's behaviour.
+    private static bool Covers(IFrontalGuard guard, Vector3 position, Vector3 from)
+    {
+        var toward = new Vector2(from.X - position.X, from.Z - position.Z);
+        float distance = toward.Length();
+        return !float.IsFinite(distance) || !(distance >= MinDirectionDistance) || guard.Covers(toward / distance);
+    }
 
     private DamageResult ResolveDamage(
         int enemyId, float amount, float now, PlayerCombat player, bool execute, bool explode, bool pierceGuard = false)
@@ -898,8 +932,7 @@ public sealed class EnemySystem
         {
             // A boss wraps its fighting behaviour. Its phase beat owns the same external flag,
             // so only bypass the Warlord's guard while the wrapper is outside that beat.
-            bool ignoreGuard = pierceGuard && (agent.Behaviour is BulwarkBehaviour
-                || agent.Behaviour is BossBehaviour { IsInBeat: false, Inner: WarlordBehaviour });
+            bool ignoreGuard = pierceGuard && FindGuard(agent) is not null;
             result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value, now, ignoreGuard);
         }
 

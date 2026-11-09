@@ -528,3 +528,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Beastmaster vs a Frog at 6–8 m: every throw's two axes both hit it on the way out (two hit numbers per throw).
 2. **[Editor]** Swap through a pack: no one is hit or pushed. With Quick Swap, a barrier break still shoves Frogs ~2 m.
+
+### BT-09b — Guard judges the source
+
+1. **[Editor]** Stage 17–19: stand in front of a Mossguard while the hound bites its back. Its HP drops.
+2. **[Editor]** Stage 15 Warlord: the same from behind. During a phase change nothing lands.

@@ -9,9 +9,9 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-03** — Sunscar quicksand patches. |
-| **Next task** | SS-04, on the owner's go. |
-| **Verified** | EditMode 6289 passed, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-04 plan** — scorpion in GD §8.4, specs a–d. |
+| **Next task** | SS-04a, on the owner's go. |
+| **Verified** | SS-03: EditMode 6289 pass, 0 fail, 1 inconclusive, 91 skip. Format clean. |
 
 ## What works
 

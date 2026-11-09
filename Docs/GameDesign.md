@@ -330,6 +330,15 @@ From stage 30, Elites may roll **two** affixes, checked against a blacklist (War
 
 Elite HP caps at **2.2×** and never scales past it. Elites are *priority targets*, not walls.
 
+### 8.4 The Sunscar — sand scorpion
+
+The Sunscar's first enemy (owner, 2026-11-10; SS-04). It holds the Frog's role (§8.1 Husk): cheap fodder from stage 1. Smarter than the Frog in one way only — a pack does not come at you in a line.
+
+- **Body.** A low, fast skitterer on six short legs: two pincers, a segmented tail curled over its back, a fat stinger bulb at the tip. Sandstone, bleached bone and dusty ochre (§3 › The Sunscar), never cyan. The only red-orange `#FF4A1F` it ever shows is the tell.
+- **Approach — the pack spreads.** On aggro each scorpion fixes one of four fan slots (−60°, −20°, +20°, +60° from its own bearing to the hero) and skitters to a point 4 m from the hero on that bearing, which follows the hero as he moves. On arrival, after 3 s, or if the hero comes inside its reach on the way, it closes straight and strikes. Three or four from one wave therefore arrive from different sides. Packs of 3–4 are what the wave budget buys, not a spawn rule; nothing about spawning changes.
+- **Tail strike.** In reach (1.5 m) it stops, locks its facing and lifts the tail: the stinger tip glows red-orange and a small red-orange strip lies on the ground ahead — 1.8 m long, 1 m wide — for a 0.6 s wind-up. The strike hits only inside that strip, so one sidestep clears it, and it does not cancel or turn once begun. Then 0.8 s of recovery with the tail on the ground: the punish window. Readable at first look on a phone (§16.4): the glow and the strip are the only warm colour on it.
+- **Numbers.** The Frog's, then §12.3 scaling: 36 HP, 8 damage, threat cost 4, target priority 1, 18 XP. Speed 2.2 m/s walking (no hop) — the skitter is why it needs the fan. It never leaves the roster in this design; retirements are decided when the Sunscar's later enemies are.
+
 ---
 
 ## 9. Bosses

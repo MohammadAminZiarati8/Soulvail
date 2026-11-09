@@ -121,7 +121,9 @@ This is the model Archero and Survivor.io use, and it dominates the genre for a 
 
 Critically, **this makes our pillars stronger, not weaker.** P2 already says "movement is the answer." Removing manual aim doesn't remove skill — it concentrates *all* skill into positioning, which is exactly where we wanted it.
 
-### 5.2 Layout (portrait)
+### 5.2 Layout (landscape)
+
+**The game is landscape, either way up; portrait is not allowed** (owner, 2026-11-06; LS-01). The positions below were drawn for portrait; the UI rework re-derives them for landscape — the landscape switch itself moves no control ([ROADMAP › Landscape](plan/ROADMAP.md#landscape)).
 
 | Input | Gesture | Notes |
 |---|---|---|
@@ -239,7 +241,8 @@ Design and rationale in [Characters.md §4](Characters.md); full implementation 
 
 ### 7.2 Arena design rules
 
-- Roughly **36m × 36m**, bounded, flat or gently tiered. Square, so it frames well in portrait too: the short side keeps the view (UI-08b).
+- **Wider than deep**, for a landscape screen: roughly **44 m × 28 m**, a small room **30 m × 22 m**; bounded, flat or gently tiered. Run **west to east**: the player enters 4 m in from the west wall, the Gate stands 1.5 m in from the east wall, both on the centre line (LS-02).
+- The camera follows but **stops 2 m past the walls**; on any axis the arena fits the screen, it does not move (LS-01). At 19.5:9 a small room is framed whole — the fixed whole-arena camera, reached through arena size rather than a second camera.
 - **3–6 cover pillars** placed off-center, or **none**: an open arena (the Jungle's are, by the owner's call, 2026-10-26). One or two is a half-built room. Cover blocks enemy projectiles but not pathing.
 - No dead ends. The player must always have a circle-strafe route.
 - Camera never collides with geometry. No ceilings, no corridors.

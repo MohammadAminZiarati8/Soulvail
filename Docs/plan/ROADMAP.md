@@ -140,7 +140,26 @@ _No milestone. The owner is setting the next direction._
 - [x] **EA-05b** — Hall of Mirrors drawn and authored: the ring rising (M)
 - [x] **EA-06** — The Echo Archer's look: smoky deep-cyan trim and tints, data only (S)
 
-**Landscape** (owner, 2026-11-06): the game turns from portrait to landscape. Not specced; camera, HUD, tree screen and menus all move. To be planned on the owner's word.
+### Landscape
+
+**Landscape** (owner, 2026-11-06; scope ruled 2026-11-09: orientation, camera and arenas only, no menu or UI; design [GD §5.2, §7.2](../GameDesign.md)). Arenas become wide rectangles run west → east, and the follow camera stops at their walls — on a 19.5:9 phone the Hollow is framed whole. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. Playtestable from LS-01 (the Clearing still square until LS-02).
+
+- [ ] [LS-01](tasks/LS-01-landscape-and-bounded-camera.md) — Landscape orientation; the camera stays within 2 m of the arena's walls (M)
+- [ ] [LS-02](tasks/LS-02-jungle-arenas-go-wide.md) — The Jungle's arenas go wide: Hollow 30 × 22, Clearing 44 × 28, west to east (M)
+- [ ] [LS-03](tasks/LS-03-remaining-arenas-go-wide.md) — Descent's and the Sunscar's arenas go wide; every arena landscape, by test (M)
+
+**For the UI rework** — listed only, never specced or fixed under LS. What will look wrong or break once the phone is sideways:
+
+- Canvas scalers on a 1080 × 1920 portrait reference: `Hud`, `Pause`, `RunEnd`, `DebugOverlay` prefabs and `Menu.unity` (match 0.5) — scaled for a tall screen; `LevelUp`, `Sanctum`, `FirstActiveHint`, `Boot` are still 1920 × 1080.
+- `HudLayout` (UI-08c bottom band, arc, roll, `RollRightDp`), `SkillArc`/`SkillArcButton`, the skill button and passives: derived for 9:20.
+- The move zone (left 45 %, fixed stick bottom-left, GD §5.2) — wider in landscape; the arc sits above the roll and eats the short height.
+- Top row: `HpBarView` width rule, `StatusRow`, `StageReadout` chip, pause, `XpBarView` (cutout on one rotation), `BossBarView`, `VeilrotMeterView` (right edge, vertical).
+- `ThreatArrows`: works on any aspect; its `EdgeMargin` was tuned for portrait.
+- Tree screen: `TreeViewPresenter` portrait branch (`IsPortrait`, `PortraitSideDp`), `TreeBlockView`, `TreeDetailCard`, `PathCardsView`; tests pin portrait (`Layout_FitsPortrait`, `Tree_Portrait_*`).
+- Menus: `MenuPresenter`, `TabBar`, `PlaceList`, `HeroGrid`, `HeroSheetView`, `CharacterPage` (`PreviewShare`), `ClassSelectPresenter` (`Page_FitsPortrait`), `CharacterPreview` camera.
+- Run overlays: `LevelUpPresenter`, `SanctumPresenter`, `PausePresenter`, `RunEndPresenter`, `SplashPresenter`, `FirstActiveHint`, `PointBadge`.
+- Debug: `TestStartPanel` scales by a portrait `ReferenceHeight`; `DebugOverlay` IMGUI rects.
+- `HudLayoutTests`, `SkillsPresenterTests` and the tree tests assert 9:20 layouts.
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

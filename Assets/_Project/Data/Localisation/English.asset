@@ -529,6 +529,8 @@ MonoBehaviour:
     _text: Brood Scorpion
   - _key: enemy.scorpling.name
     _text: Scorpling
+  - _key: enemy.viper.name
+    _text: Sidewinder Viper
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

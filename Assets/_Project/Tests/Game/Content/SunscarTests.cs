@@ -40,6 +40,7 @@ public sealed class SunscarTests
     private static readonly ContentId Beetle = new("enemy.beetle");
     private static readonly ContentId Brood = new("enemy.brood");
     private static readonly ContentId Scorpling = new("enemy.scorpling");
+    private static readonly ContentId Viper = new("enemy.viper");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -53,11 +54,11 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBrood()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViper()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
-            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0) }));
+            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0) }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
     }
@@ -295,6 +296,90 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Viper_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Viper.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Viper.asset")));
+        EnemySpec spec = definition.ToSpec();
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.viper.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((44f, 2.4f, 4, 9, 27f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That((spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime, spec.AggroRange),
+            Is.EqualTo((14f, 1.2f, 0.9f, 1f, 30f)));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Lunger));
+        Assert.That(spec.Pack, Is.Null);
+        Assert.That(spec.Lunge, Is.Not.Null);
+        LungeSpec lunge = spec.Lunge;
+        Assert.That((lunge.Range, lunge.Length, lunge.Speed, lunge.HalfWidth, lunge.Cooldown),
+            Is.EqualTo((8f, 12f, 30f, 0.6f, 0f)));
+        Assert.That(spec.Sidewinder, Is.Not.Null);
+        SidewinderSpec sidewinder = spec.Sidewinder;
+        Assert.That((sidewinder.MissRecoverTime, sidewinder.Speed, sidewinder.ArcDegrees, sidewinder.Radius, sidewinder.Timeout),
+            Is.EqualTo((2f, 2.8f, 45f, 7f, 2.5f)));
+        Assert.That(definition.ToLook().Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Viper.prefab").GetComponent<EnemyView>()));
+    }
+
+    [Test]
+    public void Viper_ExistingEnemies_NoSidewinder()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Viper)
+            {
+                Assert.That(spec.Sidewinder, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Viper_Strike_InsideTheStormsClearing()
+    {
+        EnemySpec spec = Catalog().Enemy(Viper);
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        Assert.That(spec.Lunge.Range, Is.LessThan(storm.ClearRadius));
+    }
+
+    [Test]
+    public void Viper_SidewindSlowerThanEveryClass()
+    {
+        EnemySpec spec = Catalog().Enemy(Viper);
+        foreach (string guid in AssetDatabase.FindAssets("t:CharacterDefinition", new[] { Root + "Data/Characters" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            CharacterSpec character = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path).ToSpec();
+            Assert.That(spec.MoveSpeed, Is.LessThan(character.Movement.Speed), path);
+            Assert.That(spec.Sidewinder.Speed, Is.LessThan(character.Movement.Speed), path);
+        }
+    }
+
+    [Test]
+    public void Viper_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Viper).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Sidewinder Viper"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_ViperFrom6()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(5, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion, Beetle, Brood }));
+        count = mode.RosterFor(6, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_BroodFrom4()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -355,10 +440,15 @@ public sealed class SunscarTests
         }
     }
 
+    [Test]
+    public void Sunscar_Stage6_WavesClear() =>
+        AssertStageWavesClear(6, new[] { Scorpion, Beetle, Brood, Viper, Scorpling }, maxSeconds: 240, sidestepTells: true);
+
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
 
-    private static RecordingEvents AssertStageWavesClear(int stage, ContentId[] expectedEnemies, int maxSeconds)
+    private static RecordingEvents AssertStageWavesClear(
+        int stage, ContentId[] expectedEnemies, int maxSeconds, bool sidestepTells = false)
     {
         const float frameTime = 1f / 32f;
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
@@ -383,6 +473,7 @@ public sealed class SunscarTests
             };
             var positions = new Dictionary<int, NumericsVector3>();
             NumericsVector3 player = NumericsVector3.Zero;
+            var movementExtents = new NumericsVector3(12f, 0f, 12f);
             int tellsRead = 0;
             for (int frame = 0; frame < maxSeconds * 32 && events.Count<StageCleared>() == 0; frame++)
             {
@@ -399,16 +490,29 @@ public sealed class SunscarTests
                 world.Clear();
                 world.Dt = frameTime;
                 world.SpawnPoints = points;
-                // Step away from each locked strip, then stand still to let the Ranger fire.
+                // Step out of the tell, then stand still to let the Ranger fire.
+                NumericsVector3 dodgeOrigin = player;
                 IReadOnlyList<EnemyTelegraph> tells = events.Of<EnemyTelegraph>();
                 for (; tellsRead < tells.Count; tellsRead++)
                 {
                     if (positions.TryGetValue(tells[tellsRead].Id, out NumericsVector3 attacker))
                     {
-                        NumericsVector3 away = player - attacker;
+                        NumericsVector3 away = (sidestepTells ? dodgeOrigin : player) - attacker;
                         away = away.LengthSquared() > 1e-4f ? NumericsVector3.Normalize(away) : NumericsVector3.UnitX;
+                        if (sidestepTells)
+                        {
+                            var sideways = new NumericsVector3(-away.Z, 0f, away.X);
+                            away = NumericsVector3.Dot(sideways, player) > 0f ? -sideways : sideways;
+                        }
+
                         player += away * 3f;
                     }
+                }
+
+                // Keep the stage-6 Ranger within aggro range of the four spawn points.
+                if (sidestepTells)
+                {
+                    player = NumericsVector3.Clamp(player, -movementExtents, movementExtents);
                 }
 
                 world.PlayerPosition = player;
@@ -433,12 +537,19 @@ public sealed class SunscarTests
                 }
 
                 session.Tick(world);
-                Assert.That(events.Count<PlayerDied>(), Is.Zero, "The Ranger must survive to clear the waves.");
+                if (events.Count<PlayerDied>() > 0)
+                {
+                    Assert.Fail($"The Ranger died at {player} after {frame * frameTime:F1}s on stage {stage}.");
+                }
             }
 
             Assert.That(events.Count<WaveStarted>(), Is.GreaterThan(0));
             Assert.That(events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct(), Is.EquivalentTo(expectedEnemies));
-            Assert.That(events.Count<StageCleared>(), Is.EqualTo(1));
+            var survivors = events.Of<EnemySpawned>()
+                .Where(spawn => session.State.IsEnemyAlive(spawn.Id))
+                .Select(spawn => $"{spawn.SpecId} at {positions.GetValueOrDefault(spawn.Id, spawn.Position)}");
+            Assert.That(events.Count<StageCleared>(), Is.EqualTo(1),
+                $"Stage {stage} after {maxSeconds}s, player at {player}, survivors: {string.Join(", ", survivors)}");
             return events;
         }
         finally

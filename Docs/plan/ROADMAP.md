@@ -215,7 +215,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **SS-08a** — The viper in core: a long recoil on a miss and a sidewind (M)
 - [x] SS-08b — The model: the owner's viper on Rig_Viper, nine clips, turnaround first (M)
 - [x] SS-08c — The body: prefab, animator, the coil and the lane strip (M)
-- [ ] [SS-08d](tasks/SS-08d-viper-data.md) — The viper in the Sunscar: data, roster from stage 6 (M)
+- [x] SS-08d — The viper in the Sunscar: data, roster from stage 6 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

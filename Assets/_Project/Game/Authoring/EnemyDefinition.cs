@@ -150,6 +150,13 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Seconds from one dash's end to the next wind-up.")]
         [SerializeField, Min(0f)] private float _lungeCooldown;
 
+        [Header("Sidewinder — leave miss recovery at 0 on other archetypes")]
+        [SerializeField, Min(0f)] private float _sidewinderMissRecoverTime;
+        [SerializeField, Min(0f)] private float _sidewinderSpeed;
+        [SerializeField, Range(0f, 180f)] private float _sidewinderArcDegrees;
+        [SerializeField, Min(0f)] private float _sidewinderRadius;
+        [SerializeField, Min(0f)] private float _sidewinderTimeout;
+
         [Header("Leap — leave the min range at 0 on an archetype that does not leap")]
         [Tooltip("Metres from the player below which it does not leap. 0 means no leap and the " +
                  "six fields below are ignored. 4 for the Bullfrog (JG-21a).")]
@@ -365,6 +372,10 @@ namespace Soulvail.Game.Authoring
                         : null,
                     brood: _broodCount > 0
                         ? new BroodSpec(new ContentId(_broodChildId), _broodCount, _broodBurstDelay, _broodDropRadius)
+                        : null,
+                    sidewinder: _sidewinderMissRecoverTime > 0f
+                        ? new SidewinderSpec(_sidewinderMissRecoverTime, _sidewinderSpeed,
+                            _sidewinderArcDegrees, _sidewinderRadius, _sidewinderTimeout)
                         : null);
             }
             catch (ArgumentException inner)

@@ -72,6 +72,9 @@ MonoBehaviour:
   - _specId: enemy.brood
     _introducedAtStage: 4
     _retiredAtStage: 0
+  - _specId: enemy.viper
+    _introducedAtStage: 6
+    _retiredAtStage: 0
   _arenas:
   - _arenaId: arena.sunscar.dunes
     _firstStage: 1

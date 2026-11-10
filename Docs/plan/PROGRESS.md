@@ -9,13 +9,13 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-08c** — Viper prefab and controller drive coil, strike, recoil and sidewind. |
-| **Next task** | SS-08d — Viper data and Sunscar stage 6 roster. Jackal SS-05b–d queued. |
-| **Verified** | Isolated EditMode 6571 total, 6476 passed, 3 failed, 1 inconclusive, 91 skipped. All 11 SS-08c tests passed. Baseline reproduced the 3 failures. C# whitespace passed. |
+| **Last merged** | **SS-08d** — Sidewinder Viper data and Sunscar stage 6 roster. |
+| **Next task** | SS-05b — Jackal model, pending the owner's sculpt. SS-05c–d queued. |
+| **Verified** | Graphics EditMode 6578 total, 6484 passed, 2 known bar failures, 1 inconclusive, 91 skipped. Sunscar 37/37. Known writer test passed on rerun. C# whitespace passed. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4. A pale sac pulses before three scorplings drop. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4, vipers at 6. A pale sac pulses before three scorplings drop. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

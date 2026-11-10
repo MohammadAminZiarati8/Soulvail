@@ -658,3 +658,12 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - SS-08a (after SS-08d): At Sunscar stage 6, hold in the lane for a short recoil, sidestep the next lane for a long recoil, and watch the viper circle in alternating directions between strikes.
 
 - **SS-08b [Editor]** Preview Viper Coil from above and verify that Sidewind keeps the head steady.
+
+## SS-08d — Sidewinder Viper in Sunscar
+
+1. [Editor] Use DT-01 to start Sunscar stage 6. Watch vipers slither in and stop about 8 m out, in clear air through the storm.
+2. [Editor] Check that the body coils into an S as the red-orange strip runs 12 m through the hero. Sidestep it, then try backing away.
+3. [Editor] Compare the roughly 2 s stretched recovery on a miss with the roughly 1 s recoil on a hit.
+4. [Editor] Watch each viper circle the hero between strikes and alternate the direction of its sidewind.
+5. [Editor] Check that the strip reads over quicksand and through the storm, and that the viper has no warm or cyan accents.
+6. [Device] Check that the coil and strip read at first glance on a phone.

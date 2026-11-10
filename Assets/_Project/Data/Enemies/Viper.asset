@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: Viper
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.viper
+  _nameKey: enemy.viper.name
+  _maxHp: 44
+  _moveSpeed: 2.4
+  _targetPriority: 4
+  _threatCost: 9
+  _xpValue: 27
+  _isElite: 0
+  _isLight: 1
+  _contactDamage: 14
+  _reach: 1.2
+  _windupTime: 0.9
+  _recoverTime: 1
+  _aggroRange: 30
+  _behaviour: 5
+  _lungeRange: 8
+  _lungeLength: 12
+  _lungeSpeed: 30
+  _lungeHalfWidth: 0.6
+  _lungeCooldown: 0
+  _sidewinderMissRecoverTime: 2
+  _sidewinderSpeed: 2.8
+  _sidewinderArcDegrees: 45
+  _sidewinderRadius: 7
+  _sidewinderTimeout: 2.5
+  _tint: {r: 1, g: 1, b: 1, a: 1}
+  _bodyScale: 1
+  _body: {fileID: 6657606872914667179, guid: ef12c5f437bb80d4c9b801f4f357c170, type: 3}

@@ -242,6 +242,7 @@ public sealed class EnemySpec
     /// </exception>
     /// <param name="skitter">Optional fan approach and tail strike, used by Chasers.</param>
     /// <param name="slinger">Optional led throw and retreat, used by Spitters.</param>
+    /// <param name="bombardier">Optional rear turn and braced shot, used by Spitters.</param>
     public EnemySpec(
         ContentId id,
         LocKey nameKey,
@@ -271,7 +272,8 @@ public sealed class EnemySpec
         ThornweaverSpec thornweaver = null,
         bool isLight = false,
         SkitterSpec skitter = null,
-        SlingerSpec slinger = null)
+        SlingerSpec slinger = null,
+        BombardierSpec bombardier = null)
     {
         if (id.Value is null)
         {
@@ -288,6 +290,11 @@ public sealed class EnemySpec
         if (slinger is not null && behaviour != EnemyBehaviourKind.Spitter)
         {
             throw new ArgumentException("Only a Spitter can carry a SlingerSpec.", nameof(slinger));
+        }
+
+        if (bombardier is not null && (behaviour != EnemyBehaviourKind.Spitter || slinger is not null))
+        {
+            throw new ArgumentException("Only a Spitter without a SlingerSpec can carry a BombardierSpec.", nameof(bombardier));
         }
 
         if (behaviour == EnemyBehaviourKind.Spitter && projectile is null)
@@ -399,6 +406,7 @@ public sealed class EnemySpec
         Leap = leap;
         Skitter = skitter;
         Slinger = slinger;
+        Bombardier = bombardier;
         Pack = pack;
         Stalker = stalker;
         Thornweaver = thornweaver;
@@ -548,6 +556,9 @@ public sealed class EnemySpec
 
     /// <summary>The optional led throw and retreat of a slinging Spitter.</summary>
     public SlingerSpec Slinger { get; }
+
+    /// <summary>The optional rear turn and braced shot of a bombardier Spitter.</summary>
+    public BombardierSpec Bombardier { get; }
 
     /// <summary>
     /// How it pairs with one of its kind, or <see langword="null"/> on one that hunts alone. Read by

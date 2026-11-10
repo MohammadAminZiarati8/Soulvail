@@ -15,8 +15,8 @@ namespace Soulvail.Core.Ai;
 /// </summary>
 /// <remarks>
 /// The states are flat. <see cref="Release"/> behaves like <c>ChaserState.Strike</c>: it lasts
-/// exactly one tick, because the shot leaves on the way in and the state exists so the moment of it
-/// is nameable by anything watching.
+/// one tick for an ordinary Spitter. A bombardier enters Recover on the release tick. The shot leaves
+/// on entry.
 /// </remarks>
 public enum SpitterState
 {
@@ -29,10 +29,10 @@ public enum SpitterState
     /// </summary>
     Approach,
 
-    /// <summary>Planted, facing the player, telegraphing the throw. Never cancelled (rule 7).</summary>
+    /// <summary>Planted and telegraphing the throw.</summary>
     Aim,
 
-    /// <summary>The shot leaves. One tick.</summary>
+    /// <summary>The shot leaves.</summary>
     Release,
 
     /// <summary>Rooted and reloading for <c>EnemySpec.RecoverTime</c> — the window the player closes in.</summary>
@@ -105,6 +105,9 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
 
     /// <summary>Simulated run time as of the tick in progress. See the class remarks.</summary>
     private float _now;
+
+    // Core spawn data carries no rotation. The default forward is +Z.
+    private Vector2 _facing = Vector2.UnitY;
 
     private PlayerCombat _player;
     private IIntentSink _intents;
@@ -193,6 +196,7 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
     public void Reset()
     {
         _machine.Transition(SpitterState.Idle);
+        _facing = Vector2.UnitY;
 
         _agent.Blackboard.StateTimer = 0f;
     }
@@ -205,7 +209,7 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
     /// </remarks>
     private void TickIdle(float dt)
     {
-        Stand(Vector2.Zero);
+        Stand(_agent.Spec.Bombardier is null ? Vector2.Zero : _facing);
 
         if (_agent.Blackboard.DistanceToPlayer <= _agent.Spec.AggroRange)
         {
@@ -256,7 +260,20 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
                 ? blackboard.PathDirectionToPlayer
                 : blackboard.DirectionToPlayer;
 
+            _facing = inbound;
             Emit(Ground(inbound, speed), inbound);
+
+            return;
+        }
+
+        BombardierSpec bombardier = _agent.Spec.Bombardier;
+        if (bombardier is not null)
+        {
+            TurnRear(bombardier, dt);
+            if (blackboard.HasLineOfSight && MathF.Abs(RearError()) <= bombardier.StartConeDegrees)
+            {
+                _machine.Transition(SpitterState.Aim);
+            }
 
             return;
         }
@@ -333,9 +350,9 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
         _events.Publish(new EnemyTelegraph(_agent.Id, _agent.Spec.WindupTime));
     }
 
-    /// <summary>Rule 7: stand, face, and throw whatever the player does.</summary>
+    /// <summary>Rule 7: stand through the windup. Bombardiers brace and check their rear cone at release.</summary>
     /// <remarks>
-    /// <b>An aim never cancels, and that is the deliberate opposite of the Chaser's windup.</b> A
+    /// <b>An ordinary Spitter aim never cancels, unlike the Chaser's windup.</b> A
     /// Spitter that abandoned its aim whenever the player moved would never fire, because moving is
     /// what the player does — the dodge window is the <em>flight</em>, not the telegraph (M2-07a
     /// rule 3). So there is no distance test here at all: it stands and faces for the whole windup,
@@ -355,14 +372,23 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
 
         blackboard.StateTimer += dt;
 
-        // Face, do not move. The stare is the tell, so the facing is live even though the velocity
-        // is zero — see EnemyMoveIntent on why the two are separate fields.
-        Stand(blackboard.DirectionToPlayer);
+        BombardierSpec bombardier = _agent.Spec.Bombardier;
+        Stand(bombardier is null ? blackboard.DirectionToPlayer : _facing);
 
-        if (blackboard.StateTimer >= _agent.Spec.WindupTime)
+        if (!(blackboard.StateTimer >= _agent.Spec.WindupTime))
         {
-            _machine.Transition(SpitterState.Release);
+            return;
         }
+
+        if (bombardier is not null && MathF.Abs(RearError()) > bombardier.DropConeDegrees)
+        {
+            blackboard.StateTimer = 0f;
+            _events.Publish(new EnemyAimDropped(_agent.Id));
+            _machine.Transition(SpitterState.Approach);
+            return;
+        }
+
+        _machine.Transition(SpitterState.Release);
     }
 
     /// <summary>Rule 8: the shot leaves.</summary>
@@ -397,7 +423,7 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
             ? blackboard.PlayerPosition
             : LeadPoint(origin, blackboard.PlayerPosition, blackboard.PlayerVelocity, projectile.Speed, slinger.MaxLead);
         Vector3 across = Across(target - origin, blackboard.DirectionToPlayer);
-        int count = projectile.Count;
+        int count = _agent.Spec.Bombardier is null ? projectile.Count : 1;
         float damage = _agent.ContactDamage.Value;
 
         // JG-21c: centre out, so a full sky drops the outside lobs first (rule 4). Lob i's offset in
@@ -422,6 +448,11 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
                 // Whatever is left is further out and will not fit either.
                 break;
             }
+        }
+
+        if (_agent.Spec.Bombardier is not null)
+        {
+            _machine.Transition(SpitterState.Recover);
         }
     }
 
@@ -493,12 +524,55 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
 
         blackboard.StateTimer += dt;
 
-        Stand(blackboard.DirectionToPlayer);
+        BombardierSpec bombardier = _agent.Spec.Bombardier;
+        if (bombardier is null)
+        {
+            Stand(blackboard.DirectionToPlayer);
+        }
+        else
+        {
+            TurnRear(bombardier, dt);
+        }
 
         if (blackboard.StateTimer >= _agent.Spec.RecoverTime)
         {
             _machine.Transition(SpitterState.Approach);
         }
+    }
+
+    private void TurnRear(BombardierSpec bombardier, float dt)
+    {
+        Vector2 direction = _agent.Blackboard.DirectionToPlayer;
+        if (direction != Vector2.Zero)
+        {
+            float error = RearError();
+            float maxTurn = bombardier.TurnRateDegrees * dt;
+            if (MathF.Abs(error) <= maxTurn)
+            {
+                _facing = -direction;
+            }
+            else
+            {
+                float turn = (error < 0f ? -maxTurn : maxTurn) * (MathF.PI / 180f);
+                float sin = MathF.Sin(turn);
+                float cos = MathF.Cos(turn);
+                _facing = new Vector2((_facing.X * cos) - (_facing.Y * sin), (_facing.X * sin) + (_facing.Y * cos));
+            }
+        }
+
+        Stand(_facing);
+    }
+
+    private float RearError()
+    {
+        Vector2 target = -_agent.Blackboard.DirectionToPlayer;
+        if (target == Vector2.Zero)
+        {
+            return 0f;
+        }
+
+        float cross = (_facing.X * target.Y) - (_facing.Y * target.X);
+        return MathF.Atan2(cross, Vector2.Dot(_facing, target)) * (180f / MathF.PI);
     }
 
     /// <summary>A ground-plane velocity: <paramref name="directionXZ"/> at <paramref name="speed"/>.</summary>

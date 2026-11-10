@@ -198,7 +198,7 @@ _No milestone. The owner is setting the next direction._
 
 **The bombardier beetle, the Sunscar's stage-2 enemy** (owner, 2026-11-10; design [GD §8.6](../GameDesign.md)). The Pitcher's role, plainer than the jackal: from stage 2 it plants at 12 m, turns its rear to the hero at 45°/s and lobs one slow glob at where the hero stands, under a red-orange ring; circle it close and it drops the shot. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order, before SS-05d. SS-06a and SS-06b may swap; SS-06c needs both; SS-06d needs all three. Playtestable from SS-06d with DT-01's test start at Sunscar stage 2.
 
-- [ ] [SS-06a](tasks/SS-06a-beetle-core.md) — The beetle in core: a slow rear turn and a shot it can drop (M)
+- [x] **SS-06a** — The beetle in core: a slow rear turn and a shot it can drop (M)
 - [ ] [SS-06b](tasks/SS-06b-beetle-model.md) — The model: beetle.py, Rig_Beetle, seven clips, turnaround first (M)
 - [ ] [SS-06c](tasks/SS-06c-beetle-body.md) — The body: prefab, animator, the glowing vent and a red-orange glob (M)
 - [ ] [SS-06d](tasks/SS-06d-beetle-data.md) — The beetle in the Sunscar: data, roster from stage 2 (M)

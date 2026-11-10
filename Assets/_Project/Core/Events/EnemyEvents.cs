@@ -192,6 +192,19 @@ public readonly struct EnemyTelegraph
 }
 
 /// <summary>
+/// A bombardier's quarry left its rear cone during the windup.
+/// </summary>
+public readonly struct EnemyAimDropped
+{
+    public readonly int Id;
+
+    public EnemyAimDropped(int id)
+    {
+        Id = id;
+    }
+}
+
+/// <summary>
 /// An enemy has been killed. Published by <c>EnemySystem.ApplyDamage</c> immediately after the
 /// <see cref="EnemyDamaged"/> that did it, exactly once per life.
 /// </summary>

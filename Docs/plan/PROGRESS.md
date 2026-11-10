@@ -9,9 +9,9 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-04a** — sand scorpion fan approach and locked tail strike in core. |
-| **Next task** | SS-04c, on the owner's go. |
-| **Verified** | Batch EditMode: 6405 total, 6310 passed, 3 failed, 1 inconclusive, 91 skipped. Scorpion 14/14, Chaser 19/19, Bullfrog 9/9. Compile/analyzers/format clean. Clean-dev failures: `SaveWriterTests.Writer_ObservesEveryFault`, `EnemyHealthBarTests.Bar_IsSizedInDp(False,36.0f)`, `EnemyHealthBarTests.Bar_IsSizedInDp(True,48.0f)`. |
+| **Last merged** | **SS-04c** — sand scorpion prefab, animation and wind-up tell. |
+| **Next task** | SS-04d, on the owner's go. |
+| **Verified** | Batch EditMode 6415 total, 6321 passed, 2 failed, 1 inconclusive, 91 skipped. SS-04c 10/10. Clean-dev `EnemyHealthBarTests.Bar_IsSizedInDp(False,36.0f)` and `(True,48.0f)` still fail. Clean-dev `SaveWriterTests.Writer_ObservesEveryFault` passed. Compile, analyzers and format clean. |
 
 ## What works
 

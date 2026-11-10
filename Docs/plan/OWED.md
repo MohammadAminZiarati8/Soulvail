@@ -618,3 +618,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SS-04a — Scorpion core
 
 - [ ] [Editor, after SS-04d] Start the Sunscar with DT-01. Watch a pack fan out once and close. Circle or sidestep during the tail tell to check that the strip stays on its committed bearing and the strike misses outside it.
+
+## SS-04c — Scorpion body (after SS-04d)
+
+- Start the Sunscar with DT-01. Check Skitter, the stinger tip and strip during locked wind-up, then sidestep the strip and watch the strike and recovery. Kill during wind-up and check that the tell goes dark, including on pooled reuse. Check readability in portrait on device.

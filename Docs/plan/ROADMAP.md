@@ -186,7 +186,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SS-04a — The scorpion in core: the fan approach and a locked tail strike strip (M)
 - [x] SS-04b — The model: scorpion.py, Rig_Scorpion, six clips, turnaround first (M)
-- [ ] SS-04c — The body: prefab, animator, stinger glow and the ground strip ([spec](tasks/SS-04c-scorpion-body.md)) (M)
+- [x] SS-04c — The body: prefab, animator, stinger glow and the ground strip (M)
 - [ ] SS-04d — The scorpion in the Sunscar: data, roster from stage 1 ([spec](tasks/SS-04d-scorpion-data.md)) (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

@@ -110,6 +110,11 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Metres between neighbouring landings. Needed when the count is above 1.")]
         [SerializeField, Min(0f)] private float _projectileSpread;
 
+        [Header("Bombardier — leave the turn rate at 0 on other archetypes")]
+        [SerializeField, Min(0f)] private float _bombardierTurnRateDegrees;
+        [SerializeField, Range(0f, 180f)] private float _bombardierStartConeDegrees;
+        [SerializeField, Range(0f, 180f)] private float _bombardierDropConeDegrees;
+
         [Header("Explosion — leave the radius at 0 on an archetype that does not explode")]
         [Tooltip("Metres the blast reaches. 0 means this archetype does not explode. 3 for the " +
                  "Bloater (GD §8.1).")]
@@ -347,6 +352,10 @@ namespace Soulvail.Game.Authoring
                     skitter: _skitterRingRadius > 0f
                         ? new SkitterSpec(_skitterRingRadius, _skitterFanDegrees, _skitterSpreadTimeout,
                             _skitterZoneLength, _skitterZoneHalfWidth)
+                        : null,
+                    bombardier: _bombardierTurnRateDegrees > 0f
+                        ? new BombardierSpec(_bombardierTurnRateDegrees, _bombardierStartConeDegrees,
+                            _bombardierDropConeDegrees)
                         : null);
             }
             catch (ArgumentException inner)

@@ -37,6 +37,7 @@ public sealed class SunscarTests
     private static readonly ContentId Ranger = new("character.ranger");
     private const string ScorpionPath = Root + "Prefabs/Enemies/Scorpion.prefab";
     private static readonly ContentId Scorpion = new("enemy.scorpion");
+    private static readonly ContentId Beetle = new("enemy.beetle");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -50,12 +51,11 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsTheScorpion()
+    public void Sunscar_Mode_RosterIsScorpionThenBeetle()
     {
         ModeSpec mode = Mode("Sunscar");
-        RosterEntry entry = mode.Roster.Single();
-        Assert.That((entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage),
-            Is.EqualTo((Scorpion, 1, 0)));
+        Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
+            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0) }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
     }
@@ -130,7 +130,90 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Stage1_WavesClearsOpensPortal()
+    public void Beetle_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.ToSpec().Id == Beetle);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Beetle.asset")));
+        EnemySpec spec = definition.ToSpec();
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.beetle.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((28f, 2.8f, 3, 7, 21f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That((spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime, spec.AggroRange),
+            Is.EqualTo((12f, 1.2f, 0.7f, 2.3f, 30f)));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Spitter));
+        Assert.That(spec.Projectile, Is.Not.Null);
+        ProjectileSpec projectile = spec.Projectile;
+        Assert.That((projectile.StandoffRange, projectile.Speed, projectile.Radius, projectile.Count),
+            Is.EqualTo((12f, 6f, 1.6f, 1)));
+        Assert.That(spec.Bombardier, Is.Not.Null);
+        BombardierSpec bombardier = spec.Bombardier;
+        Assert.That((bombardier.TurnRateDegrees, bombardier.StartConeDegrees, bombardier.DropConeDegrees),
+            Is.EqualTo((45f, 10f, 20f)));
+        Assert.That(spec.Slinger, Is.Null);
+
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.MarksLanding, Is.True);
+        Assert.That(look.Body, Is.Not.Null);
+        Assert.That(look.Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Beetle.prefab").GetComponent<EnemyView>()));
+        Assert.That(look.Projectile, Is.Not.Null);
+        Assert.That(look.Projectile, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Projectiles/BeetleGlob.prefab").GetComponent<ProjectileView>()));
+    }
+
+    [Test]
+    public void Beetle_ExistingEnemies_NoBombardier()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Beetle)
+            {
+                Assert.That(spec.Bombardier, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Beetle_Standoff_InsideTheStormsClearing()
+    {
+        EnemySpec spec = BootEnemies().Select(enemy => enemy.ToSpec()).Single(enemy => enemy.Id == Beetle);
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        Assert.That(spec.Projectile.StandoffRange, Is.LessThan(storm.ClearRadius));
+    }
+
+    [Test]
+    public void Beetle_NameKey_InEveryLanguage()
+    {
+        var key = new LocKey("enemy.beetle.name");
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Bombardier Beetle"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_BeetleFrom2()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(1, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion }));
+        count = mode.RosterFor(2, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion, Beetle }));
+    }
+
+    [Test]
+    public void Sunscar_Stage1_WavesClearsOpensPortal() => AssertStageWavesClear(1, Scorpion);
+
+    [Test]
+    public void Sunscar_Stage2_WavesClear() => AssertStageWavesClear(2, Scorpion, Beetle);
+
+    private static void AssertStageWavesClear(int stage, params ContentId[] expectedEnemies)
     {
         const float frameTime = 1f / 32f;
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
@@ -139,13 +222,13 @@ public sealed class SunscarTests
         var intents = new RecordingIntents();
         var recorder = new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), events);
         var session = new RunSession(catalog, random, events, intents, recorder, 64, 28, 64);
-        RunSnapshot snapshot = new TestStart(catalog).At(Sunscar, Ranger, random.Seed, random.Capture(), 1);
+        RunSnapshot snapshot = new TestStart(catalog).At(Sunscar, Ranger, random.Seed, random.Capture(), stage);
 
         try
         {
-            session.Start(new RunConfig(Sunscar, Ranger, random.Seed, 1, SpawnPlan.Empty, snapshot));
+            session.Start(new RunConfig(Sunscar, Ranger, random.Seed, stage, SpawnPlan.Empty, snapshot));
             StageArrived arrival = events.Of<StageArrived>().Single();
-            Assert.That((arrival.Stage, arrival.ArenaId), Is.EqualTo((1, Dunes)));
+            Assert.That((arrival.Stage, arrival.ArenaId), Is.EqualTo((stage, Dunes)));
 
             var world = new WorldSnapshot(64);
             NumericsVector3[] points =
@@ -209,7 +292,7 @@ public sealed class SunscarTests
             }
 
             Assert.That(events.Count<WaveStarted>(), Is.GreaterThan(0));
-            Assert.That(events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct(), Is.EqualTo(new[] { Scorpion }));
+            Assert.That(events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct(), Is.EquivalentTo(expectedEnemies));
             Assert.That(events.Count<StageCleared>(), Is.EqualTo(1));
         }
         finally

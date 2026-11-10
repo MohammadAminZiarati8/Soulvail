@@ -633,3 +633,13 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **Device** — Check that the strip and stinger tip read at first glance on a phone.
 
 - **SS-06b [Editor]** Preview each clip on Beetle.fbx. Check that Aim exposes the rear vent from the game camera and that planted feet track the ground at 2.8 m/s in Walk.
+
+
+### SS-06d — Bombardier beetle in the Sunscar
+
+1. **[Editor]** DT-01, Sunscar stage 2: beetles walk in to about 12 m, plant in clear air and swing their rears round slowly.
+2. **[Editor]** Each wind-up lights the vent; a red-orange glob lobs at where the hero stood, under a red-orange ring.
+3. **[Editor]** Standing still is hit; any step clears the ring.
+4. **[Editor]** Closing to ~5 m and circling: the vent lights and goes out with no glob, again and again.
+5. **[Editor]** Vent, glob and ring read over quicksand and through the storm; nothing else on the beetle is warm.
+6. **[device]** Vent, glob and ring read at first look on a phone.

@@ -9,13 +9,13 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-06c** — beetle body, animator, rear vent and glob. |
-| **Next task** | SS-06d — beetle data and Sunscar stage 2. Jackal SS-05b–d moves to stage 8. Sunscar stage 1 playtest still in OWED. |
-| **Verified** | EditMode 6476 total, 6384 passed, 0 failed, 1 inconclusive, 91 skipped. VentTellView 14/14. Format clean. |
+| **Last merged** | **SS-06d** — bombardier beetles join the Sunscar from stage 2. |
+| **Next task** | SS-05b — jackal model and sling. Sunscar stage 1 and stage 2 playtests are in OWED. |
+| **Verified** | EditMode 6482 total, 6390 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 21/21. C# whitespace gate passed. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join from stage 2. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

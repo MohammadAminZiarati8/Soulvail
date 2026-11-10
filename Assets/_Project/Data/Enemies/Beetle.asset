@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: Beetle
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.beetle
+  _nameKey: enemy.beetle.name
+  _maxHp: 28
+  _moveSpeed: 2.8
+  _targetPriority: 3
+  _threatCost: 7
+  _xpValue: 21
+  _isElite: 0
+  _isLight: 1
+  _contactDamage: 12
+  _reach: 1.2
+  _windupTime: 0.7
+  _recoverTime: 2.3
+  _aggroRange: 30
+  _behaviour: 2
+  _projectileStandoffRange: 12
+  _projectileSpeed: 6
+  _projectileRadius: 1.6
+  _projectileCount: 1
+  _bombardierTurnRateDegrees: 45
+  _bombardierStartConeDegrees: 10
+  _bombardierDropConeDegrees: 20
+  _explosionRadius: 0
+  _hopTime: 0
+  _hopRestTime: 0
+  _tint: {r: 1, g: 1, b: 1, a: 1}
+  _bodyScale: 1
+  _body: {fileID: 5669416278674279226, guid: 5a7ac21c9f6960642b96b1422007577d, type: 3}
+  _projectile: {fileID: 7713478124844703268, guid: 4807d9a50a222f94d85932d91fb0e4d2, type: 3}
+  _marksLanding: 1

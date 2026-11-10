@@ -201,7 +201,7 @@ _No milestone. The owner is setting the next direction._
 - [x] **SS-06a** — The beetle in core: a slow rear turn and a shot it can drop (M)
 - [x] SS-06b — The owner's beetle sculpt on Rig_Beetle, with seven clips (M)
 - [x] SS-06c — The body: prefab, animator, the glowing vent and a red-orange glob (M)
-- [ ] [SS-06d](tasks/SS-06d-beetle-data.md) — The beetle in the Sunscar: data, roster from stage 2 (M)
+- [x] SS-06d — The beetle in the Sunscar: data, roster from stage 2 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

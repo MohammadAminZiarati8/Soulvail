@@ -523,6 +523,8 @@ MonoBehaviour:
     _text: The Sunscar
   - _key: enemy.scorpion.name
     _text: Sand Scorpion
+  - _key: enemy.beetle.name
+    _text: Bombardier Beetle
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

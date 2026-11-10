@@ -645,3 +645,12 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 6. **[device]** Vent, glob and ring read at first look on a phone.
 
 - **SS-07b [Editor]** Play the brood clips in Unity. Check Skitter foot contact at movement speed and watch the sac during Windup.
+
+## SS-07d — The brood in the Sunscar
+
+1. **[Editor]** DT-01, Sunscar stage 4: a fat, slow scorpion with a pale brood sac fans in and strikes into a large red-orange strip; one sidestep clears it.
+2. **[Editor]** Killed, its hump swells and pulses twice, then three scorplings land round it and come from three sides.
+3. **[Editor]** Killed at ~10 m, the scorplings cross open sand and die to single arrows before they reach the hero.
+4. **[Editor]** The portal opens only after the last scorpling dies.
+5. **[Editor]** Sac, swell and scorplings read through the storm; nothing cyan.
+6. **[device]** Sac, swell and scorplings read at first look on a phone.

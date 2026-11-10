@@ -574,6 +574,10 @@ MonoBehaviour:
     _text: "[S\xE1\xF1d S\xE7\xF4rp\xEE\xF4\xF1 \xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.beetle.name
     _text: "[B\xF4mb\xE1rd\xEE\xE9r B\xE9\xE9tl\xE9 \xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: enemy.brood.name
+    _text: "[Br\xF4\xF4d S\xE7\xF4rp\xEE\xF4\xF1 \xB7\xB7\xB7\xB7\xB7]"
+  - _key: enemy.scorpling.name
+    _text: "[S\xE7\xF4rpl\xEE\xF1g \xB7\xB7\xB7\xB7]"
   - _key: enemy.frog.name
     _text: "[Fr\xF4g \xB7\xB7]"
   - _key: enemy.pitcher.name

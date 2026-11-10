@@ -38,6 +38,8 @@ public sealed class SunscarTests
     private const string ScorpionPath = Root + "Prefabs/Enemies/Scorpion.prefab";
     private static readonly ContentId Scorpion = new("enemy.scorpion");
     private static readonly ContentId Beetle = new("enemy.beetle");
+    private static readonly ContentId Brood = new("enemy.brood");
+    private static readonly ContentId Scorpling = new("enemy.scorpling");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -51,11 +53,11 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionThenBeetle()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBrood()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
-            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0) }));
+            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0) }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
     }
@@ -102,7 +104,7 @@ public sealed class SunscarTests
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
-            if (spec.Id != Scorpion)
+            if (spec.Id != Scorpion && spec.Id != Brood && spec.Id != Scorpling)
             {
                 Assert.That(spec.Skitter, Is.Null, path);
             }
@@ -197,6 +199,113 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Brood_Asset_MatchesDesign()
+    {
+        EnemySpec spec = AuthoredBroodEnemy(Brood, "BroodMother");
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((50f, 1.5f, 2, 12, 24f)));
+        Assert.That((spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime, spec.AggroRange),
+            Is.EqualTo((14f, 2f, 0.8f, 1f, 30f)));
+        SkitterSpec skitter = spec.Skitter;
+        Assert.That((skitter.RingRadius, skitter.FanDegrees, skitter.SpreadTimeout, skitter.ZoneLength, skitter.ZoneHalfWidth),
+            Is.EqualTo((5f, 120f, 4f, 2.4f, 0.7f)));
+        Assert.That(spec.Brood, Is.Not.Null);
+        Assert.That((spec.Brood.Child, spec.Brood.Count, spec.Brood.BurstDelay, spec.Brood.DropRadius),
+            Is.EqualTo((Scorpling, 3, 0.5f, 1.2f)));
+    }
+
+    [Test]
+    public void Scorpling_Asset_MatchesDesign()
+    {
+        EnemySpec spec = AuthoredBroodEnemy(Scorpling, "Scorpling");
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((10f, 2.8f, 1, 3, 3f)));
+        Assert.That((spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime, spec.AggroRange),
+            Is.EqualTo((4f, 1f, 0.5f, 0.6f, 50f)));
+        SkitterSpec skitter = spec.Skitter;
+        Assert.That((skitter.RingRadius, skitter.FanDegrees, skitter.SpreadTimeout, skitter.ZoneLength, skitter.ZoneHalfWidth),
+            Is.EqualTo((3f, 120f, 2f, 1.2f, 0.35f)));
+        Assert.That(spec.Brood, Is.Null);
+    }
+
+    private static EnemySpec AuthoredBroodEnemy(ContentId id, string assetName)
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == id.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + $"Data/Enemies/{assetName}.asset")));
+        var body = AssetDatabase.LoadAssetAtPath<GameObject>(Root + $"Prefabs/Enemies/{assetName}.prefab");
+        Assert.That(body.GetComponent<EnemyView>(), Is.Not.Null);
+        Assert.That(definition.ToLook().Body, Is.SameAs(body.GetComponent<EnemyView>()));
+        EnemySpec spec = definition.ToSpec();
+        Assert.That(spec.NameKey.Key, Is.EqualTo(id.Value + ".name"));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Chaser));
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That(spec.Skitter, Is.Not.Null);
+        return spec;
+    }
+
+    [Test]
+    public void Brood_ExistingEnemies_NoBrood()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Brood)
+            {
+                Assert.That(spec.Brood, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Scorpling_InNoRoster()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:ModeDefinition", new[] { Root + "Data/Modes" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            ModeSpec mode = AssetDatabase.LoadAssetAtPath<ModeDefinition>(path).ToSpec();
+            Assert.That(mode.Roster.Select(entry => entry.SpecId), Has.No.Member(Scorpling), path);
+        }
+    }
+
+    [Test]
+    public void Scorpling_SlowerThanEveryClass()
+    {
+        EnemySpec spec = BootEnemies().Select(enemy => enemy.ToSpec()).Single(enemy => enemy.Id == Scorpling);
+        foreach (string guid in AssetDatabase.FindAssets("t:CharacterDefinition", new[] { Root + "Data/Characters" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            CharacterSpec character = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path).ToSpec();
+            Assert.That(spec.MoveSpeed, Is.LessThan(character.Movement.Speed), path);
+        }
+    }
+
+    [Test]
+    public void Brood_NameKeys_InEveryLanguage()
+    {
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset").ToDictionary();
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset").ToDictionary();
+        var broodKey = new LocKey("enemy.brood.name");
+        var scorplingKey = new LocKey("enemy.scorpling.name");
+        Assert.That(english[broodKey], Is.EqualTo("Brood Scorpion"));
+        Assert.That(english[scorplingKey], Is.EqualTo("Scorpling"));
+        Assert.That(pseudo[broodKey], Is.Not.Empty);
+        Assert.That(pseudo[scorplingKey], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_BroodFrom4()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(3, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion, Beetle }));
+        count = mode.RosterFor(4, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion, Beetle, Brood }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_BeetleFrom2()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -213,7 +322,43 @@ public sealed class SunscarTests
     [Test]
     public void Sunscar_Stage2_WavesClear() => AssertStageWavesClear(2, Scorpion, Beetle);
 
-    private static void AssertStageWavesClear(int stage, params ContentId[] expectedEnemies)
+    [Test]
+    public void Sunscar_Stage3_WavesClearWithoutBrood() => AssertStageWavesClear(3, Scorpion, Beetle);
+
+    [Test]
+    public void Sunscar_Stage4_WavesClear()
+    {
+        RecordingEvents events = AssertStageWavesClear(4, new[] { Scorpion, Beetle, Brood, Scorpling }, maxSeconds: 240);
+        int births = 0;
+        int deaths = 0;
+        int broods = 0;
+        foreach (object evt in events.All)
+        {
+            switch (evt)
+            {
+                case EnemyBroodBurst:
+                    broods++;
+                    break;
+                case EnemySpawned spawned when spawned.SpecId == Scorpling:
+                    births++;
+                    Assert.That(births, Is.LessThanOrEqualTo(broods * 3), "Scorplings come from a brood burst.");
+                    break;
+                case EnemyDied died when died.SpecId == Scorpling:
+                    deaths++;
+                    break;
+                case StageCleared:
+                    Assert.That(broods, Is.GreaterThan(0));
+                    Assert.That(births, Is.EqualTo(broods * 3));
+                    Assert.That(deaths, Is.EqualTo(births), "Every scorpling dies before the portal opens.");
+                    break;
+            }
+        }
+    }
+
+    private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
+        AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
+
+    private static RecordingEvents AssertStageWavesClear(int stage, ContentId[] expectedEnemies, int maxSeconds)
     {
         const float frameTime = 1f / 32f;
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
@@ -239,7 +384,7 @@ public sealed class SunscarTests
             var positions = new Dictionary<int, NumericsVector3>();
             NumericsVector3 player = NumericsVector3.Zero;
             int tellsRead = 0;
-            for (int frame = 0; frame < 180 * 32 && events.Count<StageCleared>() == 0; frame++)
+            for (int frame = 0; frame < maxSeconds * 32 && events.Count<StageCleared>() == 0; frame++)
             {
                 // Walk the bodies by the previous tick's intents, then report the living ones in sight.
                 foreach (var move in intents.EnemyMoves)
@@ -294,6 +439,7 @@ public sealed class SunscarTests
             Assert.That(events.Count<WaveStarted>(), Is.GreaterThan(0));
             Assert.That(events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct(), Is.EquivalentTo(expectedEnemies));
             Assert.That(events.Count<StageCleared>(), Is.EqualTo(1));
+            return events;
         }
         finally
         {

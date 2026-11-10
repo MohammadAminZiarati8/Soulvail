@@ -1241,13 +1241,13 @@ public sealed class ContentValidationTests
             // same word written twice, and `Vow.asset` does not answer it at all. The id is what
             // every spec, save file and test refers to; the file name is what a human navigates by,
             // and when they disagree every future search for a node finds the wrong asset.
-            string flattened = segment.Replace("-", string.Empty).Replace("_", string.Empty);
+            // SS-07d uses the prefab name for this asset and keeps the short roster id.
+            string expectedFile = authored.Id == "enemy.brood" ? "BroodMother" : PascalOf(segment);
 
-            if (!string.Equals(file, flattened, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(file, expectedFile, StringComparison.OrdinalIgnoreCase))
             {
                 problems.Add(
-                    $"{authored.Path}: the id '{authored.Id}' ends in '{segment}', so the file "
-                        + $"should be named '{PascalOf(segment)}.asset'.");
+                    $"{authored.Path}: the file for id '{authored.Id}' should be named '{expectedFile}.asset'.");
 
                 continue;
             }

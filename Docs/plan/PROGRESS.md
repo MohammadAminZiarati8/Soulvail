@@ -9,13 +9,13 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-07c** — BroodMother and Scorpling bodies, pale sac swell, metre-sized strike strips. |
-| **Next task** | SS-07d — Sunscar brood data and stage-4 roster. Then SS-05b–d. |
-| **Verified** | EditMode 6526 total, 6434 passed, 0 failed, 1 inconclusive, 91 skipped. Brood body 10/10. C# whitespace passed. |
+| **Last merged** | **SS-07d** — Brood Scorpion and Scorpling data, with the brood in Sunscar from stage 4. |
+| **Next task** | SS-05b — Jackal model and sling prop. Then SS-05c–d. |
+| **Verified** | EditMode 6535 total, 6443 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 30/30. C# whitespace passed. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join from stage 2. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4. A pale sac pulses before three scorplings drop. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

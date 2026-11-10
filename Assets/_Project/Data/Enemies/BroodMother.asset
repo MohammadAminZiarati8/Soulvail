@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: BroodMother
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.brood
+  _nameKey: enemy.brood.name
+  _maxHp: 50
+  _moveSpeed: 1.5
+  _targetPriority: 2
+  _threatCost: 12
+  _xpValue: 24
+  _isElite: 0
+  _isLight: 0
+  _contactDamage: 14
+  _reach: 2
+  _windupTime: 0.8
+  _recoverTime: 1
+  _aggroRange: 30
+  _behaviour: 1
+  _skitterRingRadius: 5
+  _skitterFanDegrees: 120
+  _skitterSpreadTimeout: 4
+  _skitterZoneLength: 2.4
+  _skitterZoneHalfWidth: 0.7
+  _broodCount: 3
+  _broodChildId: enemy.scorpling
+  _broodBurstDelay: 0.5
+  _broodDropRadius: 1.2
+  _tint: {r: 1, g: 1, b: 1, a: 1}
+  _bodyScale: 1
+  _body: {fileID: 7309528593867231867, guid: 59e66610bcb7bf44f88270d5aa41c5b7, type: 3}

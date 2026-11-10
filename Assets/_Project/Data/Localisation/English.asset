@@ -525,6 +525,10 @@ MonoBehaviour:
     _text: Sand Scorpion
   - _key: enemy.beetle.name
     _text: Bombardier Beetle
+  - _key: enemy.brood.name
+    _text: Brood Scorpion
+  - _key: enemy.scorpling.name
+    _text: Scorpling
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

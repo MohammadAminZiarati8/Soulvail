@@ -175,6 +175,12 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _skitterZoneLength;
         [SerializeField, Min(0f)] private float _skitterZoneHalfWidth;
 
+        [Header("Brood — leave the count at 0 on an archetype that drops no children")]
+        [SerializeField, Range(0, BroodSpec.MaxCount)] private int _broodCount;
+        [SerializeField] private string _broodChildId;
+        [SerializeField, Min(0f)] private float _broodBurstDelay;
+        [SerializeField, Min(0f)] private float _broodDropRadius;
+
         [Header("Bulwark — leave the half-arc at 0 on an archetype without a shield")]
         [SerializeField, Min(0f)] private float _shieldHalfArc;
         [SerializeField, Min(0f)] private float _shieldTurnRate;
@@ -356,6 +362,9 @@ namespace Soulvail.Game.Authoring
                     bombardier: _bombardierTurnRateDegrees > 0f
                         ? new BombardierSpec(_bombardierTurnRateDegrees, _bombardierStartConeDegrees,
                             _bombardierDropConeDegrees)
+                        : null,
+                    brood: _broodCount > 0
+                        ? new BroodSpec(new ContentId(_broodChildId), _broodCount, _broodBurstDelay, _broodDropRadius)
                         : null);
             }
             catch (ArgumentException inner)

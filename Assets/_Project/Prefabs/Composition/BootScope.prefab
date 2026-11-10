@@ -82,6 +82,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2901f0c69613a814b93e3f4f89041c25, type: 2}
   - {fileID: 11400000, guid: d94139a5ce4e4312b217b2870afb92dc, type: 2}
   - {fileID: 11400000, guid: 05d76a2781b940da9ba1288d77c7c9e2, type: 2}
+  - {fileID: 11400000, guid: a28c187b520c49cfa15d9b5f5032638f, type: 2}
+  - {fileID: 11400000, guid: 5e827233635e468db70b91f35caf9a56, type: 2}
   _modes:
   - {fileID: 11400000, guid: 32056a066ee69b94cb162eb829ecd93f, type: 2}
   - {fileID: 11400000, guid: 71f7c681caa781d48b49d2befadd82d2, type: 2}

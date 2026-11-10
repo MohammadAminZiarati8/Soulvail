@@ -189,12 +189,19 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-04c — The body: prefab, animator, stinger glow and the ground strip (M)
 - [x] SS-04d — The scorpion in the Sunscar: data, roster from stage 1 (M)
 
-**The jackal slinger, the Sunscar's second enemy** (owner, 2026-11-10; design [GD §8.5](../GameDesign.md)). The Pitcher's role in the desert: from stage 2 it holds 12 m and slings a stone that lands where the hero is heading, under a red-orange circle; rushed, it backs away slowly and cannot throw. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-05a and SS-05b may swap; SS-05b needs the owner's sculpt (prompt in the spec); SS-05c needs both; SS-05d needs all three. Playtestable from SS-05d with DT-01's test start at Sunscar stage 2.
+**The jackal slinger, the Sunscar's second enemy** (owner, 2026-11-10; design [GD §8.5](../GameDesign.md)). The Pitcher's role in the desert: from stage 8 (moved from 2 by the owner, 2026-11-10, for the beetle) it holds 12 m and slings a stone that lands where the hero is heading, under a red-orange circle; rushed, it backs away slowly and cannot throw. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-05a and SS-05b may swap; SS-05b needs the owner's sculpt (prompt in the spec); SS-05c needs both; SS-05d needs all three and SS-06d. Playtestable from SS-05d with DT-01's test start at Sunscar stage 8.
 
 - [x] SS-05a — The slinger in core: a led throw and a retreat that cannot throw (M)
 - [ ] [SS-05b](tasks/SS-05b-jackal-model.md) — The model: the jackal on Rig_Medium, a sling prop, turnaround first (M)
 - [ ] [SS-05c](tasks/SS-05c-jackal-body.md) — The body: prefab, animator, the whirling sling and a red-orange stone (M)
-- [ ] [SS-05d](tasks/SS-05d-jackal-data.md) — The slinger in the Sunscar: data, roster from stage 2 (M)
+- [ ] [SS-05d](tasks/SS-05d-jackal-data.md) — The slinger in the Sunscar: data, roster from stage 8 (M)
+
+**The bombardier beetle, the Sunscar's stage-2 enemy** (owner, 2026-11-10; design [GD §8.6](../GameDesign.md)). The Pitcher's role, plainer than the jackal: from stage 2 it plants at 12 m, turns its rear to the hero at 45°/s and lobs one slow glob at where the hero stands, under a red-orange ring; circle it close and it drops the shot. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order, before SS-05d. SS-06a and SS-06b may swap; SS-06c needs both; SS-06d needs all three. Playtestable from SS-06d with DT-01's test start at Sunscar stage 2.
+
+- [ ] [SS-06a](tasks/SS-06a-beetle-core.md) — The beetle in core: a slow rear turn and a shot it can drop (M)
+- [ ] [SS-06b](tasks/SS-06b-beetle-model.md) — The model: beetle.py, Rig_Beetle, seven clips, turnaround first (M)
+- [ ] [SS-06c](tasks/SS-06c-beetle-body.md) — The body: prefab, animator, the glowing vent and a red-orange glob (M)
+- [ ] [SS-06d](tasks/SS-06d-beetle-data.md) — The beetle in the Sunscar: data, roster from stage 2 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

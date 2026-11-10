@@ -9,8 +9,8 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-05a** — slinger core: capped lead and a timed retreat. |
-| **Next task** | SS-05b — jackal sculpt and rig. Needs the owner's sculpt. Sunscar stage 1 playtest still in OWED. |
+| **Last merged** | **SS-05a** — slinger core: capped lead and a timed retreat. SS-06 beetle specs written (docs). |
+| **Next task** | SS-06a — beetle core: slow rear turn, droppable shot. Then SS-06b–d (stage 2); jackal SS-05b–d moves to stage 8. Sunscar stage 1 playtest still in OWED. |
 | **Verified** | EditMode 6435 total, 6343 passed, 0 failed, 1 inconclusive, 91 skipped. JackalSlinger 16/16. Format clean. |
 
 ## What works

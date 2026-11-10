@@ -210,6 +210,13 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-07c — The body: two prefabs and the swelling hump (M)
 - [x] SS-07d — The brood in the Sunscar: data, roster from stage 4 (M)
 
+**The sidewinder viper, the Sunscar's stage-6 enemy** (owner, 2026-11-11; design [GD §8.8](../GameDesign.md)). The Lunger's role in the desert: from stage 6 it slithers to 8 m, coils for 0.9 s while a red-orange strip 12 m long shows on the sand, and strikes down it; between strikes it slides 45° round the hero, alternating sides, so each lane comes from a new angle. A miss leaves it stretched out for 2 s: the punish window. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-08a and SS-08b may swap; SS-08b uses the owner's sculpt (path in the spec); SS-08c needs both; SS-08d needs all three. The jackal's SS-05b–d stay queued: whichever of SS-08d and SS-05d lands second inserts its roster entry in stage order (viper 6 before jackal 8); the code wins. Playtestable from SS-08d with DT-01's test start at Sunscar stage 6.
+
+- [ ] [SS-08a](tasks/SS-08a-viper-core.md) — The viper in core: a long recoil on a miss and a sidewind (M)
+- [ ] [SS-08b](tasks/SS-08b-viper-model.md) — The model: the owner's viper on Rig_Viper, nine clips, turnaround first (M)
+- [ ] [SS-08c](tasks/SS-08c-viper-body.md) — The body: prefab, animator, the coil and the lane strip (M)
+- [ ] [SS-08d](tasks/SS-08d-viper-data.md) — The viper in the Sunscar: data, roster from stage 6 (M)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

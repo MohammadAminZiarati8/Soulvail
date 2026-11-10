@@ -2,7 +2,7 @@
 
 [OWED](OWED.md). History in Git.
 
-_2026-11-10._
+_2026-11-11._
 
 ## State
 
@@ -10,7 +10,7 @@ _2026-11-10._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **SS-07d** — Brood Scorpion and Scorpling data, with the brood in Sunscar from stage 4. |
-| **Next task** | SS-05b — Jackal model and sling prop. Then SS-05c–d. |
+| **Next task** | SS-08a — Viper core: long recoil on a miss, sidewind (SS-08a–d specced). Jackal SS-05b–d queued. |
 | **Verified** | EditMode 6535 total, 6443 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 30/30. C# whitespace passed. |
 
 ## What works

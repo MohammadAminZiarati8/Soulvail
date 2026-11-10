@@ -185,7 +185,7 @@ _No milestone. The owner is setting the next direction._
 **The sand scorpion, the Sunscar's first enemy** (owner, 2026-11-10; design [GD §8.4](../GameDesign.md)). The Frog's role in the desert: fodder from stage 1 whose pack fans out and closes from several sides, then a locked tail strike into a small warned strip. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-04a and SS-04b may swap; SS-04c needs both; SS-04d needs all three. Playtestable from SS-04d with DT-01's test start in the Sunscar.
 
 - [ ] SS-04a — The scorpion in core: the fan approach and a locked tail strike strip ([spec](tasks/SS-04a-scorpion-core.md)) (M)
-- [ ] SS-04b — The model: scorpion.py, Rig_Scorpion, six clips, turnaround first ([spec](tasks/SS-04b-scorpion-model.md)) (M)
+- [x] SS-04b — The model: scorpion.py, Rig_Scorpion, six clips, turnaround first (M)
 - [ ] SS-04c — The body: prefab, animator, stinger glow and the ground strip ([spec](tasks/SS-04c-scorpion-body.md)) (M)
 - [ ] SS-04d — The scorpion in the Sunscar: data, roster from stage 1 ([spec](tasks/SS-04d-scorpion-data.md)) (M)
 

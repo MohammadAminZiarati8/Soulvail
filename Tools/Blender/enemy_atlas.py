@@ -70,9 +70,18 @@ SWATCHES = {
     # in that cell also preserves the Warlord's separate war-painted atlas's unchanged cells.
     "apex_coat": (1, 2, "48414D", "28242E"),
     "apex_scar": (1, 2, "E2DBC8", "A89F8A"),
+    # SS-04b: use unsampled edges of the two Pitcher cells the Warlord repaints.
+    "scorp_sandstone": (5, 0, "B48B62", "694617"),
+    "scorp_bone": (5, 0, "E0CCAA", "AD8957"),
+    "scorp_ochre": (5, 1, "987247", "674416"),
+    "scorp_plate": (5, 1, "775536", "573613"),
 }
 SWATCH_NAMES = list(SWATCHES)
-INSETS = {"apex_coat": (112, 128), "apex_scar": (64, 80)}
+INSETS = {
+    "apex_coat": (112, 128), "apex_scar": (64, 80),
+    "scorp_sandstone": (320, 336), "scorp_bone": (368, 384),
+    "scorp_ochre": (320, 336), "scorp_plate": (368, 384),
+}
 
 # GD 16.4's reserved colours, which no pixel of the atlas may come near.
 RESERVED = ("22D3EE", "FF4A1F", "A855F7", "FBBF24")

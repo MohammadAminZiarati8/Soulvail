@@ -9,9 +9,9 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-04 plan** — scorpion in GD §8.4, specs a–d. |
+| **Last merged** | **SS-04b** — approved sand scorpion model, rig and six clips. |
 | **Next task** | SS-04a, on the owner's go. |
-| **Verified** | SS-03: EditMode 6289 pass, 0 fail, 1 inconclusive, 91 skip. Format clean. |
+| **Verified** | 161 model tests pass. Format clean. 3 baseline batch failures. |
 
 ## What works
 

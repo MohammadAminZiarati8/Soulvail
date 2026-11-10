@@ -610,3 +610,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 1. **[Editor]** Start Dunes via DT-01 and cross all three patches. Check that the static patches read as damp ground scenery, that cues and movement read normally, and that the sandstorm draws above them.
 2. **[device]** In portrait at play zoom, check that the soft edges stay subdued and clear of entry, start and portal. Profile the added draws and GPU time.
+
+## SS-04b — Scorpion model
+
+- [ ] [Editor] Preview all six clips on Scorpion.fbx. Check that the Windup tell reads and Skitter plants its alternating tripods without sliding at 2.2 m/s.

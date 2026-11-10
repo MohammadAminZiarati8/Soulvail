@@ -631,3 +631,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 - **Editor** — Sidestep the strip to avoid the hit and punish during the 0.8 s tail-down recovery.
 - **Editor** — Clear the waves and check that the cyan portal opens. Check body readability against Dunes sand at phone size.
 - **Device** — Check that the strip and stinger tip read at first glance on a phone.
+
+- **SS-06b [Editor]** Preview each clip on Beetle.fbx. Check that Aim exposes the rear vent from the game camera and that planted feet track the ground at 2.8 m/s in Walk.

@@ -75,9 +75,17 @@ SWATCHES = {
     "scorp_bone": (5, 0, "E0CCAA", "AD8957"),
     "scorp_ochre": (5, 1, "987247", "674416"),
     "scorp_plate": (5, 1, "775536", "573613"),
+    # SS-06b: use the gaps between Scorpion insets and Pitcher centres.
+    # These are in cells the Warlord already repaints.
+    "beetle_umber": (5, 0, "785018", "4D3208"),
+    "beetle_ochre": (5, 0, "A57617", "78540A"),
+    "beetle_bone": (5, 1, "DFD1AD", "BA9E6D"),
+    "beetle_vent": (5, 1, "49403B", "2B2421"),
 }
 SWATCH_NAMES = list(SWATCHES)
 INSETS = {
+    "beetle_umber": (336, 344), "beetle_ochre": (360, 368),
+    "beetle_bone": (336, 344), "beetle_vent": (360, 368),
     "apex_coat": (112, 128), "apex_scar": (64, 80),
     "scorp_sandstone": (320, 336), "scorp_bone": (368, 384),
     "scorp_ochre": (320, 336), "scorp_plate": (368, 384),

@@ -9,9 +9,9 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-06a** — bombardier core: slow rear turn, braced aim and dropped shot. |
-| **Next task** | SS-06b — beetle model and clips. Then SS-06c–d (stage 2). Jackal SS-05b–d moves to stage 8. Sunscar stage 1 playtest still in OWED. |
-| **Verified** | EditMode 6451 total, 6359 passed, 0 failed, 1 inconclusive, 91 skipped. BombardierBeetle 16/16. Format clean. |
+| **Last merged** | **SS-06b** — the owner's beetle sculpt, shared atlas, six-leg rig and seven clips. |
+| **Next task** | SS-06c — beetle prefab, animator, vent and glob. Then SS-06d (stage 2). Jackal SS-05b–d moves to stage 8. Sunscar stage 1 playtest still in OWED. |
+| **Verified** | EditMode 6462 total, 6370 passed, 0 failed, 1 inconclusive, 91 skipped. BeetleModel 11/11. Format clean. |
 
 ## What works
 

@@ -11,9 +11,9 @@ A `BroodSpec` enemy dies as usual, swells 0.5 s, then drops its children round t
 
 | Path (under `Assets/_Project/`) | Assembly | Purpose |
 |---|---|---|
-| `Core/Content/BroodSpec.cs` | Core | child id, count, delay, radius |
+| `Core/Content/BroodSpec.cs` | Core | |
 | `Core/Ai/EnemySystem.cs` | Core | queue, burst |
-| `Core/Director/SpawnDirector.cs` | Core | pending brood holds its wave |
+| `Core/Director/SpawnDirector.cs` | Core | wave hold, cap weight |
 | `Tests/Core/Ai/BroodDropTests.cs` | Tests.Core | |
 | *small edits* | | `EnemySpec`, `EnemyAgent`, `EnemyEvents.cs`, `ContentCatalog` |
 
@@ -30,48 +30,50 @@ public sealed class BroodSpec
     public float BurstDelay { get; }  // (0, EnemySystem.CorpseTime)
     public float DropRadius { get; }  // > 0
 }
-// EnemySpec(..., BroodSpec brood = null) last; EnemySpec.Brood { get; }
-// EnemyAgent: public bool BroodPending { get; }  public ReadOnlySpan<int> Brood { get; }  // ids dropped
-// public readonly struct EnemyBroodSwelling { Id; Duration; }  // at death, the tell
-// public readonly struct EnemyBroodBurst { Id; Position; }     // at burst, before the children's EnemySpawned
+// EnemySpec(..., BroodSpec brood = null) last; EnemySpec.Brood
+// EnemyAgent: bool BroodPending { get; }  ReadOnlySpan<int> Brood { get; }
+// readonly struct EnemyBroodSwelling { Id; Duration; }  EnemyBroodBurst { Id; Position; }
 ```
 
 ## Behaviour
 
 1. No `BroodSpec`: every death unchanged.
-2. `ContentCatalog` refuses a child that is unknown, a boss, or has a `BroodSpec` (one generation).
-3. A brood enemy dies through the one door as built (XP, kill, `EnemyDied`), then publishes `EnemyBroodSwelling(id, BurstDelay)` and sets `BroodPending`.
+2. `ContentCatalog` refuses a child that is unknown, a boss, an Elite or a brood (one generation).
+3. It dies through the one door as built, then publishes `EnemyBroodSwelling(id, BurstDelay)`; `BroodPending` set.
 4. A death with `explode: false` (taken by its boss, JG-26d) drops nothing.
-5. `BurstDelay` after death, after the behaviour walk and before deferred despawns: `EnemyBroodBurst`, then `Count` children spawn at `DropRadius` round the corpse, evenly spaced from its facing; `Brood` holds their ids, `BroodPending` clears.
-6. Children of a summon are summons (`SpawnSummon`); otherwise they pay their own XP. They are never Elites.
-7. `SpawnDirector` keeps a dead id in its wave while `BroodPending`, then adopts its `Brood` into that wave, which clears only when they die. The id stride grows by `Count` per brood body a wave can buy.
-8. The drop ignores the concurrency cap.
-9. Stage reset or unload drops pending broods silently.
-10. Burst and adoption allocate nothing.
+5. `BurstDelay` later, after the walk, before deferred despawns: `EnemyBroodBurst`, then `Count` children at `DropRadius`, evenly spaced from its last non-zero facing (else forward), into `Brood`.
+6. Children of a summon are summons (`SpawnSummon`); else they pay their own XP. Never Elites.
+7. The director holds a pending id in its wave, then adopts its `Brood`. Id stride grows by `Count` per brood body.
+8. A pending corpse stays registered until it bursts, even if one tick passes `BurstDelay` and `CorpseTime`.
+9. Cap weight: a brood body alive or telegraphed `1 + Count`, pending `Count`, others 1; the director waits until the next body fits.
+10. Stage reset or unload drops pending broods silently.
+11. Burst and adoption allocate nothing beyond `Spawn`'s first use of an agent.
 
 ## Tests
 
 | Test | Given / When / Then |
 |---|---|
 | `NoBrood_DeathUnchanged` | scorpion / kill / no swelling |
-| `Catalog_ChildUnknownBossOrBrood_Throws` | three catalogs / build / throws |
-| `Death_PaysThenSwells` | mother / kill / XP banked, `EnemyDied` then `EnemyBroodSwelling` 0.5 |
-| `BeforeDelay_NoChildren` | killed / 0.45 s / pending, nothing spawned |
-| `AfterDelay_DropsThreeRound` | killed / 0.5 s / `EnemyBroodBurst`, 3 `EnemySpawned` 1.2 m out, 120° apart |
+| `Catalog_BadChild_Throws` | unknown, boss, Elite, brood / build / throws |
+| `Death_PaysThenSwells` | mother / kill / XP, `EnemyDied` then `EnemyBroodSwelling` 0.5 |
+| `BeforeDelay_NoChildren` | killed / 0.45 s / pending, none |
+| `AfterDelay_DropsThreeRound` | killed / 0.5 s / burst, 3 `EnemySpawned` 1.2 m out, 120° apart |
 | `Children_TakeThreeFanSlots` | burst / ids / three distinct `SlotOffsetDegrees` |
-| `Children_PayOwnXp` | kill all three / bank / 3 × child XP |
+| `Children_PayOwnXp` | kill all / bank / 3 × child XP |
 | `TakenByBoss_DropsNothing` | summon mother, boss dies / 1 s / no swelling |
-| `SummonMother_ChildrenAreSummons` | summon mother killed by hero / burst / children `IsSummon`, no XP |
-| `EliteMother_ChildrenPlain` | Elite mother / burst / children not Elite |
+| `SummonMother_ChildrenAreSummons` | hero kills it / burst / `IsSummon`, no XP |
+| `EliteMother_ChildrenPlain` | Elite / burst / children not Elite |
 | `Wave_HeldWhilePending` | last body a mother / kill, 0.3 s / no `WaveCleared` |
-| `Wave_ClearsOnLastChild` | burst / kill children / `WaveCleared` after the last only |
-| `Drop_IgnoresCap` | at cap / burst / three spawn |
-| `Reset_DropsPending` | pending / stage reset / nothing spawns |
-| `Burst_NoAlloc` | kill → burst → adopt / 300 ticks / `AllocationAssert.None` |
+| `Wave_ClearsOnLastChild` | burst / kill children / cleared after the last |
+| `LongTick_StillBursts` | killed / one 1 s tick / burst, adopted |
+| `Cap_CountsBroodWeight` | cap 10, 7 alive / queue a mother / waits; at 6 admits |
+| `Burst_NeverExceedsCap` | mothers at the cap / kill all / living ≤ cap every tick |
+| `Reset_DropsPending` | pending / reset / nothing spawns |
+| `Burst_NoAlloc` | warmed / kill → burst → adopt × 3 / `AllocationAssert.None` |
 
 ## Out of scope
 
-- Assets, views, roster (SS-07b–d).
+- Assets, views, roster (SS-07b–d). Prewarming agents.
 - A second generation; a burst that hurts.
 
 ## As built

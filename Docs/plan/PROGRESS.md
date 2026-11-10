@@ -9,8 +9,8 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-04d** — Sand Scorpion in the Sunscar roster from stage 1. |
-| **Next task** | Sunscar stage 1 playtest (OWED). |
+| **Last merged** | **SS-05** docs — jackal slinger design (GD §8.5), specs SS-05a–d. SS-04d scorpion roster before it. |
+| **Next task** | SS-05a (or SS-05b, needs the owner's jackal sculpt) — the jackal slinger, GD §8.5. Sunscar stage 1 playtest still in OWED. |
 | **Verified** | EditMode 6419 total, 6327 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 15/15. Both clean-dev health-bar cases and SaveWriter fault case passed. Compile, analyzers and format clean. |
 
 ## What works

@@ -35,11 +35,11 @@
 | `BroodModel_StaysInBudget` | mesh / count / rule 6's tris, 1 submesh |
 | `BroodModel_UsesTheEnemyMaterial` | renderer / read / `M_Enemy` only |
 | `BroodModel_IsWeighted` | skin / read / all weighted, ≤ 4 |
-| `BroodModel_HasRigScorpionAndBrood` | rig / walk / every `Rig_Scorpion` bone by path; `Brood` under `Body` |
+| `BroodModel_HasRigScorpionAndBrood` | rig / walk / `Rig_Scorpion`'s bones by path; `Brood` under `Body` |
 | `BroodModel_ImportsGenericWithItsClips` | importer / read / Generic; the six clips, frame counts as `Scorpion.fbx` |
 | `BroodModel_ClipsLeaveRootAndBroodAlone` | each clip / sample / `Root`, `Brood` still |
 | `BroodModel_TailClearsTheSac` | every clip frame / `Tail_*`, `Stinger` / outside sac and torso bounds |
-| `BroodModel_StrikeLandsAhead` | `Strike` frame 2 / `Stinger` tip / ahead of the pincers, ≤ 0.3 m off centre |
+| `BroodModel_StrikeLandsAhead` | `Strike` frame 2 / `Stinger` tip / past the torso front, between the pincers, ≤ 0.3 m off centre |
 | `BroodModel_IsBiggerThanTheScorpion` | bounds vs `Scorpion.fbx` / measure / footprint ratio in rule 6 |
 | `BroodModel_StandsOffTheDunes` | colour / vs Dunes sand / `ScorpionModel_StandsOffTheDunes`' margins |
 | `BroodModel_NoCyanOrDanger` | swatches / hue / none in the reserved bands |

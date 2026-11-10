@@ -103,8 +103,12 @@ namespace Soulvail.Game.Views
 
         [SerializeField] private bool _turnsInPlace;
 
+        [SerializeField] private bool _sidewinds;
+
         private readonly int _turningId = Animator.StringToHash("Turning");
         private readonly int _aimDroppedId = Animator.StringToHash("AimDropped");
+        private readonly int _sidewaysId = Animator.StringToHash("Sideways");
+        private readonly int _strikeMissedId = Animator.StringToHash("StrikeMissed");
         private readonly int _speedId = Animator.StringToHash("Speed");
         private readonly int _walkRateId = Animator.StringToHash("WalkRate");
         private readonly int _attackRateId = Animator.StringToHash("AttackRate");
@@ -126,6 +130,9 @@ namespace Soulvail.Game.Views
         private IDisposable _leapSubscription;
         private IDisposable _hiddenSubscription;
         private IDisposable _aimDroppedSubscription;
+        private IDisposable _strikeMissedSubscription;
+        private bool? _hasSideways;
+        private bool? _hasStrikeMissed;
         private bool _hasAimDropped;
         private bool _aimDroppedChecked;
         private float? _previousYaw;
@@ -197,6 +204,7 @@ namespace Soulvail.Game.Views
             _leapSubscription = hub.Subscribe<EnemyLeapAimed>(OnLeapAimed);
             _hiddenSubscription = hub.Subscribe<EnemyHiddenChanged>(OnHiddenChanged);
             _aimDroppedSubscription = hub.Subscribe<EnemyAimDropped>(OnAimDropped);
+            _strikeMissedSubscription = hub.Subscribe<EnemyStrikeMissed>(OnStrikeMissed);
         }
 
         /// <summary>
@@ -218,6 +226,18 @@ namespace Soulvail.Game.Views
             if (_body == null)
             {
                 _body = GetComponentInParent<EnemyView>();
+            }
+
+            if (_sidewinds && _animator.isActiveAndEnabled &&
+                (_hasSideways ??= HasParameter(_sidewaysId, AnimatorControllerParameterType.Bool)))
+            {
+                Vector3 velocity = _body != null && !_dead && !_stunned ? _body.Velocity : Vector3.zero;
+                velocity.y = 0f;
+                Vector3 facing = _body != null ? _body.transform.forward : Vector3.forward;
+                facing.y = 0f;
+                bool sideways = velocity.sqrMagnitude > 0.5f * 0.5f &&
+                    Vector3.Dot(velocity.normalized, facing.normalized) < 0.5f; // Cosine of 60 degrees.
+                _animator.SetBool(_sidewaysId, sideways);
             }
 
             if (_turnsInPlace && _body != null)
@@ -331,6 +351,11 @@ namespace Soulvail.Game.Views
             if (_runBaseSpeed > 0f)
             { _animator.SetBool("Run", false); }
             _animator.SetBool(_deadId, false);
+            if (_hasSideways == true)
+            {
+                _animator.SetBool(_sidewaysId, false);
+            }
+            ResetStrikeMissed();
             if (_turnsInPlace)
             {
                 _animator.SetBool(_turningId, false);
@@ -400,6 +425,7 @@ namespace Soulvail.Game.Views
             _leapSubscription?.Dispose();
             _hiddenSubscription?.Dispose();
             _aimDroppedSubscription?.Dispose();
+            _strikeMissedSubscription?.Dispose();
             _hiddenSubscription = null;
             _telegraphSubscription = null;
             _damagedSubscription = null;
@@ -456,6 +482,7 @@ namespace Soulvail.Game.Views
                 _animator.ResetTrigger(_aimDroppedId);
             }
 
+            ResetStrikeMissed();
             _animator.SetFloat(_attackRateId, Mathf.Max(_strikeSeconds - _windupFromSeconds, 0.01f) / evt.Duration);
             _animator.SetTrigger(_attackId);
 
@@ -603,6 +630,40 @@ namespace Soulvail.Game.Views
             }
         }
 
+        private void OnStrikeMissed(EnemyStrikeMissed evt)
+        {
+            if (_animator == null || !_animator.isActiveAndEnabled || _dead || !IsMine(evt.Id))
+            {
+                return;
+            }
+
+            if (_hasStrikeMissed ??= HasParameter(_strikeMissedId, AnimatorControllerParameterType.Trigger))
+            {
+                _animator.SetTrigger(_strikeMissedId);
+            }
+        }
+
+        private bool HasParameter(int id, AnimatorControllerParameterType type)
+        {
+            foreach (AnimatorControllerParameter parameter in _animator.parameters)
+            {
+                if (parameter.nameHash == id && parameter.type == type)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ResetStrikeMissed()
+        {
+            if (_hasStrikeMissed == true)
+            {
+                _animator.ResetTrigger(_strikeMissedId);
+            }
+        }
+
         private void OnDamaged(EnemyDamaged evt)
         {
             // A killing blow does not flinch: the death is the answer to it, in the same call.
@@ -632,6 +693,7 @@ namespace Soulvail.Game.Views
             }
 
             _dead = true;
+            ResetStrikeMissed();
             _leapArmed = false;
             SetCrowdControl(false, false, 0f);
 

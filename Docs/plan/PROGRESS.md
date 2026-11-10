@@ -9,9 +9,9 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-08b** — Viper model on Rig_Viper with nine in-place clips. |
-| **Next task** | SS-08c — Viper prefab, animator and lane strip. SS-08d and Jackal SS-05b–d queued. |
-| **Verified** | EditMode 6560 total, 6468 passed, 0 failed, 1 inconclusive, 91 skipped. C# whitespace passed. |
+| **Last merged** | **SS-08c** — Viper prefab and controller drive coil, strike, recoil and sidewind. |
+| **Next task** | SS-08d — Viper data and Sunscar stage 6 roster. Jackal SS-05b–d queued. |
+| **Verified** | Isolated EditMode 6571 total, 6476 passed, 3 failed, 1 inconclusive, 91 skipped. All 11 SS-08c tests passed. Baseline reproduced the 3 failures. C# whitespace passed. |
 
 ## What works
 

@@ -241,6 +241,7 @@ public sealed class EnemySpec
     /// <see cref="Ai.WardenBehaviour.MinTelegraphSeconds"/>.
     /// </exception>
     /// <param name="skitter">Optional fan approach and tail strike, used by Chasers.</param>
+    /// <param name="slinger">Optional led throw and retreat, used by Spitters.</param>
     public EnemySpec(
         ContentId id,
         LocKey nameKey,
@@ -269,7 +270,8 @@ public sealed class EnemySpec
         StalkerSpec stalker = null,
         ThornweaverSpec thornweaver = null,
         bool isLight = false,
-        SkitterSpec skitter = null)
+        SkitterSpec skitter = null,
+        SlingerSpec slinger = null)
     {
         if (id.Value is null)
         {
@@ -281,6 +283,11 @@ public sealed class EnemySpec
         if (isLight && (isElite || behaviour == EnemyBehaviourKind.Boss))
         {
             throw new ArgumentException($"'{id}' is an elite or boss and cannot be light.", nameof(isLight));
+        }
+
+        if (slinger is not null && behaviour != EnemyBehaviourKind.Spitter)
+        {
+            throw new ArgumentException("Only a Spitter can carry a SlingerSpec.", nameof(slinger));
         }
 
         if (behaviour == EnemyBehaviourKind.Spitter && projectile is null)
@@ -391,6 +398,7 @@ public sealed class EnemySpec
         Shaman = shaman;
         Leap = leap;
         Skitter = skitter;
+        Slinger = slinger;
         Pack = pack;
         Stalker = stalker;
         Thornweaver = thornweaver;
@@ -537,6 +545,9 @@ public sealed class EnemySpec
 
     /// <summary>The optional fan approach and tail strike of a skittering Chaser.</summary>
     public SkitterSpec Skitter { get; }
+
+    /// <summary>The optional led throw and retreat of a slinging Spitter.</summary>
+    public SlingerSpec Slinger { get; }
 
     /// <summary>
     /// How it pairs with one of its kind, or <see langword="null"/> on one that hunts alone. Read by

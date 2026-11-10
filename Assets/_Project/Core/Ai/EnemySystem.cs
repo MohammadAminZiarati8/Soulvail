@@ -1211,7 +1211,13 @@ public sealed class EnemySystem
         // because an empty arena is precisely when a respawn is about to be decided.
         _playerPosition = snapshot.PlayerPosition;
 
-        Perceive(snapshot.PlayerPosition, lures, pets, now);
+        var playerVelocity = new Vector2(snapshot.PlayerVelocity.X, snapshot.PlayerVelocity.Z);
+        if (!float.IsFinite(playerVelocity.X) || !float.IsFinite(playerVelocity.Y))
+        {
+            playerVelocity = Vector2.Zero;
+        }
+
+        Perceive(snapshot.PlayerPosition, playerVelocity, lures, pets, now);
     }
 
     /// <summary>
@@ -1736,7 +1742,7 @@ public sealed class EnemySystem
     /// acceptable over six metres and three seconds and is written down rather than discovered.
     /// </para>
     /// </remarks>
-    private void Perceive(Vector3 playerPosition, LureSystem lures, PetSystem pets, float now)
+    private void Perceive(Vector3 playerPosition, Vector2 playerVelocity, LureSystem lures, PetSystem pets, float now)
     {
         ReadOnlySpan<EnemyAgent> agents = Registry.Alive;
         pets?.ReviewHunters(Registry, playerPosition, now);
@@ -1777,6 +1783,7 @@ public sealed class EnemySystem
             blackboard.SelfPosition = position;
             blackboard.SelfVelocity = agent.Velocity;
             blackboard.PlayerPosition = quarry;
+            blackboard.PlayerVelocity = lured || pet is not null ? Vector2.Zero : playerVelocity;
 
             // XZ, not the full 3D separation: everything here happens on the ground plane, and the
             // Y difference between a player capsule's centre and an enemy's is a rendering detail

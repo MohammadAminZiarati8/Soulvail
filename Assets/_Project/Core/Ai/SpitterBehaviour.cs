@@ -14,8 +14,7 @@ namespace Soulvail.Core.Ai;
 /// archetype after it reuses.
 /// </summary>
 /// <remarks>
-/// Five states, flat, no hierarchy — the same shape <see cref="ChaserState"/> has, and the one that
-/// looks odd is <see cref="Release"/> for the same reason <c>ChaserState.Strike</c> does: it lasts
+/// The states are flat. <see cref="Release"/> behaves like <c>ChaserState.Strike</c>: it lasts
 /// exactly one tick, because the shot leaves on the way in and the state exists so the moment of it
 /// is nameable by anything watching.
 /// </remarks>
@@ -38,6 +37,9 @@ public enum SpitterState
 
     /// <summary>Rooted and reloading for <c>EnemySpec.RecoverTime</c> — the window the player closes in.</summary>
     Recover,
+
+    /// <summary>A rushed slinger retreats before it can start another wind-up.</summary>
+    Backoff,
 }
 
 /// <summary>
@@ -127,6 +129,7 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
         _machine.OnTick(SpitterState.Idle, TickIdle);
 
         _machine.OnTick(SpitterState.Approach, TickApproach);
+        _machine.OnTick(SpitterState.Backoff, TickBackoff);
 
         _machine.OnEnter(SpitterState.Aim, EnterAim);
         _machine.OnTick(SpitterState.Aim, TickAim);
@@ -260,9 +263,15 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
 
         if (distance < standoff * RetreatFraction)
         {
-            Vector2 away = -blackboard.DirectionToPlayer;
+            SlingerSpec slinger = _agent.Spec.Slinger;
+            if (slinger is not null)
+            {
+                blackboard.StateTimer = 0f;
+                _machine.Transition(SpitterState.Backoff);
+                speed *= slinger.RetreatSpeedFraction;
+            }
 
-            Emit(Ground(away, speed), blackboard.DirectionToPlayer);
+            Emit(Ground(-blackboard.DirectionToPlayer, speed), blackboard.DirectionToPlayer);
 
             return;
         }
@@ -281,6 +290,34 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
         }
 
         _machine.Transition(SpitterState.Aim);
+    }
+
+    private void TickBackoff(float dt)
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+        SlingerSpec slinger = _agent.Spec.Slinger;
+        if (blackboard.DistanceToPlayer >= _agent.Spec.Projectile.StandoffRange)
+        {
+            blackboard.StateTimer = 0f;
+            Stand(blackboard.DirectionToPlayer);
+            _machine.Transition(SpitterState.Approach);
+            return;
+        }
+
+        blackboard.StateTimer += dt;
+        if (blackboard.StateTimer >= slinger.RetreatTime)
+        {
+            blackboard.StateTimer = 0f;
+            if (blackboard.HasLineOfSight)
+            {
+                Stand(blackboard.DirectionToPlayer);
+                _machine.Transition(SpitterState.Aim);
+                return;
+            }
+        }
+
+        float speed = _agent.MoveSpeed.Value * slinger.RetreatSpeedFraction;
+        Emit(Ground(-blackboard.DirectionToPlayer, speed), blackboard.DirectionToPlayer);
     }
 
     /// <summary>Rule 7, the tell: announce the windup so the body can show it.</summary>
@@ -336,9 +373,8 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
     /// shape, for <c>Strike</c>'s reason.
     /// </para>
     /// <para>
-    /// <b>It is aimed at where the player is standing at that instant</b>, never led (CC §3.7 is the
-    /// player's problem and M5-01's decision): an enemy that led its target would remove the dodge
-    /// the archetype exists to demand. The damage is the agent's <c>ContactDamage</c> stat, so GD
+    /// The aim samples the quarry on release. Slingers lead that position by up to their configured
+    /// limit. The damage is the agent's <c>ContactDamage</c> stat, so GD
     /// §12.3's d(n) is already in it; the speed and the radius are the archetype's projectile block.
     /// </para>
     /// <para>
@@ -356,7 +392,10 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
         ProjectileSpec projectile = _agent.Spec.Projectile;
 
         Vector3 origin = blackboard.SelfPosition;
-        Vector3 target = blackboard.PlayerPosition;
+        SlingerSpec slinger = _agent.Spec.Slinger;
+        Vector3 target = slinger is null
+            ? blackboard.PlayerPosition
+            : LeadPoint(origin, blackboard.PlayerPosition, blackboard.PlayerVelocity, projectile.Speed, slinger.MaxLead);
         Vector3 across = Across(target - origin, blackboard.DirectionToPlayer);
         int count = projectile.Count;
         float damage = _agent.ContactDamage.Value;
@@ -384,6 +423,25 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
                 break;
             }
         }
+    }
+
+    /// <summary>Projects the quarry along its XZ velocity over the unled flight time, up to the lead limit.</summary>
+    public static Vector3 LeadPoint(Vector3 self, Vector3 quarry, Vector2 velocity, float projectileSpeed, float maxLead)
+    {
+        if (velocity == Vector2.Zero)
+        {
+            return quarry;
+        }
+
+        var separation = new Vector2(quarry.X - self.X, quarry.Z - self.Z);
+        Vector2 offset = velocity * (separation.Length() / projectileSpeed);
+        float lead = offset.Length();
+        if (lead > maxLead)
+        {
+            offset *= maxLead / lead;
+        }
+
+        return quarry + new Vector3(offset.X, 0f, offset.Y);
     }
 
     /// <summary>

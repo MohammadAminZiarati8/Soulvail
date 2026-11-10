@@ -54,6 +54,9 @@ public sealed class EnemyBlackboard
     /// <summary>Where the player is.</summary>
     public Vector3 PlayerPosition;
 
+    /// <summary>The hero's XZ velocity, or zero while pursuing a decoy or pet.</summary>
+    public Vector2 PlayerVelocity;
+
     /// <summary>
     /// Metres to the player on the ground plane, straight line. XZ only — the height difference
     /// between a player capsule's centre and an enemy's is a rendering detail, and counting it
@@ -212,6 +215,7 @@ public sealed class EnemyBlackboard
         SelfPosition = Vector3.Zero;
         SelfVelocity = Vector3.Zero;
         PlayerPosition = Vector3.Zero;
+        PlayerVelocity = Vector2.Zero;
         DistanceToPlayer = 0f;
         DirectionToPlayer = Vector2.Zero;
         DirectionToRealPlayer = Vector2.Zero;

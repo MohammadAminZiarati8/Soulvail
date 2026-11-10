@@ -614,3 +614,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SS-04b — Scorpion model
 
 - [ ] [Editor] Preview all six clips on Scorpion.fbx. Check that the Windup tell reads and Skitter plants its alternating tripods without sliding at 2.2 m/s.
+
+## SS-04a — Scorpion core
+
+- [ ] [Editor, after SS-04d] Start the Sunscar with DT-01. Watch a pack fan out once and close. Circle or sidestep during the tail tell to check that the strip stays on its committed bearing and the strike misses outside it.

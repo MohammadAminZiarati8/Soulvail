@@ -240,6 +240,7 @@ public sealed class EnemySpec
     /// below 1; or a Lunger's or Bulwark's <paramref name="windupTime"/> is under GD §9.1 rule 1's
     /// <see cref="Ai.WardenBehaviour.MinTelegraphSeconds"/>.
     /// </exception>
+    /// <param name="skitter">Optional fan approach and tail strike, used by Chasers.</param>
     public EnemySpec(
         ContentId id,
         LocKey nameKey,
@@ -267,7 +268,8 @@ public sealed class EnemySpec
         PackSpec pack = null,
         StalkerSpec stalker = null,
         ThornweaverSpec thornweaver = null,
-        bool isLight = false)
+        bool isLight = false,
+        SkitterSpec skitter = null)
     {
         if (id.Value is null)
         {
@@ -388,6 +390,7 @@ public sealed class EnemySpec
         Bulwark = bulwark;
         Shaman = shaman;
         Leap = leap;
+        Skitter = skitter;
         Pack = pack;
         Stalker = stalker;
         Thornweaver = thornweaver;
@@ -531,6 +534,9 @@ public sealed class EnemySpec
     /// <c>ChaserBehaviour</c> alone; every other behaviour ignores it (JG-21a).
     /// </summary>
     public LeapSpec Leap { get; }
+
+    /// <summary>The optional fan approach and tail strike of a skittering Chaser.</summary>
+    public SkitterSpec Skitter { get; }
 
     /// <summary>
     /// How it pairs with one of its kind, or <see langword="null"/> on one that hunts alone. Read by

@@ -14,7 +14,7 @@ namespace Soulvail.Core.Ai;
 /// archetype after it reuses.
 /// </summary>
 /// <remarks>
-/// Five states, flat, no hierarchy — what <see cref="StateMachine{TState}"/> was built for. The one
+/// Flat states, no hierarchy — what <see cref="StateMachine{TState}"/> was built for. The one
 /// that looks odd is <see cref="Strike"/>, which lasts exactly one tick: the damage is resolved on
 /// the way in, and the state exists so that the moment of the hit is nameable by anything watching
 /// — a sound, a hit-stop, a test — rather than being an invisible edge between a windup and a
@@ -45,6 +45,9 @@ public enum ChaserState
 
     /// <summary>The landing's bite. One tick, <see cref="Strike"/>'s shape.</summary>
     Land,
+
+    /// <summary>Skittering toward a fixed fan bearing around the moving quarry.</summary>
+    Spread,
 }
 
 /// <summary>
@@ -115,6 +118,9 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     /// <summary>Metres of flight left that count as arrived, so float drift never adds a tick.</summary>
     private const float ArrivedEpsilon = 1e-4f;
 
+    /// <summary>Metres from the fan goal that count as arrival.</summary>
+    public const float SpreadArriveDistance = 0.75f;
+
     private readonly EnemyAgent _agent;
     private readonly StateMachine<ChaserState> _machine;
 
@@ -145,6 +151,8 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     /// without the behaviour knowing crowd control exists (AR §18.4).
     /// </summary>
     private float _airEndsAt;
+    private Vector2 _spreadBearing;
+    private Vector2 _lockedFacing;
 
     /// <param name="agent">The enemy this drives. Its spec supplies every number; its blackboard, every fact.</param>
     /// <exception cref="ArgumentNullException"><paramref name="agent"/> is null.</exception>
@@ -160,6 +168,8 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         _machine = new StateMachine<ChaserState>(ChaserState.Idle);
 
         _machine.OnTick(ChaserState.Idle, TickIdle);
+        _machine.OnEnter(ChaserState.Spread, EnterSpread);
+        _machine.OnTick(ChaserState.Spread, TickSpread);
 
         _machine.OnEnter(ChaserState.Chase, EnterChase);
         _machine.OnTick(ChaserState.Chase, TickChase);
@@ -188,6 +198,9 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
 
     /// <summary>Which part of the loop this enemy is in.</summary>
     public ChaserState State => _machine.Current;
+
+    /// <summary>The committed tail strike direction during wind-up, or zero otherwise.</summary>
+    public Vector2 LockedFacing => State == ChaserState.Windup ? _lockedFacing : Vector2.Zero;
 
     /// <inheritdoc />
     /// <remarks>
@@ -250,6 +263,8 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     public void Reset()
     {
         _machine.Transition(ChaserState.Idle);
+        _spreadBearing = Vector2.Zero;
+        _lockedFacing = Vector2.Zero;
 
         _agent.Blackboard.StateTimer = 0f;
     }
@@ -274,8 +289,60 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
 
         if (_agent.Blackboard.DistanceToPlayer <= _agent.Spec.AggroRange)
         {
-            _machine.Transition(ChaserState.Chase);
+            _machine.Transition(_agent.Spec.Skitter != null ? ChaserState.Spread : ChaserState.Chase);
         }
+    }
+
+    private void EnterSpread()
+    {
+        EnemyBlackboard board = _agent.Blackboard;
+        Vector2 bearing = -board.DirectionToPlayer;
+        if (bearing == Vector2.Zero)
+        {
+            bearing = Vector2.UnitY;
+        }
+
+        float radians = SkitterSpec.SlotOffsetDegrees(_agent.Id, _agent.Spec.Skitter.FanDegrees)
+            * (MathF.PI / 180f);
+        float cos = MathF.Cos(radians);
+        float sin = MathF.Sin(radians);
+        _spreadBearing = new Vector2((bearing.X * cos) - (bearing.Y * sin), (bearing.X * sin) + (bearing.Y * cos));
+        board.StateTimer = 0f;
+    }
+
+    private void TickSpread(float dt)
+    {
+        EnemyBlackboard board = _agent.Blackboard;
+
+        if (board.DistanceToPlayer <= _agent.Spec.Reach)
+        {
+            Stand(board.DirectionToPlayer);
+            _machine.Transition(ChaserState.Windup);
+            return;
+        }
+
+        SkitterSpec skitter = _agent.Spec.Skitter;
+        Vector2 toGoal = QuarryOffset() + (skitter.RingRadius * _spreadBearing);
+
+        board.StateTimer += dt;
+        if (toGoal.LengthSquared() <= SpreadArriveDistance * SpreadArriveDistance
+            || board.StateTimer >= skitter.SpreadTimeout)
+        {
+            Stand(board.DirectionToPlayer);
+            _machine.Transition(ChaserState.Chase);
+            return;
+        }
+
+        Vector2 direction = Vector2.Normalize(toGoal);
+        float speed = _agent.MoveSpeed.Value;
+        Emit(new Vector3(direction.X * speed, 0f, direction.Y * speed), direction);
+    }
+
+    private Vector2 QuarryOffset()
+    {
+        EnemyBlackboard board = _agent.Blackboard;
+        Vector3 offset = board.PlayerPosition - board.SelfPosition;
+        return new Vector2(offset.X, offset.Z);
     }
 
     /// <summary>
@@ -313,6 +380,14 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     {
         EnemyBlackboard blackboard = _agent.Blackboard;
 
+        bool skitters = _agent.Spec.Skitter != null;
+        if (skitters && blackboard.DistanceToPlayer <= _agent.Spec.Reach)
+        {
+            Stand(blackboard.DirectionToPlayer);
+            _machine.Transition(ChaserState.Windup);
+            return;
+        }
+
         Vector2 direction = blackboard.PathDirectionToPlayer != Vector2.Zero
             ? blackboard.PathDirectionToPlayer
             : blackboard.DirectionToPlayer;
@@ -340,7 +415,8 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         // JG-21a rule 1: a leaper in its band, off cooldown, crouches. No LeapSpec, no change (rule 7).
         LeapSpec leap = _agent.Spec.Leap;
 
-        if (leap != null
+        // When both options are supplied, the skitter keeps its ground attack loop.
+        if (!skitters && leap != null
             && _now >= blackboard.NextAttackAt
             && blackboard.DistanceToPlayer >= leap.MinRange
             && blackboard.DistanceToPlayer <= leap.MaxRange)
@@ -359,6 +435,11 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     {
         _attackPetId = _agent.Blackboard.QuarryPetId;
         _agent.Blackboard.StateTimer = 0f;
+
+        if (_agent.Spec.Skitter != null)
+        {
+            _lockedFacing = _agent.Blackboard.DirectionToPlayer;
+        }
 
         _events.Publish(new EnemyTelegraph(_agent.Id, _agent.Spec.WindupTime));
     }
@@ -386,9 +467,10 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
 
         // Face, do not move. The stare is the tell, so the facing is live even though the velocity
         // is zero — see EnemyMoveIntent on why the two are separate fields.
-        Stand(blackboard.DirectionToPlayer);
+        bool skitters = _agent.Spec.Skitter != null;
+        Stand(skitters ? _lockedFacing : blackboard.DirectionToPlayer);
 
-        if (blackboard.DistanceToPlayer > _agent.Spec.Reach * WindupCancelReachMultiplier)
+        if (!skitters && blackboard.DistanceToPlayer > _agent.Spec.Reach * WindupCancelReachMultiplier)
         {
             _machine.Transition(ChaserState.Chase);
 
@@ -431,13 +513,27 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     {
         _agent.Blackboard.StateTimer = 0f;
 
-        HitQuarry(_agent.ContactDamage.Value, _agent.Spec.Reach);
+        SkitterSpec skitter = _agent.Spec.Skitter;
+        if (skitter == null)
+        {
+            HitQuarry(_agent.ContactDamage.Value, _agent.Spec.Reach);
+            return;
+        }
+
+        Vector2 offset = QuarryOffset();
+        float along = Vector2.Dot(offset, _lockedFacing);
+        float across = MathF.Abs((_lockedFacing.X * offset.Y) - (_lockedFacing.Y * offset.X));
+        // No bearing at windup entry leaves only the strip origin hittable.
+        bool inside = _lockedFacing == Vector2.Zero
+            ? offset == Vector2.Zero
+            : along >= 0f && along <= skitter.ZoneLength && across <= skitter.ZoneHalfWidth;
+        HitQuarry(_agent.ContactDamage.Value, inside);
     }
 
     /// <summary>Rule 4: one tick, then the punish window opens.</summary>
     private void TickStrike(float dt)
     {
-        Stand(_agent.Blackboard.DirectionToPlayer);
+        Stand(_agent.Spec.Skitter != null ? _lockedFacing : _agent.Blackboard.DirectionToPlayer);
 
         _machine.Transition(ChaserState.Recover);
     }
@@ -574,19 +670,23 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     private void HitQuarry(float damage, float playerReach)
     {
         EnemyBlackboard board = _agent.Blackboard;
-        if (_attackPetId != board.QuarryPetId || board.QuarryIsADecoy)
+        float reach = board.QuarryIsAPet ? _agent.Spec.Reach : playerReach;
+        HitQuarry(damage, board.DistanceToPlayer <= reach);
+    }
+
+    private void HitQuarry(float damage, bool inside)
+    {
+        EnemyBlackboard board = _agent.Blackboard;
+        if (!inside || _attackPetId != board.QuarryPetId || board.QuarryIsADecoy)
         {
             return;
         }
 
         if (board.QuarryIsAPet)
         {
-            if (board.DistanceToPlayer <= _agent.Spec.Reach)
-            {
-                _pets?.ApplyDamage(board.QuarryPetId, damage, _now, _agent.Id);
-            }
+            _pets?.ApplyDamage(board.QuarryPetId, damage, _now, _agent.Id);
         }
-        else if (board.DistanceToPlayer <= playerReach)
+        else
         {
             _player.ApplyDamage(damage, _now);
         }

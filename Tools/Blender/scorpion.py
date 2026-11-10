@@ -227,7 +227,8 @@ def render_sheet(path, extent, front=-1):
     output.save()
 
 
-def rig_parts(parts):
+def rig_parts(parts, joints=leg_joints, tail_points=TAIL,
+              stinger=(STINGER_BULB, STINGER_TIP)):
     bones = {'Root': (None, (0, 0, 0), (0, 0, 0.15)),
              'Body': ('Root', (0, 0, 0.27), (0, -0.32, 0.27))}
     groups = {name: 'Body' for name, _, _, _ in parts}
@@ -238,7 +239,7 @@ def rig_parts(parts):
                         (side * 0.49, -0.61, 0.16))
         for piece in ('Pincer arm', 'Pincer palm', 'Outer claw', 'Inner claw'):
             groups[f'{piece} {suffix}'] = pincer
-        for index, (hip, knee, foot) in enumerate(leg_joints(side), 1):
+        for index, (hip, knee, foot) in enumerate(joints(side), 1):
             upper = f'Leg_{suffix}_{index}_Upper'
             lower = f'Leg_{suffix}_{index}_Lower'
             bones[upper] = ('Body', hip, knee)
@@ -247,12 +248,12 @@ def rig_parts(parts):
             groups[f'Leg {index} lower {suffix}'] = lower
             legs.append((upper, lower, side, index, Vector(hip), Vector(knee), Vector(foot)))
     parent = 'Body'
-    for i, (head, tip) in enumerate(zip(TAIL, TAIL[1:]), 1):
+    for i, (head, tip) in enumerate(zip(tail_points, tail_points[1:]), 1):
         name = f'Tail_{i}'
         bones[name] = (parent, head, tip)
         groups[f'Tail {i}'] = name
         parent = name
-    bones['Stinger'] = (parent, STINGER_BULB, STINGER_TIP)
+    bones['Stinger'] = (parent, *stinger)
     groups['Stinger bulb'] = groups['Stinger hook'] = 'Stinger'
     return bones, groups, legs
 
@@ -322,7 +323,8 @@ def aimed(rest, head, direction):
 
 
 def pose(arm, legs, *, shift=(0, 0, 0), pitch=0, roll=0, pinch=0,
-         gait=None, tail=None, settle=False):
+         gait=None, tail=None, settle=False, tail_points=TAIL,
+         stinger=(STINGER_BULB, STINGER_TIP)):
     rest = {bone.name: bone.bone.matrix_local for bone in arm.pose.bones}
     body_turn = Quaternion((0, 1, 0), roll) @ Quaternion((1, 0, 0), pitch)
     body = Matrix.Translation(shift) @ turned_about(rest['Body'].translation, body_turn)
@@ -353,8 +355,8 @@ def pose(arm, legs, *, shift=(0, 0, 0), pitch=0, roll=0, pinch=0,
         matrices[upper] = aimed(rest[upper], start, bend - start)
         matrices[lower] = aimed(rest[lower], bend, end - bend)
 
-    head = body @ Vector(TAIL[0])
-    for i, (start, end) in enumerate(zip(TAIL, TAIL[1:]), 1):
+    head = body @ Vector(tail_points[0])
+    for i, (start, end) in enumerate(zip(tail_points, tail_points[1:]), 1):
         name = f'Tail_{i}'
         axis = Vector(end) - Vector(start)
         if tail is None:
@@ -368,8 +370,8 @@ def pose(arm, legs, *, shift=(0, 0, 0), pitch=0, roll=0, pinch=0,
     if tail is None:
         matrices['Stinger'] = body @ rest['Stinger']
     else:
-        head = matrices['Tail_5'] @ rest['Tail_5'].inverted() @ Vector(STINGER_BULB)
-        reach = (Vector(STINGER_TIP) - Vector(STINGER_BULB)).length
+        head = matrices['Tail_5'] @ rest['Tail_5'].inverted() @ Vector(stinger[0])
+        reach = (Vector(stinger[1]) - Vector(stinger[0])).length
         angle = math.radians(tail[-1])
         if settle:
             angle = math.asin(max(-1, min(1, (0.035 - head.z) / reach)))
@@ -378,6 +380,8 @@ def pose(arm, legs, *, shift=(0, 0, 0), pitch=0, roll=0, pinch=0,
 
     for bone in arm.pose.bones:
         name = bone.name
+        if name not in matrices:
+            continue
         basis = rest[name].inverted()
         if bone.parent:
             parent = bone.parent.name
@@ -392,20 +396,21 @@ EXTENDED = (37, 11, -12, -30, -27, -24)
 DOWN = (30, 6, -13, -30, -10, -24)
 
 
-def clips():
+def clips(*, cocked=COCKED, extended=EXTENDED, down=DOWN,
+          windup=(148, 110, 60, 9, -10, -43), settle=True):
     return {
         'Idle': {0: {}, 12: dict(shift=(0, 0, 0.018), pinch=0.08),
                  18: dict(shift=(0, 0, 0.012), pinch=-0.08), 24: {}, 48: {}},
         'Skitter': {frame: dict(gait=frame / 12, shift=(0, 0, -0.035),
                                pinch=0.06 * math.sin(frame * math.tau / 12))
                     for frame in range(13)},
-        'Windup': {0: {}, 7: dict(shift=(0, 0.045, -0.016), tail=(148, 110, 60, 9, -10, -43)),
-                   14: dict(shift=(0, 0.07, -0.025), tail=COCKED, pinch=0.13),
-                   18: dict(shift=(0, 0.07, -0.025), tail=COCKED, pinch=0.13)},
-        'Strike': {0: dict(shift=(0, 0.07, -0.025), tail=COCKED, pinch=0.13),
-                   2: dict(shift=(0, -0.10, 0.055), tail=EXTENDED, settle=True, pinch=-0.11),
-                   5: dict(shift=(0, -0.02, 0.03), tail=DOWN, settle=True),
-                   24: dict(shift=(0, -0.02, 0.03), tail=DOWN, settle=True)},
+        'Windup': {0: {}, 7: dict(shift=(0, 0.045, -0.016), tail=windup),
+                   14: dict(shift=(0, 0.07, -0.025), tail=cocked, pinch=0.13),
+                   18: dict(shift=(0, 0.07, -0.025), tail=cocked, pinch=0.13)},
+        'Strike': {0: dict(shift=(0, 0.07, -0.025), tail=cocked, pinch=0.13),
+                   2: dict(shift=(0, -0.10, 0.055), tail=extended, settle=settle, pinch=-0.11),
+                   5: dict(shift=(0, -0.02, 0.03), tail=down, settle=settle),
+                   24: dict(shift=(0, -0.02, 0.03), tail=down, settle=settle)},
         'Hit': {0: {}, 2: dict(shift=(0, 0.077, 0.025), pitch=-0.17, pinch=0.22),
                 6: dict(shift=(0, 0.024, 0), pitch=0.06), 12: {}},
         'Death': {0: {}, 5: dict(shift=(0.02, 0.04, 0.12), roll=0.66, pinch=0.2),
@@ -415,16 +420,18 @@ def clips():
     }
 
 
-def animate(arm, legs):
+def animate(arm, legs, *, unkeyed=(), clip_options=None, **rest):
     arm.animation_data_create()
-    for name, keys in clips().items():
+    for name, keys in clips(**(clip_options or {})).items():
         action = bpy.data.actions.new(name)
         action.use_fake_user = True
         arm.animation_data.action = action
         previous = {}
         for frame, parameters in keys.items():
-            pose(arm, legs, **parameters)
+            pose(arm, legs, **parameters, **rest)
             for bone in arm.pose.bones:
+                if bone.name in unkeyed:
+                    continue
                 rotation = bone.rotation_quaternion
                 if bone.name in previous and rotation.dot(previous[bone.name]) < 0:
                     rotation.negate()

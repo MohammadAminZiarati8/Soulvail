@@ -643,3 +643,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 4. **[Editor]** Closing to ~5 m and circling: the vent lights and goes out with no glob, again and again.
 5. **[Editor]** Vent, glob and ring read over quicksand and through the storm; nothing else on the beetle is warm.
 6. **[device]** Vent, glob and ring read at first look on a phone.
+
+- **SS-07b [Editor]** Play the brood clips in Unity. Check Skitter foot contact at movement speed and watch the sac during Windup.

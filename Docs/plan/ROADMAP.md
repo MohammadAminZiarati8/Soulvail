@@ -206,7 +206,7 @@ _No milestone. The owner is setting the next direction._
 **The brood scorpion, the Sunscar's stage-4 enemy** (owner, 2026-11-10; design [GD §8.7](../GameDesign.md)). The Weaver's role, one generation: from stage 4 a fat, slow scorpion with a pale brood sac on its back fans in and strikes like the sand scorpion; killed, its hump swells and pulses for 0.5 s, then three small, fast, weak scorplings drop and fan in from three sides. Kill it at range so they cross open sand. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order, before SS-05b–d. SS-07a and SS-07b may swap; SS-07b needs the owner's sculpt (prompt in the spec, sent with the go); SS-07c needs both; SS-07d needs all three. SS-05d then adds the jackal to a roster that already holds the brood at 4 (its roster rows gain that entry; the code wins). Playtestable from SS-07d with DT-01's test start at Sunscar stage 4.
 
 - [x] SS-07a — The brood in core: a swelling corpse that drops three scorplings (M)
-- [ ] [SS-07b](tasks/SS-07b-brood-model.md) — The model: the owner's brood sculpt on Rig_Scorpion, turnaround first (M)
+- [x] SS-07b — The brood model on Rig_Scorpion with six clips (M)
 - [ ] [SS-07c](tasks/SS-07c-brood-body.md) — The body: two prefabs and the swelling hump (M)
 - [ ] [SS-07d](tasks/SS-07d-brood-data.md) — The brood in the Sunscar: data, roster from stage 4 (M)
 

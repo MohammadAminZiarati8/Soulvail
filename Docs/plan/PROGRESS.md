@@ -9,9 +9,9 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-07a** — brood deaths swell, burst and hand their children to the wave. |
-| **Next task** | SS-07b — brood model with the owner's sculpt. Then SS-07c–d and SS-05b–d. Sunscar stage 1 and 2 playtests are in OWED. |
-| **Verified** | EditMode 6503 total, 6411 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 21/21. Brood 21/21. C# whitespace gate passed. |
+| **Last merged** | **SS-07b** — the brood model on Rig_Scorpion with six clips. |
+| **Next task** | SS-07c — brood prefab and swell. Then SS-07d and SS-05b–d. |
+| **Verified** | EditMode 6516 total, 6424 passed, 0 failed, 1 inconclusive, 91 skipped. Brood model 13/13. C# whitespace passed. |
 
 ## What works
 

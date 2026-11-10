@@ -123,7 +123,9 @@ body.data=me
 bm=bmesh.new();bm.from_mesh(me)
 bmesh.ops.remove_doubles(bm,verts=list(bm.verts),dist=1e-6)
 bmesh.ops.dissolve_degenerate(bm,edges=list(bm.edges),dist=1e-7)
-specks=[f for f in bm.faces if f.calc_area()<1e-6 and all(e.is_boundary for e in f.edges)]
+# A collapsed closed fragment can also leave an isolated triangle above the area cutoff.
+specks=[f for f in bm.faces
+    if (len(f.verts)==3 or f.calc_area()<1e-6) and all(e.is_boundary for e in f.edges)]
 if specks:bmesh.ops.delete(bm,geom=specks,context='FACES')
 loose=[v for v in bm.verts if not v.link_faces]
 if loose:bmesh.ops.delete(bm,geom=loose,context='VERTS')

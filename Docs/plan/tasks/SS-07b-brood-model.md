@@ -1,6 +1,6 @@
 # SS-07b — The model: the owner's brood sculpt on Rig_Scorpion, turnaround first
 
-**Size:** M · **Depends on:** — (the owner's sculpt, sent with the go) · **Branch:** `ss-07b-brood-model`
+**Size:** M · **Branch:** `ss-07b-brood-model`
 **Design refs:** GD §8.7, §8.4, §3 › The Sunscar, §16.4, §17.1
 
 ## Goal
@@ -19,9 +19,9 @@
 
 ## Behaviour
 
-1. **The sculpt is the owner's** (`BroodmotherScorpion` seed 42, delivered). `repair_scan.py` closes it.
+1. **Use the owner's seed-42 sculpt.** `repair_scan.py` closes it.
 2. **Turnaround first.** `--turnaround <png>` renders the unbound body front, side, back, top to `Temp/brood_turnaround.png` (not committed). Binding waits for the owner's OK in chat.
-3. **The bones match or it stops.** `Rig_Scorpion`'s bones, names and hierarchy unchanged, rest positions refitted to the sculpt's legs, pincers and tail. If they cannot be fitted, stop and tell the owner.
+3. **The bones match or it stops.** `Rig_Scorpion`'s bones, names and hierarchy unchanged, rest positions refitted to the sculpt's legs, pincers and tail. Stop if they cannot be fitted.
 4. One added bone, `Brood`, under `Body` at the hump's centre, weighted to the hump alone. No clip keys `Brood`.
 5. Clips: `scorpion.py`'s `Idle`, `Skitter`, `Windup`, `Strike`, `Hit`, `Death`, baked on the refitted rest, same frame counts and keyed frames, 30 fps, in place; `Root` never moves. `brood.py` may pass its own `tail` tuples (`COCKED`, `EXTENDED`, `DOWN`, `Windup` frame 7) so the shorter tail arcs over the sac; nothing else changes. The stock strike point is not required.
 6. ≤ 4 weights per vertex, every vertex weighted; 1 500–3 000 triangles, one skinned mesh, one material slot (`M_Enemy`). Footprint 1.6–2.2 × the scorpion's.
@@ -59,4 +59,16 @@ Every other model test stays green (rule 7; `scorpion.py`'s output byte-identica
 
 ## As built
 
-_Commit body._
+Use the owner's read-only seed-42 scan with a pinned SHA-256. Repair and
+reduce it to 2,960 triangles. Use the baked source tones to shade two
+atlas insets, with the pale sac on its own unkeyed Brood bone.
+
+Refit Rig_Scorpion in place. The brood's tail angles clear the torso and
+sac through all six clips and put the frame-2 sting past the torso,
+between the pincers. A fixed-timestamp stock Scorpion export is byte
+identical before and after.
+
+Unity EditMode ran 6,516 tests with 6,424 passed, zero failed, one
+inconclusive and 91 skipped. Brood model checks passed 13/13. C# whitespace
+passed. The owner approved the unbound turnaround. Blender pose renders
+cover all six clips. Editor playback for Skitter foot contact is in OWED.

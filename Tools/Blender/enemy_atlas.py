@@ -81,9 +81,13 @@ SWATCHES = {
     "beetle_ochre": (5, 0, "A57617", "78540A"),
     "beetle_bone": (5, 1, "DFD1AD", "BA9E6D"),
     "beetle_vent": (5, 1, "49403B", "2B2421"),
+    # SS-07b: the unused strips beside the Panther's centre and between the Apex insets.
+    "brood_shell": (1, 2, "A35429", "4C2513"),
+    "brood_sac": (1, 2, "E8D9B9", "A35429"),
 }
 SWATCH_NAMES = list(SWATCHES)
 INSETS = {
+    "brood_shell": (80, 88), "brood_sac": (104, 112),
     "beetle_umber": (336, 344), "beetle_ochre": (360, 368),
     "beetle_bone": (336, 344), "beetle_vent": (360, 368),
     "apex_coat": (112, 128), "apex_scar": (64, 80),

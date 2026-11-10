@@ -43,12 +43,12 @@ Every other `SunscarTests` row stays green unchanged.
 
 ## Manual verification (Editor / device)
 
-1. **[Editor]** DT-01, Sunscar stage 4: a fat, slow scorpion with three riders fans in and strikes into a large red-orange strip; one sidestep clears it.
+1. **[Editor]** DT-01, Sunscar stage 4: a fat, slow scorpion with a pale brood sac fans in and strikes into a large red-orange strip; one sidestep clears it.
 2. **[Editor]** Killed, its hump swells and pulses twice, then three scorplings land round it and come from three sides.
 3. **[Editor]** Killed at ~10 m, the scorplings cross open sand and die to single arrows before they reach the hero.
 4. **[Editor]** The portal opens only after the last scorpling dies.
-5. **[Editor]** Riders, swell and scorplings read through the storm; nothing cyan.
-6. **[device]** Riders, swell and scorplings read at first look on a phone.
+5. **[Editor]** Sac, swell and scorplings read through the storm; nothing cyan.
+6. **[device]** Sac, swell and scorplings read at first look on a phone.
 
 ## Out of scope
 

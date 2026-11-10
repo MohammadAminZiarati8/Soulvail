@@ -19,11 +19,11 @@
 
 ## Behaviour
 
-1. **The sculpt is the owner's.** Prompt (TRELLIS, one image or text): *"Low-poly stylised fat desert brood-mother scorpion, KayKit style, top-down readable, six short legs, two heavy pincers, segmented tail curled over the back ending in a fat stinger bulb, a large swollen ribbed brood sac on its back, no babies modelled, matte sandstone and dusty ochre body, pale bleached-bone sac, no glow."* `repair_scan.py` closes it.
+1. **The sculpt is the owner's** (`BroodmotherScorpion` seed 42, delivered). `repair_scan.py` closes it.
 2. **Turnaround first.** `--turnaround <png>` renders the unbound body front, side, back, top to `Temp/brood_turnaround.png` (not committed). Binding waits for the owner's OK in chat.
-3. **The bones match or it stops.** `Rig_Scorpion`'s bones, names and hierarchy unchanged, rest positions refitted to the sculpt's legs, pincers and tail. If legs, pincers or tail cannot be fitted, stop and tell the owner.
+3. **The bones match or it stops.** `Rig_Scorpion`'s bones, names and hierarchy unchanged, rest positions refitted to the sculpt's legs, pincers and tail. If they cannot be fitted, stop and tell the owner.
 4. One added bone, `Brood`, under `Body` at the hump's centre, weighted to the hump alone. No clip keys `Brood`.
-5. Clips: `scorpion.py`'s `Idle`, `Skitter`, `Windup`, `Strike`, `Hit`, `Death`, baked on the refitted rest, same frame counts, 30 fps, in place; `Root` never moves.
+5. Clips: `scorpion.py`'s `Idle`, `Skitter`, `Windup`, `Strike`, `Hit`, `Death`, baked on the refitted rest, same frame counts and keyed frames, 30 fps, in place; `Root` never moves. `brood.py` may pass its own `tail` tuples (`COCKED`, `EXTENDED`, `DOWN`, `Windup` frame 7) so the shorter tail arcs over the sac; nothing else changes. The stock strike point is not required.
 6. ≤ 4 weights per vertex, every vertex weighted; 1 500–3 000 triangles, one skinned mesh, one material slot (`M_Enemy`). Footprint 1.6–2.2 × the scorpion's.
 7. Palette: `brood_*` swatches, body darker than `scorp_*`, sac the palest swatch on it, standing off the Dunes sand. No cyan, nothing near `#FF4A1F` (`RESERVED`). Swatches go in as `INSETS`; no other swatch's pixels move.
 
@@ -38,6 +38,8 @@
 | `BroodModel_HasRigScorpionAndBrood` | rig / walk / every `Rig_Scorpion` bone by path; `Brood` under `Body` |
 | `BroodModel_ImportsGenericWithItsClips` | importer / read / Generic; the six clips, frame counts as `Scorpion.fbx` |
 | `BroodModel_ClipsLeaveRootAndBroodAlone` | each clip / sample / `Root`, `Brood` still |
+| `BroodModel_TailClearsTheSac` | every clip frame / `Tail_*`, `Stinger` / outside sac and torso bounds |
+| `BroodModel_StrikeLandsAhead` | `Strike` frame 2 / `Stinger` tip / ahead of the pincers, ≤ 0.3 m off centre |
 | `BroodModel_IsBiggerThanTheScorpion` | bounds vs `Scorpion.fbx` / measure / footprint ratio in rule 6 |
 | `BroodModel_StandsOffTheDunes` | colour / vs Dunes sand / `ScorpionModel_StandsOffTheDunes`' margins |
 | `BroodModel_NoCyanOrDanger` | swatches / hue / none in the reserved bands |

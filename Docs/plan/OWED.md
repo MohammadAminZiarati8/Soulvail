@@ -622,3 +622,12 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SS-04c — Scorpion body (after SS-04d)
 
 - Start the Sunscar with DT-01. Check Skitter, the stinger tip and strip during locked wind-up, then sidestep the strip and watch the strike and recovery. Kill during wind-up and check that the tell goes dark, including on pooled reuse. Check readability in portrait on device.
+
+
+## SS-04d — Sand Scorpion in the Sunscar
+
+- **Editor** — Use DT-01 to start the Sunscar at stage 1. Watch the scorpions fan out before closing.
+- **Editor** — Verify that the stinger and red-orange ground strip are the only warm parts of the wind-up tell.
+- **Editor** — Sidestep the strip to avoid the hit and punish during the 0.8 s tail-down recovery.
+- **Editor** — Clear the waves and check that the cyan portal opens. Check body readability against Dunes sand at phone size.
+- **Device** — Check that the strip and stinger tip read at first glance on a phone.

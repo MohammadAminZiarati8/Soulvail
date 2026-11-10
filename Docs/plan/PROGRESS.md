@@ -9,13 +9,13 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-04c** — sand scorpion prefab, animation and wind-up tell. |
-| **Next task** | SS-04d, on the owner's go. |
-| **Verified** | Batch EditMode 6415 total, 6321 passed, 2 failed, 1 inconclusive, 91 skipped. SS-04c 10/10. Clean-dev `EnemyHealthBarTests.Bar_IsSizedInDp(False,36.0f)` and `(True,48.0f)` still fail. Clean-dev `SaveWriterTests.Writer_ObservesEveryFault` passed. Compile, analyzers and format clean. |
+| **Last merged** | **SS-04d** — Sand Scorpion in the Sunscar roster from stage 1. |
+| **Next task** | Sunscar stage 1 playtest (OWED). |
+| **Verified** | EditMode 6419 total, 6327 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 15/15. Both clean-dev health-bar cases and SaveWriter fault case passed. Compile, analyzers and format clean. |
 
 ## What works
 
-Jungle rotates 3 arenas. Dunes storms and damp sand. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

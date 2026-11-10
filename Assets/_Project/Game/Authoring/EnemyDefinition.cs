@@ -163,6 +163,13 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Range(0f, 180f)] private float _packFlankAngleDegrees;
         [SerializeField, Min(0f)] private float _packFlankTimeout;
 
+        [Header("Skitter — leave the ring radius at 0 on other archetypes")]
+        [SerializeField, Min(0f)] private float _skitterRingRadius;
+        [SerializeField, Range(0f, 180f)] private float _skitterFanDegrees;
+        [SerializeField, Min(0f)] private float _skitterSpreadTimeout;
+        [SerializeField, Min(0f)] private float _skitterZoneLength;
+        [SerializeField, Min(0f)] private float _skitterZoneHalfWidth;
+
         [Header("Bulwark — leave the half-arc at 0 on an archetype without a shield")]
         [SerializeField, Min(0f)] private float _shieldHalfArc;
         [SerializeField, Min(0f)] private float _shieldTurnRate;
@@ -336,7 +343,11 @@ namespace Soulvail.Game.Authoring
                             _weaverWallHalfWidth, _weaverArmSeconds, _weaverStandSeconds,
                             _weaverBeyondDistance, _weaverMaxWalls)
                         : null,
-                    isLight: _isLight);
+                    isLight: _isLight,
+                    skitter: _skitterRingRadius > 0f
+                        ? new SkitterSpec(_skitterRingRadius, _skitterFanDegrees, _skitterSpreadTimeout,
+                            _skitterZoneLength, _skitterZoneHalfWidth)
+                        : null);
             }
             catch (ArgumentException inner)
             {

@@ -521,6 +521,8 @@ MonoBehaviour:
     _text: Jungle
   - _key: mode.sunscar.name
     _text: The Sunscar
+  - _key: enemy.scorpion.name
+    _text: Sand Scorpion
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

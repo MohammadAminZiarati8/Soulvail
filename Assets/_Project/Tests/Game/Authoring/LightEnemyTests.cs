@@ -9,7 +9,7 @@ namespace Soulvail.Tests.Game.Authoring;
 public sealed class LightEnemyTests
 {
     [Test]
-    public void Assets_LightSet_IsTheNine()
+    public void Assets_LightSet_MatchesDesign()
     {
         var light = new List<string>();
         foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { "Assets/_Project/Data/Enemies" }))
@@ -23,7 +23,7 @@ public sealed class LightEnemyTests
 
         Assert.That(light, Is.EquivalentTo(new[]
         {
-            "Frog", "Rootling", "Puffball", "Spitter", "Pitcher", "Panther", "ShadowPanther", "ThornPitcher", "ChainBomber",
+            "Frog", "Rootling", "Puffball", "Spitter", "Pitcher", "Panther", "ShadowPanther", "ThornPitcher", "ChainBomber", "Scorpion",
         }));
     }
 }

@@ -570,6 +570,8 @@ MonoBehaviour:
     _text: "[J\xFB\xF1gl\xE9 \xB7\xB7\xB7]"
   - _key: mode.sunscar.name
     _text: "[Th\xE9 S\xFB\xF1s\xE7\xE1r \xB7\xB7\xB7\xB7]"
+  - _key: enemy.scorpion.name
+    _text: "[S\xE1\xF1d S\xE7\xF4rp\xEE\xF4\xF1 \xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.frog.name
     _text: "[Fr\xF4g \xB7\xB7]"
   - _key: enemy.pitcher.name

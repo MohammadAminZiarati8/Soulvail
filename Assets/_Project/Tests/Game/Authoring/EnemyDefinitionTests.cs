@@ -152,19 +152,20 @@ public sealed class EnemyDefinitionTests
         // M2-04: it initialises to 4 and ships 4, so the row above cannot tell a bound key from a
         // misspelled one.
         //
-        // ForceReserializeAssets drops keys matching no field, so a reserialise that changes the
-        // file is a key that did not bind. Comparing the text either side is the assertion — and it
-        // leaves no diff behind when it passes, which a bare reserialise would not (M1-03).
+        // Reserializing drops unbound keys and can add defaults for newly introduced fields.
+        // Require every authored line to survive, then restore the asset if Unity rewrote it.
+        byte[] original = System.IO.File.ReadAllBytes(HuskPath);
         string before = System.IO.File.ReadAllText(HuskPath);
-
         AssetDatabase.ForceReserializeAssets(new[] { HuskPath });
-
         string after = System.IO.File.ReadAllText(HuskPath);
 
-        Assert.That(after, Is.EqualTo(before),
-            "Reserialising Husk.asset changed it, which means at least one of its YAML keys " +
-            "matches no field on EnemyDefinition and was dropped. Compare the two and fix the " +
-            "name — a dropped key reads as a field quietly holding its C# initialiser.");
+        if (!string.Equals(before, after, StringComparison.Ordinal))
+        {
+            System.IO.File.WriteAllBytes(HuskPath, original);
+        }
+
+        Assert.That(before.Split('\n'), Is.SubsetOf(after.Split('\n')),
+            "Reserialising Husk.asset removed or changed authored YAML. Check that every key binds.");
     }
 
     [Test]

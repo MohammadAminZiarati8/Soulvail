@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -13,11 +14,13 @@ using Soulvail.Game.Arena;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Composition;
 using Soulvail.Game.Presentation;
+using Soulvail.Game.Views;
 using Soulvail.Tests.Core.Fakes;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
 using Object = UnityEngine.Object;
+using NumericsVector3 = System.Numerics.Vector3;
 
 namespace Soulvail.Tests.Game.Content;
 
@@ -32,6 +35,8 @@ public sealed class SunscarTests
     private static readonly ContentId Sunscar = new("mode.sunscar");
     private static readonly ContentId Jungle = new("mode.jungle");
     private static readonly ContentId Ranger = new("character.ranger");
+    private const string ScorpionPath = Root + "Prefabs/Enemies/Scorpion.prefab";
+    private static readonly ContentId Scorpion = new("enemy.scorpion");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -45,10 +50,12 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_NoEnemies()
+    public void Sunscar_Mode_RosterIsTheScorpion()
     {
         ModeSpec mode = Mode("Sunscar");
-        Assert.That(mode.Roster, Is.Empty);
+        RosterEntry entry = mode.Roster.Single();
+        Assert.That((entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage),
+            Is.EqualTo((Scorpion, 1, 0)));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
     }
@@ -65,34 +72,145 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Stage1_SpawnsNothingNeverClears()
+    public void Scorpion_Asset_MatchesDesign()
     {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.ToSpec().Id == Scorpion);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Scorpion.asset")));
+        EnemySpec spec = definition.ToSpec();
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.scorpion.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((36f, 2.2f, 1, 4, 18f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That((spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime, spec.AggroRange),
+            Is.EqualTo((8f, 1.5f, 0.6f, 0.8f, 30f)));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Chaser));
+        Assert.That((spec.HopTime, spec.HopRestTime), Is.EqualTo((0f, 0f)));
+        Assert.That(definition.ToLook().Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(ScorpionPath).GetComponent<EnemyView>()));
+        Assert.That(spec.Skitter, Is.Not.Null);
+        SkitterSpec skitter = spec.Skitter;
+        Assert.That((skitter.RingRadius, skitter.FanDegrees, skitter.SpreadTimeout, skitter.ZoneLength, skitter.ZoneHalfWidth),
+            Is.EqualTo((4f, 120f, 3f, 1.8f, 0.5f)));
+    }
+
+    [Test]
+    public void Scorpion_ExistingEnemies_NoSkitter()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Scorpion)
+            {
+                Assert.That(spec.Skitter, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Scorpion_Strip_MatchesSpec()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.ToSpec().Id == Scorpion);
+        SkitterSpec skitter = definition.ToSpec().Skitter;
+        var tell = new SerializedObject(definition.ToLook().Body.GetComponent<ScorpionTellView>());
+        Assert.That(tell.FindProperty("_stripLength").floatValue, Is.EqualTo(skitter.ZoneLength));
+        Assert.That(tell.FindProperty("_stripHalfWidth").floatValue, Is.EqualTo(skitter.ZoneHalfWidth));
+    }
+
+    [Test]
+    public void Scorpion_NameKey_InEveryLanguage()
+    {
+        var key = new LocKey("enemy.scorpion.name");
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Sand Scorpion"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_Stage1_WavesClearsOpensPortal()
+    {
+        const float frameTime = 1f / 32f;
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
         var random = new SeededRandom(7);
         var events = new RecordingEvents();
+        var intents = new RecordingIntents();
         var recorder = new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), events);
-        var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+        var session = new RunSession(catalog, random, events, intents, recorder, 64, 28, 64);
         RunSnapshot snapshot = new TestStart(catalog).At(Sunscar, Ranger, random.Seed, random.Capture(), 1);
 
         try
         {
             session.Start(new RunConfig(Sunscar, Ranger, random.Seed, 1, SpawnPlan.Empty, snapshot));
             StageArrived arrival = events.Of<StageArrived>().Single();
-            Assert.That(arrival.Stage, Is.EqualTo(1));
-            Assert.That(arrival.ArenaId, Is.EqualTo(Dunes));
+            Assert.That((arrival.Stage, arrival.ArenaId), Is.EqualTo((1, Dunes)));
 
-            var world = new WorldSnapshot(64) { Dt = 1f / 32f };
-            for (int frame = 0; frame < 60 * 32; frame++)
+            var world = new WorldSnapshot(64);
+            NumericsVector3[] points =
             {
+                new(-8f, 0f, 8f), new(8f, 0f, 8f),
+                new(-8f, 0f, -8f), new(8f, 0f, -8f),
+            };
+            var positions = new Dictionary<int, NumericsVector3>();
+            NumericsVector3 player = NumericsVector3.Zero;
+            int tellsRead = 0;
+            for (int frame = 0; frame < 180 * 32 && events.Count<StageCleared>() == 0; frame++)
+            {
+                // Walk the bodies by the previous tick's intents, then report the living ones in sight.
+                foreach (var move in intents.EnemyMoves)
+                {
+                    if (positions.TryGetValue(move.Id, out NumericsVector3 position))
+                    {
+                        positions[move.Id] = position + (move.Velocity * frameTime);
+                    }
+                }
+
+                intents.Clear();
+                world.Clear();
+                world.Dt = frameTime;
+                world.SpawnPoints = points;
+                // Step away from each locked strip, then stand still to let the Ranger fire.
+                IReadOnlyList<EnemyTelegraph> tells = events.Of<EnemyTelegraph>();
+                for (; tellsRead < tells.Count; tellsRead++)
+                {
+                    if (positions.TryGetValue(tells[tellsRead].Id, out NumericsVector3 attacker))
+                    {
+                        NumericsVector3 away = player - attacker;
+                        away = away.LengthSquared() > 1e-4f ? NumericsVector3.Normalize(away) : NumericsVector3.UnitX;
+                        player += away * 3f;
+                    }
+                }
+
+                world.PlayerPosition = player;
+                foreach (EnemySpawned spawned in events.Of<EnemySpawned>())
+                {
+                    if (!session.State.IsEnemyAlive(spawned.Id))
+                    {
+                        continue;
+                    }
+
+                    if (!positions.ContainsKey(spawned.Id))
+                    {
+                        positions.Add(spawned.Id, spawned.Position);
+                    }
+
+                    world.AddEnemy() = new EnemySense
+                    {
+                        Id = spawned.Id,
+                        Position = positions[spawned.Id],
+                        HasLineOfSight = true,
+                    };
+                }
+
                 session.Tick(world);
+                Assert.That(events.Count<PlayerDied>(), Is.Zero, "The Ranger must survive to clear the waves.");
             }
 
-            Assert.That(session.State.Time, Is.EqualTo(60f));
-            Assert.That(session.State.StageIndex, Is.EqualTo(1));
-            Assert.That(session.State.EnemyCount, Is.Zero);
-            Assert.That(events.Count<EnemySpawned>(), Is.Zero);
-            Assert.That(events.Count<StageCleared>(), Is.Zero);
-            Assert.That(events.Count<StageArrived>(), Is.EqualTo(1));
+            Assert.That(events.Count<WaveStarted>(), Is.GreaterThan(0));
+            Assert.That(events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct(), Is.EqualTo(new[] { Scorpion }));
+            Assert.That(events.Count<StageCleared>(), Is.EqualTo(1));
         }
         finally
         {
@@ -281,7 +399,21 @@ public sealed class SunscarTests
 
     private static ContentCatalog Catalog(params ModeSpec[] modes) =>
         new(new[] { AssetDatabase.LoadAssetAtPath<CharacterDefinition>(Root + "Data/Characters/Ranger.asset").ToSpec() },
-            modes: modes);
+            BootEnemies().Select(enemy => enemy.ToSpec()).ToArray(), modes: modes);
+
+    private static EnemyDefinition[] BootEnemies()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Composition/BootScope.prefab");
+        var serialized = new SerializedObject(prefab.GetComponent<BootScope>());
+        SerializedProperty enemies = serialized.FindProperty("_enemies");
+        var definitions = new EnemyDefinition[enemies.arraySize];
+        for (int i = 0; i < definitions.Length; i++)
+        {
+            definitions[i] = (EnemyDefinition)enemies.GetArrayElementAtIndex(i).objectReferenceValue;
+        }
+
+        return definitions;
+    }
 
     private sealed class RecordingLoader : SceneLoader
     {

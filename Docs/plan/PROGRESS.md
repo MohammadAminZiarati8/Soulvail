@@ -9,9 +9,9 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-08a** — Viper core with a longer recoil on a miss and alternating sidewinds. |
-| **Next task** | SS-08b — Viper model on Rig_Viper with nine clips. SS-08c–d and Jackal SS-05b–d queued. |
-| **Verified** | EditMode 6549 total, 6457 passed, 0 failed, 1 inconclusive, 91 skipped. C# whitespace passed. |
+| **Last merged** | **SS-08b** — Viper model on Rig_Viper with nine in-place clips. |
+| **Next task** | SS-08c — Viper prefab, animator and lane strip. SS-08d and Jackal SS-05b–d queued. |
+| **Verified** | EditMode 6560 total, 6468 passed, 0 failed, 1 inconclusive, 91 skipped. C# whitespace passed. |
 
 ## What works
 

@@ -84,9 +84,15 @@ SWATCHES = {
     # SS-07b: the unused strips beside the Panther's centre and between the Apex insets.
     "brood_shell": (1, 2, "A35429", "4C2513"),
     "brood_sac": (1, 2, "E8D9B9", "A35429"),
+    # SS-08b: four-pixel strips between existing insets and the centre UVs, in cells the Warlord repaints.
+    "viper_ochre": (5, 0, "B1822B", "815517"),
+    "viper_umber": (5, 1, "80531D", "452A0E"),
+    "viper_belly": (1, 2, "C7AA78", "9C793C"),
 }
 SWATCH_NAMES = list(SWATCHES)
 INSETS = {
+    "viper_ochre": (344, 348), "viper_umber": (344, 348),
+    "viper_belly": (88, 92),
     "brood_shell": (80, 88), "brood_sac": (104, 112),
     "beetle_umber": (336, 344), "beetle_ochre": (360, 368),
     "beetle_bone": (336, 344), "beetle_vent": (360, 368),

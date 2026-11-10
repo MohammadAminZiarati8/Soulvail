@@ -244,6 +244,7 @@ public sealed class EnemySpec
     /// <param name="slinger">Optional led throw and retreat, used by Spitters.</param>
     /// <param name="bombardier">Optional rear turn and braced shot, used by Spitters.</param>
     /// <param name="brood">Optional delayed child drop on death.</param>
+    /// <param name="sidewinder">Optional miss recovery and circling movement for a solo Lunger.</param>
     public EnemySpec(
         ContentId id,
         LocKey nameKey,
@@ -275,7 +276,8 @@ public sealed class EnemySpec
         SkitterSpec skitter = null,
         SlingerSpec slinger = null,
         BombardierSpec bombardier = null,
-        BroodSpec brood = null)
+        BroodSpec brood = null,
+        SidewinderSpec sidewinder = null)
     {
         if (id.Value is null)
         {
@@ -411,6 +413,25 @@ public sealed class EnemySpec
         Bombardier = bombardier;
         Brood = brood;
         Pack = pack;
+        Sidewinder = sidewinder;
+
+        if (sidewinder is not null)
+        {
+            if (behaviour != EnemyBehaviourKind.Lunger || pack is not null)
+            {
+                throw new ArgumentException("A SidewinderSpec requires a Lunger without a PackSpec.", nameof(sidewinder));
+            }
+
+            if (sidewinder.Radius >= Lunge.Range)
+            {
+                throw new ArgumentException("A sidewinder's radius must be within lunge range.", nameof(sidewinder));
+            }
+
+            if (sidewinder.MissRecoverTime < RecoverTime)
+            {
+                throw new ArgumentException("A sidewinder's miss recovery must be at least its normal recovery.", nameof(sidewinder));
+            }
+        }
         Stalker = stalker;
         Thornweaver = thornweaver;
     }
@@ -570,6 +591,9 @@ public sealed class EnemySpec
     /// <c>LungerBehaviour</c> alone (JG-21b).
     /// </summary>
     public PackSpec Pack { get; }
+
+    /// <summary>Optional miss recovery and circling movement for a solo Lunger.</summary>
+    public SidewinderSpec Sidewinder { get; }
 
     /// <summary>
     /// Where it lurks and how it strikes, or <see langword="null"/> on an archetype that does not.

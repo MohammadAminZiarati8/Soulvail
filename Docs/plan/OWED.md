@@ -654,3 +654,5 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 4. **[Editor]** The portal opens only after the last scorpling dies.
 5. **[Editor]** Sac, swell and scorplings read through the storm; nothing cyan.
 6. **[device]** Sac, swell and scorplings read at first look on a phone.
+
+- SS-08a (after SS-08d): At Sunscar stage 6, hold in the lane for a short recoil, sidestep the next lane for a long recoil, and watch the viper circle in alternating directions between strikes.

@@ -408,3 +408,16 @@ public readonly struct EnemyBroodBurst
         Position = position;
     }
 }
+
+/// <summary>A sidewinder missed its quarry and will take this long to recover after the dash.</summary>
+public readonly struct EnemyStrikeMissed
+{
+    public readonly int Id;
+    public readonly float Seconds;
+
+    public EnemyStrikeMissed(int id, float seconds)
+    {
+        Id = id;
+        Seconds = seconds;
+    }
+}

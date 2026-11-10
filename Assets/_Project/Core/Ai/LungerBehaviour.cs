@@ -26,6 +26,9 @@ public enum LungerState
 
     /// <summary>A pack's flanker swinging round to the player's side (JG-21b).</summary>
     Flank,
+
+    /// <summary>A sidewinder circling its quarry after recovery.</summary>
+    Sidewind,
 }
 
 /// <summary>
@@ -74,6 +77,14 @@ public sealed class LungerBehaviour : IEnemyBehaviour
     private bool _bitPet;
     private EnemyRegistry _registry;
 
+    private Vector3 _heroPosition;
+    private Vector3 _laneOrigin;
+    private bool _openedLane;
+    private bool _landed;
+    private float _sidewindSign;
+    private float _sidewindArc;
+    private Vector2 _sidewindBearing;
+
     /// <summary>Seconds until an unpaired pack hunter looks for a partner again.</summary>
     private float _pairTimer;
 
@@ -111,6 +122,13 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _machine.OnEnter(LungerState.Flank, EnterFlank);
         _machine.OnTick(LungerState.Flank, Flank);
 
+        if (Sidewinder is not null)
+        {
+            _machine.OnEnter(LungerState.Sidewind, EnterSidewind);
+            _machine.OnTick(LungerState.Sidewind, TickSidewind);
+            _sidewindSign = FirstSidewindSign;
+        }
+
         _machine.Start();
     }
 
@@ -140,6 +158,10 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _lanes = ctx.Lanes;
         _pets = ctx.Pets;
         _registry = ctx.Enemies.Registry;
+        if (Sidewinder is not null)
+        {
+            _heroPosition = ctx.Player.Blackboard.PlayerPosition;
+        }
 
         try
         {
@@ -175,6 +197,11 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _dashed = 0f;
         _pairTimer = 0f;
         _flankTimer = 0f;
+        _landed = false;
+        _openedLane = false;
+        _sidewindSign = FirstSidewindSign;
+        _sidewindArc = 0f;
+        _sidewindBearing = Vector2.Zero;
         _windupAt = float.NegativeInfinity;
         _facing = new Vector2(0f, 1f);
     }
@@ -186,6 +213,13 @@ public sealed class LungerBehaviour : IEnemyBehaviour
     private const float ArriveDistance = 1f;
 
     private LungeSpec Lunge => _agent.Spec.Lunge;
+
+    private SidewinderSpec Sidewinder => _agent.Spec.Sidewinder;
+
+    private float FirstSidewindSign => (_agent.Id & 1) == 0 ? 1f : -1f;
+
+    // A 1.5 m radius error gives equal radial and tangential steering.
+    private const float SidewindSteeringDistance = 1.5f;
 
     /// <summary>Rule 1: the chaser's walk, path first, until in range and off cooldown.</summary>
     private void TickStalk(float dt)
@@ -236,6 +270,7 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _windupAt = _now;
         _attackPetId = blackboard.QuarryPetId;
         _bitPet = false;
+        _openedLane = false;
 
         Vector2 aim = blackboard.DirectionToPlayer != Vector2.Zero ? blackboard.DirectionToPlayer : _facing;
 
@@ -251,14 +286,15 @@ public sealed class LungerBehaviour : IEnemyBehaviour
 
         // A dropped lane (a full table) costs the warning, not the move (rule 8). The agent's stat,
         // so a deep Lunger's lane bites as hard as its depth says.
-        _lanes.Open(
-            _agent.Position,
+        _laneOrigin = _agent.Position;
+        _openedLane = _lanes.Open(
+            _laneOrigin,
             new Vector3(blackboard.LungeDirection.X, 0f, blackboard.LungeDirection.Y),
             Lunge.Length,
             Lunge.HalfWidth,
             _agent.Spec.WindupTime,
             _agent.ContactDamage.Value,
-            _now);
+            _now) != 0;
     }
 
     /// <summary>Rule 3: stand facing the committed line until the lane is due.</summary>
@@ -270,7 +306,12 @@ public sealed class LungerBehaviour : IEnemyBehaviour
 
         Stand(blackboard.LungeDirection);
 
-        if (blackboard.StateTimer >= _agent.Spec.WindupTime)
+        // Sidewinders judge the strike on the lane's absolute release deadline.
+        bool ready = Sidewinder is null
+            ? blackboard.StateTimer >= _agent.Spec.WindupTime
+            : _now >= _windupAt + _agent.Spec.WindupTime;
+
+        if (ready)
         {
             _machine.Transition(LungerState.Dash);
         }
@@ -281,6 +322,21 @@ public sealed class LungerBehaviour : IEnemyBehaviour
         _agent.Blackboard.StateTimer = 0f;
 
         _dashed = 0f;
+
+        if (Sidewinder is not null)
+        {
+            _landed = _attackPetId != 0 || (_openedLane && LaneSystem.Contains(
+                _laneOrigin,
+                Vector2.Normalize(_agent.Blackboard.LungeDirection),
+                Lunge.Length,
+                Lunge.HalfWidth,
+                _heroPosition));
+
+            if (!_landed)
+            {
+                _events.Publish(new EnemyStrikeMissed(_agent.Id, Sidewinder.MissRecoverTime));
+            }
+        }
     }
 
     /// <summary>
@@ -333,14 +389,68 @@ public sealed class LungerBehaviour : IEnemyBehaviour
 
         blackboard.StateTimer += dt;
 
-        Stand(blackboard.LungeDirection);
+        float duration = Sidewinder is not null && !_landed ? Sidewinder.MissRecoverTime : _agent.Spec.RecoverTime;
 
-        if (blackboard.StateTimer >= _agent.Spec.RecoverTime)
+        if (blackboard.StateTimer >= duration)
         {
             _facing = blackboard.LungeDirection;
 
+            if (Sidewinder is not null)
+            {
+                _machine.Transition(LungerState.Sidewind);
+
+                return;
+            }
+
             _machine.Transition(LungerState.Stalk);
         }
+
+        Stand(blackboard.LungeDirection);
+    }
+
+    private void EnterSidewind()
+    {
+        _agent.Blackboard.StateTimer = 0f;
+        _sidewindArc = 0f;
+        _sidewindBearing = Vector2.Zero;
+        TickSidewind(0f);
+    }
+
+    private void TickSidewind(float dt)
+    {
+        EnemyBlackboard blackboard = _agent.Blackboard;
+        blackboard.StateTimer += dt;
+
+        Vector3 offset = _agent.Position - blackboard.PlayerPosition;
+        Vector2 radial = new Vector2(offset.X, offset.Z);
+        float distance = radial.Length();
+
+        Vector2 bearing = distance > 0f ? radial / distance : -_facing;
+        _facing = -bearing;
+
+        if (_sidewindBearing != Vector2.Zero && distance > 0f)
+        {
+            float cross = (_sidewindBearing.X * bearing.Y) - (_sidewindBearing.Y * bearing.X);
+            float dot = Vector2.Dot(_sidewindBearing, bearing);
+            _sidewindArc += _sidewindSign * MathF.Atan2(cross, dot);
+        }
+
+        _sidewindBearing = distance > 0f ? bearing : Vector2.Zero;
+
+        if (_sidewindArc >= Sidewinder.ArcDegrees * (MathF.PI / 180f)
+            || blackboard.StateTimer >= Sidewinder.Timeout)
+        {
+            _sidewindSign = -_sidewindSign;
+            _machine.Transition(LungerState.Stalk);
+            Stand(_facing);
+
+            return;
+        }
+
+        Vector2 tangent = new Vector2(-bearing.Y, bearing.X) * _sidewindSign;
+        float correction = Math.Clamp((Sidewinder.Radius - distance) / SidewindSteeringDistance, -2f, 2f);
+        Vector2 velocity = Vector2.Normalize(tangent + (bearing * correction)) * Sidewinder.Speed;
+        Emit(new Vector3(velocity.X, 0f, velocity.Y), _facing);
     }
 
     /// <summary>

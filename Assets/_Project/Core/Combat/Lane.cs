@@ -335,19 +335,20 @@ public sealed class LaneSystem
     private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 
     /// <summary>Whether the player is standing in the lane at <paramref name="index"/>, on XZ.</summary>
-    private bool Contains(int index, Vector3 playerPosition)
-    {
-        float dx = playerPosition.X - _origins[index].X;
-        float dz = playerPosition.Z - _origins[index].Z;
+    private bool Contains(int index, Vector3 playerPosition) =>
+        Contains(_origins[index], _directions[index], _lengths[index], _halfWidths[index], playerPosition);
 
-        Vector2 along = _directions[index];
+    internal static bool Contains(Vector3 origin, Vector2 along, float length, float halfWidth, Vector3 position)
+    {
+        float dx = position.X - origin.X;
+        float dz = position.Z - origin.Z;
 
         float forward = (dx * along.X) + (dz * along.Y);
         float across = (dx * along.Y) - (dz * along.X);
 
         return forward >= 0f
-            && forward <= _lengths[index]
-            && MathF.Abs(across) <= _halfWidths[index];
+            && forward <= length
+            && MathF.Abs(across) <= halfWidth;
     }
 
     /// <exception cref="ArgumentOutOfRangeException">There is no lane at that index.</exception>

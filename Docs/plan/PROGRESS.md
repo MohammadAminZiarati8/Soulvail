@@ -9,9 +9,9 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-07d** — Brood Scorpion and Scorpling data, with the brood in Sunscar from stage 4. |
-| **Next task** | SS-08a — Viper core: long recoil on a miss, sidewind (SS-08a–d specced). Jackal SS-05b–d queued. |
-| **Verified** | EditMode 6535 total, 6443 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 30/30. C# whitespace passed. |
+| **Last merged** | **SS-08a** — Viper core with a longer recoil on a miss and alternating sidewinds. |
+| **Next task** | SS-08b — Viper model on Rig_Viper with nine clips. SS-08c–d and Jackal SS-05b–d queued. |
+| **Verified** | EditMode 6549 total, 6457 passed, 0 failed, 1 inconclusive, 91 skipped. C# whitespace passed. |
 
 ## What works
 

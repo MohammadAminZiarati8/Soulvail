@@ -207,7 +207,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SS-07a — The brood in core: a swelling corpse that drops three scorplings (M)
 - [x] SS-07b — The brood model on Rig_Scorpion with six clips (M)
-- [ ] [SS-07c](tasks/SS-07c-brood-body.md) — The body: two prefabs and the swelling hump (M)
+- [x] SS-07c — The body: two prefabs and the swelling hump (M)
 - [ ] [SS-07d](tasks/SS-07d-brood-data.md) — The brood in the Sunscar: data, roster from stage 4 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

@@ -9,9 +9,9 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-07b** — the brood model on Rig_Scorpion with six clips. |
-| **Next task** | SS-07c — brood prefab and swell. Then SS-07d and SS-05b–d. |
-| **Verified** | EditMode 6516 total, 6424 passed, 0 failed, 1 inconclusive, 91 skipped. Brood model 13/13. C# whitespace passed. |
+| **Last merged** | **SS-07c** — BroodMother and Scorpling bodies, pale sac swell, metre-sized strike strips. |
+| **Next task** | SS-07d — Sunscar brood data and stage-4 roster. Then SS-05b–d. |
+| **Verified** | EditMode 6526 total, 6434 passed, 0 failed, 1 inconclusive, 91 skipped. Brood body 10/10. C# whitespace passed. |
 
 ## What works
 

@@ -97,6 +97,7 @@ public sealed class ProjectileViews : IDisposable
 
     /// <summary>Enemy id → the prefab its shots fly, or null: every enemy flies the default (JG-02).</summary>
     private readonly EnemyLookBook _enemyLooks;
+    private readonly EnemyViews _enemies;
 
     /// <summary>The default bolt's pools: every shot whose class or archetype names none.</summary>
     private readonly ShotKind _default;
@@ -182,7 +183,8 @@ public sealed class ProjectileViews : IDisposable
         CharacterLookBook looks = null,
         int classPrewarm = 0,
         Transform viewer = null,
-        EnemyLookBook enemyLooks = null)
+        EnemyLookBook enemyLooks = null,
+        EnemyViews enemies = null)
     {
         if (hub is null)
         {
@@ -203,6 +205,7 @@ public sealed class ProjectileViews : IDisposable
         _parent = parent;
         _looks = looks;
         _enemyLooks = enemyLooks;
+        _enemies = enemies;
         _classPrewarm = classPrewarm;
         _viewer = viewer == null ? null : viewer;
 
@@ -450,7 +453,17 @@ public sealed class ProjectileViews : IDisposable
         ShotKind kind = KindOf(evt.SpecId, evt.IsVolley);
         ProjectileView view = kind.Shots.Get();
 
-        view.Bind(evt.Id, evt.Origin.ToUnity(), evt.Target.ToUnity(), evt.FlightTime);
+        Vector3 origin = evt.Origin.ToUnity();
+        if (_enemies != null && evt.SourceId != 0 && _enemies.TryGet(evt.SourceId, out EnemyView enemy))
+        {
+            VentTellView tell = enemy.GetComponentInChildren<VentTellView>();
+            Transform muzzle = tell != null ? tell.Muzzle : null;
+            if (muzzle != null)
+            {
+                origin = muzzle.position;
+            }
+        }
+        view.Bind(evt.Id, origin, evt.Target.ToUnity(), evt.FlightTime);
         if (!_trailLooks.TryGetValue(view, out TrailLook trailLook))
         {
             var trail = view.GetComponentInChildren<TrailRenderer>(true);

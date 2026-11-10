@@ -101,6 +101,10 @@ namespace Soulvail.Game.Views
         [Min(0f)]
         [SerializeField] private float _runStrideSpeed;
 
+        [SerializeField] private bool _turnsInPlace;
+
+        private readonly int _turningId = Animator.StringToHash("Turning");
+        private readonly int _aimDroppedId = Animator.StringToHash("AimDropped");
         private readonly int _speedId = Animator.StringToHash("Speed");
         private readonly int _walkRateId = Animator.StringToHash("WalkRate");
         private readonly int _attackRateId = Animator.StringToHash("AttackRate");
@@ -121,6 +125,10 @@ namespace Soulvail.Game.Views
         private IDisposable _diedSubscription;
         private IDisposable _leapSubscription;
         private IDisposable _hiddenSubscription;
+        private IDisposable _aimDroppedSubscription;
+        private bool _hasAimDropped;
+        private bool _aimDroppedChecked;
+        private float? _previousYaw;
         private float _shownSpeed;
         private float _bodySpeed;
 
@@ -188,6 +196,7 @@ namespace Soulvail.Game.Views
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
             _leapSubscription = hub.Subscribe<EnemyLeapAimed>(OnLeapAimed);
             _hiddenSubscription = hub.Subscribe<EnemyHiddenChanged>(OnHiddenChanged);
+            _aimDroppedSubscription = hub.Subscribe<EnemyAimDropped>(OnAimDropped);
         }
 
         /// <summary>
@@ -209,6 +218,18 @@ namespace Soulvail.Game.Views
             if (_body == null)
             {
                 _body = GetComponentInParent<EnemyView>();
+            }
+
+            if (_turnsInPlace && _body != null)
+            {
+                float yaw = _body.transform.eulerAngles.y;
+                Vector3 velocity = _body.Velocity;
+                velocity.y = 0f;
+                bool turning = !_dead && !_stunned && _previousYaw.HasValue &&
+                    Mathf.Abs(Mathf.DeltaAngle(_previousYaw.Value, yaw)) > 10f * dt &&
+                    velocity.sqrMagnitude < 0.1f * 0.1f;
+                _animator.SetBool(_turningId, turning);
+                _previousYaw = yaw;
             }
 
             if (!_stunned)
@@ -289,6 +310,7 @@ namespace Soulvail.Game.Views
         {
             _dead = false;
             SetCrowdControl(false, false, 0f);
+            _previousYaw = null;
             _shownSpeed = 0f;
             _bodySpeed = 0f;
             _windupLeft = 0f;
@@ -309,6 +331,14 @@ namespace Soulvail.Game.Views
             if (_runBaseSpeed > 0f)
             { _animator.SetBool("Run", false); }
             _animator.SetBool(_deadId, false);
+            if (_turnsInPlace)
+            {
+                _animator.SetBool(_turningId, false);
+            }
+            if (_hasAimDropped)
+            {
+                _animator.ResetTrigger(_aimDroppedId);
+            }
             _animator.ResetTrigger(_attackId);
             _animator.ResetTrigger(_hitId);
             if (_hasBlock)
@@ -369,6 +399,7 @@ namespace Soulvail.Game.Views
             _diedSubscription?.Dispose();
             _leapSubscription?.Dispose();
             _hiddenSubscription?.Dispose();
+            _aimDroppedSubscription?.Dispose();
             _hiddenSubscription = null;
             _telegraphSubscription = null;
             _damagedSubscription = null;
@@ -418,6 +449,11 @@ namespace Soulvail.Game.Views
             if (HasMove())
             {
                 _animator.SetInteger(_moveId, evt.Move);
+            }
+
+            if (_hasAimDropped)
+            {
+                _animator.ResetTrigger(_aimDroppedId);
             }
 
             _animator.SetFloat(_attackRateId, Mathf.Max(_strikeSeconds - _windupFromSeconds, 0.01f) / evt.Duration);
@@ -537,6 +573,33 @@ namespace Soulvail.Game.Views
             if (IsMine(evt.Id))
             {
                 _lurking = evt.Hidden && !_dead;
+            }
+        }
+
+        private void OnAimDropped(EnemyAimDropped evt)
+        {
+            if (_animator == null || !_animator.isActiveAndEnabled || _dead || !IsMine(evt.Id))
+            {
+                return;
+            }
+
+            if (!_aimDroppedChecked)
+            {
+                _aimDroppedChecked = true;
+                foreach (AnimatorControllerParameter parameter in _animator.parameters)
+                {
+                    if (parameter.nameHash == _aimDroppedId && parameter.type == AnimatorControllerParameterType.Trigger)
+                    {
+                        _hasAimDropped = true;
+                        break;
+                    }
+                }
+            }
+
+            if (_hasAimDropped)
+            {
+                _animator.ResetTrigger(_attackId);
+                _animator.SetTrigger(_aimDroppedId);
             }
         }
 

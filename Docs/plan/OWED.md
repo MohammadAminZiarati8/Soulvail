@@ -667,3 +667,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 4. [Editor] Watch each viper circle the hero between strikes and alternate the direction of its sidewind.
 5. [Editor] Check that the strip reads over quicksand and through the storm, and that the viper has no warm or cyan accents.
 6. [Device] Check that the coil and strip read at first glance on a phone.
+
+## SS-05b — Jackal model
+
+- [Editor] Review the Jackal pose sheet at the game camera angle. Check the ears and snout, the kilt across both thighs in Walking_B and Walking_Backwards, and the sling at handslot.r. The Death_A row uses frames before KayKit's weapon drop.

@@ -88,9 +88,14 @@ SWATCHES = {
     "viper_ochre": (5, 0, "B1822B", "815517"),
     "viper_umber": (5, 1, "80531D", "452A0E"),
     "viper_belly": (1, 2, "C7AA78", "9C793C"),
+    # SS-05b: three unused four-pixel strips in cells the Warlord repaints.
+    "jackal_bone": (1, 2, "E5D7BF", "A9895F"),
+    "jackal_ochre": (5, 0, "AF7734", "77420D"),
+    "jackal_leather": (5, 1, "744618", "301706"),
 }
 SWATCH_NAMES = list(SWATCHES)
 INSETS = {
+    "jackal_bone": (100, 104), "jackal_ochre": (356, 360), "jackal_leather": (356, 360),
     "viper_ochre": (344, 348), "viper_umber": (344, 348),
     "viper_belly": (88, 92),
     "brood_shell": (80, 88), "brood_sac": (104, 112),

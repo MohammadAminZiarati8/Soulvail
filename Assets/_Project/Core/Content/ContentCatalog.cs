@@ -149,6 +149,31 @@ public sealed class ContentCatalog
             nameof(bosses),
             out _bossesById);
 
+        foreach (EnemySpec enemy in _enemies)
+        {
+            if (enemy.Brood is not BroodSpec brood)
+            {
+                continue;
+            }
+
+            if (!_enemiesById.TryGetValue(brood.Child, out EnemySpec child)
+                || child.Behaviour == EnemyBehaviourKind.Boss || child.IsElite || child.Brood != null)
+            {
+                throw new ArgumentException(
+                    $"Brood '{enemy.Id}' must name a plain, non-brood enemy. Invalid child '{brood.Child}'.",
+                    nameof(enemies));
+            }
+
+            foreach (BossSpec boss in _bosses)
+            {
+                if (boss.EnemySpecId == child.Id)
+                {
+                    throw new ArgumentException(
+                        $"Brood '{enemy.Id}' cannot use boss body '{child.Id}' as a child.", nameof(enemies));
+                }
+            }
+        }
+
         _paths = Index(
             paths ?? Array.Empty<PathSpec>(),
             spec => spec.Id,

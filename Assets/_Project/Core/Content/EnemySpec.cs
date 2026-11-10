@@ -243,6 +243,7 @@ public sealed class EnemySpec
     /// <param name="skitter">Optional fan approach and tail strike, used by Chasers.</param>
     /// <param name="slinger">Optional led throw and retreat, used by Spitters.</param>
     /// <param name="bombardier">Optional rear turn and braced shot, used by Spitters.</param>
+    /// <param name="brood">Optional delayed child drop on death.</param>
     public EnemySpec(
         ContentId id,
         LocKey nameKey,
@@ -273,7 +274,8 @@ public sealed class EnemySpec
         bool isLight = false,
         SkitterSpec skitter = null,
         SlingerSpec slinger = null,
-        BombardierSpec bombardier = null)
+        BombardierSpec bombardier = null,
+        BroodSpec brood = null)
     {
         if (id.Value is null)
         {
@@ -407,6 +409,7 @@ public sealed class EnemySpec
         Skitter = skitter;
         Slinger = slinger;
         Bombardier = bombardier;
+        Brood = brood;
         Pack = pack;
         Stalker = stalker;
         Thornweaver = thornweaver;
@@ -518,6 +521,8 @@ public sealed class EnemySpec
     /// </summary>
     /// <remarks>Same rule, same reason as <see cref="Projectile"/>, for the Bloater and M2-08.</remarks>
     public ExplosionSpec Explosion { get; }
+
+    public BroodSpec Brood { get; }
 
     /// <summary>
     /// Seconds one hop spends in the air, or zero for an archetype that walks. The Frog's 0.5 is its

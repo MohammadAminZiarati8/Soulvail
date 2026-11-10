@@ -727,9 +727,8 @@ public sealed class SpawnDirector
     /// that wave rather than of whichever one happens to be spawning.
     /// </para>
     /// <para>
-    /// The cost is one registry lookup per id still being tracked, and an id stops being tracked
-    /// the tick it dies — so this is bounded by the living population, which the concurrency cap
-    /// bounds in turn (rule 11). A dead id is never looked up twice.
+    /// A normal corpse is dropped immediately. A pending brood corpse stays until its children
+    /// can replace it, so the wave cannot clear in the gap between death and burst.
     /// </para>
     /// </remarks>
     private void SweepTheDead()
@@ -744,15 +743,23 @@ public sealed class SpawnDirector
             int start = w * _idStride;
             int kept = 0;
 
-            for (int i = 0; i < _waveIdCount[w]; i++)
+            // Append children behind the unread ids, then compact them in this same pass.
+            int count = _waveIdCount[w];
+
+            for (int i = 0; i < count; i++)
             {
                 int id = _waveIds[start + i];
 
-                // Registered is not breathing (AR §18.4): a corpse sits in the registry for
-                // EnemySystem.CorpseTime while its dissolve plays, and a wave the player has
-                // finished killing must clear on the kill rather than 0.6 s later.
-                if (!_enemies.Registry.TryGet(id, out EnemyAgent agent) || !agent.IsAlive)
+                if (!_enemies.Registry.TryGet(id, out EnemyAgent agent))
                 {
+                    continue;
+                }
+
+                if (!agent.IsAlive && !agent.BroodPending)
+                {
+                    ReadOnlySpan<int> brood = agent.Brood;
+                    brood.CopyTo(_waveIds.AsSpan(start + count, brood.Length));
+                    count += brood.Length;
                     continue;
                 }
 
@@ -831,7 +838,7 @@ public sealed class SpawnDirector
             return;
         }
 
-        if (_enemies.LivingCount() + _pendingCount >= _plan.Concurrency)
+        if (CapWeight() + 1 + _enemies.BroodCount(_queue[_queueHead]) > _plan.Concurrency)
         {
             return;
         }
@@ -845,6 +852,30 @@ public sealed class SpawnDirector
         }
 
         Telegraph(index, point, now);
+    }
+
+    private int CapWeight()
+    {
+        int weight = _pendingCount;
+
+        for (int i = 0; i < _pendingCount; i++)
+        {
+            weight += _enemies.BroodCount(_pendingSpec[i]);
+        }
+
+        foreach (EnemyAgent agent in _enemies.Registry.Alive)
+        {
+            if (agent.IsAlive)
+            {
+                weight += 1 + (agent.Spec.Brood?.Count ?? 0);
+            }
+            else if (agent.BroodPending)
+            {
+                weight += agent.Spec.Brood.Count;
+            }
+        }
+
+        return weight;
     }
 
     /// <summary>Waits for the point nearest the mean; never substitutes a safer edge point.</summary>
@@ -1079,10 +1110,9 @@ public sealed class SpawnDirector
     /// that can buy anything.
     /// </para>
     /// <para>
-    /// A wave can never hold more bodies than the stage's concurrency — <see cref="WaveComposer"/>
-    /// stops buying at the cap — and the pending telegraphs cannot outnumber it either, since rule
-    /// 8 counts them against it. So one number sizes nearly everything here, and the id table is
-    /// the product of it and the wave count.
+    /// A wave buys at most as many bodies as the stage's concurrency — <see cref="WaveComposer"/>
+    /// stops buying at the cap — and the pending telegraphs cannot outnumber it either. The id
+    /// table also has room for every child those bodies can add during adoption.
     /// </para>
     /// </remarks>
     private void EnsureCapacity(WavePlan plan)
@@ -1090,10 +1120,20 @@ public sealed class SpawnDirector
         int waves = plan.WaveCount;
         int stride = plan.Concurrency;
         int entries = 0;
+        int idStride = stride;
 
         for (int wave = 1; wave <= waves; wave++)
         {
             int count = plan.EntryCount(wave);
+            int extra = 0;
+
+            for (int i = 0; i < count; i++)
+            {
+                WaveEntry entry = plan.Entry(wave, i);
+                extra += entry.Count * _enemies.BroodCount(entry.SpecId);
+            }
+
+            idStride = Math.Max(idStride, stride + extra);
 
             if (count > entries)
             {
@@ -1126,9 +1166,9 @@ public sealed class SpawnDirector
         // The stride only ever grows, so a later, narrower stage keeps the wider table rather than
         // re-indexing one it already owns — which is why the length is checked against the stride
         // in use and not against the one this plan asked for.
-        if (_idStride < stride)
+        if (_idStride < idStride)
         {
-            _idStride = stride;
+            _idStride = idStride;
         }
 
         if (_waveIds.Length < waves * _idStride)

@@ -9,9 +9,9 @@ _2026-11-10._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-06d** — bombardier beetles join the Sunscar from stage 2. |
-| **Next task** | SS-07a — brood drop in core (or SS-07b with the owner's sculpt). Then SS-07c–d, then SS-05b–d. Sunscar stage 1 and 2 playtests are in OWED. |
-| **Verified** | EditMode 6482 total, 6390 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 21/21. C# whitespace gate passed. |
+| **Last merged** | **SS-07a** — brood deaths swell, burst and hand their children to the wave. |
+| **Next task** | SS-07b — brood model with the owner's sculpt. Then SS-07c–d and SS-05b–d. Sunscar stage 1 and 2 playtests are in OWED. |
+| **Verified** | EditMode 6503 total, 6411 passed, 0 failed, 1 inconclusive, 91 skipped. Sunscar 21/21. Brood 21/21. C# whitespace gate passed. |
 
 ## What works
 

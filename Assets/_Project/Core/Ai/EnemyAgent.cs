@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
@@ -194,6 +195,22 @@ public sealed class EnemyAgent
     /// </remarks>
     internal float DiedAt { get; set; } = float.NegativeInfinity;
 
+    private int[] _brood;
+    private int _broodCount;
+
+    public bool BroodPending => BroodBurstAt < float.PositiveInfinity;
+
+    internal float BroodBurstAt { get; set; }
+
+    public ReadOnlySpan<int> Brood => new ReadOnlySpan<int>(_brood, 0, _broodCount);
+
+    internal Vector2 BroodFacing { get; set; }
+
+    internal void AddBroodChild(int id)
+    {
+        _brood[_broodCount++] = id;
+    }
+
     /// <summary>
     /// Run time at which a neighbour's chain blast kills it, or positive infinity while unlit
     /// (JG-21d). Set once by <c>EnemySystem</c>'s explosion, burned by its tick.
@@ -256,6 +273,14 @@ public sealed class EnemyAgent
         // stamp and be swept the moment it spawns.
         DiedAt = float.NegativeInfinity;
         ChainFuseAt = float.PositiveInfinity;
+        BroodBurstAt = float.PositiveInfinity;
+        BroodFacing = Vector2.UnitY;
+        _broodCount = 0;
+
+        if (spec.Brood != null)
+        {
+            _brood ??= new int[BroodSpec.MaxCount];
+        }
 
         Blackboard.Reset();
 

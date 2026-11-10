@@ -464,6 +464,9 @@ public sealed class EnemySystem
     /// <summary>The authored boss data used by the director before spawning its body.</summary>
     internal BossSpec Boss(ContentId bossId) => _catalog.Boss(bossId);
 
+    internal int BroodCount(ContentId id) =>
+        _catalog.TryGetEnemy(id, out EnemySpec spec) ? spec.Brood?.Count ?? 0 : 0;
+
     /// <summary>
     /// Brings the boss <paramref name="bossId"/> names into being at <paramref name="position"/>:
     /// an ordinary agent wearing its authored body, with a <see cref="BossBehaviour"/> on it.
@@ -1001,6 +1004,12 @@ public sealed class EnemySystem
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
+            if (explode && agent.Spec.Brood is BroodSpec brood)
+            {
+                agent.BroodBurstAt = now + brood.BurstDelay;
+                _events.Publish(new EnemyBroodSwelling(enemyId, brood.BurstDelay));
+            }
+
             // JG-24a rule 6: a Thornweaver's walls go with it, and only its own.
             if (agent.Behaviour is ThornweaverBehaviour weaver)
             {
@@ -1282,7 +1291,7 @@ public sealed class EnemySystem
 
         // MK-06a rule 6: every timer counts down before any behaviour runs, in a pass of its own so
         // a status one behaviour applies to a later agent is not shortened on the tick it landed.
-        bool anyRooted = false;
+        bool needsMoveGate = false;
 
         for (int i = 0; i < agents.Length; i++)
         {
@@ -1308,14 +1317,13 @@ public sealed class EnemySystem
 
             TickPoison(agent, ctx);
 
-            anyRooted |= agent.CrowdControl.IsRooted;
+            needsMoveGate |= agent.CrowdControl.IsRooted || agent.Spec.Brood != null;
         }
 
-        // Rule 3: while anything is rooted the behaviours write through the gate, which zeroes that
-        // agent's moves whoever writes them. One derived context per tick, never per agent.
+        // One derived context per tick lets the gate apply roots and remember brood facing.
         _rootGate.Inner = ctx.Intents;
 
-        EnemyTickContext behaviourCtx = anyRooted
+        EnemyTickContext behaviourCtx = needsMoveGate
             ? new EnemyTickContext(
                 ctx.Dt, ctx.Now, ctx.Player, _rootGate, ctx.Events, ctx.Projectiles, ctx.Enemies, ctx.Lanes, ctx.OpenGround,
                 ctx.PlayerFacing, ctx.Thorns, ctx.Pets)
@@ -1392,8 +1400,7 @@ public sealed class EnemySystem
 
         _rootGate.Inner = null;
 
-        // Last, and after the walk rather than inside it — see DespawnAtEndOfTick. Nothing between
-        // here and the loop may take a span over the registry.
+        BurstBroods(ctx.Now);
         DrainDeferredDespawns();
     }
 
@@ -1675,7 +1682,15 @@ public sealed class EnemySystem
 
         for (int i = 0; i < count; i++)
         {
-            Despawn(_deferredDespawn[i]);
+            int id = _deferredDespawn[i];
+
+            // A dead brood still owes its burst or wave handoff. The corpse sweep retires it.
+            if (Registry.TryGet(id, out EnemyAgent agent) && (agent.BroodPending || !agent.Brood.IsEmpty))
+            {
+                continue;
+            }
+
+            Despawn(id);
         }
     }
 
@@ -1710,12 +1725,47 @@ public sealed class EnemySystem
             // `< CorpseTime` rather than a negated `>=`, so a corpse whose stamp is negative
             // infinity — one that died without going through ApplyDamage — fails this test and is
             // retired now. See EnemyAgent.DiedAt.
-            if (now - agent.DiedAt < CorpseTime)
+            if (agent.BroodPending || now - agent.DiedAt < CorpseTime)
             {
                 continue;
             }
 
             Despawn(agent.Id);
+        }
+    }
+
+    private void BurstBroods(float now)
+    {
+        // Only the bodies already registered can have a pending brood. Spawn appends to the registry.
+        int count = Registry.AliveCount;
+
+        for (int i = 0; i < count; i++)
+        {
+            EnemyAgent mother = Registry.Alive[i];
+
+            if (!mother.BroodPending || now < mother.BroodBurstAt)
+            {
+                continue;
+            }
+
+            BroodSpec brood = mother.Spec.Brood;
+            Vector3 center = mother.Position;
+            float facing = MathF.Atan2(mother.BroodFacing.X, mother.BroodFacing.Y);
+            float step = 2f * MathF.PI / brood.Count;
+
+            _events.Publish(new EnemyBroodBurst(mother.Id, center));
+
+            for (int child = 0; child < brood.Count; child++)
+            {
+                float angle = facing + child * step;
+                Vector3 offset = new Vector3(MathF.Sin(angle), 0f, MathF.Cos(angle)) * brood.DropRadius;
+                EnemyAgent agent = mother.IsSummon
+                    ? SpawnSummon(brood.Child, center + offset)
+                    : Spawn(brood.Child, center + offset);
+                mother.AddBroodChild(agent.Id);
+            }
+
+            mother.BroodBurstAt = float.PositiveInfinity;
         }
     }
 
@@ -1868,10 +1918,8 @@ public sealed class EnemySystem
         return count;
     }
     /// <summary>
-    /// The sink a rooted tick's behaviours write to: everything passes through, except that a rooted
-    /// agent's <see cref="IIntentSink.EnemyMove"/> keeps its facing and loses its velocity — so a
-    /// dash, a hop or a lunge plays out on the spot (MK-06a rule 3). Keyed on the intent's id, not
-    /// the agent being ticked, because a boss may steer bodies other than its own.
+    /// Records brood facing and suppresses rooted velocity. Keyed on the intent's id because a boss
+    /// may steer bodies other than its own.
     /// </summary>
     private sealed class RootGate : IIntentSink
     {
@@ -1899,11 +1947,19 @@ public sealed class EnemySystem
 
         public void EnemyMove(in EnemyMoveIntent intent)
         {
-            if (_registry.TryGet(intent.Id, out EnemyAgent agent) && agent.CrowdControl.IsRooted)
+            if (_registry.TryGet(intent.Id, out EnemyAgent agent))
             {
-                Inner.EnemyMove(new EnemyMoveIntent(intent.Id, Vector3.Zero, intent.FacingXZ));
+                if (agent.IsAlive && agent.Spec.Brood != null && intent.FacingXZ != Vector2.Zero)
+                {
+                    agent.BroodFacing = intent.FacingXZ;
+                }
 
-                return;
+                if (agent.CrowdControl.IsRooted)
+                {
+                    Inner.EnemyMove(new EnemyMoveIntent(intent.Id, Vector3.Zero, intent.FacingXZ));
+
+                    return;
+                }
             }
 
             Inner.EnemyMove(intent);

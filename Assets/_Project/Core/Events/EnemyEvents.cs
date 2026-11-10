@@ -382,3 +382,29 @@ public readonly struct EnemyHiddenChanged
         Hidden = hidden;
     }
 }
+
+/// <summary>A brood corpse starts swelling for the given duration.</summary>
+public readonly struct EnemyBroodSwelling
+{
+    public readonly int Id;
+    public readonly float Duration;
+
+    public EnemyBroodSwelling(int id, float duration)
+    {
+        Id = id;
+        Duration = duration;
+    }
+}
+
+/// <summary>A brood corpse bursts just before its children spawn.</summary>
+public readonly struct EnemyBroodBurst
+{
+    public readonly int Id;
+    public readonly Vector3 Position;
+
+    public EnemyBroodBurst(int id, Vector3 position)
+    {
+        Id = id;
+        Position = position;
+    }
+}

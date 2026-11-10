@@ -105,8 +105,11 @@ namespace Soulvail.Game.Views
 
         [SerializeField] private bool _sidewinds;
 
+        [SerializeField] private bool _backsAway;
+
         private readonly int _turningId = Animator.StringToHash("Turning");
         private readonly int _aimDroppedId = Animator.StringToHash("AimDropped");
+        private readonly int _backingId = Animator.StringToHash("Backing");
         private readonly int _sidewaysId = Animator.StringToHash("Sideways");
         private readonly int _strikeMissedId = Animator.StringToHash("StrikeMissed");
         private readonly int _speedId = Animator.StringToHash("Speed");
@@ -132,6 +135,7 @@ namespace Soulvail.Game.Views
         private IDisposable _aimDroppedSubscription;
         private IDisposable _strikeMissedSubscription;
         private bool? _hasSideways;
+        private bool? _hasBacking;
         private bool? _hasStrikeMissed;
         private bool _hasAimDropped;
         private bool _aimDroppedChecked;
@@ -238,6 +242,16 @@ namespace Soulvail.Game.Views
                 bool sideways = velocity.sqrMagnitude > 0.5f * 0.5f &&
                     Vector3.Dot(velocity.normalized, facing.normalized) < 0.5f; // Cosine of 60 degrees.
                 _animator.SetBool(_sidewaysId, sideways);
+            }
+
+            if (_backsAway && _animator.isActiveAndEnabled &&
+                (_hasBacking ??= HasParameter(_backingId, AnimatorControllerParameterType.Bool)))
+            {
+                Vector3 velocity = _body != null && !_dead && !_stunned ? _body.Velocity : Vector3.zero;
+                velocity.y = 0f;
+                bool backing = _body != null && velocity.sqrMagnitude > 0.1f * 0.1f &&
+                    Vector3.Dot(velocity, _body.transform.forward) < 0f;
+                _animator.SetBool(_backingId, backing);
             }
 
             if (_turnsInPlace && _body != null)
@@ -354,6 +368,10 @@ namespace Soulvail.Game.Views
             if (_hasSideways == true)
             {
                 _animator.SetBool(_sidewaysId, false);
+            }
+            if (_hasBacking == true)
+            {
+                _animator.SetBool(_backingId, false);
             }
             ResetStrikeMissed();
             if (_turnsInPlace)

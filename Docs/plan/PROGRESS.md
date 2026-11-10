@@ -9,9 +9,9 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-05b** — Jackal model and sling on the shared KayKit rig. |
-| **Next task** | SS-05c — Jackal prefab, animator and sling tell. SS-05d queued. |
-| **Verified** | Graphics EditMode 6588 total, 6494 passed, 2 known bar failures, 1 inconclusive, 91 skipped. Jackal 10/10, art 625 passed. Known writer test passed on rerun. C# whitespace passed. |
+| **Last merged** | **SS-05c** — Jackal prefab, backward gait, timed sling tell and danger stone. |
+| **Next task** | SS-05d — Add the Jackal to the Sunscar roster from stage 8. |
+| **Verified** | Graphics EditMode 6599 total, 6505 passed, 2 known bar failures, 1 inconclusive, 91 skipped. Jackal body 11/11 and the shared landing ring passed. Writer and C# whitespace passed. |
 
 ## What works
 

@@ -671,3 +671,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SS-05b — Jackal model
 
 - [Editor] Review the Jackal pose sheet at the game camera angle. Check the ears and snout, the kilt across both thighs in Walking_B and Walking_Backwards, and the sling at handslot.r. The Death_A row uses frames before KayKit's weapon drop.
+
+## SS-05c — Jackal body
+
+- [Editor / device] Playtest with SS-05d's Sunscar stage 8 steps once the Jackal is in the roster.

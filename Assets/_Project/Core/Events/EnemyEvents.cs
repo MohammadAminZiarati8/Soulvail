@@ -421,3 +421,27 @@ public readonly struct EnemyStrikeMissed
         Seconds = seconds;
     }
 }
+
+/// <summary>The visible phases of a chaser's shell defence.</summary>
+public enum ShinePhase
+{
+    None,
+    Glint,
+    Shine,
+    Open,
+}
+
+/// <summary>A chaser entered a shell phase for the given duration, or left the cycle.</summary>
+public readonly struct EnemyShineChanged
+{
+    public EnemyShineChanged(int id, ShinePhase phase, float seconds)
+    {
+        Id = id;
+        Phase = phase;
+        Seconds = seconds;
+    }
+
+    public int Id { get; }
+    public ShinePhase Phase { get; }
+    public float Seconds { get; }
+}

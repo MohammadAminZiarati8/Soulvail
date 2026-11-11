@@ -1002,6 +1002,11 @@ public sealed class EnemySystem
             agent.CrowdControl.Reset();
             agent.Poison.Reset();
 
+            if (agent.Spec.Shine is not null && agent.Behaviour is ChaserBehaviour glassback)
+            {
+                glassback.EndShineOnDeath(_events);
+            }
+
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
             if (explode && agent.Spec.Brood is BroodSpec brood)
@@ -1313,6 +1318,12 @@ public sealed class EnemySystem
                 continue;
             }
 
+            // A stun that expires during this step still interrupts a glint it overlapped.
+            if (agent.CrowdControl.IsStunned && agent.Behaviour is ChaserBehaviour chaser)
+            {
+                chaser.CancelGlint(ctx.Now, ctx.Events);
+            }
+
             agent.CrowdControl.Tick(ctx.Dt, agent.Id, ctx.Events, Statuses);
 
             TickPoison(agent, ctx);
@@ -1350,6 +1361,17 @@ public sealed class EnemySystem
             // velocity it was given. Zero facing keeps the rotation it had.
             if (agent.CrowdControl.IsStunned)
             {
+                if (agent.Behaviour is ChaserBehaviour chaser)
+                {
+                    // A stun applied by an earlier behaviour this tick can still cancel a glint.
+                    chaser.CancelGlint(ctx.Now, ctx.Events);
+                    if (chaser.State is ChaserState.Shine or ChaserState.Open)
+                    {
+                        chaser.Tick(behaviourCtx);
+                        continue;
+                    }
+                }
+
                 if (agent.Behaviour != null)
                 {
                     ctx.Intents.EnemyMove(new EnemyMoveIntent(agent.Id, Vector3.Zero, Vector2.Zero));
@@ -1850,6 +1872,11 @@ public sealed class EnemySystem
             // faces the arrows rather than the decoy the bearer is walking at.
             var toRealPlayer = new Vector2(playerPosition.X - position.X, playerPosition.Z - position.Z);
             float realDistance = toRealPlayer.Length();
+            if (agent.Spec.Shine is not null && agent.Behaviour is ChaserBehaviour glassback)
+            {
+                glassback.DistanceToHero = realDistance;
+            }
+
             blackboard.DirectionToRealPlayer = realDistance < MinDirectionDistance
                 ? Vector2.Zero
                 : toRealPlayer / realDistance;

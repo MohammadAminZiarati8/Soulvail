@@ -245,6 +245,7 @@ public sealed class EnemySpec
     /// <param name="bombardier">Optional rear turn and braced shot, used by Spitters.</param>
     /// <param name="brood">Optional delayed child drop on death.</param>
     /// <param name="sidewinder">Optional miss recovery and circling movement for a solo Lunger.</param>
+    /// <param name="shine">Optional targeted shell defence for a solo Chaser.</param>
     public EnemySpec(
         ContentId id,
         LocKey nameKey,
@@ -277,7 +278,8 @@ public sealed class EnemySpec
         SlingerSpec slinger = null,
         BombardierSpec bombardier = null,
         BroodSpec brood = null,
-        SidewinderSpec sidewinder = null)
+        SidewinderSpec sidewinder = null,
+        ShineSpec shine = null)
     {
         if (id.Value is null)
         {
@@ -432,6 +434,13 @@ public sealed class EnemySpec
                 throw new ArgumentException("A sidewinder's miss recovery must be at least its normal recovery.", nameof(sidewinder));
             }
         }
+        if (shine is not null && (behaviour != EnemyBehaviourKind.Chaser
+            || pack is not null || leap is not null || brood is not null))
+        {
+            throw new ArgumentException("A ShineSpec requires a Chaser without PackSpec, LeapSpec or BroodSpec.", nameof(shine));
+        }
+
+        Shine = shine;
         Stalker = stalker;
         Thornweaver = thornweaver;
     }
@@ -594,6 +603,9 @@ public sealed class EnemySpec
 
     /// <summary>Optional miss recovery and circling movement for a solo Lunger.</summary>
     public SidewinderSpec Sidewinder { get; }
+
+    /// <summary>Optional shell defence triggered by the hero targeting this chaser.</summary>
+    public ShineSpec Shine { get; }
 
     /// <summary>
     /// Where it lurks and how it strikes, or <see langword="null"/> on an archetype that does not.

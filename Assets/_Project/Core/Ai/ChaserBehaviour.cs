@@ -48,6 +48,10 @@ public enum ChaserState
 
     /// <summary>Skittering toward a fixed fan bearing around the moving quarry.</summary>
     Spread,
+
+    Glint,
+    Shine,
+    Open,
 }
 
 /// <summary>
@@ -153,6 +157,8 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     private float _airEndsAt;
     private Vector2 _spreadBearing;
     private Vector2 _lockedFacing;
+    private float _shinePhaseEndsAt;
+    private float _nextGlintAt;
 
     /// <param name="agent">The enemy this drives. Its spec supplies every number; its blackboard, every fact.</param>
     /// <exception cref="ArgumentNullException"><paramref name="agent"/> is null.</exception>
@@ -190,6 +196,9 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
 
         _machine.OnEnter(ChaserState.Land, EnterLand);
         _machine.OnTick(ChaserState.Land, TickLand);
+        _machine.OnTick(ChaserState.Glint, TickGlint);
+        _machine.OnTick(ChaserState.Shine, TickShine);
+        _machine.OnTick(ChaserState.Open, TickOpen);
 
         // Started here rather than on the first Tick, so Current is meaningful the moment the agent
         // exists and Reset never has to ask whether the machine has run yet.
@@ -198,6 +207,10 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
 
     /// <summary>Which part of the loop this enemy is in.</summary>
     public ChaserState State => _machine.Current;
+
+    internal bool IsShining => State == ChaserState.Shine;
+
+    internal float DistanceToHero { get; set; } = float.PositiveInfinity;
 
     /// <summary>The committed tail strike direction during wind-up, or zero otherwise.</summary>
     public Vector2 LockedFacing => State == ChaserState.Windup ? _lockedFacing : Vector2.Zero;
@@ -262,7 +275,15 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     /// </remarks>
     public void Reset()
     {
+        ClearShineEffects();
         _machine.Transition(ChaserState.Idle);
+        _shinePhaseEndsAt = 0f;
+        _nextGlintAt = 0f;
+
+        if (_agent.Spec.Shine is not null)
+        {
+            _agent.DamageTaken.ReserveModifierSlot(this);
+        }
         _spreadBearing = Vector2.Zero;
         _lockedFacing = Vector2.Zero;
 
@@ -379,6 +400,14 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     private void TickChase(float dt)
     {
         EnemyBlackboard blackboard = _agent.Blackboard;
+        ShineSpec shine = _agent.Spec.Shine;
+        if (shine is not null && _now >= _nextGlintAt && DistanceToHero <= shine.TriggerRange
+            && _player.Targeter.CurrentTargetId == _agent.Id)
+        {
+            Stand(blackboard.DirectionToRealPlayer);
+            EnterShinePhase(ChaserState.Glint, ShinePhase.Glint, shine.GlintSeconds);
+            return;
+        }
 
         bool skitters = _agent.Spec.Skitter != null;
         if (skitters && blackboard.DistanceToPlayer <= _agent.Spec.Reach)
@@ -701,6 +730,82 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     }
 
     /// <summary>Emits a tick's worth of standing still, looking <paramref name="facingXZ"/>.</summary>
+    internal void CancelGlint(float now, IDomainEvents events)
+    {
+        if (State == ChaserState.Glint)
+        {
+            FinishShine(now, events);
+        }
+    }
+
+    internal void EndShineOnDeath(IDomainEvents events)
+    {
+        bool wasInPhase = State is ChaserState.Glint or ChaserState.Shine or ChaserState.Open;
+        Reset();
+        if (wasInPhase)
+        {
+            events.Publish(new EnemyShineChanged(_agent.Id, ShinePhase.None, 0f));
+        }
+    }
+
+    private void TickGlint(float dt)
+    {
+        Stand(_agent.Blackboard.DirectionToRealPlayer);
+        if (_now >= _shinePhaseEndsAt)
+        {
+            _agent.Health.SetExternalInvulnerable(true);
+            EnterShinePhase(ChaserState.Shine, ShinePhase.Shine, _agent.Spec.Shine.ShineSeconds);
+        }
+    }
+
+    private void TickShine(float dt)
+    {
+        Stand(_agent.Blackboard.DirectionToRealPlayer);
+        if (_now >= _shinePhaseEndsAt)
+        {
+            ShineSpec shine = _agent.Spec.Shine;
+            ClearShineEffects();
+            _agent.DamageTaken.Add(new Modifier(ModifierKind.PercentMult, shine.OpenDamageTaken - 1f, this));
+            EnterShinePhase(ChaserState.Open, ShinePhase.Open, shine.OpenSeconds);
+        }
+    }
+
+    private void TickOpen(float dt)
+    {
+        Stand(_agent.Blackboard.DirectionToRealPlayer);
+        if (_now >= _shinePhaseEndsAt)
+        {
+            FinishShine(_now, _events);
+        }
+    }
+
+    private void EnterShinePhase(ChaserState state, ShinePhase phase, float seconds)
+    {
+        _shinePhaseEndsAt = _now + seconds;
+        _machine.Transition(state);
+        _events.Publish(new EnemyShineChanged(_agent.Id, phase, seconds));
+    }
+
+    private void FinishShine(float now, IDomainEvents events)
+    {
+        ClearShineEffects();
+        _nextGlintAt = now + _agent.Spec.Shine.Cooldown;
+        _machine.Transition(ChaserState.Chase);
+        events.Publish(new EnemyShineChanged(_agent.Id, ShinePhase.None, 0f));
+    }
+
+    private void ClearShineEffects()
+    {
+        if (IsShining)
+        {
+            _agent.Health.SetExternalInvulnerable(false);
+        }
+        else if (State == ChaserState.Open)
+        {
+            _agent.DamageTaken.RemoveAll(this);
+        }
+    }
+
     private void Stand(Vector2 facingXZ) => Emit(Vector3.Zero, facingXZ);
 
     private void Emit(Vector3 velocity, Vector2 facingXZ)

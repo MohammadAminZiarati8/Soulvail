@@ -225,7 +225,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-09d — The body: prefab, animator, the white shine and the glass bolt (M)
 - [x] SS-09e — The glassback in the Sunscar: data, roster from stage 9 (M)
 
-**The antlion, the Sunscar's stage-11 enemy** (owner, 2026-11-12; design [GD §8.10](../GameDesign.md)). The Revenant's role: it denies safe spots. From stage 11 it tunnels unseen but for a sand ripple, comes round behind the hero, locks a red-orange ring on where the hero stands for 0.8 s and bursts up; then it sits exposed for 2.5 s and digs back in. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-10b needs the owner's TRELLIS sculpt (prompt in the spec, `.glb` path sent with the go) and may run beside SS-10a; SS-10c needs both; SS-10d needs all three. Playtestable from SS-10d with DT-01's test start at Sunscar stage 11.
+**The antlion, the Sunscar's stage-11 enemy** (owner, 2026-11-12; design [GD §8.10](../GameDesign.md)). The Revenant's role: it denies safe spots. From stage 11 it tunnels unseen but for a sand ripple, comes round behind the hero, locks a red-orange ring on where the hero stands for 0.8 s and bursts up; then it sits exposed for 2.5 s and digs back in. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-10b uses the owner's TRELLIS sculpt (path in the spec); SS-10c needs both; SS-10d needs all three. Playtestable from SS-10d with DT-01's test start at Sunscar stage 11.
 
 - [x] SS-10a — The antlion in core: tunnel behind, a ring under the hero, a slow dig (M)
 - [ ] SS-10b — The model: the owner's antlion on Rig_Beetle, mandibles, seven clips (M)

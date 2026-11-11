@@ -194,7 +194,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-05a — The slinger in core: a led throw and a retreat that cannot throw (M)
 - [x] SS-05b — The model: the jackal on Rig_Medium and a sling prop (M)
 - [x] SS-05c — The body: prefab, animator, the whirling sling and a red-orange stone (M)
-- [ ] [SS-05d](tasks/SS-05d-jackal-data.md) — The slinger in the Sunscar: data, roster from stage 8 (M)
+- [x] SS-05d — The slinger in the Sunscar: data, roster from stage 8 (M)
 
 **The bombardier beetle, the Sunscar's stage-2 enemy** (owner, 2026-11-10; design [GD §8.6](../GameDesign.md)). The Pitcher's role, plainer than the jackal: from stage 2 it plants at 12 m, turns its rear to the hero at 45°/s and lobs one slow glob at where the hero stands, under a red-orange ring; circle it close and it drops the shot. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order, before SS-05d. SS-06a and SS-06b may swap; SS-06c needs both; SS-06d needs all three. Playtestable from SS-06d with DT-01's test start at Sunscar stage 2.
 

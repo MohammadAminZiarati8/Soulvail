@@ -41,6 +41,7 @@ public sealed class SunscarTests
     private static readonly ContentId Brood = new("enemy.brood");
     private static readonly ContentId Scorpling = new("enemy.scorpling");
     private static readonly ContentId Viper = new("enemy.viper");
+    private static readonly ContentId Jackal = new("enemy.jackal");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -54,11 +55,11 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViper()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackal()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
-            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0) }));
+            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0) }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
     }
@@ -369,6 +370,83 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Jackal_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Jackal.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Jackal.asset")));
+        EnemySpec spec = definition.ToSpec();
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.jackal.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((28f, 2.8f, 3, 7, 21f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That((spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime, spec.AggroRange),
+            Is.EqualTo((12f, 1.2f, 0.7f, 2.3f, 30f)));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Spitter));
+        Assert.That(spec.Projectile, Is.Not.Null);
+        ProjectileSpec projectile = spec.Projectile;
+        Assert.That((projectile.StandoffRange, projectile.Speed, projectile.Radius, projectile.Count),
+            Is.EqualTo((12f, 7f, 1.5f, 1)));
+        Assert.That(spec.Slinger, Is.Not.Null);
+        SlingerSpec slinger = spec.Slinger;
+        Assert.That((slinger.MaxLead, slinger.RetreatSpeedFraction, slinger.RetreatTime),
+            Is.EqualTo((3f, 0.7f, 3f)));
+
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.MarksLanding, Is.True);
+        Assert.That(look.Body, Is.Not.Null);
+        Assert.That(look.Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Jackal.prefab").GetComponent<EnemyView>()));
+        Assert.That(look.Projectile, Is.Not.Null);
+        Assert.That(look.Projectile, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Projectiles/SlingStone.prefab").GetComponent<ProjectileView>()));
+    }
+
+    [Test]
+    public void Jackal_ExistingEnemies_NoSlinger()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Jackal)
+            {
+                Assert.That(spec.Slinger, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Jackal_Standoff_InsideTheStormsClearing()
+    {
+        EnemySpec spec = Catalog().Enemy(Jackal);
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        Assert.That(spec.Projectile.StandoffRange, Is.LessThan(storm.ClearRadius));
+    }
+
+    [Test]
+    public void Jackal_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Jackal).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Jackal Slinger"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_JackalFrom8()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(7, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper }));
+        count = mode.RosterFor(8, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId), Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_ViperFrom6()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -444,11 +522,16 @@ public sealed class SunscarTests
     public void Sunscar_Stage6_WavesClear() =>
         AssertStageWavesClear(6, new[] { Scorpion, Beetle, Brood, Viper, Scorpling }, maxSeconds: 240, sidestepTells: true);
 
+    [Test]
+    public void Sunscar_Stage8_WavesClear() =>
+        AssertStageWavesClear(8, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Scorpling },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true);
+
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
 
     private static RecordingEvents AssertStageWavesClear(
-        int stage, ContentId[] expectedEnemies, int maxSeconds, bool sidestepTells = false)
+        int stage, ContentId[] expectedEnemies, int maxSeconds, bool sidestepTells = false, bool dodgeLandings = false)
     {
         const float frameTime = 1f / 32f;
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
@@ -475,6 +558,7 @@ public sealed class SunscarTests
             NumericsVector3 player = NumericsVector3.Zero;
             var movementExtents = new NumericsVector3(12f, 0f, 12f);
             int tellsRead = 0;
+            int shotsRead = 0;
             for (int frame = 0; frame < maxSeconds * 32 && events.Count<StageCleared>() == 0; frame++)
             {
                 // Walk the bodies by the previous tick's intents, then report the living ones in sight.
@@ -513,6 +597,26 @@ public sealed class SunscarTests
                 if (sidestepTells)
                 {
                     player = NumericsVector3.Clamp(player, -movementExtents, movementExtents);
+                }
+
+                if (dodgeLandings)
+                {
+                    // A led throw can follow the wind-up dodge. Its landing marker fixes the target.
+                    IReadOnlyList<ProjectileFired> shots = events.Of<ProjectileFired>();
+                    for (; shotsRead < shots.Count; shotsRead++)
+                    {
+                        ProjectileFired shot = shots[shotsRead];
+                        if ((shot.SpecId == Jackal || shot.SpecId == Beetle) &&
+                            NumericsVector3.DistanceSquared(player, shot.Target) <= shot.Radius * shot.Radius)
+                        {
+                            var step = 3f * NumericsVector3.UnitX;
+                            var side = 3f * NumericsVector3.UnitZ;
+                            player = new[] { player + step, player - step, player + side, player - side }
+                                .Select(point => NumericsVector3.Clamp(point, -movementExtents, movementExtents))
+                                .OrderByDescending(point => NumericsVector3.DistanceSquared(point, shot.Target))
+                                .First();
+                        }
+                    }
                 }
 
                 world.PlayerPosition = player;

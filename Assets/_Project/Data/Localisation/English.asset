@@ -531,6 +531,8 @@ MonoBehaviour:
     _text: Scorpling
   - _key: enemy.viper.name
     _text: Sidewinder Viper
+  - _key: enemy.jackal.name
+    _text: Jackal Slinger
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

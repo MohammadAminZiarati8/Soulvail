@@ -9,13 +9,13 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-05c** — Jackal prefab, backward gait, timed sling tell and danger stone. |
-| **Next task** | SS-05d — Add the Jackal to the Sunscar roster from stage 8. |
-| **Verified** | Graphics EditMode 6599 total, 6505 passed, 2 known bar failures, 1 inconclusive, 91 skipped. Jackal body 11/11 and the shared landing ring passed. Writer and C# whitespace passed. |
+| **Last merged** | **SS-05d** — Jackal Slinger data and Sunscar stage 8 roster. |
+| **Next task** | Owner to select the next task. |
+| **Verified** | Graphics EditMode 6605 total, 6510 passed, 2 known bar failures and the writer flake, 1 inconclusive, 91 skipped. Sunscar 43/43. Writer passed on rerun. C# whitespace passed. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4, vipers at 6. A pale sac pulses before three scorplings drop. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4, vipers at 6 and jackal slingers at 8. A pale sac pulses before three scorplings drop. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

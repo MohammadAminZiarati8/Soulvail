@@ -110,6 +110,11 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Metres between neighbouring landings. Needed when the count is above 1.")]
         [SerializeField, Min(0f)] private float _projectileSpread;
 
+        [Header("Slinger — leave max lead at 0 on other archetypes")]
+        [SerializeField, Min(0f)] private float _slingerMaxLead;
+        [SerializeField, Range(0f, 1f)] private float _slingerRetreatSpeedFraction;
+        [SerializeField, Min(0f)] private float _slingerRetreatTime;
+
         [Header("Bombardier — leave the turn rate at 0 on other archetypes")]
         [SerializeField, Min(0f)] private float _bombardierTurnRateDegrees;
         [SerializeField, Range(0f, 180f)] private float _bombardierStartConeDegrees;
@@ -369,6 +374,9 @@ namespace Soulvail.Game.Authoring
                     bombardier: _bombardierTurnRateDegrees > 0f
                         ? new BombardierSpec(_bombardierTurnRateDegrees, _bombardierStartConeDegrees,
                             _bombardierDropConeDegrees)
+                        : null,
+                    slinger: _slingerMaxLead > 0f
+                        ? new SlingerSpec(_slingerMaxLead, _slingerRetreatSpeedFraction, _slingerRetreatTime)
                         : null,
                     brood: _broodCount > 0
                         ? new BroodSpec(new ContentId(_broodChildId), _broodCount, _broodBurstDelay, _broodDropRadius)

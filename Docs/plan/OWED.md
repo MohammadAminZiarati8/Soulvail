@@ -675,3 +675,12 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SS-05c — Jackal body
 
 - [Editor / device] Playtest with SS-05d's Sunscar stage 8 steps once the Jackal is in the roster.
+
+## SS-05d — Jackal Slinger in Sunscar
+
+1. [Editor] Start Sunscar stage 8 with DT-01. Check that jackals stop about 12 m out, in clear air through the storm.
+2. [Editor] Watch the glowing stone whirl during wind-up. Check that the red-orange circle lands up to 3 m ahead of a running hero and under a still hero.
+3. [Editor] Turn or stop to clear the circle, then run straight to check that the stone hits.
+4. [Editor] Rush within about 8 m. Check that the jackal backs away for about 3 s with no throw and can be caught and killed.
+5. [Editor] Check that the circle reads over quicksand and through the storm and that only the jackal's stone uses warm colors.
+6. [Device] Check that the circle and stone read at first glance on a phone.

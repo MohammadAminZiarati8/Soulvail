@@ -580,6 +580,8 @@ MonoBehaviour:
     _text: "[S\xE7\xF4rpl\xEE\xF1g \xB7\xB7\xB7\xB7]"
   - _key: enemy.viper.name
     _text: "[S\xEEd\xE9w\xEE\xF1d\xE9r V\xEEp\xE9r \xB7\xB7\xB7\xB7\xB7\xB7]"
+  - _key: enemy.jackal.name
+    _text: "[J\xE1\xE7k\xE1l Sl\xEE\xF1g\xE9r \xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.frog.name
     _text: "[Fr\xF4g \xB7\xB7]"
   - _key: enemy.pitcher.name

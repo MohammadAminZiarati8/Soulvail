@@ -18,7 +18,7 @@
 
 ## Behaviour
 
-1. `Glassback.asset`: id `enemy.glassback`, name key `enemy.glassback.name` ("Glassback Beetle"), 40 HP, 2.6 move speed, priority 2, threat 8, 24 XP, light, 12 damage, reach 1.2, wind-up 0.5, recover 0.8, aggro 30, Chaser. No pack, leap or brood. Shine 0.5 / 2 / 1 / 4 / 12 / 2 / 6 / 14 / 0.8 / 0.3 / 0.4 (SS-09a's order). Body `Glassback.prefab`.
+1. `Glassback.asset`: id `enemy.glassback`, name key `enemy.glassback.name` ("Glassback Beetle"), 40 HP, 2.6 move speed, priority 2, threat 8, 24 XP, light, 12 damage, reach 1.2, wind-up 0.5, recover 0.8, aggro 30, Chaser. No pack, leap or brood. Shine 0.5 / 2 / 1 / 4 / 12 / 2 / 6 / 14 / 0.8 / 0.3 / 0.4 (SS-09a's order). Body `Glassback.prefab`. Look: projectile `GlassBolt.prefab` with marks-landing on, so the bolt draws as the shard into the lob ring (SS-09d prewarms it from this look); no `ProjectileSpec` is built for it — the bolt's numbers are the shine's.
 2. A shine of 0 s builds no `ShineSpec`, and every existing enemy asset is unchanged.
 3. `Sunscar.asset` roster: the entries as built (scorpion 1, beetle 2, brood 4, viper 6, jackal 8, all never retired), then `enemy.glassback`, introduced 9, retired 0 (never). Boss roster and scripted stages stay empty.
 4. Stages 1–8 spawn no glassback. From stage 9 the wave budget may buy them.
@@ -30,6 +30,7 @@
 |---|---|
 | `Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassback` (replaces `…ViperJackal`) | mode / read / rule 3's entries in stage order; boss roster, scripted stages empty |
 | `Glassback_Asset_MatchesDesign` | catalog / spec / rule 1's numbers, `Shine` present, `Pack` null, `Behaviour` Chaser |
+| `Glassback_Look_GlassBoltWithRing` | definition / read / projectile `GlassBolt`, marks landing on, no `ProjectileSpec` |
 | `Glassback_ExistingEnemies_NoShine` | every other enemy spec / read / `Shine` null |
 | `Glassback_TriggerInsideTheStormsClearing` | spec + `SunscarSandstormView` / read / `TriggerRange` < `ClearRadius` |
 | `Glassback_SlowerThanEveryClass` | spec vs each character / read / move speed < class speed |

@@ -1,6 +1,6 @@
 # SS-11b — The model: the jackal priest on Rig_Medium and a sun-disc staff
 
-**Size:** M · **Depends on:** the owner's sculpt · **Branch:** `ss-11b-priest-model`
+**Size:** M · **Depends on:** — · **Branch:** `ss-11b-priest-model`
 **Design refs:** GD §8.11, §8.5, §3 › The Sunscar, §16.4, §17.1
 
 ## Goal
@@ -9,7 +9,7 @@
 
 ## The sculpt (owner)
 
-The owner generates this image, runs it through Trellis, and sends the `.glb` path with the go:
+The owner generated this image and ran it through Trellis (2026-11-12, `JackalPriest-26a529c9-seed44_00001_.glb`). Image prompt, kept for a re-roll:
 
 ```text
 A single stylized fantasy jackal-headed desert priest for a mobile game, low-poly hand-painted style like KayKit, chunky proportions, readable from above. Tall pointed ears, long snout, a tall striped headdress falling to the shoulders, a broad beaded collar, a long plain robe to the ankles with wide sleeves, a dusty umber sash, sandals. Robe is pale bleached bone, almost white; headdress stripes bone and dusty ochre; fur dusty ochre. Matte. Empty hands, no staff, no weapon, no glow. No blue, no cyan, no red, no gold. Full body T-pose, front view, symmetrical, arms straight out to the sides. Plain flat light grey background, soft even studio lighting, no shadow on the ground, no base, no text, no other objects.
@@ -28,7 +28,7 @@ A single stylized fantasy jackal-headed desert priest for a mobile game, low-pol
 
 ## Behaviour
 
-1. **The source.** Copy the owner's `.glb` (read-only) to `Sources/JackalPriest_src.glb`, and record its SHA-256 and inspected facts in *As built*. `repair_scan.py` closes it.
+1. **The source.** Copy the owner's `JackalPriest-26a529c9-seed44_00001_.glb` (`C:/Users/mazia/Documents/Codex/2026-10-23/sa/outputs/generated/`, read-only) to `Sources/JackalPriest_src.glb`, SHA-256 `d92e258071226f66b57401960ca19fd50f5d3dfb8b07a3e788ad2bf12feca577`. Inspected: one mesh, 99 770 tris, UVs, no normals, baked colour (2 images); bounds 0.85 × 1.0 × 0.32 (X × Y up × Z), symmetric across X: upright, arms out in a T. Front is ±Z, confirmed by the turnaround. `repair_scan.py` closes it and it is reduced to rule 7's budget.
 2. **Turnaround first.** `--turnaround <png>` renders the repaired, unrigged body with the staff beside it, front, side, back and top, to `Temp/jackal_priest_turnaround.png` (uncommitted). Binding and sheets start only on the owner's OK.
 3. Bound to `Rig_Medium` unchanged (23 bones), ≤ 4 weights per vertex, every vertex weighted. The robe's hem follows the legs. Height within ±10 % of the jackal's, with the headdress on top.
 4. **The staff**, built from shells in the script: a 1.6 m shaft, a sun disc 0.35 m across at the top, ringed, in bleached bone and dusty ochre — **not gold**. A `Glow` empty sits at the disc's centre (SS-11c's beam origin). Its grip origin sits where `handslot.r` holds it.

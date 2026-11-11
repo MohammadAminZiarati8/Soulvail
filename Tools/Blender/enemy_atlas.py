@@ -96,9 +96,16 @@ SWATCHES = {
     "glassback_ivory": (5, 0, "F6EAD2", "E1C7A3"),
     "glassback_amber": (5, 0, "EDD093", "DAB580"),
     "glassback_umber": (5, 1, "593525", "30190E"),
+    # SS-10b: the last gaps beside the Panther and Pitcher centre UVs, in cells
+    # the Warlord already repaints in its separate atlas.
+    "antlion_tan": (1, 2, "B78643", "835725"),
+    "antlion_ochre": (1, 2, "96632D", "563615"),
+    "antlion_bone": (5, 1, "F2E1C2", "A47A4D"),
 }
 SWATCH_NAMES = list(SWATCHES)
 INSETS = {
+    "antlion_tan": (92, 95), "antlion_ochre": (97, 100),
+    "antlion_bone": (354, 356),
     "glassback_ivory": (348, 351), "glassback_amber": (353, 356),
     "glassback_umber": (348, 351),
     "jackal_bone": (100, 104), "jackal_ochre": (356, 360), "jackal_leather": (356, 360),

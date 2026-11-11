@@ -716,3 +716,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - After SS-10c–d, use DT-01 to start Sunscar stage 11. Check the ripple tunnels through enemies and cover and the antlion emerges at the locked ring. Test beside a rock and check the full ring and the surfaced body clear it.
 - Stand inside the ring for one hit, then walk out or roll through the eruption and check that the hero takes no damage. With Beastmaster, check Bond Barrier absorbs the hit and a hound in the ring stays unharmed.
 - Check aim and tap focus skip the ripple, and that the surfaced antlion takes hits for 2.5 s before digging. Root or stun it during that window and check that the window extends by the hold.
+
+## SS-10b — Antlion model
+
+- [ ] **[Editor]** Preview Antlion's DigIn and Erupt clips from above. Check that the body disappears below the ground plane, then rises back through it and snaps its jaws.

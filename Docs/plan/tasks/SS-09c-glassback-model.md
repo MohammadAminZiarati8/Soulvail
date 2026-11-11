@@ -1,6 +1,6 @@
 # SS-09c — The model: the owner's sculpt on Rig_Beetle, wing cases, eight clips
 
-**Size:** M · **Depends on:** the owner's sculpt · **Branch:** `ss-09c-glassback-model`
+**Size:** M · **Depends on:** — · **Branch:** `ss-09c-glassback-model`
 **Design refs:** GD §8.9, §3 › The Sunscar, §16.4, §17.1
 
 ## Goal
@@ -9,7 +9,7 @@
 
 ## The sculpt (owner)
 
-The owner generates the image below, runs it through Trellis, and sends the `.glb` path with the go. Image prompt:
+The owner generated the image below and ran it through Trellis (2026-11-11, `CrystalBeetle-6ae014fa-seed44_00001_.glb`). Image prompt, kept for a re-roll:
 
 ```text
 A single stylized fantasy desert beetle for a mobile game, low-poly hand-painted style like KayKit, chunky and readable from above. Low, broad body on six short sturdy legs, small head with short mandibles. Its whole back is one big domed shell made of smoky quartz crystal: pale ivory crystal with warm amber facets, cut into large clean faceted planes, split down the middle into two wing cases with a clear seam. Body, legs and head are dark umber brown, matte. No blue, no cyan, no green, no red, no glow, no gems other than the shell. Three-quarter view from above and slightly behind the front, whole body in frame, legs spread and fully visible, symmetrical, neutral standing pose. Plain flat light grey background, soft even studio lighting, no shadow on the ground, no base, no text, no other objects.
@@ -27,8 +27,8 @@ A single stylized fantasy desert beetle for a mobile game, low-poly hand-painted
 
 ## Behaviour
 
-1. **The source.** Copy the owner's `.glb` (read-only) to `Sources/Glassback_src.glb` and record its SHA-256 and inspected facts (tris, bounds, facing) in *As built*.
-2. `repair_scan.py` closes it. Reduce to 1 500–3 000 tris. Head to Unity forward. Scale to **1.5 m** long and about **1.2 m** wide.
+1. **The source.** Copy the owner's `CrystalBeetle-6ae014fa-seed44_00001_.glb` (`Documents/Codex/2026-10-23/sa/outputs/generated/`, read-only) to `Sources/Glassback_src.glb`, SHA-256 `a0d6c5223ee8f6c8b6f7b5ac759eebce781c2bebd65b30280d0e103493efd6d4`. Inspected: one mesh, 99 247 tris, UVs, no normals, baked colour (2 images); bounds 1.0 × 0.57 × 1.0 (X × Y up × Z), symmetric across X. The low, dense end at +Z reads as the head and the tall end at −Z as the shell's rear; the turnaround confirms the facing. The legs spread as wide as the body is long.
+2. `repair_scan.py` closes it. Reduce to 1 500–3 000 tris. Head to Unity forward. Scale to **1.5 m** nose to tail; legs spread, it is about as wide.
 3. **Turnaround first.** `--turnaround <png>` renders the unbound body front, side, back and top to `Temp/glassback_turnaround.png` (uncommitted). Rigging waits for the owner's OK.
 4. Rig: `Rig_Beetle`'s bones as `beetle.py` builds them (its `Vent` empty unused, kept so the bombardier is untouched), plus `Shell_L` and `Shell_R` under `Body`, hinged at the front of each wing case.
 5. Bound by distance (`brood.py`'s `bind`), with shell vertices split at the seam to `Shell_L`/`Shell_R`, ≤ 4 weights, none unweighted.
@@ -46,7 +46,7 @@ A single stylized fantasy desert beetle for a mobile game, low-poly hand-painted
 | `GlassbackModel_ImportsItsClips` | importer / read / Generic; rule 6's clips, frames, loops |
 | `GlassbackModel_ClipsLeaveRootAlone` | each clip / sample / `Root` still |
 | `GlassbackModel_OpenLiftsTheShells` | `Open` f 20 vs `Idle` f 0 / shell bones / each ≥ 40° up |
-| `GlassbackModel_IsBroadAndLow` | rest bounds / measure / 1.4–1.6 m long, height ≤ 0.6 × width |
+| `GlassbackModel_IsBroadAndLow` | rest bounds / measure / 1.4–1.6 m long, height ≤ 0.65 × length |
 | `GlassbackModel_StandsOffTheDunes` | colour / vs Dunes sand / the scorpion's margins |
 | `GlassbackModel_NoCyanOrDanger` | swatches / hue / none in reserved bands, none blue |
 | `GlassbackSource_HashPinned` | source / hash / rule 1's |

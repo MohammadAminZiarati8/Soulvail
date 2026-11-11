@@ -9,9 +9,9 @@ _2026-11-12._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-10b** — antlion model, jaw rig and seven clips. |
-| **Next task** | SS-10c — antlion body and telegraphs. Then SS-10d and SS-11a–d. |
-| **Verified** | EditMode Core 3321/3321, Game 3298/3390 (1 inconclusive, 91 skipped), Sunscar 51/51, 0 failed. C# whitespace clean. |
+| **Last merged** | **SS-10c** — antlion prefab, phase animation and eruption warning. |
+| **Next task** | SS-10d — antlion data and Sunscar stage 11 roster. Then SS-11a–d. |
+| **Verified** | EditMode 6631/6723, 0 failed, 1 inconclusive, 91 skipped. SS-10c 12/12, Sunscar 51/51. C# whitespace clean. |
 
 ## What works
 

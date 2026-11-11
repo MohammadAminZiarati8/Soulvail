@@ -720,3 +720,10 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ## SS-10b — Antlion model
 
 - [ ] **[Editor]** Preview Antlion's DigIn and Erupt clips from above. Check that the body disappears below the ground plane, then rises back through it and snaps its jaws.
+
+
+### SS-10c — Antlion body
+
+- [ ] **Editor, after SS-10d.** Start Sunscar stage 11 with DT-01. Check that DigIn leads into the moving mound and fading trail, the body and health/status UI hide underground, and the locked ring and swirl stay visible over the storm. Step clear once and stay inside once. Check the sand puff, Erupt, Surfaced and health/status UI on the return to the surface, and check that death clears the effects.
+- [ ] **Device, after SS-10d.** Check that the ripple reads against the Dunes and the eruption ring gives time to step clear.
+

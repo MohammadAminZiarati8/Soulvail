@@ -710,3 +710,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 5. **[Editor]** After the shine the wing cases lift for 1 s and hits land double. About 4 s later it can shine again.
 6. **[Editor]** Shell, shards and rings read through the storm. Nothing on it is cyan or blue.
 7. **[device]** The glint reads at first look on a phone in time to lift a thumb.
+
+## SS-10a — Antlion core
+
+- After SS-10c–d, use DT-01 to start Sunscar stage 11. Check the ripple tunnels through enemies and cover and the antlion emerges at the locked ring. Test beside a rock and check the full ring and the surfaced body clear it.
+- Stand inside the ring for one hit, then walk out or roll through the eruption and check that the hero takes no damage. With Beastmaster, check Bond Barrier absorbs the hit and a hound in the ring stays unharmed.
+- Check aim and tap focus skip the ripple, and that the surfaced antlion takes hits for 2.5 s before digging. Root or stun it during that window and check that the window extends by the hold.

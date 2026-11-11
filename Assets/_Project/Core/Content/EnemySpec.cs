@@ -80,6 +80,9 @@ public enum EnemyBehaviourKind
 
     /// <summary>Keeps its distance and plants thorn walls beyond the player (JG-24a).</summary>
     Thornweaver,
+
+    /// <summary>Tunnels behind the hero and erupts from a locked warning ring.</summary>
+    Antlion,
 }
 
 /// <summary>
@@ -279,7 +282,7 @@ public sealed class EnemySpec
         BombardierSpec bombardier = null,
         BroodSpec brood = null,
         SidewinderSpec sidewinder = null,
-        ShineSpec shine = null)
+        ShineSpec shine = null, BurrowSpec burrow = null)
     {
         if (id.Value is null)
         {
@@ -440,7 +443,13 @@ public sealed class EnemySpec
             throw new ArgumentException("A ShineSpec requires a Chaser without PackSpec, LeapSpec or BroodSpec.", nameof(shine));
         }
 
+        if ((behaviour == EnemyBehaviourKind.Antlion) != (burrow is not null))
+        {
+            throw new ArgumentException("A BurrowSpec is required for Antlion and only for Antlion.", nameof(burrow));
+        }
+
         Shine = shine;
+        Burrow = burrow;
         Stalker = stalker;
         Thornweaver = thornweaver;
     }
@@ -606,6 +615,8 @@ public sealed class EnemySpec
 
     /// <summary>Optional shell defence triggered by the hero targeting this chaser.</summary>
     public ShineSpec Shine { get; }
+
+    public BurrowSpec Burrow { get; }
 
     /// <summary>
     /// Where it lurks and how it strikes, or <see langword="null"/> on an archetype that does not.

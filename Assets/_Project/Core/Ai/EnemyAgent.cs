@@ -311,6 +311,7 @@ public sealed class EnemyAgent
             EnemyBehaviourKind.Bulwark => Behaviour as BulwarkBehaviour ?? new BulwarkBehaviour(this),
             EnemyBehaviourKind.Stalker => Behaviour as StalkerBehaviour ?? new StalkerBehaviour(this),
             EnemyBehaviourKind.Thornweaver => Behaviour as ThornweaverBehaviour ?? new ThornweaverBehaviour(this),
+            EnemyBehaviourKind.Antlion => Behaviour as AntlionBehaviour ?? new AntlionBehaviour(this),
 
             // Boss falls through to null on purpose, and it is the one kind that does so while
             // meaning something. A BossBehaviour cannot be built from an EnemySpec — it needs the

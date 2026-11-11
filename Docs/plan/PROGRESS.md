@@ -9,9 +9,9 @@ _2026-11-12._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-10/11 design** — antlion (GD §8.10) and jackal priest (§8.11), eight specs. |
-| **Next task** | **SS-10a** (antlion core). SS-10b waits on the owner's Trellis `.glb`. Then the jackal priest, SS-11a–d. |
-| **Verified** | EditMode Core 3301/3301, Game 3287/3379 (1 inconclusive, 91 skipped), Sunscar 51/51, 0 failed. C# whitespace clean. |
+| **Last merged** | **SS-10a** — antlion core. |
+| **Next task** | SS-10b — antlion model, pending Trellis .glb. SS-10c–d and SS-11a–d queued. |
+| **Verified** | EditMode Core 3321/3321, Game 3287/3379 (1 inconclusive, 91 skipped), Sunscar 51/51, 0 failed. C# whitespace clean. |
 
 ## What works
 

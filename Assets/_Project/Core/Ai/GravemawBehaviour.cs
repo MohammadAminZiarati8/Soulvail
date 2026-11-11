@@ -301,7 +301,7 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener, IBo
     private void Arm(in EnemyTickContext ctx, Vector3 aim, float warn)
     {
         float reach = _agent.MoveSpeed.Value * _stats.TunnelSpeedScale.Value * warn;
-        Vector3 centre = OpenSpot(ctx.OpenGround, aim, reach);
+        Vector3 centre = FindOpenSpot(ctx.OpenGround, aim, _agent.Position, reach);
         State = GravemawState.Tunnel;
         RingCentre = centre;
         _elapsed = 0f;
@@ -657,7 +657,7 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener, IBo
     }
 
     // JG-25h rules 2-3: no open ground known leaves the aim; none in reach takes the nearest anywhere.
-    private Vector3 OpenSpot(IReadOnlyList<Vector3> open, Vector3 aim, float reach)
+    internal static Vector3 FindOpenSpot(IReadOnlyList<Vector3> open, Vector3 aim, Vector3 origin, float reach)
     {
         int best = -1;
         int nearest = -1;
@@ -675,7 +675,7 @@ public sealed class GravemawBehaviour : IEnemyBehaviour, IBossPhaseListener, IBo
                 nearest = i;
             }
 
-            if (distance < bestDistance && !(FlatDistanceSquared(open[i], _agent.Position) > reachSquared))
+            if (distance < bestDistance && !(FlatDistanceSquared(open[i], origin) > reachSquared))
             {
                 bestDistance = distance;
                 best = i;

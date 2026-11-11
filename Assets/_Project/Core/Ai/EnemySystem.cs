@@ -704,6 +704,11 @@ public sealed class EnemySystem
             return false;
         }
 
+        if (IsBurrowedAntlion(agent))
+        {
+            return true;
+        }
+
         float duration = Scaled(agent, Statuses.Slowed, seconds);
         if (allowHalfDurationOnBoss && agent.Behaviour is BossBehaviour)
         {
@@ -726,7 +731,11 @@ public sealed class EnemySystem
             return false;
         }
 
-        Announce(enemyId, Statuses.Marked, agent.CrowdControl.Mark(Scaled(agent, Statuses.Marked, seconds)));
+        if (!IsBurrowedAntlion(agent))
+        {
+            Announce(enemyId, Statuses.Marked, agent.CrowdControl.Mark(Scaled(agent, Statuses.Marked, seconds)));
+        }
+
         return true;
     }
 
@@ -772,7 +781,8 @@ public sealed class EnemySystem
             return false;
         }
 
-        if (agent.Poison.Apply(damagePerStackPerSecond, Scaled(agent, Statuses.Poisoned, seconds)))
+        if (!IsBurrowedAntlion(agent)
+            && agent.Poison.Apply(damagePerStackPerSecond, Scaled(agent, Statuses.Poisoned, seconds)))
         {
             _events.Publish(new EnemyStatusChanged(enemyId, Statuses.Poisoned, agent.Poison.Remaining, agent.Poison.Stacks));
         }
@@ -941,7 +951,7 @@ public sealed class EnemySystem
         DamageResult result;
         if (execute)
         {
-            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss)
+            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss || IsBurrowedAntlion(agent))
             {
                 return DamageResult.None;
             }
@@ -1347,6 +1357,13 @@ public sealed class EnemySystem
                 chaser.CancelGlint(ctx.Now, ctx.Events);
             }
 
+            // Count the part of the step covered by either hold, even when it expires this tick.
+            if (agent.Behaviour is AntlionBehaviour { State: AntlionPhase.Surfaced } antlion)
+            {
+                antlion.SurfaceHoldSeconds = MathF.Max(agent.CrowdControl.Remaining(Statuses.Stunned),
+                    agent.CrowdControl.Remaining(Statuses.Rooted));
+            }
+
             agent.CrowdControl.Tick(ctx.Dt, agent.Id, ctx.Events, Statuses);
 
             TickPoison(agent, ctx);
@@ -1416,6 +1433,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Bulwark:
                 case EnemyBehaviourKind.Stalker:
                 case EnemyBehaviourKind.Thornweaver:
+                case EnemyBehaviourKind.Antlion:
                     agent.Behaviour.Tick(behaviourCtx);
                     break;
 
@@ -1665,7 +1683,10 @@ public sealed class EnemySystem
 
     /// <summary>JG-26a: a boss refuses a status whose boss scale is zero — no timer, no event.</summary>
     private static bool Shrugs(EnemyAgent agent, StatusRule rule) =>
-        agent.Behaviour is BossBehaviour && !(rule.BossScale > 0f);
+        IsBurrowedAntlion(agent) || (agent.Behaviour is BossBehaviour && !(rule.BossScale > 0f));
+
+    private static bool IsBurrowedAntlion(EnemyAgent agent) =>
+        agent.Behaviour is AntlionBehaviour && !agent.IsVulnerable;
 
     /// <summary>Rule 1: an agent driven by a <see cref="BossSpec"/> takes the rule's share; an Elite takes full.</summary>
     private static float Scaled(EnemyAgent agent, StatusRule rule, float seconds) =>
@@ -1854,19 +1875,19 @@ public sealed class EnemySystem
             EnemyBlackboard blackboard = agent.Blackboard;
             Vector3 position = agent.Position;
 
-            // Bosses keep the player as their quarry. All other living enemies, including boss
-            // summons, use the nearest standing lure.
+            // Antlions and bosses keep the hero as their quarry instead of taking a standing lure.
             Vector3 quarry = playerPosition;
             bool lured = false;
+            bool antlion = agent.Spec.Behaviour == EnemyBehaviourKind.Antlion;
 
-            if (agent.Spec.Behaviour != EnemyBehaviourKind.Boss
+            if (!antlion && agent.Spec.Behaviour != EnemyBehaviourKind.Boss
                 && lures is not null && lures.TryGetLure(position, out Vector3 decoy))
             {
                 quarry = decoy;
                 lured = true;
             }
 
-            PetAgent pet = pets?.HuntQuarry(agent, playerPosition);
+            PetAgent pet = antlion ? null : pets?.HuntQuarry(agent, playerPosition);
             blackboard.QuarryPetId = pet?.Id ?? 0;
             blackboard.QuarryIsAPet = pet is not null;
             if (pet is not null)
@@ -2004,7 +2025,7 @@ public sealed class EnemySystem
                     agent.BroodFacing = intent.FacingXZ;
                 }
 
-                if (agent.CrowdControl.IsRooted)
+                if (agent.CrowdControl.IsRooted && !IsBurrowedAntlion(agent))
                 {
                     Inner.EnemyMove(new EnemyMoveIntent(intent.Id, Vector3.Zero, intent.FacingXZ));
 

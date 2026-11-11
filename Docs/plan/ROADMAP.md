@@ -225,6 +225,20 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-09d — The body: prefab, animator, the white shine and the glass bolt (M)
 - [x] SS-09e — The glassback in the Sunscar: data, roster from stage 9 (M)
 
+**The antlion, the Sunscar's stage-11 enemy** (owner, 2026-11-12; design [GD §8.10](../GameDesign.md)). The Revenant's role: it denies safe spots. From stage 11 it tunnels unseen but for a sand ripple, comes round behind the hero, locks a red-orange ring on where the hero stands for 0.8 s and bursts up; then it sits exposed for 2.5 s and digs back in. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-10b needs the owner's TRELLIS sculpt (prompt in the spec, `.glb` path sent with the go) and may run beside SS-10a; SS-10c needs both; SS-10d needs all three. Playtestable from SS-10d with DT-01's test start at Sunscar stage 11.
+
+- [ ] SS-10a — The antlion in core: tunnel behind, a ring under the hero, a slow dig (M)
+- [ ] SS-10b — The model: the owner's antlion on Rig_Beetle, mandibles, seven clips (M)
+- [ ] SS-10c — The body: prefab, animator, the sand ripple and the eruption ring (M)
+- [ ] SS-10d — The antlion in the Sunscar: data, roster from stage 11 (M)
+
+**The jackal priest, the Sunscar's stage-14 enemy** (owner, 2026-11-12; design [GD §8.11](../GameDesign.md)). The Choir's role: a priority target that never attacks. From stage 14 it hides behind the most hurt ally and mends it down a lime beam for up to 3 s; any hit on it breaks the beam and stops it mending for 2 s. Built after the antlion. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-11b needs the owner's TRELLIS sculpt (prompt in the spec) and may run beside SS-11a; SS-11c needs both; SS-11d needs all three and SS-10d. Playtestable from SS-11d with DT-01's test start at Sunscar stage 14.
+
+- [ ] SS-11a — The priest in core: a mend beam on the most hurt ally, broken by a hit (M)
+- [ ] SS-11b — The model: the jackal priest on Rig_Medium and a sun-disc staff (M)
+- [ ] SS-11c — The body: prefab, animator, the lime mend beam (M)
+- [ ] SS-11d — The priest in the Sunscar: data, roster from stage 14 (M)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

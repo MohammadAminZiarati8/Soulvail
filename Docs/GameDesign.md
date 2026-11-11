@@ -407,6 +407,35 @@ The Sunscar's sixth enemy (owner, 2026-11-11; SS-09), from **stage 9**. It holds
   - *Glint 0.5 s, shine 2 s, open 1 s, cooldown 4 s:* half a second is enough to lift a thumb. Two seconds is long enough that firing through it hurts. One second of double damage pays back the wait.
   - It never leaves the roster in this design. No Elite or affix in this design.
 
+### 8.10 The Sunscar — antlion
+
+The Sunscar's seventh enemy (owner, 2026-11-12; SS-10), from **stage 11**. It holds the Revenant's role (§8.1): it **denies safe spots**. It travels underground, comes round behind the hero, and bursts up under where the hero stands. A hero who stands and shoots gets bitten; a hero who sees the ring and steps away does not. Smarter than the Revenant in one way: it does not teleport, so the hero can watch it come. Its weakness is that it is slow to dig back in.
+
+- **Body.** A fat antlion larva: a round, low, bristly abdomen, a small flat head and two huge sickle mandibles longer than the head, on six short splayed legs. It is the owner's generated sculpt (SS-10b) on `Rig_Beetle`'s six legs plus a bone for each mandible. Pale sandy tan and dusty ochre with umber blotches, the mandibles bleached bone. Never cyan. The only red-orange `#FF4A1F` it shows is the eruption ring.
+- **Underground.** It enters the wave on the surface and digs in at once (0.6 s, hittable). Underground it cannot be hit, targeted, stunned or slowed, and the auto-aim skips it. The sand above it heaves in a **ripple** (a moving mound with a dust plume) that leaves a short fading trail. The ripple is the body's stand-in, so it is drawn above the storm, as every enemy is (§3 › The Sunscar).
+- **Coming round behind.** It tunnels at **4.5 m/s**, faster than every class (§6.1), toward a point **2 m behind the hero**: behind the way the hero is moving, or behind the hero's facing when standing still. The point follows the hero. It cannot lock in its first **1.5 s** underground, so it never rises where it went down.
+- **The ring, the tell.** When it is within **1.2 m** of that point, or after **4 s** underground, it stops and locks a **red-orange ring, 1.6 m radius, on where the hero stands**. A sand swirl forms in it for **0.8 s**. Then it bursts up: the jaws snap shut, and the hero takes **16** only if still inside the ring. A walking hero has left it by the time it fires. A planted one has to see it and step. The ring is the lob ring every throw uses (§16.4). Like Gravemaw's (JG-25h), it never rises inside cover: a ring that would overlap a rock or ruin moves to the nearest open ground. It hits the hero only. Pets are not its quarry.
+- **Surfaced, the weakness.** After the burst it sits in its hole for **2.5 s**, jaws open, turning to face the hero. It can be hit, stunned and slowed (a stun holds the clock), and it does not attack. Then it digs in for **0.6 s**, still hittable, and the cycle starts again.
+- **Numbers.** Its own, then §12.3 scaling: 56 HP, eruption 16, threat cost 12, target priority 5, 30 XP, walk 2.4 m/s (on the surface only, as it moves to dig in).
+  - *Priority 5:* above the viper (4), so the surfaced window goes to it when it is up, but below the priest's 8.
+  - *Tunnel 4.5 m/s:* it has to catch a running hero to get behind them. The ripple's speed is the threat, and the hero sees it.
+  - *Ring 1.6 m, 0.8 s:* the lob ring that already reads in the Grove. At any class's speed, 0.8 s carries the hero about 2.5 m, so one step from anywhere inside it clears.
+  - *Surfaced 2.5 s + dig 0.6 s:* about three seconds of free shots each cycle, against a cycle of about 7 s.
+  - It never leaves the roster in this design. No Elite or affix in this design.
+
+### 8.11 The Sunscar — jackal priest
+
+The Sunscar's eighth enemy (owner, 2026-11-12; SS-11), from **stage 14**, as §8.2's Choir row. It holds the Choir's role (§8.1, the Jungle's Moss Shaman): a **priority target** that never attacks. Smarter than the shaman in one way: it does not pulse a blanket heal. It picks the **most hurt** ally and mends it down a beam the hero can see. Its weakness is that any hit on it breaks the beam.
+
+- **Body.** A jackal-headed priest on KayKit `Rig_Medium`: the slinger's head (§8.5) under a tall striped headdress, a broad beaded collar, and a long, almost white robe to the ankles. It carries a staff with a sun-disc head as a prop, built in script. It is the owner's generated sculpt (SS-11b). The pale robe makes it the lightest thing in a Sunscar wave, so it reads as different from the slinger at first look. Never cyan, never gold, nothing red-orange `#FF4A1F`.
+- **Hiding.** It moves like the shaman (JG-16): it stays behind an ally from the hero, holds **11 m** off, and flees when the hero comes within **4 m**. The ally it hides behind is the one it is mending, so the beam always runs away from the hero.
+- **The mend, the tell.** When some ally within **10 m** is below **90 %** health and the mend is off cooldown, it picks the most hurt one (lowest health fraction, ties to the nearest), plants and raises the staff. A **lime beam** runs from the sun-disc to that ally for up to **3 s**, healing **8 % of its maximum health per second**, up to 24 %. Lime is the shaman's heal colour, so an enemy heal reads the same in both places (§16.4). The beam ends early if the ally dies, leaves 12 m or is fully healed. Then the mend is on a **3 s** cooldown. It never mends itself, another priest, or a boss.
+- **Broken, the weakness.** Any damage to the priest — a hero hit, a pet bite, poison — ends the beam at once and stops it mending for **2 s** (the 3 s cooldown runs after that). Hitting it is the answer, and its priority of 8 means the auto-aim already does that once it is in range and in line of sight.
+- **Numbers.** The Choir's, then §12.3 scaling: 60 HP, no attack, threat cost 16, target priority 8, 32 XP (the shaman's), the shaman's walk and flee speeds.
+  - *8 %/s for 3 s:* up to a quarter of an ally's health per mend. The shaman pulses 10 % to everyone. The priest's heal is bigger on one ally and easier to stop.
+  - *Broken for 2 s:* long enough that one arrow every 1.2 s keeps it from ever finishing a beam.
+  - It never leaves the roster in this design. No Elite or affix in this design.
+
 ---
 
 ## 9. Bosses

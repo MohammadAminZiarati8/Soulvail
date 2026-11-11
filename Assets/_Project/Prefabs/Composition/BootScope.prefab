@@ -86,6 +86,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5e827233635e468db70b91f35caf9a56, type: 2}
   - {fileID: 11400000, guid: ca2a73d17d674dc78a559dd56ed1d969, type: 2}
   - {fileID: 11400000, guid: e39c332a376d47e69b161182641558b8, type: 2}
+  - {fileID: 11400000, guid: 15e1e63f4bd64718a6ec3d30552545d4, type: 2}
   _modes:
   - {fileID: 11400000, guid: 32056a066ee69b94cb162eb829ecd93f, type: 2}
   - {fileID: 11400000, guid: 71f7c681caa781d48b49d2befadd82d2, type: 2}

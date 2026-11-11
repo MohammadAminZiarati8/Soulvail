@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: Glassback
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.glassback
+  _nameKey: enemy.glassback.name
+  _maxHp: 40
+  _moveSpeed: 2.6
+  _targetPriority: 2
+  _threatCost: 8
+  _xpValue: 24
+  _isElite: 0
+  _isLight: 1
+  _contactDamage: 12
+  _reach: 1.2
+  _windupTime: 0.5
+  _recoverTime: 0.8
+  _aggroRange: 30
+  _behaviour: 1
+  _projectileStandoffRange: 0
+  _glintSeconds: 0.5
+  _shineSeconds: 2
+  _shineOpenSeconds: 1
+  _shineCooldown: 4
+  _shineTriggerRange: 12
+  _shineOpenDamageTaken: 2
+  _shineBoltDamage: 6
+  _shineBoltSpeed: 14
+  _shineBoltRadius: 0.8
+  _shineBoltMinFlight: 0.3
+  _shineBoltInterval: 0.4
+  _tint: {r: 1, g: 1, b: 1, a: 1}
+  _bodyScale: 1
+  _body: {fileID: 2244053961269059208, guid: ae642ed7a1e8f62468610674fd26a377, type: 3}
+  _projectile: {fileID: 8341956425252435368, guid: 77544cdf5f4ae4f4f8e0681a5a91adc9, type: 3}
+  _marksLanding: 1

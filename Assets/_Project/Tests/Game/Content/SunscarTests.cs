@@ -42,6 +42,7 @@ public sealed class SunscarTests
     private static readonly ContentId Scorpling = new("enemy.scorpling");
     private static readonly ContentId Viper = new("enemy.viper");
     private static readonly ContentId Jackal = new("enemy.jackal");
+    private static readonly ContentId Glassback = new("enemy.glassback");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -55,11 +56,14 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackal()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassback()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
-            Is.EqualTo(new[] { (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0) }));
+            Is.EqualTo(new[]
+            {
+                (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
+            }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
     }
@@ -436,6 +440,108 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Glassback_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Glassback.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Glassback.asset")));
+        EnemySpec spec = definition.ToSpec();
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.glassback.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((40f, 2.6f, 2, 8, 24f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That((spec.ContactDamage, spec.Reach, spec.WindupTime, spec.RecoverTime, spec.AggroRange),
+            Is.EqualTo((12f, 1.2f, 0.5f, 0.8f, 30f)));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Chaser));
+        Assert.That(spec.Pack, Is.Null);
+        Assert.That(spec.Leap, Is.Null);
+        Assert.That(spec.Brood, Is.Null);
+
+        Assert.That(spec.Shine, Is.Not.Null);
+        ShineSpec shine = spec.Shine;
+        Assert.That((shine.GlintSeconds, shine.ShineSeconds, shine.OpenSeconds, shine.Cooldown,
+                shine.TriggerRange, shine.OpenDamageTaken),
+            Is.EqualTo((0.5f, 2f, 1f, 4f, 12f, 2f)));
+        Assert.That((shine.BoltDamage, shine.BoltSpeed, shine.BoltRadius, shine.BoltMinFlight, shine.BoltInterval),
+            Is.EqualTo((6f, 14f, 0.8f, 0.3f, 0.4f)));
+
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.Body, Is.Not.Null);
+        Assert.That(look.Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Glassback.prefab").GetComponent<EnemyView>()));
+    }
+
+    [Test]
+    public void Glassback_Look_GlassBoltWithRing()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Glassback.Value);
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.Projectile, Is.Not.Null);
+        Assert.That(look.Projectile, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Projectiles/GlassBolt.prefab").GetComponent<ProjectileView>()));
+        Assert.That(look.MarksLanding, Is.True);
+        Assert.That(definition.ToSpec().Projectile, Is.Null);
+    }
+
+    [Test]
+    public void Glassback_ExistingEnemies_NoShine()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Glassback)
+            {
+                Assert.That(spec.Shine, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Glassback_TriggerInsideTheStormsClearing()
+    {
+        EnemySpec spec = Catalog().Enemy(Glassback);
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        Assert.That(spec.Shine.TriggerRange, Is.LessThan(storm.ClearRadius));
+    }
+
+    [Test]
+    public void Glassback_SlowerThanEveryClass()
+    {
+        EnemySpec spec = Catalog().Enemy(Glassback);
+        foreach (string guid in AssetDatabase.FindAssets("t:CharacterDefinition", new[] { Root + "Data/Characters" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            CharacterSpec character = AssetDatabase.LoadAssetAtPath<CharacterDefinition>(path).ToSpec();
+            Assert.That(spec.MoveSpeed, Is.LessThan(character.Movement.Speed), path);
+        }
+    }
+
+    [Test]
+    public void Glassback_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Glassback).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Glassback Beetle"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_GlassbackFrom9()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(8, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal }));
+        count = mode.RosterFor(9, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_JackalFrom8()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -527,6 +633,11 @@ public sealed class SunscarTests
         AssertStageWavesClear(8, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Scorpling },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true);
 
+    [Test]
+    public void Sunscar_Stage9_WavesClear() =>
+        AssertStageWavesClear(9, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Scorpling },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true);
+
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
 
@@ -606,7 +717,7 @@ public sealed class SunscarTests
                     for (; shotsRead < shots.Count; shotsRead++)
                     {
                         ProjectileFired shot = shots[shotsRead];
-                        if ((shot.SpecId == Jackal || shot.SpecId == Beetle) &&
+                        if ((shot.SpecId == Jackal || shot.SpecId == Beetle || shot.SpecId == Glassback) &&
                             NumericsVector3.DistanceSquared(player, shot.Target) <= shot.Radius * shot.Radius)
                         {
                             var step = 3f * NumericsVector3.UnitX;

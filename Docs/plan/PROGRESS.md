@@ -2,20 +2,20 @@
 
 [OWED](OWED.md). History in Git.
 
-_2026-11-11._
+_2026-11-12._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-09d** — Glassback body, shine and bolt. |
-| **Next task** | SS-09e — Glassback data and Sunscar stage 9 roster. |
-| **Verified** | EditMode Core 3301/3301, Game 3279/3371, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
+| **Last merged** | **SS-09e** — Glassback data and Sunscar roster. |
+| **Next task** | Owner to select the next task |
+| **Verified** | EditMode Core 3301/3301, Game 3287/3379 (1 inconclusive, 91 skipped), Sunscar 51/51, 0 failed. C# whitespace clean. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4, vipers at 6 and jackal slingers at 8. A pale sac pulses before three scorplings drop. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4, vipers at 6, jackal slingers at 8 and glassbacks at 9. A pale sac pulses before three scorplings drop. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

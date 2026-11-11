@@ -238,6 +238,19 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _weaverBeyondDistance;
         [SerializeField, Min(0)] private int _weaverMaxWalls;
 
+        [Header("Shine — leave shine seconds at 0 on other archetypes")]
+        [SerializeField, Min(0f)] private float _glintSeconds;
+        [SerializeField, Min(0f)] private float _shineSeconds;
+        [SerializeField, Min(0f)] private float _shineOpenSeconds;
+        [SerializeField, Min(0f)] private float _shineCooldown;
+        [SerializeField, Min(0f)] private float _shineTriggerRange;
+        [SerializeField, Min(1f)] private float _shineOpenDamageTaken = 1f;
+        [SerializeField, Min(0f)] private float _shineBoltDamage;
+        [SerializeField, Min(0f)] private float _shineBoltSpeed;
+        [SerializeField, Min(0f)] private float _shineBoltRadius;
+        [SerializeField, Min(0f)] private float _shineBoltMinFlight;
+        [SerializeField, Min(0f)] private float _shineBoltInterval;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -254,7 +267,7 @@ namespace Soulvail.Game.Authoring
         [SerializeField] private EnemyView _body;
 
         [Tooltip("The shot this archetype throws, if it has one of its own (JG-02) — a prefab with " +
-                 "a ProjectileView. Empty flies the default bolt. Only a projectile behaviour throws.")]
+                 "a ProjectileView. Empty flies the default bolt. The core spec decides when it fires.")]
         [SerializeField] private ProjectileView _projectile;
 
         [Tooltip("Draw a filling landing ring for each lob from this archetype.")]
@@ -384,6 +397,11 @@ namespace Soulvail.Game.Authoring
                     sidewinder: _sidewinderMissRecoverTime > 0f
                         ? new SidewinderSpec(_sidewinderMissRecoverTime, _sidewinderSpeed,
                             _sidewinderArcDegrees, _sidewinderRadius, _sidewinderTimeout)
+                        : null,
+                    shine: _shineSeconds > 0f
+                        ? new ShineSpec(_glintSeconds, _shineSeconds, _shineOpenSeconds, _shineCooldown,
+                            _shineTriggerRange, _shineOpenDamageTaken, _shineBoltDamage, _shineBoltSpeed,
+                            _shineBoltRadius, _shineBoltMinFlight, _shineBoltInterval)
                         : null);
             }
             catch (ArgumentException inner)

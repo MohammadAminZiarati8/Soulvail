@@ -533,6 +533,8 @@ MonoBehaviour:
     _text: Sidewinder Viper
   - _key: enemy.jackal.name
     _text: Jackal Slinger
+  - _key: enemy.glassback.name
+    _text: Glassback Beetle
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

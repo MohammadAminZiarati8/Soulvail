@@ -699,3 +699,14 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SS-09d — Glassback body
 
 After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Death on the unscaled rig. Target a glassback through Glint, Shine and Open. Check that the white rim ramps, shimmers and switches off at Open, and that a reflected ivory shard and its danger ring stay readable through the storm. Despawn a shining glassback and check that its reused body starts dark.
+
+
+## SS-09e — The glassback in the Sunscar
+
+1. **[Editor]** DT-01, Sunscar stage 9: glassbacks walk in and bite. One the hero is not aiming at never glints.
+2. **[Editor]** Targeted within 12 m: the shell brightens for half a second, then blazes white for 2 s and takes no damage.
+3. **[Editor]** Firing into the shine sends pale shards back, each into a red-orange ring at most every 0.4 s. A step dodges them, and holding to switch Auto off stops them.
+4. **[Editor]** The Beastmaster's pets biting a shining one take no bolts.
+5. **[Editor]** After the shine the wing cases lift for 1 s and hits land double. About 4 s later it can shine again.
+6. **[Editor]** Shell, shards and rings read through the storm. Nothing on it is cyan or blue.
+7. **[device]** The glint reads at first look on a phone in time to lift a thumb.

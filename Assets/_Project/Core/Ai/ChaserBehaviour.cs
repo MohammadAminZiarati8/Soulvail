@@ -159,6 +159,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     private Vector2 _lockedFacing;
     private float _shinePhaseEndsAt;
     private float _nextGlintAt;
+    private double _nextBoltAt = double.NegativeInfinity;
 
     /// <param name="agent">The enemy this drives. Its spec supplies every number; its blackboard, every fact.</param>
     /// <exception cref="ArgumentNullException"><paramref name="agent"/> is null.</exception>
@@ -233,10 +234,7 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
     /// <see cref="EnemyTickContext"/> was built. The same asymmetry <c>RunSession.Tick</c> draws
     /// with its snapshot.
     /// </para>
-    /// <para>
-    /// <see cref="EnemyTickContext.Projectiles"/> is deliberately ignored: a Husk throws nothing.
-    /// The context is what a behaviour <em>may</em> reach, not what it must.
-    /// </para>
+
     /// <para>
     /// Allocates nothing: the machine's <c>Tick</c> is allocation-free by construction, the handlers
     /// are delegates built once, and everything below is struct arithmetic over fields.
@@ -253,6 +251,10 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         try
         {
             _machine.Tick(ctx.Dt);
+            if (_agent.PendingBoltLanding is Vector3 landing)
+            {
+                FireReflection(ctx, landing);
+            }
         }
         finally
         {
@@ -794,8 +796,33 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         events.Publish(new EnemyShineChanged(_agent.Id, ShinePhase.None, 0f));
     }
 
+    internal void QueueReflection(float now, Vector3 landing)
+    {
+        if (now >= _nextBoltAt && now < _shinePhaseEndsAt && !_agent.PendingBoltLanding.HasValue)
+        {
+            _agent.PendingBoltLanding = landing;
+        }
+    }
+
+    private void FireReflection(in EnemyTickContext ctx, Vector3 landing)
+    {
+        ShineSpec shine = _agent.Spec.Shine;
+        _agent.PendingBoltLanding = null;
+        _nextBoltAt = (double)ctx.Now + shine.BoltInterval;
+
+        Vector3 origin = _agent.Blackboard.SelfPosition;
+        var shot = new Projectile(_agent.Spec.Id, _agent.Id, origin, landing, shine.BoltSpeed,
+            shine.BoltRadius, _agent.BoltDamage, minimumFlight: shine.BoltMinFlight);
+        if (ctx.Projectiles.Fire(shot, ctx.Now) != ProjectileSystem.NoProjectile)
+        {
+            ctx.Events.Publish(new EnemyReflected(shot.SourceId, origin, landing, shot.FlightTime));
+        }
+    }
+
     private void ClearShineEffects()
     {
+        _agent.PendingBoltLanding = null;
+        _nextBoltAt = double.NegativeInfinity;
         if (IsShining)
         {
             _agent.Health.SetExternalInvulnerable(false);

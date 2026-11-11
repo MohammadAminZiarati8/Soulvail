@@ -9,9 +9,9 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-09c** — Glassback model, wing cases and eight clips. |
-| **Next task** | SS-09b — Glassback reflection. |
-| **Verified** | EditMode Core 3273/3273, Game 3266/3358, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
+| **Last merged** | **SS-09b** — Glassback reflection. |
+| **Next task** | SS-09d — Glassback body, animator, shine and bolt. |
+| **Verified** | EditMode Core 3301/3301, Game 3266/3358, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
 
 ## What works
 

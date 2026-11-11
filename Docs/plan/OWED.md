@@ -690,3 +690,7 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 
 - [x] [Editor] Owner approved the turnaround before rigging.
 - [ ] [Editor] Preview Glassback's Open clip from above. At frame 20 both wing cases should part clearly.
+
+## SS-09b — Glassback reflection
+
+- After SS-09e, use DT-01 to start Sunscar stage 9. Fire rapidly into the shining shell and check the bolt cadence. Compare standing still, stepping out of the landing ring, and rolling through the impact. Check that a pet bite produces no bolt.

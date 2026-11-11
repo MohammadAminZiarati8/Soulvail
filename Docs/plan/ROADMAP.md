@@ -220,7 +220,7 @@ _No milestone. The owner is setting the next direction._
 **The glassback beetle, the Sunscar's stage-9 enemy** (owner, 2026-11-11; design [GD §8.9](../GameDesign.md)). No Jungle role: it punishes firing without looking. A melee chaser that, when it is the hero's target, glints for 0.5 s and then shines for 2 s. While shining it takes no damage and sends a glass bolt back for each hero hit. Then it stands open for 1 s at double damage. Specs in [tasks/](tasks/), each built only on the owner's go, one at a time, in this order. SS-09b needs SS-09a. SS-09c uses the owner's sculpt (path in the spec) and may run beside SS-09a–b. SS-09d needs SS-09a–c, and SS-09e needs all four. Playtestable from SS-09e with DT-01's test start at Sunscar stage 9.
 
 - [x] SS-09a — The glassback in core: glint, shine, open, on the hero's target (M)
-- [ ] [SS-09b](tasks/SS-09b-glassback-reflect.md) — The reflection: hero hits on a shining shell send glass bolts back (M)
+- [x] SS-09b — The reflection: hero hits on a shining shell send glass bolts back (M)
 - [x] SS-09c — The model: the owner's sculpt on Rig_Beetle, wing cases, eight clips (M)
 - [ ] [SS-09d](tasks/SS-09d-glassback-body.md) — The body: prefab, animator, the white shine and the glass bolt (M)
 - [ ] [SS-09e](tasks/SS-09e-glassback-data.md) — The glassback in the Sunscar: data, roster from stage 9 (M)

@@ -97,7 +97,7 @@ public readonly struct Projectile
         float damage,
         ShotSide side = ShotSide.AtPlayer,
         bool isVolley = false, bool isCrit = false, BindingShot bind = null,
-        ShotOrigin shotOrigin = ShotOrigin.Ranger)
+        ShotOrigin shotOrigin = ShotOrigin.Ranger, float minimumFlight = 0f)
     {
         SpecId = specId;
         SourceId = sourceId;
@@ -116,10 +116,23 @@ public readonly struct Projectile
 
         Bind = bind;
         ShotOrigin = shotOrigin;
+        MinimumFlight = NotNegative(minimumFlight, nameof(minimumFlight));
     }
 
     /// <summary>Which archetype fired it, e.g. <c>enemy.spitter</c>.</summary>
     public ContentId SpecId { get; }
+
+    internal float MinimumFlight { get; }
+
+    internal float FlightTime
+    {
+        get
+        {
+            float dx = Target.X - Origin.X;
+            float dz = Target.Z - Origin.Z;
+            return MathF.Max(MinimumFlight, MathF.Sqrt((dx * dx) + (dz * dz)) / Speed);
+        }
+    }
 
     /// <summary>
     /// Which enemy fired it, or 0 for nobody.
@@ -431,9 +444,7 @@ public sealed class ProjectileSystem
             return NoProjectile;
         }
 
-        float dx = shot.Target.X - shot.Origin.X;
-        float dz = shot.Target.Z - shot.Origin.Z;
-        float flightTime = MathF.Sqrt((dx * dx) + (dz * dz)) / shot.Speed;
+        float flightTime = shot.FlightTime;
 
         int id = _nextId;
         _nextId++;
@@ -639,7 +650,7 @@ public sealed class ProjectileSystem
 
         int damagedId = NoContact;
         bool hit = shot.Side == ShotSide.AtEnemies
-            ? LandOnEnemies(flight, now, player, enemies, out damagedId)
+            ? LandOnEnemies(flight, now, playerPosition, player, enemies, out damagedId)
             : LandOnPlayer(shot, now, playerPosition, player);
 
         // **One orb is one Kindling stack however many it caught, and a miss is nothing** (M6-07a
@@ -735,6 +746,7 @@ public sealed class ProjectileSystem
     private bool LandOnEnemies(
         in InFlight flight,
         float now,
+        Vector3 playerPosition,
         PlayerCombat player,
         EnemySystem enemies,
         out int damagedId)
@@ -761,7 +773,7 @@ public sealed class ProjectileSystem
             float far = EagleEye.FarDistance;
             float multiplier = ((delta.X * delta.X) + (delta.Z * delta.Z)) > far * far ? farMultiplier : 1f;
             float damage = PlayerCombat.ShotDamage(shot.Damage * multiplier);
-            if (enemies.ApplyDamage(target.Id, damage, now, player).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
+            if (enemies.ApplyHeroDamage(target.Id, damage, now, player, playerPosition).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
             {
                 player.HitAndRun.OnHit(now);
             }
@@ -809,7 +821,7 @@ public sealed class ProjectileSystem
                 return false;
             }
 
-            if (enemies.ApplyDamage(target.Id, shot.Damage, now, player).Applied > 0f)
+            if (enemies.ApplyHeroDamage(target.Id, shot.Damage, now, player, playerPosition).Applied > 0f)
             {
                 if (shot.ShotOrigin == ShotOrigin.Ranger)
                 {
@@ -861,7 +873,7 @@ public sealed class ProjectileSystem
             // `this` to the same door: a bolt that kills a Bloater is a bolt that set one off, and
             // whether that reaches the player is PlayerCombat.ApplyDamage's question rather than
             // this method's. Only applied damage refreshes Hit and Run.
-            if (enemies.ApplyDamage(agent.Id, shot.Damage, now, player).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
+            if (enemies.ApplyHeroDamage(agent.Id, shot.Damage, now, player, playerPosition).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
             {
                 player.HitAndRun.OnHit(now);
             }

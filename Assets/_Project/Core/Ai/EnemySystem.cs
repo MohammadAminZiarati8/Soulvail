@@ -157,6 +157,7 @@ public sealed class EnemySystem
     /// <c>RunSession.Start</c> from the mode's curves.
     /// </summary>
     private readonly DepthScaling _scaling;
+    private readonly List<Modifier> _spawnDamageModifiers = new(1);
 
     /// <summary>
     /// Ids queued by <see cref="DespawnAtEndOfTick"/>, retired at the bottom of <see cref="Tick"/>.
@@ -419,6 +420,14 @@ public sealed class EnemySystem
         // (EnemyAgent.Initialise, ledger row 2), so this is applying depth to an archetype's
         // authored numbers and never on top of a previous life's.
         _scaling.Apply(agent, _depth);
+        if (spec.Shine is ShineSpec shine)
+        {
+            // At spawn, contact damage carries only the depth modifier. Reuse it even
+            // for a glassback whose base bite is zero.
+            agent.ContactDamage.CopyModifiersTo(_spawnDamageModifiers);
+            agent.BoltDamage = shine.BoltDamage * (1f + _spawnDamageModifiers[0].Value);
+            _spawnDamageModifiers.Clear();
+        }
 
         // **GD §10.2's first row, applied here because here is where a body is born** (M6-04
         // rule 4). Immediately after the depth scaling, on top of it rather than instead of it: a
@@ -863,6 +872,14 @@ public sealed class EnemySystem
     public DamageResult ApplyDamage(int enemyId, float amount, float now, PlayerCombat player)
         => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true);
 
+    /// <summary>Resolves a hero weapon hit and lets a shining shell reflect it.</summary>
+    public DamageResult ApplyHeroDamage(int enemyId, float amount, float now, PlayerCombat player)
+        => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true,
+            heroPosition: player?.Blackboard.PlayerPosition);
+
+    internal DamageResult ApplyHeroDamage(int enemyId, float amount, float now, PlayerCombat player, Vector3 heroPosition)
+        => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true, heroPosition: heroPosition);
+
     /// <summary>
     /// BT-09b: damage that knows where it came from. A frontal guard judges <paramref name="from"/>
     /// against its arc: a hit it does not cover takes the guard-piercing path, one it covers is
@@ -906,7 +923,8 @@ public sealed class EnemySystem
     }
 
     private DamageResult ResolveDamage(
-        int enemyId, float amount, float now, PlayerCombat player, bool execute, bool explode, bool pierceGuard = false)
+        int enemyId, float amount, float now, PlayerCombat player, bool execute, bool explode,
+        bool pierceGuard = false, Vector3? heroPosition = null)
     {
         if (player is null)
         {
@@ -945,6 +963,11 @@ public sealed class EnemySystem
         if (!result.Blocked && !(result.Applied > 0f))
         {
             return result;
+        }
+
+        if (result.Blocked && heroPosition is Vector3 landing && agent.Behaviour is ChaserBehaviour { IsShining: true } chaser)
+        {
+            chaser.QueueReflection(now, landing);
         }
 
         _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed, result.Blocked));

@@ -445,3 +445,21 @@ public readonly struct EnemyShineChanged
     public ShinePhase Phase { get; }
     public float Seconds { get; }
 }
+
+
+/// <summary>A reflected bolt left the shell for the recorded landing.</summary>
+public readonly struct EnemyReflected
+{
+    public EnemyReflected(int id, Vector3 from, Vector3 landing, float seconds)
+    {
+        Id = id;
+        From = from;
+        Landing = landing;
+        Seconds = seconds;
+    }
+
+    public int Id { get; }
+    public Vector3 From { get; }
+    public Vector3 Landing { get; }
+    public float Seconds { get; }
+}

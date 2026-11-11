@@ -1129,7 +1129,7 @@ public sealed class PlayerCombat
             // `this` is what a blast would be resolved against: killing an enemy can now hurt the
             // player, because an archetype carrying an ExplosionSpec goes off where it died
             // (M2-08 rule 3). A cone hit that kills a Bloater in melee therefore costs the swinger.
-            DamageResult result = enemies.ApplyDamage(id, damage, now, this);
+            DamageResult result = enemies.ApplyHeroDamage(id, damage, now, this);
 
             // Recorded only when the hit reached something, which is what bounds the buffer: an
             // id that resolved to nothing costs nothing to process again, and one that was
@@ -1277,7 +1277,7 @@ public sealed class PlayerCombat
             // blast reaches the player — PlayerCombat.ApplyDamage owns that question, not the blast.
             if (deals)
             {
-                enemies.ApplyDamage(id, damage, now, this);
+                enemies.ApplyHeroDamage(id, damage, now, this);
             }
 
             if (shoves)

@@ -112,6 +112,10 @@ public sealed class EnemyAgent
     /// <summary>Multiplier applied to every incoming hit before Health sees it; base 1.</summary>
     public Stat DamageTaken { get; }
 
+    internal Vector3? PendingBoltLanding { get; set; }
+
+    internal float BoltDamage { get; set; }
+
     /// <summary>
     /// Its stun, root and slow timers (MK-06a). Stable across recycling; cleared by
     /// <see cref="Initialise"/>. Written through <c>EnemySystem</c>, never by a behaviour.
@@ -283,6 +287,8 @@ public sealed class EnemyAgent
         }
 
         Blackboard.Reset();
+        PendingBoltLanding = null;
+        BoltDamage = spec.Shine?.BoltDamage ?? 0f;
 
         // After the blackboard, and the order is load-bearing the same way the two health lines
         // below are: a behaviour's Reset clears StateTimer, and doing it before Blackboard.Reset

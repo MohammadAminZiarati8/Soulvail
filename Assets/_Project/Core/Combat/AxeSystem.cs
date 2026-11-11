@@ -254,7 +254,7 @@ public sealed class AxeSystem
             }
 
             hitIds[_hitCounts[slot]++] = bestId;
-            DamageResult result = enemies.ApplyDamage(bestId, damage, now, player);
+            DamageResult result = enemies.ApplyHeroDamage(bestId, damage, now, player);
             if (_weapon.MarkSeconds > 0f)
             {
                 enemies.Mark(bestId, _weapon.MarkSeconds);

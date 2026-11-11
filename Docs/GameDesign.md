@@ -392,6 +392,21 @@ The Sunscar's fourth enemy (owner, 2026-11-11; SS-08). It holds the Lunger's rol
   - *Sidewind 2.8 m/s, 45°, 7 m, 2.5 s:* 2.8 is the scorpling's, under every class, so the hero can always step away from it; 45° at 7 m is about 2 s of sliding, a clearly new angle that still finishes inside 8 m; 2.5 s ends a sidewind a wall has stopped.
   - It hunts alone (no pack, unlike the Shadow panther). Against a pet it strikes as the panther does, no strip, and always recoils short. It never leaves the roster in this design.
 
+### 8.9 The Sunscar — glassback beetle
+
+The Sunscar's sixth enemy (owner, 2026-11-11; SS-09), from **stage 9**. It holds no Jungle role, and it is the first new mechanic in the desert: it punishes **firing without looking**. Its shell turns hits back at the shooter, and it only raises that shell when the hero is aiming at it. So the answer is to stop shooting it (hold to switch Auto off) or to step so the auto-aim picks something else. Then it stands open and soft.
+
+- **Body.** A beetle a little bigger than the bombardier, low and broad on six legs, its back one domed shell of **smoky quartz**: pale ivory crystal with warm amber facets, the only glassy thing in the desert. The body under it is dark umber, and the shell splits down the middle into two wing cases. It is the owner's generated sculpt (SS-09c) on `Rig_Beetle`'s six legs plus a bone for each wing case. Never blue or cyan, so the crystal can never read as the player's (§16.4). It carries no red-orange `#FF4A1F`: only its bolt's landing ring is warm.
+- **Approach and bite.** It walks at the hero and bites in melee with a short wind-up, the plain chaser (§8.1 Husk's movement), alone.
+- **The glint, the tell.** When it is the hero's **current target**, within **12 m** (inside the storm's 13 m clearing, so the glint is always seen in clear air), off cooldown and not mid-bite, it stops and its shell **glints for 0.5 s**: the facets brighten to white, from the edge in. Hits still land normally during the glint. That is the warning, and a stun during the glint cancels the shine and starts the cooldown.
+- **The shine.** For **2 s** the shell blazes white and the beetle stands braced. Nothing hurts it. It stays a valid auto-aim target on purpose: the trap is a gun that keeps firing. Every hit from the **hero's own weapon** (arrow, Killshot, axe, swing, charge) sends back **one glass bolt**, at most one per **0.4 s**. The bolt flies at the hero's position as it was hit, at **14 m/s** (never under 0.3 s of flight), and lands inside the red-orange lob ring (§16.4), **0.8 m** radius, for **6** damage. A hero who keeps firing takes up to five bolts; one who moves, dodges them; one who stops firing takes none. Pets, the hawk, poison, blasts and summons are turned away with no bolt, so a pet never pays for its master.
+- **Open, the weakness.** When the shine ends, the wing cases lift and the soft body shows for **1 s**. It stands still and takes **double damage**. Then the shell closes and it walks again, with a **4 s** cooldown before it can glint again.
+- **Numbers.** Its own, then §12.3 scaling: 40 HP, 12 bite damage, threat cost 8, target priority 2, 24 XP, walk 2.6 m/s.
+  - *Priority 2:* below the beetle (3) and viper (4), with the brood, so in a mixed wave the auto-aim usually prefers something else and the shine comes up when the glassback is close or alone, which is when the lesson is clearest.
+  - *Bolt 6, one per 0.4 s:* five bolts is 30 damage, the price of a full shine fired straight into, and a dodge takes them all away. Less than a scorpion's bite each, so one mistake teaches without killing.
+  - *Glint 0.5 s, shine 2 s, open 1 s, cooldown 4 s:* half a second is enough to lift a thumb. Two seconds is long enough that firing through it hurts. One second of double damage pays back the wait.
+  - It never leaves the roster in this design. No Elite or affix in this design.
+
 ---
 
 ## 9. Bosses

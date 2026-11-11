@@ -10,7 +10,7 @@ _2026-11-11._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **SS-05d** — Jackal Slinger data and Sunscar stage 8 roster. |
-| **Next task** | Owner to select the next task. |
+| **Next task** | SS-09a — Glassback core (09a–e specced; 09c needs sculpt). |
 | **Verified** | Graphics EditMode 6605 total, 6510 passed, 2 known bar failures and the writer flake, 1 inconclusive, 91 skipped. Sunscar 43/43. Writer passed on rerun. C# whitespace passed. |
 
 ## What works

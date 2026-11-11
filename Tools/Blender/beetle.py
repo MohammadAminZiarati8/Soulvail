@@ -200,7 +200,9 @@ CLIPS = {"Idle": 48, "Walk": 16, "Turn": 24, "Aim": 21, "Fire": 12, "Hit": 12, "
 AIM_LIFT = math.radians(24)
 
 
-def rig(body, ground):
+def build_armature(leg_joints=LEG_JOINTS, *, body_joints=((0, -0.22, 0.85), (0, -0.60, 0.85)),
+                   head_joints=((0, -0.77, 0.88), (0, -1.16, 0.91)),
+                   abdomen_joints=((0, -0.20, 0.90), (0, 0.93, 1.24))):
     data = bpy.data.armatures.new("Rig_Beetle")
     arm = bpy.data.objects.new(data.name, data)
     bpy.context.scene.collection.objects.link(arm)
@@ -216,12 +218,12 @@ def rig(body, ground):
 
     add("Root", None, (0, 0, 0), (0, 0, 0.2))
     data.edit_bones["Root"].use_deform = False
-    add("Body", "Root", (0, -0.22, 0.85), (0, -0.60, 0.85))
-    add("Head", "Body", (0, -0.77, 0.88), (0, -1.16, 0.91))
-    add("Abdomen", "Body", (0, -0.20, 0.90), (0, 0.93, 1.24))
+    add("Body", "Root", *body_joints)
+    add("Head", "Body", *head_joints)
+    add("Abdomen", "Body", *abdomen_joints)
     legs = []
     for side, suffix in ((1, "L"), (-1, "R")):
-        for index, joints in enumerate(LEG_JOINTS, 1):
+        for index, joints in enumerate(leg_joints, 1):
             hip, knee, foot = (Vector((side * x, y, z)) for x, y, z in joints)
             upper, lower = (f"Leg_{suffix}_{index}_{part}" for part in ("Upper", "Lower"))
             add(upper, "Body", hip, knee)
@@ -229,6 +231,11 @@ def rig(body, ground):
             legs.append((side, index, upper, lower, hip, knee, foot))
 
     bpy.ops.object.mode_set(mode="OBJECT")
+    return arm, legs
+
+
+def rig(body, ground):
+    arm, legs = build_armature()
     body.parent = arm
     modifier = body.modifiers.new("Beetle skin", "ARMATURE")
     modifier.object = arm

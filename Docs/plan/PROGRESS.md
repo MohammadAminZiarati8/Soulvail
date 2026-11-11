@@ -9,9 +9,9 @@ _2026-11-11._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-09a** — Glassback glint, shine and open in core. |
+| **Last merged** | **SS-09c** — Glassback model, wing cases and eight clips. |
 | **Next task** | SS-09b — Glassback reflection. |
-| **Verified** | EditMode Core 3273/3273, Game 3256/3348, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
+| **Verified** | EditMode Core 3273/3273, Game 3266/3358, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
 
 ## What works
 

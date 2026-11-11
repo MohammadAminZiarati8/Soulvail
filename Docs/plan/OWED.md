@@ -684,3 +684,9 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 4. [Editor] Rush within about 8 m. Check that the jackal backs away for about 3 s with no throw and can be caught and killed.
 5. [Editor] Check that the circle reads over quicksand and through the storm and that only the jackal's stone uses warm colors.
 6. [Device] Check that the circle and stone read at first glance on a phone.
+
+
+## SS-09c — Glassback model
+
+- [x] [Editor] Owner approved the turnaround before rigging.
+- [ ] [Editor] Preview Glassback's Open clip from above. At frame 20 both wing cases should part clearly.

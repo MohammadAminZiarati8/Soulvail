@@ -221,7 +221,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SS-09a — The glassback in core: glint, shine, open, on the hero's target (M)
 - [ ] [SS-09b](tasks/SS-09b-glassback-reflect.md) — The reflection: hero hits on a shining shell send glass bolts back (M)
-- [ ] [SS-09c](tasks/SS-09c-glassback-model.md) — The model: the owner's sculpt on Rig_Beetle, wing cases, eight clips (M)
+- [x] SS-09c — The model: the owner's sculpt on Rig_Beetle, wing cases, eight clips (M)
 - [ ] [SS-09d](tasks/SS-09d-glassback-body.md) — The body: prefab, animator, the white shine and the glass bolt (M)
 - [ ] [SS-09e](tasks/SS-09e-glassback-data.md) — The glassback in the Sunscar: data, roster from stage 9 (M)
 

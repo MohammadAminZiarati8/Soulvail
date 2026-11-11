@@ -92,9 +92,15 @@ SWATCHES = {
     "jackal_bone": (1, 2, "E5D7BF", "A9895F"),
     "jackal_ochre": (5, 0, "AF7734", "77420D"),
     "jackal_leather": (5, 1, "744618", "301706"),
+    # SS-09c: leave the centre's two sampled pixels and all prior insets intact.
+    "glassback_ivory": (5, 0, "F6EAD2", "E1C7A3"),
+    "glassback_amber": (5, 0, "EDD093", "DAB580"),
+    "glassback_umber": (5, 1, "593525", "30190E"),
 }
 SWATCH_NAMES = list(SWATCHES)
 INSETS = {
+    "glassback_ivory": (348, 351), "glassback_amber": (353, 356),
+    "glassback_umber": (348, 351),
     "jackal_bone": (100, 104), "jackal_ochre": (356, 360), "jackal_leather": (356, 360),
     "viper_ochre": (344, 348), "viper_umber": (344, 348),
     "viper_belly": (88, 92),

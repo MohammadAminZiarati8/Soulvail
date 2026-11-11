@@ -1,0 +1,254 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &-543018930427703063
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_GlassBolt
+  m_Shader: {fileID: 4800000, guid: 9588bc2c228f37e4d920fb6fd8b62ff9, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Alpha: 1
+    - _Cull: 2
+    - _DstBlend: 10
+    - _FresnelPower: 1
+    - _SrcBlend: 5
+    - _ZWrite: 1
+    m_Colors:
+    - _CoreColor: {r: 1, g: 0.98, b: 0.88, a: 1}
+    - _MidColor: {r: 0.94, g: 0.89, b: 0.78, a: 1}
+    - _RimColor: {r: 1, g: 0.99, b: 0.93, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_GlassbackShine
+  m_Shader: {fileID: 4800000, guid: 9588bc2c228f37e4d920fb6fd8b62ff9, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Alpha: 0
+    - _Cull: 2
+    - _DstBlend: 1
+    - _FresnelPower: 1.5
+    - _SrcBlend: 5
+    - _ZWrite: 0
+    m_Colors:
+    - _CoreColor: {r: 0, g: 0, b: 0, a: 1}
+    - _MidColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
+    - _RimColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
+--- !u!43 &2201732132227397365
+Mesh:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: GlassBolt shard
+  serializedVersion: 12
+  m_SubMeshes:
+  - serializedVersion: 2
+    firstByte: 0
+    indexCount: 24
+    topology: 0
+    baseVertex: 0
+    firstVertex: 0
+    vertexCount: 24
+    localAABB:
+      m_Center: {x: 0.006000001, y: 0.008000001, z: 0.06999999}
+      m_Extent: {x: 0.078999996, y: 0.060000002, z: 0.25}
+  m_Shapes:
+    vertices: []
+    shapes: []
+    channels: []
+    fullWeights: []
+  m_BindPose: []
+  m_BoneNameHashes:
+  m_RootBoneNameHash: 0
+  m_BonesAABB: []
+  m_VariableBoneCountWeights:
+    m_Data:
+  m_MeshCompression: 0
+  m_IsReadable: 1
+  m_KeepVertices: 1
+  m_KeepIndices: 1
+  m_IndexFormat: 0
+  m_IndexBuffer: 00000100020003000400050006000700080009000a000b000c000d000e000f0010001100120013001400150016001700
+  m_VertexData:
+    serializedVersion: 3
+    m_VertexCount: 24
+    m_Channels:
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 3
+    - stream: 0
+      offset: 12
+      format: 0
+      dimension: 3
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 24
+      format: 0
+      dimension: 4
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    m_DataSize: 960
+    _typelessdata: 7b14ae3d000000005c8fc2bd2cae293fead33d3fed29d53d0000803f0000803f0000803f0000803f0ad7a33b96438b3d295c8fbd2cae293fead33d3fed29d53d0000803f0000803f0000803f0000803fa69b443c4260e53b0ad7a33e2cae293fead33d3fed29d53d0000803f0000803f0000803f0000803f0ad7a33b96438b3d295c8fbd3627da3e3a4e353f2e1b10bf0000803f0000803f0000803f0000803f7b14ae3d000000005c8fc2bd3627da3e3a4e353f2e1b10bf0000803f0000803f0000803f0000803f426065bc6f1203bcec5138be3627da3e3a4e353f2e1b10bf0000803f0000803f0000803f0000803f0ad7a33b96438b3d295c8fbd84d91dbf87ab463f01a1073ed7a3703fd7a3703fd7a3703f0000803f068195bda69b443c3d0ad7bd84d91dbf87ab463f01a1073ed7a3703fd7a3703fd7a3703f0000803fa69b443c4260e53b0ad7a33e84d91dbf87ab463f01a1073ed7a3703fd7a3703fd7a3703f0000803f068195bda69b443c3d0ad7bd1f82b4be701a4c3fd9dafabed7a3703fd7a3703fd7a3703f0000803f0ad7a33b96438b3d295c8fbd1f82b4be701a4c3fd9dafabed7a3703fd7a3703fd7a3703f0000803f426065bc6f1203bcec5138be1f82b4be701a4c3fd9dafabed7a3703fd7a3703fd7a3703f0000803f068195bda69b443c3d0ad7bdf53a32bfd9ae34bfde14063eae47613fae47613fae47613f0000803f0ad723bcf4fd54bd1f85ebbdf53a32bfd9ae34bfde14063eae47613fae47613fae47613f0000803fa69b443c4260e53b0ad7a33ef53a32bfd9ae34bfde14063eae47613fae47613fae47613f0000803f0ad723bcf4fd54bd1f85ebbdbf5a30bfff861ebf9beac0beae47613fae47613fae47613f0000803f068195bda69b443c3d0ad7bdbf5a30bfff861ebf9beac0beae47613fae47613fae47613f0000803f426065bc6f1203bcec5138bebf5a30bfff861ebf9beac0beae47613fae47613fae47613f0000803f0ad723bcf4fd54bd1f85ebbdadadec3ebaaa61bf58fbc43d85eb513f85eb513f85eb513f0000803f7b14ae3d000000005c8fc2bdadadec3ebaaa61bf58fbc43d85eb513f85eb513f85eb513f0000803fa69b443c4260e53b0ad7a33eadadec3ebaaa61bf58fbc43d85eb513f85eb513f85eb513f0000803f7b14ae3d000000005c8fc2bd6e9cfc3e36b634bfc11902bf85eb513f85eb513f85eb513f0000803f0ad723bcf4fd54bd1f85ebbd6e9cfc3e36b634bfc11902bf85eb513f85eb513f85eb513f0000803f426065bc6f1203bcec5138be6e9cfc3e36b634bfc11902bf85eb513f85eb513f85eb513f0000803f
+  m_CompressedMesh:
+    m_Vertices:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data:
+      m_BitSize: 0
+    m_UV:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data:
+      m_BitSize: 0
+    m_Normals:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data:
+      m_BitSize: 0
+    m_Tangents:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data:
+      m_BitSize: 0
+    m_Weights:
+      m_NumItems: 0
+      m_Data:
+      m_BitSize: 0
+    m_NormalSigns:
+      m_NumItems: 0
+      m_Data:
+      m_BitSize: 0
+    m_TangentSigns:
+      m_NumItems: 0
+      m_Data:
+      m_BitSize: 0
+    m_FloatColors:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data:
+      m_BitSize: 0
+    m_BoneIndices:
+      m_NumItems: 0
+      m_Data:
+      m_BitSize: 0
+    m_Triangles:
+      m_NumItems: 0
+      m_Data:
+      m_BitSize: 0
+    m_UVInfo: 0
+  m_LocalAABB:
+    m_Center: {x: 0.006000001, y: 0.008000001, z: 0.06999999}
+    m_Extent: {x: 0.078999996, y: 0.060000002, z: 0.25}
+  m_MeshUsageFlags: 0
+  m_CookingOptions: 30
+  m_BakedConvexCollisionMesh:
+  m_BakedTriangleCollisionMesh:
+  'm_MeshMetrics[0]': 1
+  'm_MeshMetrics[1]': 1
+  m_MeshOptimizationFlags: 1
+  m_StreamData:
+    serializedVersion: 2
+    offset: 0
+    size: 0
+    path:
+  m_MeshLodInfo:
+    serializedVersion: 2
+    m_LodSelectionCurve:
+      serializedVersion: 1
+      m_LodSlope: 0
+      m_LodBias: 0
+    m_NumLevels: 1
+    m_SubMeshes:
+    - serializedVersion: 2
+      m_Levels:
+      - serializedVersion: 1
+        m_IndexStart: 0
+        m_IndexCount: 0

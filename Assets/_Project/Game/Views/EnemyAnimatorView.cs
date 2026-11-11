@@ -108,6 +108,7 @@ namespace Soulvail.Game.Views
         [SerializeField] private bool _backsAway;
 
         private readonly int _turningId = Animator.StringToHash("Turning");
+        private readonly int _shinePhaseId = Animator.StringToHash("ShinePhase");
         private readonly int _aimDroppedId = Animator.StringToHash("AimDropped");
         private readonly int _backingId = Animator.StringToHash("Backing");
         private readonly int _sidewaysId = Animator.StringToHash("Sideways");
@@ -132,11 +133,13 @@ namespace Soulvail.Game.Views
         private IDisposable _diedSubscription;
         private IDisposable _leapSubscription;
         private IDisposable _hiddenSubscription;
+        private IDisposable _shineSubscription;
         private IDisposable _aimDroppedSubscription;
         private IDisposable _strikeMissedSubscription;
         private bool? _hasSideways;
         private bool? _hasBacking;
         private bool? _hasStrikeMissed;
+        private bool? _hasShinePhase;
         private bool _hasAimDropped;
         private bool _aimDroppedChecked;
         private float? _previousYaw;
@@ -207,6 +210,7 @@ namespace Soulvail.Game.Views
             _diedSubscription = hub.Subscribe<EnemyDied>(OnDied);
             _leapSubscription = hub.Subscribe<EnemyLeapAimed>(OnLeapAimed);
             _hiddenSubscription = hub.Subscribe<EnemyHiddenChanged>(OnHiddenChanged);
+            _shineSubscription = hub.Subscribe<EnemyShineChanged>(OnShineChanged);
             _aimDroppedSubscription = hub.Subscribe<EnemyAimDropped>(OnAimDropped);
             _strikeMissedSubscription = hub.Subscribe<EnemyStrikeMissed>(OnStrikeMissed);
         }
@@ -378,6 +382,11 @@ namespace Soulvail.Game.Views
             {
                 _animator.SetBool(_turningId, false);
             }
+            if (_hasShinePhase == true)
+            {
+                _animator.SetInteger(_shinePhaseId, 0);
+            }
+
             if (_hasAimDropped)
             {
                 _animator.ResetTrigger(_aimDroppedId);
@@ -442,6 +451,7 @@ namespace Soulvail.Game.Views
             _diedSubscription?.Dispose();
             _leapSubscription?.Dispose();
             _hiddenSubscription?.Dispose();
+            _shineSubscription?.Dispose();
             _aimDroppedSubscription?.Dispose();
             _strikeMissedSubscription?.Dispose();
             _hiddenSubscription = null;
@@ -618,6 +628,19 @@ namespace Soulvail.Game.Views
             if (IsMine(evt.Id))
             {
                 _lurking = evt.Hidden && !_dead;
+            }
+        }
+
+        private void OnShineChanged(EnemyShineChanged evt)
+        {
+            if (_animator == null || !_animator.isActiveAndEnabled || _dead || !IsMine(evt.Id))
+            {
+                return;
+            }
+
+            if (_hasShinePhase ??= HasParameter(_shinePhaseId, AnimatorControllerParameterType.Int))
+            {
+                _animator.SetInteger(_shinePhaseId, (int)evt.Phase);
             }
         }
 

@@ -222,7 +222,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-09a — The glassback in core: glint, shine, open, on the hero's target (M)
 - [x] SS-09b — The reflection: hero hits on a shining shell send glass bolts back (M)
 - [x] SS-09c — The model: the owner's sculpt on Rig_Beetle, wing cases, eight clips (M)
-- [ ] [SS-09d](tasks/SS-09d-glassback-body.md) — The body: prefab, animator, the white shine and the glass bolt (M)
+- [x] SS-09d — The body: prefab, animator, the white shine and the glass bolt (M)
 - [ ] [SS-09e](tasks/SS-09e-glassback-data.md) — The glassback in the Sunscar: data, roster from stage 9 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

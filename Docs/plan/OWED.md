@@ -694,3 +694,8 @@ Offscreen 540×960 portrait renders checked the real/feint contrast; these do no
 ## SS-09b — Glassback reflection
 
 - After SS-09e, use DT-01 to start Sunscar stage 9. Fire rapidly into the shining shell and check the bolt cadence. Compare standing still, stepping out of the landing ring, and rolling through the impact. Check that a pet bite produces no bolt.
+
+
+## SS-09d — Glassback body
+
+After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Death on the unscaled rig. Target a glassback through Glint, Shine and Open. Check that the white rim ramps, shimmers and switches off at Open, and that a reflected ivory shard and its danger ring stay readable through the storm. Despawn a shining glassback and check that its reused body starts dark.

@@ -98,6 +98,8 @@ public sealed class ProjectileViews : IDisposable
     /// <summary>Enemy id → the prefab its shots fly, or null: every enemy flies the default (JG-02).</summary>
     private readonly EnemyLookBook _enemyLooks;
     private readonly EnemyViews _enemies;
+    private readonly ContentId _glassbackId = new ContentId("enemy.glassback");
+    private readonly ProjectileView _glassBolt;
 
     /// <summary>The default bolt's pools: every shot whose class or archetype names none.</summary>
     private readonly ShotKind _default;
@@ -234,6 +236,16 @@ public sealed class ProjectileViews : IDisposable
                 {
                     KindFor(look.VolleyProjectile);
                 }
+            }
+        }
+
+        EnemyView glassback = enemyLooks?.For(_glassbackId).Body;
+        if (glassback != null && glassback.TryGetComponent(out EnemyShineView shine))
+        {
+            _glassBolt = shine.Bolt;
+            if (_glassBolt != null)
+            {
+                KindFor(_glassBolt);
             }
         }
 
@@ -719,6 +731,10 @@ public sealed class ProjectileViews : IDisposable
         if (prefab == null && _enemyLooks != null)
         {
             prefab = _enemyLooks.For(specId).Projectile;
+            if (prefab == null && specId == _glassbackId)
+            {
+                prefab = _glassBolt;
+            }
         }
 
         // Unity's ==: an enemy's id and a class that names nothing both read a real null here, and

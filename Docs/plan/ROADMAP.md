@@ -230,7 +230,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-10a — The antlion in core: tunnel behind, a ring under the hero, a slow dig (M)
 - [x] SS-10b — The model: the owner's antlion on Rig_Beetle, mandibles, seven clips (M)
 - [x] SS-10c — The body: prefab, animator, the sand ripple and the eruption ring (M)
-- [ ] SS-10d — The antlion in the Sunscar: data, roster from stage 11 (M)
+- [x] SS-10d — The antlion in the Sunscar: data, roster from stage 11 (M)
 
 **The jackal priest, the Sunscar's stage-14 enemy** (owner, 2026-11-12; design [GD §8.11](../GameDesign.md)). The Choir's role: a priority target that never attacks. From stage 14 it hides behind the most hurt ally and mends it down a lime beam for up to 3 s; any hit on it breaks the beam and stops it mending for 2 s. Built after the antlion. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-11b uses the owner's TRELLIS sculpt (path in the spec) and may run beside SS-11a; SS-11c needs both; SS-11d needs all three and SS-10d. Playtestable from SS-11d with DT-01's test start at Sunscar stage 14.
 

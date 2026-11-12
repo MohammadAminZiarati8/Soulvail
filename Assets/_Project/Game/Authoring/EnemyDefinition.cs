@@ -251,6 +251,18 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _shineBoltMinFlight;
         [SerializeField, Min(0f)] private float _shineBoltInterval;
 
+        [Header("Burrow — Antlion only")]
+        [SerializeField, Min(0f)] private float _tunnelSpeed;
+        [SerializeField, Min(0f)] private float _behindDistance;
+        [SerializeField, Min(0f)] private float _lockDistance;
+        [SerializeField, Min(0f)] private float _minTunnelSeconds;
+        [SerializeField, Min(0f)] private float _maxTunnelSeconds;
+        [SerializeField, Min(0f)] private float _burrowRingRadius;
+        [SerializeField, Min(0f)] private float _armSeconds;
+        [SerializeField, Min(0f)] private float _eruptionDamage;
+        [SerializeField, Min(0f)] private float _surfacedSeconds;
+        [SerializeField, Min(0f)] private float _digSeconds;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -402,6 +414,11 @@ namespace Soulvail.Game.Authoring
                         ? new ShineSpec(_glintSeconds, _shineSeconds, _shineOpenSeconds, _shineCooldown,
                             _shineTriggerRange, _shineOpenDamageTaken, _shineBoltDamage, _shineBoltSpeed,
                             _shineBoltRadius, _shineBoltMinFlight, _shineBoltInterval)
+                        : null,
+                    burrow: _behaviour == EnemyBehaviourKind.Antlion
+                        ? new BurrowSpec(_tunnelSpeed, _behindDistance, _lockDistance, _minTunnelSeconds,
+                            _maxTunnelSeconds, _burrowRingRadius, _armSeconds, _eruptionDamage, _surfacedSeconds,
+                            _digSeconds)
                         : null);
             }
             catch (ArgumentException inner)

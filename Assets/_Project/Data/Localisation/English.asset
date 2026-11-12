@@ -535,6 +535,8 @@ MonoBehaviour:
     _text: Jackal Slinger
   - _key: enemy.glassback.name
     _text: Glassback Beetle
+  - _key: enemy.antlion.name
+    _text: Antlion
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

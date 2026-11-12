@@ -43,6 +43,7 @@ public sealed class SunscarTests
     private static readonly ContentId Viper = new("enemy.viper");
     private static readonly ContentId Jackal = new("enemy.jackal");
     private static readonly ContentId Glassback = new("enemy.glassback");
+    private static readonly ContentId Antlion = new("enemy.antlion");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -56,13 +57,14 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassback()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlion()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
             Is.EqualTo(new[]
             {
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
+                (Antlion, 11, 0),
             }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
@@ -529,6 +531,89 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Antlion_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Antlion.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Antlion.asset")));
+        EnemySpec spec = Catalog().Enemy(Antlion);
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.antlion.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((56f, 2.4f, 5, 12, 30f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That(spec.AggroRange, Is.EqualTo(30f));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Antlion));
+        Assert.That(definition.ToLook().Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Antlion.prefab").GetComponent<EnemyView>()));
+        Assert.That(spec.Burrow, Is.Not.Null);
+        BurrowSpec burrow = spec.Burrow;
+        Assert.That((burrow.TunnelSpeed, burrow.BehindDistance, burrow.LockDistance,
+                burrow.MinTunnelSeconds, burrow.MaxTunnelSeconds),
+            Is.EqualTo((4.5f, 2f, 1.2f, 1.5f, 4f)));
+        Assert.That((burrow.RingRadius, burrow.ArmSeconds, burrow.EruptionDamage, burrow.SurfacedSeconds, burrow.DigSeconds),
+            Is.EqualTo((1.6f, 0.8f, 16f, 2.5f, 0.6f)));
+    }
+
+    [Test]
+    public void Antlion_ExistingEnemies_NoBurrow()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Antlion)
+            {
+                Assert.That(spec.Burrow, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Antlion_TunnelOutrunsEveryClass()
+    {
+        BurrowSpec burrow = Catalog().Enemy(Antlion).Burrow;
+        foreach (CharacterSpec character in AuthoredCharacters())
+        {
+            Assert.That(burrow.TunnelSpeed, Is.GreaterThan(character.Movement.Speed), character.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Antlion_RingClearableInArm()
+    {
+        BurrowSpec burrow = Catalog().Enemy(Antlion).Burrow;
+        foreach (CharacterSpec character in AuthoredCharacters())
+        {
+            Assert.That(character.Movement.Speed * burrow.ArmSeconds,
+                Is.GreaterThanOrEqualTo(burrow.RingRadius), character.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Antlion_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Antlion).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Antlion"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_AntlionFrom11()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(10, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback }));
+        count = mode.RosterFor(11, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_GlassbackFrom9()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -638,15 +723,21 @@ public sealed class SunscarTests
         AssertStageWavesClear(9, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Scorpling },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true);
 
+    [Test]
+    public void Sunscar_Stage11_WavesClear() =>
+        AssertStageWavesClear(11, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Scorpling },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 11);
+
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
 
     private static RecordingEvents AssertStageWavesClear(
-        int stage, ContentId[] expectedEnemies, int maxSeconds, bool sidestepTells = false, bool dodgeLandings = false)
+        int stage, ContentId[] expectedEnemies, int maxSeconds,
+        bool sidestepTells = false, bool dodgeLandings = false, int seed = 7)
     {
         const float frameTime = 1f / 32f;
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
-        var random = new SeededRandom(7);
+        var random = new SeededRandom(seed);
         var events = new RecordingEvents();
         var intents = new RecordingIntents();
         var recorder = new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), events);
@@ -670,6 +761,7 @@ public sealed class SunscarTests
             var movementExtents = new NumericsVector3(12f, 0f, 12f);
             int tellsRead = 0;
             int shotsRead = 0;
+            int ringsRead = 0;
             for (int frame = 0; frame < maxSeconds * 32 && events.Count<StageCleared>() == 0; frame++)
             {
                 // Walk the bodies by the previous tick's intents, then report the living ones in sight.
@@ -720,12 +812,17 @@ public sealed class SunscarTests
                         if ((shot.SpecId == Jackal || shot.SpecId == Beetle || shot.SpecId == Glassback) &&
                             NumericsVector3.DistanceSquared(player, shot.Target) <= shot.Radius * shot.Radius)
                         {
-                            var step = 3f * NumericsVector3.UnitX;
-                            var side = 3f * NumericsVector3.UnitZ;
-                            player = new[] { player + step, player - step, player + side, player - side }
-                                .Select(point => NumericsVector3.Clamp(point, -movementExtents, movementExtents))
-                                .OrderByDescending(point => NumericsVector3.DistanceSquared(point, shot.Target))
-                                .First();
+                            player = StepAwayFrom(player, shot.Target, movementExtents);
+                        }
+                    }
+
+                    IReadOnlyList<AntlionRingArmed> rings = events.Of<AntlionRingArmed>();
+                    for (; ringsRead < rings.Count; ringsRead++)
+                    {
+                        AntlionRingArmed ring = rings[ringsRead];
+                        if (NumericsVector3.DistanceSquared(player, ring.Centre) <= ring.Radius * ring.Radius)
+                        {
+                            player = StepAwayFrom(player, ring.Centre, movementExtents);
                         }
                     }
                 }
@@ -771,6 +868,17 @@ public sealed class SunscarTests
         {
             session.End();
         }
+    }
+
+    private static NumericsVector3 StepAwayFrom(
+        NumericsVector3 player, NumericsVector3 danger, NumericsVector3 movementExtents)
+    {
+        var step = 3f * NumericsVector3.UnitX;
+        var side = 3f * NumericsVector3.UnitZ;
+        return new[] { player + step, player - step, player + side, player - side }
+            .Select(point => NumericsVector3.Clamp(point, -movementExtents, movementExtents))
+            .OrderByDescending(point => NumericsVector3.DistanceSquared(point, danger))
+            .First();
     }
 
     [Test]
@@ -951,6 +1059,10 @@ public sealed class SunscarTests
 
     private static ArenaView Arena(string path) =>
         AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponent<ArenaView>();
+
+    private static IEnumerable<CharacterSpec> AuthoredCharacters() =>
+        AssetDatabase.FindAssets("t:CharacterDefinition", new[] { Root + "Data/Characters" })
+            .Select(guid => AssetDatabase.LoadAssetAtPath<CharacterDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec());
 
     private static ContentCatalog Catalog(params ModeSpec[] modes) =>
         new(new[] { AssetDatabase.LoadAssetAtPath<CharacterDefinition>(Root + "Data/Characters/Ranger.asset").ToSpec() },

@@ -9,13 +9,13 @@ _2026-11-12._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-10c** — antlion prefab, phase animation and eruption warning. |
-| **Next task** | SS-10d — antlion data and Sunscar stage 11 roster. Then SS-11a–d. |
-| **Verified** | EditMode 6631/6723, 0 failed, 1 inconclusive, 91 skipped. SS-10c 12/12, Sunscar 51/51. C# whitespace clean. |
+| **Last merged** | **SS-10d** — antlion data, catalogue and Sunscar stage 11 roster. |
+| **Next task** | SS-11a — jackal priest mend behaviour in Core. Then SS-11b–d. |
+| **Verified** | EditMode 6638/6730, 0 failed, 1 inconclusive, 91 skipped. Sunscar 58/58. C# whitespace clean. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar 1 waves scorpions and opens its portal. Beetles join at 2, brood scorpions at 4, vipers at 6, jackal slingers at 8 and glassbacks at 9. A pale sac pulses before three scorplings drop. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions at 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11. A pale sac pulses before three scorplings drop. Antlions tunnel, warn with a ring and erupt, then sit exposed for 2.5 s. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

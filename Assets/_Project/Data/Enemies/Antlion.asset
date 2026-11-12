@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: Antlion
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.antlion
+  _nameKey: enemy.antlion.name
+  _maxHp: 56
+  _moveSpeed: 2.4
+  _targetPriority: 5
+  _threatCost: 12
+  _xpValue: 30
+  _isElite: 0
+  _isLight: 1
+  _contactDamage: 0
+  _aggroRange: 30
+  _behaviour: 10
+  _tunnelSpeed: 4.5
+  _behindDistance: 2
+  _lockDistance: 1.2
+  _minTunnelSeconds: 1.5
+  _maxTunnelSeconds: 4
+  _burrowRingRadius: 1.6
+  _armSeconds: 0.8
+  _eruptionDamage: 16
+  _surfacedSeconds: 2.5
+  _digSeconds: 0.6
+  _tint: {r: 1, g: 1, b: 1, a: 1}
+  _bodyScale: 1
+  _body: {fileID: 6989822826760117491, guid: a4cf87d1aad6a8744a2b84031e13d6b7, type: 3}

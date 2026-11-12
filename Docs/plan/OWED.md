@@ -727,3 +727,14 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] **Editor, after SS-10d.** Start Sunscar stage 11 with DT-01. Check that DigIn leads into the moving mound and fading trail, the body and health/status UI hide underground, and the locked ring and swirl stay visible over the storm. Step clear once and stay inside once. Check the sand puff, Erupt, Surfaced and health/status UI on the return to the surface, and check that death clears the effects.
 - [ ] **Device, after SS-10d.** Check that the ripple reads against the Dunes and the eruption ring gives time to step clear.
 
+
+
+## SS-10d — Antlion in the Sunscar
+
+1. **[Editor]** DT-01, Sunscar stage 11: antlions dig in at once, and a ripple crosses the sand toward the hero's back.
+2. **[Editor]** Standing still: a red-orange ring and a sand swirl under the hero, and if the hero stays, a bite. Stepping out clears it.
+3. **[Editor]** Walking: the ring lands where the hero was and misses.
+4. **[Editor]** Underground it is never auto-aimed. Surfaced it sits 2.5 s and can be shot and stunned, then digs in.
+5. **[Editor]** Against a rock: the ring rises on open ground, never in cover.
+6. **[Editor]** The ripple and ring read through the storm. Nothing on it is cyan.
+7. **[device]** The ripple reads at first look on a phone, and the ring is seen in time to step.

@@ -9,9 +9,9 @@ _2026-11-12._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-11b** — jackal priest model and sun-disc staff. |
-| **Next task** | SS-11c — priest prefab, animator and lime mend beam. Then SS-11d. |
-| **Verified** | EditMode 6668/6760, 0 failed, 1 inconclusive, 91 skipped. Priest and Jackal art 20/20. C# whitespace clean. |
+| **Last merged** | **SS-11c** — priest prefab, animator and lime mend beam. |
+| **Next task** | SS-11d — the priest in the Sunscar: data, roster from stage 14. |
+| **Verified** | EditMode 6680/6772, 0 failed, 1 inconclusive, 91 skipped. Priest body 12/12. C# whitespace clean. |
 
 ## What works
 

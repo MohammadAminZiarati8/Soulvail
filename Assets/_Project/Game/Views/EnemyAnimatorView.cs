@@ -110,6 +110,7 @@ namespace Soulvail.Game.Views
         private readonly int _turningId = Animator.StringToHash("Turning");
         private readonly int _antlionPhaseId = Animator.StringToHash("AntlionPhase");
         private readonly int _shinePhaseId = Animator.StringToHash("ShinePhase");
+        private readonly int _mendingId = Animator.StringToHash("Mending");
         private readonly int _aimDroppedId = Animator.StringToHash("AimDropped");
         private readonly int _backingId = Animator.StringToHash("Backing");
         private readonly int _sidewaysId = Animator.StringToHash("Sideways");
@@ -136,6 +137,8 @@ namespace Soulvail.Game.Views
         private IDisposable _hiddenSubscription;
         private IDisposable _antlionPhaseSubscription;
         private IDisposable _shineSubscription;
+        private IDisposable _mendStartedSubscription;
+        private IDisposable _mendEndedSubscription;
         private IDisposable _aimDroppedSubscription;
         private IDisposable _strikeMissedSubscription;
         private bool? _hasSideways;
@@ -143,6 +146,7 @@ namespace Soulvail.Game.Views
         private bool? _hasStrikeMissed;
         private bool? _hasAntlionPhase;
         private bool? _hasShinePhase;
+        private bool? _hasMending;
         private bool _hasAimDropped;
         private bool _aimDroppedChecked;
         private float? _previousYaw;
@@ -215,6 +219,8 @@ namespace Soulvail.Game.Views
             _hiddenSubscription = hub.Subscribe<EnemyHiddenChanged>(OnHiddenChanged);
             _antlionPhaseSubscription = hub.Subscribe<AntlionPhaseChanged>(OnAntlionPhaseChanged);
             _shineSubscription = hub.Subscribe<EnemyShineChanged>(OnShineChanged);
+            _mendStartedSubscription = hub.Subscribe<PriestMendStarted>(OnMendStarted);
+            _mendEndedSubscription = hub.Subscribe<PriestMendEnded>(OnMendEnded);
             _aimDroppedSubscription = hub.Subscribe<EnemyAimDropped>(OnAimDropped);
             _strikeMissedSubscription = hub.Subscribe<EnemyStrikeMissed>(OnStrikeMissed);
         }
@@ -396,6 +402,11 @@ namespace Soulvail.Game.Views
                 _animator.SetInteger(_shinePhaseId, 0);
             }
 
+            if (_hasMending == true)
+            {
+                _animator.SetBool(_mendingId, false);
+            }
+
             if (_hasAimDropped)
             {
                 _animator.ResetTrigger(_aimDroppedId);
@@ -462,6 +473,8 @@ namespace Soulvail.Game.Views
             _hiddenSubscription?.Dispose();
             _antlionPhaseSubscription?.Dispose();
             _shineSubscription?.Dispose();
+            _mendStartedSubscription?.Dispose();
+            _mendEndedSubscription?.Dispose();
             _aimDroppedSubscription?.Dispose();
             _strikeMissedSubscription?.Dispose();
             _hiddenSubscription = null;
@@ -664,6 +677,23 @@ namespace Soulvail.Game.Views
             if (_hasShinePhase ??= HasParameter(_shinePhaseId, AnimatorControllerParameterType.Int))
             {
                 _animator.SetInteger(_shinePhaseId, (int)evt.Phase);
+            }
+        }
+
+        private void OnMendStarted(PriestMendStarted evt) => SetMending(evt.Id, true);
+
+        private void OnMendEnded(PriestMendEnded evt) => SetMending(evt.Id, false);
+
+        private void SetMending(int id, bool mending)
+        {
+            if (_animator == null || !_animator.isActiveAndEnabled || (_dead && mending) || !IsMine(id))
+            {
+                return;
+            }
+
+            if (_hasMending ??= HasParameter(_mendingId, AnimatorControllerParameterType.Bool))
+            {
+                _animator.SetBool(_mendingId, mending);
             }
         }
 

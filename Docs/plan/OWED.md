@@ -749,3 +749,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [x] [Editor] Owner approved the unrigged turnaround facing glTF +Z.
 - [ ] [Editor] Review the six-clip pose sheet. Check the grip through every clip, including the held hand offset through Death_A, and the robe hem during Running_A.
+
+
+## SS-11c — Jackal priest body
+
+- [ ] [Editor] Open `JackalPriest.prefab`. Check the staff's grip in `handslot.r` (rotation was left at identity, not eyeballed) and that the `Glow` empty sits at the sun disc.
+- [ ] [Editor] Preview `AC_JackalPriest`: Locomotion blend (Idle/Walk/Run at 0/1.2/3.2 m/s) and the spellcasting loop on `Mending`. In play, from SS-11d, check the beam reads lime over the storm, the disc glows, and a broken beam flickers twice then goes off.

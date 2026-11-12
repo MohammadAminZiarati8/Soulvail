@@ -15,7 +15,8 @@ namespace Soulvail.Game.Views
         [SerializeField] private Transform _ring;
         [SerializeField] private float _castClipSeconds = 1f;
         [SerializeField] private float _baseMoveSpeed = 2f;
-        private readonly Color _lime = new Color(.75f, .9f, .38f, 1f);
+        /// <summary>The support lime, shared with the jackal priest's mend beam (SS-11c).</summary>
+        public static readonly Color Lime = new Color(.75f, .9f, .38f, 1f);
         private MaterialPropertyBlock _seedBlock;
         private MaterialPropertyBlock _ringBlock;
         private DomainEventHub _hub;
@@ -83,7 +84,7 @@ namespace Soulvail.Game.Views
                 { _ring.localScale = Vector3.one * (_radius * t); }
                 if (_ringRenderer != null)
                 {
-                    Color colour = _lime;
+                    Color colour = Lime;
                     colour.a = 1f - t;
                     _ringRenderer.GetPropertyBlock(_ringBlock);
                     _ringBlock.SetColor("_BaseColor", colour);
@@ -164,7 +165,7 @@ namespace Soulvail.Game.Views
             _seedBlock ??= new MaterialPropertyBlock();
             _seed.GetPropertyBlock(_seedBlock);
             _seedBlock.SetTexture("_EmissionMap", _seedMask);
-            _seedBlock.SetColor("_EmissionColor", _lime * (fraction * 0.4f));
+            _seedBlock.SetColor("_EmissionColor", Lime * (fraction * 0.4f));
             _seed.SetPropertyBlock(_seedBlock);
         }
 

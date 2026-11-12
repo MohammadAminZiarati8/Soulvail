@@ -282,7 +282,7 @@ public sealed class EnemySpec
         BombardierSpec bombardier = null,
         BroodSpec brood = null,
         SidewinderSpec sidewinder = null,
-        ShineSpec shine = null, BurrowSpec burrow = null)
+        ShineSpec shine = null, BurrowSpec burrow = null, MendSpec mend = null)
     {
         if (id.Value is null)
         {
@@ -335,6 +335,13 @@ public sealed class EnemySpec
         {
             throw new ArgumentException("A Shaman must carry a ShamanSpec.", nameof(shaman));
         }
+
+        if (mend is not null && behaviour != EnemyBehaviourKind.Shaman)
+        {
+            throw new ArgumentException("A MendSpec requires a Shaman.", nameof(mend));
+        }
+
+        Mend = mend;
 
         if (behaviour == EnemyBehaviourKind.Stalker && stalker is null)
         {
@@ -615,6 +622,8 @@ public sealed class EnemySpec
 
     /// <summary>Optional shell defence triggered by the hero targeting this chaser.</summary>
     public ShineSpec Shine { get; }
+
+    public MendSpec Mend { get; }
 
     public BurrowSpec Burrow { get; }
 

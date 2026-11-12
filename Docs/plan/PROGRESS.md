@@ -9,9 +9,9 @@ _2026-11-12._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-10d** — antlion data, catalogue and Sunscar stage 11 roster. |
-| **Next task** | SS-11a — jackal priest mend behaviour in Core. Then SS-11b–d. |
-| **Verified** | EditMode 6638/6730, 0 failed, 1 inconclusive, 91 skipped. Sunscar 58/58. C# whitespace clean. |
+| **Last merged** | **SS-11a** — interruptible jackal priest mend in Core. |
+| **Next task** | SS-11b — jackal priest model. Then SS-11c–d. |
+| **Verified** | EditMode 6658/6750, 0 failed, 1 inconclusive, 91 skipped. Sunscar 58/58. C# whitespace clean. |
 
 ## What works
 

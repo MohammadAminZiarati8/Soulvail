@@ -609,6 +609,12 @@ public sealed class EnemySystem
     /// </returns>
     public bool Despawn(int id)
     {
+        if (Registry.TryGet(id, out EnemyAgent agent) && agent.Spec.Mend is not null &&
+            agent.Behaviour is ShamanBehaviour priest)
+        {
+            priest.LoseMend();
+        }
+
         if (!Registry.Despawn(id))
         {
             return false;
@@ -981,6 +987,13 @@ public sealed class EnemySystem
         }
 
         _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed, result.Blocked));
+
+        // Poison and pet bites also come through here. A heal before the next behaviour tick
+        // can hide the drop in Current, so record the landed HP loss at the source.
+        if (result.ToHp > 0f && agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
+        {
+            priest.OnHpLost(now);
+        }
 
         // JG-22a rule 6: any damage shows a stalker, and keeps it from hiding for a while. Here, at
         // the one door, so an arrow, a zone, a trap and a Wight all reveal it alike.
@@ -1487,6 +1500,14 @@ public sealed class EnemySystem
     /// </remarks>
     public void Clear()
     {
+        foreach (EnemyAgent agent in Registry.Alive)
+        {
+            if (agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
+            {
+                priest.LoseMend();
+            }
+        }
+
         Registry.Clear();
 
         // The queue goes with the bodies. An id queued by a boss's last beat and drained after the

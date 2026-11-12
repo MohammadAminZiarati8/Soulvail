@@ -27,3 +27,25 @@ public readonly struct EnemyHealed
     public EnemyHealed(int enemyId, float amount, float hpFraction)
     { EnemyId = enemyId; Amount = amount; HpFraction = hpFraction; }
 }
+
+public enum MendEndReason { Done, Healed, Lost, Broken }
+
+public readonly struct PriestMendStarted
+{
+    public readonly int Id;
+    public readonly int AllyId;
+    public readonly float Seconds;
+
+    public PriestMendStarted(int id, int allyId, float seconds)
+    { Id = id; AllyId = allyId; Seconds = seconds; }
+}
+
+public readonly struct PriestMendEnded
+{
+    public readonly int Id;
+    public readonly int AllyId;
+    public readonly MendEndReason Reason;
+
+    public PriestMendEnded(int id, int allyId, MendEndReason reason)
+    { Id = id; AllyId = allyId; Reason = reason; }
+}

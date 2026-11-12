@@ -738,3 +738,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 5. **[Editor]** Against a rock: the ring rises on open ground, never in cover.
 6. **[Editor]** The ripple and ring read through the storm. Nothing on it is cyan.
 7. **[device]** The ripple reads at first look on a phone, and the ring is seen in time to step.
+
+### SS-11a — Jackal priest mend
+- After SS-11c–d, use DT-01 to start Sunscar stage 14. Wound two allies and confirm the priest plants, faces and mends the more injured one. Let an ally reach full HP, die or move beyond 12 m and watch the beam end.
+- Break a beam with a hero hit, a pet bite and poison. Check the 2 s break followed by the 3 s cooldown. Close inside 4 m and check that the priest flees with the ordinary cooldown.
+- In Jungle stages 17–19, check that a Moss Shaman still pulses its area heal and haste.

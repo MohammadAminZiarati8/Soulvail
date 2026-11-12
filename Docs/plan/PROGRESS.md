@@ -9,9 +9,9 @@ _2026-11-12._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-11a** — interruptible jackal priest mend in Core. |
-| **Next task** | SS-11b — jackal priest model. Then SS-11c–d. |
-| **Verified** | EditMode 6658/6750, 0 failed, 1 inconclusive, 91 skipped. Sunscar 58/58. C# whitespace clean. |
+| **Last merged** | **SS-11b** — jackal priest model and sun-disc staff. |
+| **Next task** | SS-11c — priest prefab, animator and lime mend beam. Then SS-11d. |
+| **Verified** | EditMode 6668/6760, 0 failed, 1 inconclusive, 91 skipped. Priest and Jackal art 20/20. C# whitespace clean. |
 
 ## What works
 

@@ -743,3 +743,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - After SS-11c–d, use DT-01 to start Sunscar stage 14. Wound two allies and confirm the priest plants, faces and mends the more injured one. Let an ally reach full HP, die or move beyond 12 m and watch the beam end.
 - Break a beam with a hero hit, a pet bite and poison. Check the 2 s break followed by the 3 s cooldown. Close inside 4 m and check that the priest flees with the ordinary cooldown.
 - In Jungle stages 17–19, check that a Moss Shaman still pulses its area heal and haste.
+
+
+## SS-11b — Jackal priest model
+
+- [x] [Editor] Owner approved the unrigged turnaround facing glTF +Z.
+- [ ] [Editor] Review the six-clip pose sheet. Check the grip through every clip, including the held hand offset through Death_A, and the robe hem during Running_A.

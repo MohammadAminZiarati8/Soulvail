@@ -537,6 +537,8 @@ MonoBehaviour:
     _text: Glassback Beetle
   - _key: enemy.antlion.name
     _text: Antlion
+  - _key: enemy.jackal-priest.name
+    _text: Jackal Priest
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

@@ -237,7 +237,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-11a — The priest in core: a mend beam on the most hurt ally, broken by a hit (M)
 - [x] SS-11b — The model: the jackal priest on Rig_Medium and a sun-disc staff (M)
 - [x] SS-11c — The body: prefab, animator, the lime mend beam (M)
-- [ ] SS-11d — The priest in the Sunscar: data, roster from stage 14 (M)
+- [x] SS-11d — The priest in the Sunscar: data, roster from stage 14 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

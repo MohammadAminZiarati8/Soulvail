@@ -755,3 +755,14 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [ ] [Editor] Open `JackalPriest.prefab`. Check the staff's grip in `handslot.r` (rotation was left at identity, not eyeballed) and that the `Glow` empty sits at the sun disc.
 - [ ] [Editor] Preview `AC_JackalPriest`: Locomotion blend (Idle/Walk/Run at 0/1.2/3.2 m/s) and the spellcasting loop on `Mending`. In play, from SS-11d, check the beam reads lime over the storm, the disc glows, and a broken beam flickers twice then goes off.
+
+
+## SS-11d — Jackal priest data
+
+- [ ] [Editor] DT-01, Sunscar stage 14: the pale-robed priest stays back, behind another enemy, and never attacks.
+- [ ] [Editor] Hurt an enemy near it: a lime beam runs from the sun disc to the most hurt one, and its health climbs.
+- [ ] [Editor] One arrow on the priest snaps the beam with a flicker, and it does not mend again for a few seconds.
+- [ ] [Editor] Rushing it makes it run. The auto-aim takes it first whenever it is in range and in sight.
+- [ ] [Editor] The beam reads through the storm. Nothing on it is cyan or gold.
+- [ ] [device] At first look on a phone, the priest reads as different from the slinger, and the beam shows who is being healed.
+- [ ] [Editor] Check PriestMendView gets its ally id through the pooled EnemyViews in a real run (only tested with a hand-built pool), and the body scale (authored 1; the Moss Shaman uses 1.27).

@@ -2,20 +2,20 @@
 
 [OWED](OWED.md). History in Git.
 
-_2026-11-12._
+_2026-11-13._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-11c** — priest prefab, animator and lime mend beam. |
-| **Next task** | SS-11d — the priest in the Sunscar: data, roster from stage 14. |
-| **Verified** | EditMode 6680/6772, 0 failed, 1 inconclusive, 91 skipped. Priest body 12/12. C# whitespace clean. |
+| **Last merged** | **SS-11d** — jackal priest data, Sunscar roster from 14. |
+| **Next task** | None specced. The jackal priest block is done; owner picks the next Sunscar enemy or boss. |
+| **Verified** | EditMode 6686/6778, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions at 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11. A pale sac pulses before three scorplings drop. Antlions tunnel, warn with a ring and erupt, then sit exposed for 2.5 s. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions at 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14. A pale sac pulses before three scorplings drop. Antlions tunnel, warn with a ring and erupt, then sit exposed for 2.5 s. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.

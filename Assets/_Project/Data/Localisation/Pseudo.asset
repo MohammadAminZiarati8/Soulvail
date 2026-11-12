@@ -586,6 +586,8 @@ MonoBehaviour:
     _text: "[Gl\xE1ssb\xE1\xE7k B\xE9\xE9tl\xE9 \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.antlion.name
     _text: "[\xC1\xF1tl\xEE\xF4\xF1 \xB7\xB7\xB7]"
+  - _key: enemy.jackal-priest.name
+    _text: "[J\xE1\xE7k\xE1l Pr\xEE\xE9st \xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.frog.name
     _text: "[Fr\xF4g \xB7\xB7]"
   - _key: enemy.pitcher.name

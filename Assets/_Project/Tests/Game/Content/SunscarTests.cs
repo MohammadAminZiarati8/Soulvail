@@ -44,6 +44,7 @@ public sealed class SunscarTests
     private static readonly ContentId Jackal = new("enemy.jackal");
     private static readonly ContentId Glassback = new("enemy.glassback");
     private static readonly ContentId Antlion = new("enemy.antlion");
+    private static readonly ContentId Priest = new("enemy.jackal-priest");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -57,14 +58,14 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlion()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriest()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
             Is.EqualTo(new[]
             {
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
-                (Antlion, 11, 0),
+                (Antlion, 11, 0), (Priest, 14, 0),
             }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
@@ -601,6 +602,78 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Priest_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Priest.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/JackalPriest.asset")));
+        EnemySpec spec = Catalog().Enemy(Priest);
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.jackal-priest.name"));
+        EnemySpec shaman = Catalog().Enemy(new ContentId("enemy.shaman"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((60f, shaman.MoveSpeed, 8, 16, 32f)));
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That(spec.ContactDamage, Is.EqualTo(0f));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Shaman));
+        Assert.That(definition.ToLook().Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/JackalPriest.prefab").GetComponent<EnemyView>()));
+        Assert.That(spec.Shaman, Is.Not.Null);
+        Assert.That((spec.Shaman.HoldDistance, spec.Shaman.FleeDistance, spec.Shaman.FleeSeconds,
+                spec.Shaman.FleeSpeedMultiplier),
+            Is.EqualTo((11f, 4f, 1.2f, 1.4f)));
+        Assert.That(spec.Mend, Is.Not.Null);
+        MendSpec mend = spec.Mend;
+        Assert.That((mend.Range, mend.BreakRange, mend.HurtBelow, mend.ChannelSeconds),
+            Is.EqualTo((10f, 12f, 0.9f, 3f)));
+        Assert.That((mend.HealPerSecond, mend.Cooldown, mend.BrokenSeconds), Is.EqualTo((0.08f, 3f, 2f)));
+    }
+
+    [Test]
+    public void Priest_ExistingEnemies_NoMend()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Priest)
+            {
+                Assert.That(spec.Mend, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Priest_HoldsInsideTheStormsClearing()
+    {
+        EnemySpec spec = Catalog().Enemy(Priest);
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        Assert.That(spec.Shaman.HoldDistance, Is.LessThan(storm.ClearRadius));
+    }
+
+    [Test]
+    public void Priest_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Priest).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Jackal Priest"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_PriestFrom14()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(13, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion }));
+        count = mode.RosterFor(14, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_AntlionFrom11()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -727,6 +800,11 @@ public sealed class SunscarTests
     public void Sunscar_Stage11_WavesClear() =>
         AssertStageWavesClear(11, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Scorpling },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 11);
+
+    [Test]
+    public void Sunscar_Stage14_WavesClear() =>
+        AssertStageWavesClear(14, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Scorpling },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1);
 
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);

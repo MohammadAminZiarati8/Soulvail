@@ -472,6 +472,22 @@ The Sunscar's tenth enemy (owner, 2026-11-13; SS-13), from **stage 18**. It hold
   - *6 s after the end:* a cycle of about 16 s leaves each caller's ground free for 6 s. Two callers can keep one tornado up most of the time, never three.
   - It never leaves the roster in this design. No Elite or affix in this design.
 
+### 8.14 The Sunscar — carrion vulture
+
+The Sunscar's eleventh and last new enemy (owner, 2026-11-13; SS-14), from **stage 22**. With it the desert has eleven, as the Jungle does. It holds no Jungle role. Its new mechanic is that it is **untargetable in the air**: it circles high round the hero, shown only by its shadow, then dives down a red-orange line and lands. On the ground it is an ordinary target for 2 s. Smarter than the antlion in one way: the hero sees where it is all the time but cannot touch it. Its weakness is that every dive ends with it grounded and exposed.
+
+- **Body.** A big carrion vulture on the hawk pet's `Rig_Hawk` (SS-14b), refitted: a wingspan of about **2.6 m** against the hawk's 1.5 m, broad fingered wings, a short fanned tail, a bald bone-grey head on a long bare neck, an off-white ruff, a heavy dark horn beak. Dark umber plumage with dusty edging. The hawk is a sleek, small, player-side bird; the vulture is heavy-shouldered and dark. Never cyan or gold. The only red-orange `#FF4A1F` it shows is its line.
+- **Aloft.** It enters climbing (**0.6 s**) and is out of reach from the first frame, as the antlion is underground (§8.10): it cannot be hit, targeted, stunned, slowed or poisoned, and the auto-aim skips it. Only its **shadow** shows, a dark wing-shaped shadow on the sand at its XZ, drawn above the storm. It circles the hero at **7 m**, **4 m/s** round, closing to the circle at **6 m/s**.
+- **The line, the tell.** After **4–6 s** aloft (4, 5 and 6 s in turn, offset per vulture so two never dive together) it stops and locks a red-orange **line** from its shadow through where the hero stands: **10 m** long and **1.2 m** wide, the viper's lane width (§8.8). The line shows for **1.0 s** and nothing turns it. Then it dives down it in 0.4 s, and a hero inside the line as it fires takes **14**, once. The answer is one step sideways. It hits the hero only.
+- **Grounded, the weakness.** It lands at the line's end, moved to the nearest open ground if that is in cover (the JG-25h rule), and sits for **2 s** facing the hero. It can be hit, stunned and slowed (a stun holds the clock), and it does not attack. Then it climbs (0.6 s, out of reach at once) and circles again.
+- **Numbers.** Its own, then §12.3 scaling: 50 HP, dive 14, threat cost 14, target priority 6, 31 XP.
+  - *Priority 6:* above the antlion (5), so a grounded vulture takes the shot over a surfaced antlion, and below the caller (7) and priest (8).
+  - *Line 10 m from 7 m:* it overruns the hero by 3 m, so backing away along it does not clear it; one 0.6 m step sideways does, in a fifth of a second at any class's speed.
+  - *1.0 s:* a little longer than the viper's 0.9 s coil, because the line starts at a shadow, not at a body.
+  - *Dive 14:* the viper's strike.
+  - *Grounded 2 s:* in a cycle of 8–10 s, 2 s of free shots; a 50 HP body lasts about two windows.
+  - Pets ignore it aloft (it is no target) and bite it on the ground as any enemy. It never leaves the roster in this design. No Elite or affix in this design.
+
 ---
 
 ## 9. Bosses

@@ -9,8 +9,8 @@ _2026-11-13._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-11d** — jackal priest data, Sunscar roster from 14. |
-| **Next task** | None specced. The jackal priest block is done; owner picks the next Sunscar enemy or boss. |
+| **Last merged** | **SS-11d** — priest data, Sunscar roster from 14. |
+| **Next task** | SS-12a — the cobra in core: a locked spit cone and Poison. Then SS-12b–d, SS-13, SS-14. |
 | **Verified** | EditMode 6686/6778, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
 
 ## What works

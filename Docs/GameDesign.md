@@ -436,6 +436,24 @@ The Sunscar's eighth enemy (owner, 2026-11-12; SS-11), from **stage 14**, as §8
   - *Broken for 2 s:* long enough that one arrow every 1.2 s keeps it from ever finishing a beam.
   - It never leaves the roster in this design. No Elite or affix in this design.
 
+### 8.12 The Sunscar — spitting cobra
+
+The Sunscar's ninth enemy (owner, 2026-11-13; SS-12), from **stage 16**. It holds the Spitter's role (§8.1): it **punishes standing still**. It keeps its distance while its spit recharges, then slithers in, rears with its hood spread over a red-orange cone and spits. A hero who keeps moving is never caught; one who plants is. Smarter than the Spitter in one way: its spit **poisons**, so a hit keeps costing after it lands. Its weakness is that it must come close to spit and stands reared and still while it does.
+
+- **Body.** A sand cobra on `Rig_Viper` plus two hood bones (SS-12b), about **2.4 m** nose to tail. Dusty sand-brown with bold dark umber bands; the hood's front pale bone with two umber eye-spots; a pale bone belly. From above the spread hood is what tells it from the viper. Never cyan, gold or green. The only red-orange `#FF4A1F` it shows is the cone and the spit.
+- **Holding.** It slithers at **2.4 m/s**. While its spit recharges it holds **8 m**: it comes in from beyond 8 m and backs away inside **5.6 m** (the Spitter's 70 %), path first, facing the hero.
+- **Closing.** When the spit is ready and it can see the hero (line of sight), it slithers in until it is within **4 m**. It is slower than every class (§6.1), so a hero who walks away is never closed on.
+- **The rear, the tell.** Within 4 m it stops and rears for **0.7 s**, the hood spreading, and a red-orange **cone** lies on the sand from its head: **60°** wide, **5 m** long, aimed at the hero as the rear begins and never turned. At 4 m the cone's edge is 2.3 m to either side of the hero and its tip 1 m behind them: one step back, or a roll, clears it. It is the Mother's spray fan (JG-12), cut by cover the same way.
+- **The spit.** As the rear ends it spits down the cone. A hero inside it, in line of sight, takes **8** and one stack of **Poison**. A roll's i-frames or a guard take the hit and the stack together. Then it stands **0.5 s** and backs off to 8 m; the spit recharges **3 s** from the spit.
+- **Poison on the hero.** The first debuff an enemy puts on the hero (§16.5's damage over time, the hero's side of ST-03a). Each stack costs **2 % of max HP per second**, pulsed every 0.5 s; stacks last **4 s**, a new stack refreshes the timer, at most **3**. Pulses never flinch the hero and never start or respect hit i-frames, so poison never makes the hero safer. The hero's **Space move** — the Ranger's roll, the Oathbound's charge, the Beastmaster's swap — clears every stack at once; a Killshot wind-up refuses new ones. It shows in the hero's status row as a drop icon tinted **pale violet** (the debuff rim's lavender, not Veilrot's `#A855F7`). Not green; not lime, which is the priest's mend (§8.11).
+- **Numbers.** Its own, then §12.3 scaling: 44 HP, spit 8, threat cost 10, target priority 4, 28 XP, slither 2.4 m/s, rear 0.7 s, cone 60° × 5 m.
+  - *HP 44, priority 4:* the viper's. It asks the hero to move, as the viper does, so the auto-aim weighs it the same.
+  - *Cost 10, 28 XP:* between the viper (9, 27) and the antlion (12, 30): poison makes it a little worse than the viper.
+  - *Close to 4 m:* a 5 m cone cannot reach from the 8 m hold. From 4 m it overruns the hero by 1 m. A longer cone from 8 m would be 9 m wide at the hero, which nothing can sidestep in 0.7 s.
+  - *Rear 0.7 s:* the Spitter's wind-up. The slowest class (3.0 m/s) steps the 1 m out of the tip in a third of a second.
+  - *Spit 8, poison 2 %/s for 4 s:* one stack costs 8 % of max HP, the spit itself less than a scorpion's bite. The recharge and the next rear take 3.7 s at the least, inside the 4 s timer, so a hero who stands still in front of one cobra climbs to three stacks (6 %/s). A roll ends them all.
+  - It never leaves the roster in this design. No Elite or affix in this design.
+
 ---
 
 ## 9. Bosses

@@ -246,6 +246,13 @@ _No milestone. The owner is setting the next direction._
 - [ ] SS-12c — The body: prefab, animator, the cone and the violet Poison icon (M)
 - [ ] SS-12d — The cobra in the Sunscar: data, roster from stage 16 (M)
 
+**The storm caller, the Sunscar's stage-18 enemy** (owner, 2026-11-13; design [GD §8.13](../GameDesign.md)). No Jungle role: a hazard that chases. From stage 18 a hyena sorcerer holds 12 m, flees inside 6 m and channels for 2 s; any hit cancels it. A finished channel raises a tornado that drifts after the hero at half the Ranger's speed for 8 s, hurting and gently pulling only the hero inside a red-orange ring; at most two in the arena, and the caller's death collapses its own. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-13a needs SS-12a (the hero's pulse door). SS-13b needs the owner's TRELLIS sculpt (prompt in the spec, path sent with the go) and may run beside SS-13a; SS-13c needs both; SS-13d needs all three and SS-12d. Playtestable from SS-13d with DT-01's test start at Sunscar stage 18.
+
+- [ ] SS-13a — The storm caller in core: a breakable channel and a chasing tornado (M)
+- [ ] SS-13b — The model: the hyena caller on Rig_Medium and a spiral staff (M)
+- [ ] SS-13c — The body: prefab, animator, the sand spiral and the tornado (M)
+- [ ] SS-13d — The storm caller in the Sunscar: data, roster from stage 18 (M)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

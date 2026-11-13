@@ -454,6 +454,24 @@ The Sunscar's ninth enemy (owner, 2026-11-13; SS-12), from **stage 16**. It hold
   - *Spit 8, poison 2 %/s for 4 s:* one stack costs 8 % of max HP, the spit itself less than a scorpion's bite. The recharge and the next rear take 3.7 s at the least, inside the 4 s timer, so a hero who stands still in front of one cobra climbs to three stacks (6 %/s). A roll ends them all.
   - It never leaves the roster in this design. No Elite or affix in this design.
 
+### 8.13 The Sunscar — storm caller
+
+The Sunscar's tenth enemy (owner, 2026-11-13; SS-13), from **stage 18**. It holds no Jungle role. Its new mechanic is a **hazard that chases**: a hyena sorcerer hangs back and calls up a tornado that drifts after the hero. It is a priority target (priority 7). Smarter than the shaman in one way: its threat outlives its attention, because the tornado keeps hunting while the caller runs. Its weakness is that any hit cancels the channel, and its death collapses its tornado.
+
+- **Body.** A hunched hyena sorcerer on KayKit `Rig_Medium` (SS-13b): rounded ears, a short heavy muzzle, a bristly mane, spotted dusty-tan fur, wrapped in tattered charcoal-brown and pale sand scarves and a hooded cloak. It carries a staff with an open spiral ring for a head, built in script. Darker than the priest and the slinger, so the three jackal-shaped casters never read as one. Never cyan or gold, nothing red-orange `#FF4A1F`.
+- **Hiding.** It moves like the shaman and the priest: it holds **12 m** off and flees for **1.2 s** at **1.4×** its 2 m/s walk when the hero comes within **6 m**.
+- **The channel, the tell.** When the channel is ready, the hero is within **16 m** and outside 6 m, and the arena holds fewer than two tornadoes (counting channels already begun), it plants and raises the staff. Sand spirals up round it for **2 s**. Any damage that lands on it cancels the channel: a hero hit, a pet bite, poison. So does fleeing. Then it cannot channel for **3 s**.
+- **The tornado.** A finished channel raises a tornado **2 m** in front of the caller, toward the hero. It is a tight, dark ochre funnel, darker and faster-turning than the background sandstorm, standing on a **red-orange ring of 1.5 m** that the funnel never hides. It drifts toward the hero at **1.6 m/s**, half the Ranger's 3.2, turning at most **60°/s**, for **8 s**. Inside the ring the hero loses **10 HP per second** in 0.5 s pulses. Like poison's (§8.12), they never flinch and never start or respect hit i-frames, and a roll's i-frames refuse them. Within **3 m** of its centre a pull draws the hero in at **1 m/s**, a third of the slowest class's walk (the Oathbound's 3.0), so walking out always wins. Nothing pulls during a Space move. It passes through cover and enemies. It never hurts or moves an enemy or a pet, it is never a target, and the auto-aim never sees it.
+- **Limits.** One tornado per caller, at most two in the arena. The caller's death collapses its tornado over **0.4 s**, harmless from the first frame. After its tornado ends, the caller waits **6 s** before it can channel again.
+- **Numbers.** Its own, then §12.3 scaling: 55 HP, no attack of its own, threat cost 15, target priority 7, 31 XP, walk 2 m/s.
+  - *Hold 12 m, not about 16:* the sandstorm clears 13 m round the hero, and weather never hides an enemy (§8.5's jackal was cut from 13 to 12 for the same reason). 12 m is also inside the Ranger's 15 m reach, so the channel can be broken from where it stands. The 16 m survives as the reach a channel starts from.
+  - *Priority 7:* above the vulture (6) and antlion (5), below the priest (8): break the mender first, then the caller.
+  - *Channel 2 s:* the Ranger's arrows come about every 1.2 s, so one in range and in sight always gets a shot into a channel.
+  - *10 HP/s:* a 2 s stay costs 20 at spec, under a quarter of a level-1 Ranger's 90. By stage 18 the hero has gained levels (+3 % HP each), so a stay is a warning, not a death.
+  - *1.6 m/s, 60°/s:* a walking hero gains 1.6 m/s on it. One who stands still is caught from 10 m in about 6 s.
+  - *6 s after the end:* a cycle of about 16 s leaves each caller's ground free for 6 s. Two callers can keep one tornado up most of the time, never three.
+  - It never leaves the roster in this design. No Elite or affix in this design.
+
 ---
 
 ## 9. Bosses

@@ -1,6 +1,6 @@
 # SS-14b — The model: the owner's vulture on Rig_Hawk, flight and ground clips
 
-**Size:** M · **Depends on:** the owner's sculpt · **Branch:** `ss-14b-vulture-model`
+**Size:** M · **Depends on:** — · **Branch:** `ss-14b-vulture-model`
 **Design refs:** GD §8.14, §3 › The Sunscar, §16.4, §17.1
 
 ## Goal
@@ -9,7 +9,7 @@
 
 ## The sculpt (owner)
 
-The owner generates this image, runs it through Trellis, and sends the `.glb` path with the go. Image prompt, kept for a re-roll:
+The owner generated this image and ran it through Trellis (2026-11-13, `Vulture-e9ac8530-seed42_00001_.glb`). Image prompt, kept for a re-roll:
 
 ```text
 A single stylized fantasy carrion vulture for a mobile game, low-poly hand-painted style like KayKit, chunky proportions, readable from above. Huge broad wings spread fully and straight out to the sides with long fingered tip feathers, short wide tail fanned, legs tucked under the body. Bald wrinkled head and long bare neck in pale bone-grey, a thick ruff of off-white feathers around the base of the neck, heavy hooked beak in dark horn. Plumage dark umber-brown, lighter dusty-brown edging on the wing feathers. Matte. No blue, no cyan, no red, no pink, no orange, no gold. Front view, perfectly symmetrical, wings level. Plain flat light grey background, soft even studio lighting, no shadow on the ground, no base, no text, no other objects.
@@ -27,9 +27,9 @@ A single stylized fantasy carrion vulture for a mobile game, low-poly hand-paint
 
 ## Behaviour
 
-1. **The source.** Copy the owner's `.glb` (read-only) to `Sources/Vulture_src.glb`, and record its SHA-256 and inspected facts (tris, bounds, symmetry, facing) in *As built*. `repair_scan.py` closes it.
+1. **The source.** Copy the owner's `Vulture-e9ac8530-seed42_00001_.glb` (`C:/Users/mazia/Documents/Codex/2026-10-23/sa/outputs/generated/`, read-only) to `Sources/Vulture_src.glb`, SHA-256 `4ee6d652aeb4a6ea456ca371f3e5a92ff8c90f3226fc57dd95656c525f85ab8f`. Inspected: one mesh, 97 187 tris, UVs, no normals, baked colour (2 images); bounds 1.0 × 0.36 × 0.28 (X × Y up × Z), symmetric across X: wings level along X, the body along Z. Front is ±Z, confirmed by the turnaround. `repair_scan.py` closes it and it is reduced to rule 3's budget.
 2. **Turnaround first.** `--turnaround <png>` renders the repaired, unrigged body front, side, back and top to `Temp/vulture_turnaround.png` (uncommitted). Rigging starts only on the owner's OK, recorded in *As built*.
-3. Reduce to 1 500–3 000 tris. Head to Unity forward. Scale to a **2.6 m** wingspan, about 1.1 m beak to tail: at least 1.6× the hawk's span.
+3. Reduce to 1 500–3 000 tris. Head to Unity forward. Scale to a **2.6 m** wingspan, at least 1.6× the hawk's, keeping the sculpt's proportions (about 0.7 m beak to tail).
 4. **Rig:** `Rig_Hawk`'s bones and names as `hawk.py` builds them (`root`, `body`, `neck`, `head`, `tail`, `wing.l/r.1–2`, `leg.l/r`), refitted to the sculpt's joints. The armature keeps the name `Rig_Hawk`. `Hawk.fbx` is untouched.
 5. Bound as `hawk.py` binds, ≤ 4 weights, none unweighted, none on `root`. The fingered tips follow `wing.*.2`.
 6. **Clips**, 30 fps, in place, `root` still. The hawk's keys, unchanged in timing: `Glide` 48 f loop, `Flap` 12 f loop, `Dive` 20 f, `Strike` 15 f, `Climb` 22 f. New: `Land` 15 f (wings brake forward, legs reach, the body settles to standing on f 12); `Idle_Ground` 48 f loop (wings folded along the body, `wing.*.1` back about 80° and `wing.*.2` about 120°, a slow head bob); `Hit` 12 f (from the ground pose); `Death` 30 f (it slumps, one wing falling open).

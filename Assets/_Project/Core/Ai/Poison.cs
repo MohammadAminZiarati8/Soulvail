@@ -26,7 +26,7 @@ public sealed class Poison
     internal float PulseDamage { get; private set; }
 
     /// <returns>True when the stack count or the remaining time grew.</returns>
-    internal bool Apply(float damagePerStackPerSecond, float seconds)
+    internal bool Apply(float damagePerStackPerSecond, float seconds, int maxStacks = MaxStacks)
     {
         bool grew = false;
 
@@ -36,7 +36,7 @@ public sealed class Poison
             DamagePerStackPerSecond = 0f;
         }
 
-        if (Stacks < MaxStacks)
+        if (Stacks < maxStacks)
         {
             Stacks++;
             grew = true;

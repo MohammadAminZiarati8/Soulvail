@@ -700,6 +700,8 @@ public sealed class PlayerCombat
     public bool IsDead => Health.IsDead;
 
     private readonly ContentId _secondWindStatus = new("status.second-wind");
+    private readonly ContentId _poisonStatus = new("status.poisoned");
+    private readonly Poison _poison = new();
     private StatusBoard _status;
     private StormRunHandler _stormRun;
 
@@ -952,6 +954,92 @@ public sealed class PlayerCombat
         return result;
     }
 
+    /// <summary>Poison stacks on the hero; zero while clean.</summary>
+    public int PoisonStacks => _poison.Stacks;
+
+    /// <summary>
+    /// Adds a poison stack worth <paramref name="maxHpFractionPerStackPerSecond"/> of max HP per
+    /// second, capped at <paramref name="maxStacks"/>. Refused while the hero is externally
+    /// invulnerable or the status board refuses debuffs.
+    /// </summary>
+    /// <returns>True when the stacks or the remaining time grew.</returns>
+    public bool ApplyPoison(float maxHpFractionPerStackPerSecond, float seconds, int maxStacks)
+    {
+        if (IsDead || Health.IsExternallyInvulnerable || (_status is not null && _status.RejectDebuffs)
+            || !(maxHpFractionPerStackPerSecond > 0f) || !(seconds > 0f) || maxStacks < 1)
+        {
+            return false;
+        }
+
+        bool grew = _poison.Apply(maxHpFractionPerStackPerSecond * Health.MaxHp.Value, seconds, maxStacks);
+        _status?.Post(_poisonStatus, isBuff: false, _poison.Remaining, _poison.Stacks);
+
+        return grew;
+    }
+
+    /// <summary>
+    /// Damage over time: no hit i-frames are checked or started. Refused while externally
+    /// invulnerable (reports <see cref="DamageResult.Blocked"/>, publishes nothing).
+    /// </summary>
+    public DamageResult ApplyPulse(float amount, float now)
+    {
+        float barrierBefore = BondBarrier;
+        DamageResult result = Health.ApplyPulse(amount, now);
+        if (result.Blocked || !(result.Applied > 0f))
+        {
+            return result;
+        }
+
+        bool barrierBroke = barrierBefore > 0f && !(BondBarrier > 0f);
+        _lastReportedShieldFraction = Health.ShieldFraction;
+        Kindling?.OnPlayerDamaged();
+        _events.Publish(new PlayerDamaged(result.ToShield, result.ToHp, Health.Fraction, Health.ShieldFraction,
+            blocked: false, guarded: false, isPulse: true));
+        if (barrierBroke)
+        {
+            BreakBondBarrier();
+        }
+
+        if (result.Killed)
+        {
+            AnnounceDeath(now);
+        }
+
+        return result;
+    }
+
+    private void TickPoison(float dt, float now)
+    {
+        if (_poison.Stacks == 0)
+        {
+            return;
+        }
+
+        if (IsDead)
+        {
+            ClearPoison();
+            return;
+        }
+
+        bool ended = _poison.Tick(dt, out int pulses);
+        float damage = _poison.PulseDamage;
+        for (int i = 0; i < pulses; i++)
+        {
+            ApplyPulse(damage, now);
+        }
+
+        if (ended)
+        {
+            _status?.Clear(_poisonStatus);
+        }
+    }
+
+    private void ClearPoison()
+    {
+        _poison.Reset();
+        _status?.Clear(_poisonStatus);
+    }
+
     /// <summary>
     /// Publishes <see cref="PlayerDied"/> if the player is dead and it has not been said yet.
     /// </summary>
@@ -984,6 +1072,7 @@ public sealed class PlayerCombat
         }
 
         _deathAnnounced = true;
+        ClearPoison();
         ClearEchoes();
         ResetDecoy();
         EndStormRun();
@@ -1488,6 +1577,7 @@ public sealed class PlayerCombat
         }
 
         Health.Tick(dt, now);
+        TickPoison(dt, now);
         PublishShieldIfDrifted();
 
         UpdateBlackboard(count, snapshot.PlayerPosition, minions?.Count ?? 0);
@@ -1557,6 +1647,7 @@ public sealed class PlayerCombat
     /// </remarks>
     public void Reset()
     {
+        ClearPoison();
         EndStormRun();
         SetKillshotWindUp(false);
         HitAndRun.Reset();
@@ -1693,6 +1784,7 @@ public sealed class PlayerCombat
 
         if (started)
         {
+            ClearPoison();
             SteadyAim.OnMoved();
             Health.SetExternalInvulnerable(true);
 

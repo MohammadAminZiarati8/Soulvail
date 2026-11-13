@@ -142,8 +142,13 @@ public readonly struct PlayerDamaged
     /// <summary>Second Wind's after-roll guard turned this hit away.</summary>
     public readonly bool Guarded;
 
-    public PlayerDamaged(float toShield, float toHp, float hpFraction, float shieldFraction, bool blocked, bool guarded = false)
+    /// <summary>Poison's damage over time: no i-frames were checked or started.</summary>
+    public readonly bool IsPulse;
+
+    public PlayerDamaged(float toShield, float toHp, float hpFraction, float shieldFraction, bool blocked, bool guarded = false,
+        bool isPulse = false)
     {
+        IsPulse = isPulse;
         ToShield = toShield;
         ToHp = toHp;
         HpFraction = hpFraction;

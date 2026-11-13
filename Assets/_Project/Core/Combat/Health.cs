@@ -329,6 +329,45 @@ public sealed class Health
     }
 
     /// <summary>
+    /// Damage over time: refused while externally invulnerable, otherwise spent like a hit but never
+    /// checked against, or starting, hit i-frames. Shields absorb it and it can kill.
+    /// </summary>
+    public DamageResult ApplyPulse(float amount, float now)
+    {
+        _now = FiniteTime(now);
+
+        if (IsDead || !(amount > 0f))
+        {
+            return DamageResult.None;
+        }
+
+        if (_externalInvulnerable)
+        {
+            return new DamageResult(0f, 0f, blocked: true, killed: false);
+        }
+
+        float toGranted = _granted.Spend(amount);
+        float toShield = 0f;
+        if (_shieldCurrent > 0f)
+        {
+            toShield = MathF.Min(_shieldCurrent, amount - toGranted);
+            _shieldCurrent -= toShield;
+        }
+
+        float toHp = MathF.Min(_current, amount - toGranted - toShield);
+        _current = MathF.Max(0f, _current - toHp);
+        _shieldCurrent = MathF.Max(0f, _shieldCurrent);
+        if (toGranted + toShield + toHp > 0f)
+        {
+            _lastDamageAt = now;
+        }
+
+        return new DamageResult(toShield, toHp, blocked: false, killed: IsDead);
+    }
+
+    internal bool IsExternallyInvulnerable => _externalInvulnerable;
+
+    /// <summary>
     /// Restores HP up to the live maximum and reports how much actually went in — which is what
     /// a healing view floats, and what a lifesteal node needs to know it did nothing.
     /// </summary>

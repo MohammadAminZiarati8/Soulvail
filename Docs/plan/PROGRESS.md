@@ -9,18 +9,17 @@ _2026-11-13._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-11d** — priest data, Sunscar roster from 14. |
-| **Next task** | SS-12a — the cobra in core: a locked spit cone and Poison. Then SS-12b–d, SS-13, SS-14. |
-| **Verified** | EditMode 6686/6778, 0 failed, 1 inconclusive, 91 skipped. C# whitespace clean. |
+| **Last merged** | **SS-12a** — cobra cone, hero Poison (core). |
+| **Next task** | SS-12b — the cobra model: the owner's sculpt on Rig_Viper with hood bones, turnaround first. |
+| **Verified** | EditMode 6710/6802, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
 Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions at 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14. A pale sac pulses before three scorplings drop. Antlions tunnel, warn with a ring and erupt, then sit exposed for 2.5 s. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
-Waves → cyan portal, idle hint. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
-Scripted 1–29 except bosses. 11 enemies. Boss adds die with boss, 0 XP.
+Waves → cyan portal. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
+Scripted 1–29 but bosses. Boss adds die with it, 0 XP.
 Thornheart: spokes/pods/slam/heart ×2. Mother: shields/lobs/spray/pod.
-Four cousins from 21.
 Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it.
 Gravemaw (25): burrow past cover, rise in open. Ring, bite+throw, tremor/rocks. At 50%, 2 rings and crack Frogs. 986 HP, 4 pillars.
 Apex (30): eye tell/feint, streak, +15% window, 1580 HP, 4 stones, panthers 66–33%, win.
@@ -31,7 +30,8 @@ Shaman (17–19): guard ≤12 m, hold 11 m, flee <4 m. Heal 10%, haste 25% in 8 
 Save v8. Clash UI/LocKeys. Mirrored six-circle arc: tap fires on Auto, hold toggles.
 Status icons, pooled CC, immune bosses. Marksman trim, Quiver, lit arrows, Volley, roll/flinch, silent resume.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
-Wind-up blocks hits/debuffs (Immune).
+Wind-up blocks hits/debuffs.
+Hero Poison (core): capped stacks, pulses; Space or death clears.
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: paired axes/1.2 s, standing, closes, atk speed sets pace. Cover turns axes. Swift Hands.

@@ -241,7 +241,7 @@ _No milestone. The owner is setting the next direction._
 
 **The spitting cobra, the Sunscar's stage-16 enemy** (owner, 2026-11-13; design [GD §8.12](../GameDesign.md)). The Spitter's role: it punishes standing still. From stage 16 it holds 8 m, slithers in to 4 m when its spit is ready, rears 0.7 s over a locked red-orange cone (60°, 5 m) and spits; a hit poisons the hero, up to three stacks that a roll clears. The hero's first Poison. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-12b uses the owner's TRELLIS sculpt (path sent with the go) and may run beside SS-12a; SS-12c needs both; SS-12d needs all three. Playtestable from SS-12d with DT-01's test start at Sunscar stage 16.
 
-- [ ] SS-12a — The cobra in core: a locked spit cone and Poison on the hero (M)
+- [x] SS-12a — The cobra in core: a locked spit cone and Poison on the hero (M)
 - [ ] SS-12b — The model: the owner's cobra on Rig_Viper, hood bones, six clips (M)
 - [ ] SS-12c — The body: prefab, animator, the cone and the violet Poison icon (M)
 - [ ] SS-12d — The cobra in the Sunscar: data, roster from stage 16 (M)

@@ -83,6 +83,9 @@ public enum EnemyBehaviourKind
 
     /// <summary>Tunnels behind the hero and erupts from a locked warning ring.</summary>
     Antlion,
+
+    /// <summary>Holds its range, rears over a locked cone and spits poison.</summary>
+    Cobra,
 }
 
 /// <summary>
@@ -282,7 +285,8 @@ public sealed class EnemySpec
         BombardierSpec bombardier = null,
         BroodSpec brood = null,
         SidewinderSpec sidewinder = null,
-        ShineSpec shine = null, BurrowSpec burrow = null, MendSpec mend = null)
+        ShineSpec shine = null, BurrowSpec burrow = null, MendSpec mend = null,
+        SpitConeSpec spitCone = null)
     {
         if (id.Value is null)
         {
@@ -455,6 +459,12 @@ public sealed class EnemySpec
             throw new ArgumentException("A BurrowSpec is required for Antlion and only for Antlion.", nameof(burrow));
         }
 
+        if ((behaviour == EnemyBehaviourKind.Cobra) != (spitCone is not null))
+        {
+            throw new ArgumentException("A SpitConeSpec is required for Cobra and only for Cobra.", nameof(spitCone));
+        }
+
+        SpitCone = spitCone;
         Shine = shine;
         Burrow = burrow;
         Stalker = stalker;
@@ -626,6 +636,8 @@ public sealed class EnemySpec
     public MendSpec Mend { get; }
 
     public BurrowSpec Burrow { get; }
+
+    public SpitConeSpec SpitCone { get; }
 
     /// <summary>
     /// Where it lurks and how it strikes, or <see langword="null"/> on an archetype that does not.

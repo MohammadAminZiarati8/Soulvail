@@ -1209,6 +1209,9 @@ public sealed class RunState
     /// </remarks>
     public float PlayerGrantedShield => Combat.Health.GrantedShield;
 
+    /// <summary>The hero's poison stacks (SS-12a); zero while clean.</summary>
+    public int PlayerPoisonStacks => Combat.PoisonStacks;
+
     /// <summary>
     /// How much of the movement skill's cooldown is left, as a fraction in <c>[0, 1]</c>: 1 the
     /// instant a dash starts, 0 while the button is live. What M1-16's radial fill draws.

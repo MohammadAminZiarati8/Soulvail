@@ -105,9 +105,14 @@ SWATCHES = {
     "priest_ochre": (1, 2, "C29A6C", "896542"),
     "priest_bone": (5, 0, "FFFAF2", "F7EFE2"),
     "priest_umber": (5, 1, "86604A", "492F27"),
+    # SS-12b: the unused bottom margins of the Warlord's repainted cells.
+    "cobra_sand": (1, 2, "A8742F", "6E4518"),
+    "cobra_umber": (5, 0, "6A4420", "3A2410"),
+    "cobra_bone": (5, 1, "E6D6B4", "A08259"),
 }
 SWATCH_NAMES = list(SWATCHES)
 TOP_INSETS = ("priest_ochre", "priest_bone", "priest_umber")
+BOTTOM_INSETS = ("cobra_sand", "cobra_umber", "cobra_bone")
 TOP_INSET_LEFT, TOP_INSET_RIGHT, TOP_INSET_HEIGHT = 8, 56, 4
 INSETS = {
     "antlion_tan": (92, 95), "antlion_ochre": (97, 100),
@@ -140,6 +145,9 @@ def uv_for(swatch, t):
     if swatch in TOP_INSETS:
         x = col * COL_W + TOP_INSET_LEFT + 4 + t * (TOP_INSET_RIGHT - TOP_INSET_LEFT - 8)
         return x / ATLAS, 1.0 - (row * ROW_H + TOP_INSET_HEIGHT / 2) / ATLAS
+    if swatch in BOTTOM_INSETS:
+        x = col * COL_W + TOP_INSET_LEFT + 4 + t * (TOP_INSET_RIGHT - TOP_INSET_LEFT - 8)
+        return x / ATLAS, 1.0 - ((row + 1) * ROW_H - TOP_INSET_HEIGHT / 2) / ATLAS
     u = (col * COL_W + COL_W * 0.5) / ATLAS
     if swatch in INSETS:
         left, right = INSETS[swatch]
@@ -168,13 +176,13 @@ def build_atlas(tex_dir):
     for row in range(ATLAS // ROW_H):
         img[row * ROW_H:(row + 1) * ROW_H, :, :] = unused[:, None, :]
     for name, (col, row, top, bottom) in SWATCHES.items():
-        if name in TOP_INSETS:
-            # Horizontal ramps in the first block of rows. The older vertical
-            # ramps sample from row + 8, leaving a four-pixel guard strip.
+        if name in TOP_INSETS or name in BOTTOM_INSETS:
+            # Horizontal ramps in the first or last block of rows. The older vertical
+            # ramps sample rows 8-120 of a cell, leaving four-pixel guard strips.
             mix = np.linspace(0.0, 1.0, TOP_INSET_RIGHT - TOP_INSET_LEFT, dtype=np.float32)[:, None]
             strip = rgb(top) * (1 - mix) + rgb(bottom) * mix
             left, right = col * COL_W + TOP_INSET_LEFT, col * COL_W + TOP_INSET_RIGHT
-            top_row = row * ROW_H
+            top_row = row * ROW_H if name in TOP_INSETS else (row + 1) * ROW_H - TOP_INSET_HEIGHT
             img[top_row:top_row + TOP_INSET_HEIGHT, left:right, :] = strip[None, :, :]
             continue
         strip = rgb(top) * (1 - ramp) + rgb(bottom) * ramp

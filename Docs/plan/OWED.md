@@ -766,3 +766,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] [Editor] The beam reads through the storm. Nothing on it is cyan or gold.
 - [ ] [device] At first look on a phone, the priest reads as different from the slinger, and the beam shows who is being healed.
 - [ ] [Editor] Check PriestMendView gets its ally id through the pooled EnemyViews in a real run (only tested with a hand-built pool), and the body scale (authored 1; the Moss Shaman uses 1.27).
+
+## SS-12b — Cobra model
+
+- [ ] [Editor] Drop `Cobra.fbx` on Sunscar sand: at rest the folded hood's front edge sits up to 0.1 m under the ground, and in `Rear` 0.05 m. It should read as tucked into the sand, not cut off.

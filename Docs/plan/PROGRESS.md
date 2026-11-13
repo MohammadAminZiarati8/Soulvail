@@ -9,9 +9,9 @@ _2026-11-13._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-12a** — cobra cone, hero Poison (core). |
-| **Next task** | SS-12b — the cobra model: the owner's sculpt on Rig_Viper with hood bones, turnaround first. |
-| **Verified** | EditMode 6710/6802, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-12b** — cobra model, hood bones. |
+| **Next task** | SS-12c — cobra body: prefab, animator, cone, Poison icon. |
+| **Verified** | EditMode 6721/6813, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -32,6 +32,7 @@ Status icons, pooled CC, immune bosses. Marksman trim, Quiver, lit arrows, Volle
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
 Hero Poison (core): capped stacks, pulses; Space or death clears.
+Cobra model: Rear lifts 0.5 m, opens hood.
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: paired axes/1.2 s, standing, closes, atk speed sets pace. Cover turns axes. Swift Hands.

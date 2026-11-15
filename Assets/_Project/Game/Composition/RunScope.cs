@@ -90,6 +90,7 @@ namespace Soulvail.Game.Composition
         private const int ClassShotPrewarm = 2 * VolleySpec.MaxArrows;
 
         [SerializeField] private PlayerView _playerView;
+        [SerializeField] private TornadoViews _tornadoViews;
         [SerializeField] private GateGuideView _gateGuidePrefab;
 
         [Tooltip("The body a run wears when its class names none: Prefabs/Player/Bodies/Knight. " +
@@ -410,6 +411,11 @@ namespace Soulvail.Game.Composition
             // not construct, so registering the live component is exactly right: the container
             // injects it and destroys nothing.
             builder.RegisterComponent(_playerView);
+            if (_tornadoViews != null)
+            {
+                builder.RegisterComponent(_tornadoViews);
+            }
+
             if (_gateFlash != null)
             {
                 builder.RegisterComponent(_gateFlash);

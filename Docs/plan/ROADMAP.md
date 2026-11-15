@@ -250,7 +250,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SS-13a — The storm caller in core: a breakable channel and a chasing tornado (M)
 - [x] SS-13b — The model: the hyena caller on Rig_Medium and a spiral staff (M)
-- [ ] SS-13c — The body: prefab, animator, the sand spiral and the tornado (M)
+- [x] SS-13c — The body: prefab, animator, the sand spiral and the tornado (M)
 - [ ] SS-13d — The storm caller in the Sunscar: data, roster from stage 18 (M)
 
 **The carrion vulture, the Sunscar's stage-22 enemy and its last new one** (owner, 2026-11-13; design [GD §8.14](../GameDesign.md)). No Jungle role: untargetable in the air. From stage 22 it circles the hero at 7 m, shown only by its shadow and out of reach as a burrowed antlion is; every 4–6 s it locks a red-orange line 10 m long for 1.0 s, dives down it, and sits grounded and targetable for 2 s before it climbs. The Sunscar then holds eleven enemies; its cousins and bosses come later. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-14b uses the owner's TRELLIS sculpt (path in the spec) and may run beside SS-14a; SS-14c needs both; SS-14d needs all three and SS-13d. Playtestable from SS-14d with DT-01's test start at Sunscar stage 22.

@@ -669,6 +669,7 @@ public sealed class TelegraphRingsTests
     /// a spawn telegraph's promise exactly, so it reads in the same ring.
     /// <c>FX_Gravemaw_Ring</c> and <c>FX_Gravemaw_Crack</c> joined at JG-25f: an eruption's warning
     /// and a crack a Frog crawls out of are the same promise.
+    /// <c>FX_Tornado</c> joined at SS-13c so its active hazard uses the same ground warning.
     /// </remarks>
     [Test]
     public void Telegraph_FamilySharesOneMaterial()
@@ -683,6 +684,7 @@ public sealed class TelegraphRingsTests
             "VFX_BossBeat", "VFX_Bulwark", "VFX_ConsecrateZone",
             "FX_PodRipen", "FX_PodRipen",
             "FX_Gravemaw_Ring", "FX_Gravemaw_Ring", "FX_Gravemaw_Crack", "FX_Gravemaw_Crack",
+            "FX_Tornado",
         };
 
         var found = new List<string>();

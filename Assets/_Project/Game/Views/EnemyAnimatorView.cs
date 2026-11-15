@@ -111,6 +111,7 @@ namespace Soulvail.Game.Views
         private readonly int _antlionPhaseId = Animator.StringToHash("AntlionPhase");
         private readonly int _shinePhaseId = Animator.StringToHash("ShinePhase");
         private readonly int _cobraPhaseId = Animator.StringToHash("CobraPhase");
+        private readonly int _channelingId = Animator.StringToHash("Channeling");
         private readonly int _mendingId = Animator.StringToHash("Mending");
         private readonly int _aimDroppedId = Animator.StringToHash("AimDropped");
         private readonly int _backingId = Animator.StringToHash("Backing");
@@ -151,6 +152,7 @@ namespace Soulvail.Game.Views
         private bool? _hasShinePhase;
         private bool? _hasCobraPhase;
         private bool? _hasMending;
+        private bool? _hasChanneling;
         private bool _hasAimDropped;
         private bool _aimDroppedChecked;
         private float? _previousYaw;
@@ -411,6 +413,11 @@ namespace Soulvail.Game.Views
             if (_hasCobraPhase == true)
             {
                 _animator.SetInteger(_cobraPhaseId, (int)CobraPhase.Hold);
+            }
+
+            if (_hasChanneling == true)
+            {
+                SetChanneling(false);
             }
 
             if (_hasMending == true)
@@ -714,6 +721,15 @@ namespace Soulvail.Game.Views
             if (_hasCobraPhase ??= HasParameter(_cobraPhaseId, AnimatorControllerParameterType.Int))
             {
                 _animator.SetInteger(_cobraPhaseId, (int)phase);
+            }
+        }
+
+        public void SetChanneling(bool channeling)
+        {
+            if (_animator != null && _animator.isActiveAndEnabled && (!_dead || !channeling) &&
+                (_hasChanneling ??= HasParameter(_channelingId, AnimatorControllerParameterType.Bool)))
+            {
+                _animator.SetBool(_channelingId, channeling);
             }
         }
 

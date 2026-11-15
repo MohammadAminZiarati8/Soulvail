@@ -791,3 +791,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
   flee and land a hit on the 2 s channel to interrupt it. Let a fresh channel finish, walk out of
   the pull, and roll through the funnel. Kill its caller and check the funnel is harmless as it
   collapses. Advance the stage while a tornado is up and check that it clears.
+
+
+## SS-13c
+
+- With SS-13d, use DT-01 at Sunscar stage 18. Watch the staff raise and the sand spiral. Interrupt a channel with a hit and look for the short scatter.
+- Let a tornado rise and chase the hero. Check the red-orange ring through the funnel and sandstorm, then kill its caller and watch the ring drop and the funnel collapse.

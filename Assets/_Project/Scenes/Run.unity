@@ -935,6 +935,7 @@ GameObject:
   - component: {fileID: 929802505}
   - component: {fileID: 929802504}
   - component: {fileID: 929802506}
+  - component: {fileID: 929802507}
   m_Layer: 0
   m_Name: RunScope
   m_TagString: Untagged
@@ -960,6 +961,7 @@ MonoBehaviour:
   autoInjectGameObjects: []
   _playerView: {fileID: 1102459965}
   _gateFlash: {fileID: 929802506}
+  _tornadoViews: {fileID: 929802507}
   _gateGuidePrefab: {fileID: 11400000, guid: c27536424b16458b82a74470b6a70376, type: 3}
   _defaultBody: {fileID: 7313650281335692003, guid: 8f85ef81fe1efa2469dc734466861726, type: 3}
   _chargeMotion: {fileID: 1102459968}
@@ -1063,6 +1065,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &929802507
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 929802503}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b24be8f0a79d22a458e0227c01337627, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.TornadoViews
+  _funnelPrefab: {fileID: 119255560147423046, guid: 18bdd9d599637ab46a383ebe33e0991d, type: 3}
 --- !u!1001 &1102459964
 PrefabInstance:
   m_ObjectHideFlags: 0

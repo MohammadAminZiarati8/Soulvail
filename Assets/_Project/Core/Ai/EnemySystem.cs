@@ -280,6 +280,7 @@ public sealed class EnemySystem
         _veilrot = veilrot;
 
         Registry = new EnemyRegistry(capacity);
+        Tornadoes = new TornadoField(_events);
 
         // Sized to the registry it drains into, because nothing can be queued that is not
         // registered and nothing is queued twice — see DespawnAtEndOfTick. Allocated here rather
@@ -300,6 +301,10 @@ public sealed class EnemySystem
     /// register an enemy that was never announced.
     /// </summary>
     public EnemyRegistry Registry { get; }
+
+    internal TornadoField Tornadoes { get; }
+
+    internal void AttachMotor(PlayerMotor motor) => Tornadoes.AttachMotor(motor);
 
     /// <summary>The ids and rules of the statuses an enemy can be under.</summary>
     public EnemyStatuses Statuses { get; } = new();
@@ -609,10 +614,16 @@ public sealed class EnemySystem
     /// </returns>
     public bool Despawn(int id)
     {
-        if (Registry.TryGet(id, out EnemyAgent agent) && agent.Spec.Mend is not null &&
-            agent.Behaviour is ShamanBehaviour priest)
+        if (Registry.TryGet(id, out EnemyAgent agent))
         {
-            priest.LoseMend();
+            if (agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
+            {
+                priest.LoseMend();
+            }
+            else if (agent.Behaviour is StormCallerBehaviour caller)
+            {
+                caller.Reset();
+            }
         }
 
         if (!Registry.Despawn(id))
@@ -994,6 +1005,10 @@ public sealed class EnemySystem
         {
             priest.OnHpLost(now);
         }
+        else if (result.ToHp > 0f && agent.Behaviour is StormCallerBehaviour caller)
+        {
+            caller.BreakChannel(now, _events);
+        }
 
         // JG-22a rule 6: any damage shows a stalker, and keeps it from hiding for a while. Here, at
         // the one door, so an arrow, a zone, a trap and a Wight all reveal it alike.
@@ -1015,6 +1030,10 @@ public sealed class EnemySystem
             // Stamped before the announcement, so the corpse is already on the clock by the time
             // anything handles the death — the same order as Spawn's register-then-announce.
             agent.DiedAt = now;
+            if (agent.Behaviour is StormCallerBehaviour)
+            {
+                Tornadoes.Collapse(enemyId, now);
+            }
 
             // Every death pays, whoever caused it (M3-01a rule 3). This is the one door a death
             // comes through (AR §18.2), so a Bloater that lit its own fuse, a Charge, a cone and
@@ -1448,6 +1467,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Thornweaver:
                 case EnemyBehaviourKind.Antlion:
                 case EnemyBehaviourKind.Cobra:
+                case EnemyBehaviourKind.StormCaller:
                     agent.Behaviour.Tick(behaviourCtx);
                     break;
 
@@ -1479,6 +1499,7 @@ public sealed class EnemySystem
 
         BurstBroods(ctx.Now);
         DrainDeferredDespawns();
+        Tornadoes.Tick(ctx, _playerPosition);
     }
 
     /// <summary>
@@ -1501,11 +1522,16 @@ public sealed class EnemySystem
     /// </remarks>
     public void Clear()
     {
+        Tornadoes.Clear();
         foreach (EnemyAgent agent in Registry.Alive)
         {
             if (agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
             {
                 priest.LoseMend();
+            }
+            else if (agent.Behaviour is StormCallerBehaviour caller)
+            {
+                caller.Reset();
             }
         }
 
@@ -1897,19 +1923,19 @@ public sealed class EnemySystem
             EnemyBlackboard blackboard = agent.Blackboard;
             Vector3 position = agent.Position;
 
-            // Antlions and bosses keep the hero as their quarry instead of taking a standing lure.
+            // Burrows and storm calls are aimed at the actual hero.
             Vector3 quarry = playerPosition;
             bool lured = false;
-            bool antlion = agent.Spec.Behaviour == EnemyBehaviourKind.Antlion;
+            bool heroOnly = agent.Spec.Behaviour is EnemyBehaviourKind.Antlion or EnemyBehaviourKind.StormCaller;
 
-            if (!antlion && agent.Spec.Behaviour != EnemyBehaviourKind.Boss
+            if (!heroOnly && agent.Spec.Behaviour != EnemyBehaviourKind.Boss
                 && lures is not null && lures.TryGetLure(position, out Vector3 decoy))
             {
                 quarry = decoy;
                 lured = true;
             }
 
-            PetAgent pet = antlion ? null : pets?.HuntQuarry(agent, playerPosition);
+            PetAgent pet = heroOnly ? null : pets?.HuntQuarry(agent, playerPosition);
             blackboard.QuarryPetId = pet?.Id ?? 0;
             blackboard.QuarryIsAPet = pet is not null;
             if (pet is not null)

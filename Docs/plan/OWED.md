@@ -786,3 +786,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] [Editor] Put a rock between the hero and a rearing cobra. Check that it clips the cone and blocks the spit.
 - [ ] [Editor] Check that the cone and spray read through the storm and the cobra has no cyan, gold or green.
 - [ ] [Device] Check that the cone reads at a glance and the violet drop reads as Poison.
+
+- **SS-13a, after SS-13d** — Start Sunscar at stage 18 with DT-01. Step inside 6 m to force a
+  flee and land a hit on the 2 s channel to interrupt it. Let a fresh channel finish, walk out of
+  the pull, and roll through the funnel. Kill its caller and check the funnel is harmless as it
+  collapses. Advance the stage while a tornado is up and check that it clears.

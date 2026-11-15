@@ -9,9 +9,9 @@ _2026-11-15._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-12d** — Cobra joins Sunscar at 16. |
-| **Next task** | SS-13a — storm caller behaviour and tornado. |
-| **Verified** | EditMode 6743/6835, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-13a** — Caller core and tornado. |
+| **Next task** | SS-13b — Caller model, rig, and staff. |
+| **Verified** | EditMode 6770/6862, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

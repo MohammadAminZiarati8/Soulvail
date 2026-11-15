@@ -951,6 +951,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             pets);
 
         combat.AttachStatus(State.Status);
+        enemies.AttachMotor(motor);
         stormRun.AttachStatus(State.Status);
 
         // With the state, not with the session: a run that ended mid-dash must not make the first

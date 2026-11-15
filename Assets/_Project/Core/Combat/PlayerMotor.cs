@@ -41,6 +41,8 @@ public sealed class PlayerMotor
     private readonly MovementSpec _spec;
 
     private Vector3 _velocity;
+    private Vector2 _pendingDrift;
+    private Vector3 _appliedDrift;
     private Vector3 _facing;
     private float _holdRemaining;
 
@@ -93,7 +95,16 @@ public sealed class PlayerMotor
     public Stat Speed { get; }
 
     /// <summary>Current velocity in metres per second. Always on the ground plane: <c>Y == 0</c>.</summary>
-    public Vector3 Velocity => _velocity;
+    public Vector3 Velocity => _velocity + _appliedDrift;
+
+    /// <summary>Adds an external XZ velocity for the next motor tick.</summary>
+    public void AddDrift(Vector2 velocityXZ) => _pendingDrift += velocityXZ;
+
+    internal void ClearDrift()
+    {
+        _pendingDrift = Vector2.Zero;
+        _appliedDrift = Vector3.Zero;
+    }
 
     /// <summary>Current facing. Always a unit vector on the ground plane: <c>Y == 0</c>.</summary>
     public Vector3 Facing => _facing;
@@ -128,12 +139,15 @@ public sealed class PlayerMotor
         if (IsHeld)
         {
             _holdRemaining = MathF.Max(0f, _holdRemaining - dt);
-            Stop();
-            IntegrateFacing(dt, faceDirection);
-            return;
+            _velocity = Vector3.Zero;
+        }
+        else
+        {
+            IntegrateVelocity(dt, moveInput);
         }
 
-        IntegrateVelocity(dt, moveInput);
+        _appliedDrift = new Vector3(_pendingDrift.X, 0f, _pendingDrift.Y);
+        _pendingDrift = Vector2.Zero;
         IntegrateFacing(dt, faceDirection);
     }
 
@@ -150,6 +164,7 @@ public sealed class PlayerMotor
     public void Stop()
     {
         _velocity = Vector3.Zero;
+        ClearDrift();
     }
 
     private void IntegrateVelocity(float dt, Vector2 moveInput)
@@ -231,7 +246,7 @@ public sealed class PlayerMotor
     /// <paramref name="maxDegrees"/>, along the shorter arc. Both must be unit vectors on the
     /// ground plane.
     /// </summary>
-    private static Vector3 RotateTowards(Vector3 current, Vector3 target, float maxDegrees)
+    internal static Vector3 RotateTowards(Vector3 current, Vector3 target, float maxDegrees)
     {
         // On the XZ plane the dot product is the cosine of the angle from current to target and
         // this cross term is its sine. Feeding both to Atan2 gives a *signed* angle in

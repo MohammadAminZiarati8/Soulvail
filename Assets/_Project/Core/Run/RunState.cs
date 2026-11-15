@@ -1075,6 +1075,10 @@ public sealed class RunState
     /// </remarks>
     public int InFlightProjectiles => Projectiles.InFlightCount;
 
+    public int TornadoCount => Enemies.Tornadoes.Count;
+
+    public TornadoReading TornadoAt(int index) => Enemies.Tornadoes.At(index);
+
     /// <summary>The current flight poses for the returning axe presentation.</summary>
     public System.ReadOnlySpan<Axe> InFlightAxes =>
         Combat.Axes is AxeSystem axes ? axes.InFlight : default;

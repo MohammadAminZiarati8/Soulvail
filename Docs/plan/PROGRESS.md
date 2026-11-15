@@ -2,16 +2,16 @@
 
 [OWED](OWED.md). History in Git.
 
-_2026-11-13._
+_2026-11-15._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-12b** — cobra model, hood bones. |
-| **Next task** | SS-12c — cobra body: prefab, animator, cone, Poison icon. |
-| **Verified** | EditMode 6721/6813, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-12c** — cobra body and Poison HUD. |
+| **Next task** | SS-12d — cobra data and Sunscar stage 16. |
+| **Verified** | EditMode 6735/6827, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -31,8 +31,8 @@ Save v8. Clash UI/LocKeys. Mirrored six-circle arc: tap fires on Auto, hold togg
 Status icons, pooled CC, immune bosses. Marksman trim, Quiver, lit arrows, Volley, roll/flinch, silent resume.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
-Hero Poison (core): capped stacks, pulses; Space or death clears.
-Cobra model: Rear lifts 0.5 m, opens hood.
+Cobra rears over a clipped fan, then spits.
+Hero Poison: violet drop, stacks, timer. Quiet HP ticks. Space or death clears it.
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: paired axes/1.2 s, standing, closes, atk speed sets pace. Cover turns axes. Swift Hands.

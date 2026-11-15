@@ -270,7 +270,7 @@ namespace Soulvail.Game.Views
         /// </remarks>
         private void OnDamaged(PlayerDamaged evt)
         {
-            if (_animator == null || _dead || evt.Blocked || evt.ToHp <= 0f)
+            if (_animator == null || _dead || evt.Blocked || evt.IsPulse || evt.ToHp <= 0f)
             {
                 return;
             }

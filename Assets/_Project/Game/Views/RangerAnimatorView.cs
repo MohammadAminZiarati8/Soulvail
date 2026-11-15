@@ -998,7 +998,8 @@ namespace Soulvail.Game.Views
                 _blockPop.gameObject.SetActive(true);
             }
 
-            if (_animator == null || _dead || _rolling || _killshotWinding || evt.Blocked || !(evt.ToHp > 0f) || !(evt.HpFraction > 0f))
+            if (_animator == null || _dead || _rolling || _killshotWinding || evt.Blocked || evt.IsPulse ||
+                !(evt.ToHp > 0f) || !(evt.HpFraction > 0f))
             {
                 return;
             }

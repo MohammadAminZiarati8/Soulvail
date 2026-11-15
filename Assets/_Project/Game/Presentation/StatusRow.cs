@@ -1,4 +1,5 @@
 using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 using Soulvail.Game.Authoring;
@@ -21,6 +22,7 @@ namespace Soulvail.Game.Presentation
 
         /// <summary>A debuff's rim: pale violet, because red is the enemy's (colour law).</summary>
         public static readonly Color DebuffRim = new Color(0.78f, 0.71f, 0.99f, 1f);
+        public static readonly Color PoisonTint = DebuffRim;
 
         [SerializeField] private StatusIconBook _icons;
         [SerializeField] private Sprite _sweepSprite;
@@ -30,6 +32,9 @@ namespace Soulvail.Game.Presentation
         private readonly Image[] _sweeps = new Image[StatusBoard.Capacity];
         private readonly TMP_Text[] _stacks = new TMP_Text[StatusBoard.Capacity];
         private readonly int[] _shownStacks = new int[StatusBoard.Capacity];
+        private readonly ContentId _poisonId = new("status.poisoned");
+        private Sprite _poisonDrop;
+        private Texture2D _poisonShading;
         private IRunSession _session;
         private Canvas _canvas;
         private bool _built;
@@ -86,6 +91,15 @@ namespace Soulvail.Game.Presentation
                 _iconImages[index].sprite = icon;
             }
 
+            bool poisoned = entry.Id == _poisonId;
+            if (poisoned && icon != null && _poisonDrop == null)
+            {
+                BuildPoisonDrop(icon);
+            }
+
+            _iconImages[index].overrideSprite = poisoned ? _poisonDrop : null;
+            _iconImages[index].color = poisoned ? PoisonTint : Color.white;
+
             bool timed = entry.IsTimed;
             _sweeps[index].enabled = timed;
             _sweeps[index].fillAmount = timed ? entry.Fraction : 0f;
@@ -98,6 +112,55 @@ namespace Soulvail.Game.Presentation
             }
 
             _shownStacks[index] = stacks;
+        }
+
+        private void BuildPoisonDrop(Sprite source)
+        {
+            // The shared enemy sprite is green and has read/write disabled. Copy its shading once
+            // so the hero can tint the drop violet without recolouring the enemy sprite.
+            Texture2D original = source.texture;
+            RenderTexture copy = RenderTexture.GetTemporary(original.width, original.height, 0,
+                RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            RenderTexture previous = RenderTexture.active;
+            try
+            {
+                Graphics.Blit(original, copy);
+                RenderTexture.active = copy;
+                Rect rect = source.rect;
+                _poisonShading = new Texture2D((int)rect.width, (int)rect.height, TextureFormat.RGBA32, false);
+                _poisonShading.ReadPixels(rect, 0, 0, false);
+                Color32[] pixels = _poisonShading.GetPixels32();
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    byte shade = pixels[i].g;
+                    pixels[i] = new Color32(shade, shade, shade, pixels[i].a);
+                }
+
+                _poisonShading.SetPixels32(pixels);
+                _poisonShading.Apply(false, true);
+                var bounds = new Rect(0f, 0f, rect.width, rect.height);
+                _poisonDrop = Sprite.Create(_poisonShading, bounds, new Vector2(0.5f, 0.5f));
+                _poisonDrop.name = source.name;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(copy);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(_poisonDrop);
+                Destroy(_poisonShading);
+            }
+            else
+            {
+                DestroyImmediate(_poisonDrop);
+                DestroyImmediate(_poisonShading);
+            }
         }
 
         /// <summary>Hides every slot from <paramref name="count"/> on.</summary>

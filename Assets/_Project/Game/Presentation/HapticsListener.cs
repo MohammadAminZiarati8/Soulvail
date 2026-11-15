@@ -166,7 +166,7 @@ public sealed class HapticsListener : IStartable, ITickable, IDisposable
     /// </remarks>
     private void OnPlayerDamaged(PlayerDamaged evt)
     {
-        if (evt.Blocked)
+        if (evt.Blocked || evt.IsPulse)
         {
             return;
         }

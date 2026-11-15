@@ -770,3 +770,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ## SS-12b — Cobra model
 
 - [ ] [Editor] Drop `Cobra.fbx` on Sunscar sand: at rest the folded hood's front edge sits up to 0.1 m under the ground, and in `Rear` 0.05 m. It should read as tucked into the sand, not cut off.
+
+### SS-12c — Cobra body and Poison HUD, deferred to SS-12d
+
+- [ ] Editor, DT-01 Sunscar stage 16 after roster wiring. Check the hood, warning fan and locked spit through the storm, including a rock clipping the fan and killing the cobra during Rear.
+- [ ] Editor and device. Take two spits inside 4 s. Check the pale-violet drop, stack count and timer, HP ticks without flinch or vibration, and clearing on the Space move.

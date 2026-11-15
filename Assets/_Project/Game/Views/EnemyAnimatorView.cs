@@ -110,6 +110,7 @@ namespace Soulvail.Game.Views
         private readonly int _turningId = Animator.StringToHash("Turning");
         private readonly int _antlionPhaseId = Animator.StringToHash("AntlionPhase");
         private readonly int _shinePhaseId = Animator.StringToHash("ShinePhase");
+        private readonly int _cobraPhaseId = Animator.StringToHash("CobraPhase");
         private readonly int _mendingId = Animator.StringToHash("Mending");
         private readonly int _aimDroppedId = Animator.StringToHash("AimDropped");
         private readonly int _backingId = Animator.StringToHash("Backing");
@@ -137,6 +138,8 @@ namespace Soulvail.Game.Views
         private IDisposable _hiddenSubscription;
         private IDisposable _antlionPhaseSubscription;
         private IDisposable _shineSubscription;
+        private IDisposable _cobraPhaseSubscription;
+        private IDisposable _cobraSpatSubscription;
         private IDisposable _mendStartedSubscription;
         private IDisposable _mendEndedSubscription;
         private IDisposable _aimDroppedSubscription;
@@ -146,6 +149,7 @@ namespace Soulvail.Game.Views
         private bool? _hasStrikeMissed;
         private bool? _hasAntlionPhase;
         private bool? _hasShinePhase;
+        private bool? _hasCobraPhase;
         private bool? _hasMending;
         private bool _hasAimDropped;
         private bool _aimDroppedChecked;
@@ -219,6 +223,8 @@ namespace Soulvail.Game.Views
             _hiddenSubscription = hub.Subscribe<EnemyHiddenChanged>(OnHiddenChanged);
             _antlionPhaseSubscription = hub.Subscribe<AntlionPhaseChanged>(OnAntlionPhaseChanged);
             _shineSubscription = hub.Subscribe<EnemyShineChanged>(OnShineChanged);
+            _cobraPhaseSubscription = hub.Subscribe<CobraPhaseChanged>(OnCobraPhaseChanged);
+            _cobraSpatSubscription = hub.Subscribe<CobraSpat>(OnCobraSpat);
             _mendStartedSubscription = hub.Subscribe<PriestMendStarted>(OnMendStarted);
             _mendEndedSubscription = hub.Subscribe<PriestMendEnded>(OnMendEnded);
             _aimDroppedSubscription = hub.Subscribe<EnemyAimDropped>(OnAimDropped);
@@ -402,6 +408,11 @@ namespace Soulvail.Game.Views
                 _animator.SetInteger(_shinePhaseId, 0);
             }
 
+            if (_hasCobraPhase == true)
+            {
+                _animator.SetInteger(_cobraPhaseId, (int)CobraPhase.Hold);
+            }
+
             if (_hasMending == true)
             {
                 _animator.SetBool(_mendingId, false);
@@ -473,6 +484,8 @@ namespace Soulvail.Game.Views
             _hiddenSubscription?.Dispose();
             _antlionPhaseSubscription?.Dispose();
             _shineSubscription?.Dispose();
+            _cobraPhaseSubscription?.Dispose();
+            _cobraSpatSubscription?.Dispose();
             _mendStartedSubscription?.Dispose();
             _mendEndedSubscription?.Dispose();
             _aimDroppedSubscription?.Dispose();
@@ -680,6 +693,30 @@ namespace Soulvail.Game.Views
             }
         }
 
+        private void OnCobraPhaseChanged(CobraPhaseChanged evt)
+        {
+            // The release event starts Spit. Recover may be published in the same tick.
+            if (evt.Phase != CobraPhase.Recover)
+            {
+                SetCobraPhase(evt.Id, evt.Phase);
+            }
+        }
+
+        private void OnCobraSpat(CobraSpat evt) => SetCobraPhase(evt.Id, CobraPhase.Recover);
+
+        private void SetCobraPhase(int id, CobraPhase phase)
+        {
+            if (_animator == null || !_animator.isActiveAndEnabled || _dead || !IsMine(id))
+            {
+                return;
+            }
+
+            if (_hasCobraPhase ??= HasParameter(_cobraPhaseId, AnimatorControllerParameterType.Int))
+            {
+                _animator.SetInteger(_cobraPhaseId, (int)phase);
+            }
+        }
+
         private void OnMendStarted(PriestMendStarted evt) => SetMending(evt.Id, true);
 
         private void OnMendEnded(PriestMendEnded evt) => SetMending(evt.Id, false);
@@ -787,6 +824,10 @@ namespace Soulvail.Game.Views
             }
 
             _dead = true;
+            if (_hasCobraPhase == true)
+            {
+                _animator.SetInteger(_cobraPhaseId, (int)CobraPhase.Hold);
+            }
             ResetStrikeMissed();
             _leapArmed = false;
             SetCrowdControl(false, false, 0f);

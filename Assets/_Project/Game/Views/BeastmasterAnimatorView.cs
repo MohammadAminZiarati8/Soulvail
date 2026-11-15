@@ -158,7 +158,7 @@ namespace Soulvail.Game.Views
 
         private void OnDamaged(PlayerDamaged evt)
         {
-            if (!_died && !evt.Blocked && evt.ToHp > 0f)
+            if (!_died && !evt.Blocked && !evt.IsPulse && evt.ToHp > 0f)
             {
                 _animator.SetTrigger(_hit);
             }

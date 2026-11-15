@@ -109,10 +109,15 @@ SWATCHES = {
     "cobra_sand": (1, 2, "A8742F", "6E4518"),
     "cobra_umber": (5, 0, "6A4420", "3A2410"),
     "cobra_bone": (5, 1, "E6D6B4", "A08259"),
+    # SS-13b: side margins of the top insets in the Warlord's repainted cells.
+    "caller_fur": (1, 2, "C7AB88", "927151"),
+    "caller_cloak": (5, 0, "50433B", "241E1C"),
+    "caller_bone": (5, 1, "E4D5BD", "AE997B"),
 }
 SWATCH_NAMES = list(SWATCHES)
 TOP_INSETS = ("priest_ochre", "priest_bone", "priest_umber")
 BOTTOM_INSETS = ("cobra_sand", "cobra_umber", "cobra_bone")
+CALLER_INSETS = ("caller_fur", "caller_cloak", "caller_bone")
 TOP_INSET_LEFT, TOP_INSET_RIGHT, TOP_INSET_HEIGHT = 8, 56, 4
 INSETS = {
     "antlion_tan": (92, 95), "antlion_ochre": (97, 100),
@@ -142,6 +147,8 @@ def uv_for(swatch, t):
     """Where on the atlas a surface of `swatch` samples, `t` from 0 (the light top) to 1."""
     col, row = SWATCHES[swatch][0], SWATCHES[swatch][1]
     t = min(1.0, max(0.0, t))
+    if swatch in CALLER_INSETS:
+        return (col * COL_W + 1.5 + 5 * t) / ATLAS, 1.0 - (row * ROW_H + 2) / ATLAS
     if swatch in TOP_INSETS:
         x = col * COL_W + TOP_INSET_LEFT + 4 + t * (TOP_INSET_RIGHT - TOP_INSET_LEFT - 8)
         return x / ATLAS, 1.0 - (row * ROW_H + TOP_INSET_HEIGHT / 2) / ATLAS
@@ -176,13 +183,14 @@ def build_atlas(tex_dir):
     for row in range(ATLAS // ROW_H):
         img[row * ROW_H:(row + 1) * ROW_H, :, :] = unused[:, None, :]
     for name, (col, row, top, bottom) in SWATCHES.items():
-        if name in TOP_INSETS or name in BOTTOM_INSETS:
+        if name in TOP_INSETS or name in BOTTOM_INSETS or name in CALLER_INSETS:
             # Horizontal ramps in the first or last block of rows. The older vertical
             # ramps sample rows 8-120 of a cell, leaving four-pixel guard strips.
-            mix = np.linspace(0.0, 1.0, TOP_INSET_RIGHT - TOP_INSET_LEFT, dtype=np.float32)[:, None]
+            x0, x1 = (0, TOP_INSET_LEFT) if name in CALLER_INSETS else (TOP_INSET_LEFT, TOP_INSET_RIGHT)
+            mix = np.linspace(0.0, 1.0, x1 - x0, dtype=np.float32)[:, None]
             strip = rgb(top) * (1 - mix) + rgb(bottom) * mix
-            left, right = col * COL_W + TOP_INSET_LEFT, col * COL_W + TOP_INSET_RIGHT
-            top_row = row * ROW_H if name in TOP_INSETS else (row + 1) * ROW_H - TOP_INSET_HEIGHT
+            left, right = col * COL_W + x0, col * COL_W + x1
+            top_row = (row + 1) * ROW_H - TOP_INSET_HEIGHT if name in BOTTOM_INSETS else row * ROW_H
             img[top_row:top_row + TOP_INSET_HEIGHT, left:right, :] = strip[None, :, :]
             continue
         strip = rgb(top) * (1 - ramp) + rgb(bottom) * ramp

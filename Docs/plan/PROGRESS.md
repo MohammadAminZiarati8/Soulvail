@@ -2,16 +2,16 @@
 
 [OWED](OWED.md). History in Git.
 
-_2026-11-15._
+_2026-11-16._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-13a** — Caller core and tornado. |
-| **Next task** | SS-13b — Caller model, rig, and staff. |
-| **Verified** | EditMode 6770/6862, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-13b** — Caller model, rig, staff. |
+| **Next task** | SS-13c — Caller body, tornado VFX. |
+| **Verified** | EditMode 6780/6872, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -31,7 +31,7 @@ Save v8. Clash UI/LocKeys. Mirrored six-circle arc: tap fires on Auto, hold togg
 Status icons, pooled CC, immune bosses. Marksman trim, Quiver, lit arrows, Volley, roll/flinch, silent resume.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
-Cobra rears over a clipped fan, then spits.
+Cobra spits over a clipped fan. Caller model and staff ship.
 Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 

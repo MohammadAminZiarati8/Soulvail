@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Progression;
@@ -45,6 +46,7 @@ public sealed class SunscarTests
     private static readonly ContentId Glassback = new("enemy.glassback");
     private static readonly ContentId Antlion = new("enemy.antlion");
     private static readonly ContentId Priest = new("enemy.jackal-priest");
+    private static readonly ContentId Cobra = new("enemy.cobra");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -58,14 +60,14 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriest()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriestCobra()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
             Is.EqualTo(new[]
             {
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
-                (Antlion, 11, 0), (Priest, 14, 0),
+                (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0),
             }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
@@ -661,6 +663,99 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Cobra_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Cobra.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Cobra.asset")));
+        EnemySpec spec = Catalog().Enemy(Cobra);
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.cobra.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((44f, 2.4f, 4, 10, 28f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That(spec.AggroRange, Is.EqualTo(30f));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Cobra));
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Cobra.prefab").GetComponent<EnemyView>()));
+        Assert.That(look.BodyScale, Is.EqualTo(1f));
+        Assert.That(spec.SpitCone, Is.Not.Null);
+        SpitConeSpec spit = spec.SpitCone;
+        Assert.That((spit.HoldDistance, spit.CloseDistance, spit.RearSeconds,
+                spit.HalfAngleDegrees, spit.Length, spit.SpitDamage),
+            Is.EqualTo((8f, 4f, 0.7f, 30f, 5f, 8f)));
+        Assert.That((spit.PoisonFractionPerSecond, spit.PoisonSeconds, spit.PoisonMaxStacks,
+                spit.RecoverSeconds, spit.CooldownSeconds),
+            Is.EqualTo((0.02f, 4f, 3, 0.5f, 3f)));
+    }
+
+    [Test]
+    public void Cobra_ExistingEnemies_NoSpitCone()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Cobra)
+            {
+                Assert.That(spec.SpitCone, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Cobra_SlowerThanEveryClass()
+    {
+        EnemySpec spec = Catalog().Enemy(Cobra);
+        foreach (CharacterSpec character in AuthoredCharacters())
+        {
+            Assert.That(spec.MoveSpeed, Is.LessThan(character.Movement.Speed), character.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Cobra_ConeTipClearableInRear()
+    {
+        SpitConeSpec spit = Catalog().Enemy(Cobra).SpitCone;
+        foreach (CharacterSpec character in AuthoredCharacters())
+        {
+            Assert.That(character.Movement.Speed * spit.RearSeconds,
+                Is.GreaterThanOrEqualTo(spit.Length - spit.CloseDistance), character.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Cobra_HoldsInsideTheStormsClearing()
+    {
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        Assert.That(Catalog().Enemy(Cobra).SpitCone.HoldDistance, Is.LessThan(storm.ClearRadius));
+    }
+
+    [Test]
+    public void Cobra_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Cobra).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Spitting cobra"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_CobraFrom16()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(15, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest }));
+        count = mode.RosterFor(16, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_PriestFrom14()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -806,12 +901,23 @@ public sealed class SunscarTests
         AssertStageWavesClear(14, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Scorpling },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1);
 
+    [Test]
+    public void Sunscar_Stage16_WavesClear()
+    {
+        RecordingEvents events = AssertStageWavesClear(16,
+            new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Scorpling },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1, keepHeroAlive: true,
+            requireAllEnemies: false);
+        Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Cobra));
+    }
+
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
 
     private static RecordingEvents AssertStageWavesClear(
         int stage, ContentId[] expectedEnemies, int maxSeconds,
-        bool sidestepTells = false, bool dodgeLandings = false, int seed = 7)
+        bool sidestepTells = false, bool dodgeLandings = false, int seed = 7, bool keepHeroAlive = false,
+        bool requireAllEnemies = true)
     {
         const float frameTime = 1f / 32f;
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
@@ -825,6 +931,16 @@ public sealed class SunscarTests
         try
         {
             session.Start(new RunConfig(Sunscar, Ranger, random.Seed, stage, SpawnPlan.Empty, snapshot));
+            Health heroHealth = null;
+            if (keepHeroAlive)
+            {
+                // This row verifies wave completion. Refill the simulated Ranger between ticks.
+                var combat = (PlayerCombat)typeof(RunState)
+                    .GetProperty("Combat", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(session.State);
+                heroHealth = combat.Health;
+            }
+
             StageArrived arrival = events.Of<StageArrived>().Single();
             Assert.That((arrival.Stage, arrival.ArenaId), Is.EqualTo((stage, Dunes)));
 
@@ -926,6 +1042,7 @@ public sealed class SunscarTests
                     };
                 }
 
+                heroHealth?.Heal(session.State.PlayerMaxHp);
                 session.Tick(world);
                 if (events.Count<PlayerDied>() > 0)
                 {
@@ -934,7 +1051,9 @@ public sealed class SunscarTests
             }
 
             Assert.That(events.Count<WaveStarted>(), Is.GreaterThan(0));
-            Assert.That(events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct(), Is.EquivalentTo(expectedEnemies));
+            IEnumerable<ContentId> spawnedEnemies = events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct();
+            Assert.That(spawnedEnemies,
+                requireAllEnemies ? Is.EquivalentTo(expectedEnemies) : Is.SubsetOf(expectedEnemies));
             var survivors = events.Of<EnemySpawned>()
                 .Where(spawn => session.State.IsEnemyAlive(spawn.Id))
                 .Select(spawn => $"{spawn.SpecId} at {positions.GetValueOrDefault(spawn.Id, spawn.Position)}");

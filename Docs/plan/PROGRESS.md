@@ -9,13 +9,13 @@ _2026-11-15._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-12c** — cobra body and Poison HUD. |
-| **Next task** | SS-12d — cobra data and Sunscar stage 16. |
-| **Verified** | EditMode 6735/6827, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-12d** — Cobra joins Sunscar at 16. |
+| **Next task** | SS-13a — storm caller behaviour and tornado. |
+| **Verified** | EditMode 6743/6835, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions at 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14. A pale sac pulses before three scorplings drop. Antlions tunnel, warn with a ring and erupt, then sit exposed for 2.5 s. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions at 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16. Brood sacs pulse before three scorplings drop. Antlions tunnel, warn, erupt and sit exposed for 2.5 s. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 but bosses. Boss adds die with it, 0 XP.
@@ -32,7 +32,7 @@ Status icons, pooled CC, immune bosses. Marksman trim, Quiver, lit arrows, Volle
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
 Cobra rears over a clipped fan, then spits.
-Hero Poison: violet drop, stacks, timer. Quiet HP ticks. Space or death clears it.
+Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: paired axes/1.2 s, standing, closes, atk speed sets pace. Cover turns axes. Swift Hands.

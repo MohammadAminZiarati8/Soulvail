@@ -775,3 +775,14 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [ ] Editor, DT-01 Sunscar stage 16 after roster wiring. Check the hood, warning fan and locked spit through the storm, including a rock clipping the fan and killing the cobra during Rear.
 - [ ] Editor and device. Take two spits inside 4 s. Check the pale-violet drop, stack count and timer, HP ticks without flinch or vibration, and clearing on the Space move.
+
+
+## SS-12d — Spitting cobra in the Sunscar
+
+- [ ] [Editor] DT-01, Sunscar stage 16. Cobras hold about 8 m and back away when rushed. Walking away keeps them out of spit range.
+- [ ] [Editor] Stand still until a cobra closes and rears with its hood spread. Check the red-orange cone lasts about 0.7 s and that stepping back beyond its tip or rolling avoids the spit.
+- [ ] [Editor] Take a hit. Check the pale-violet Poison drop, quiet HP ticks without flinch, and two stacks after a second hit within 4 s.
+- [ ] [Editor] Check that the Ranger roll, Oathbound charge and Beastmaster swap each clear every Poison stack.
+- [ ] [Editor] Put a rock between the hero and a rearing cobra. Check that it clips the cone and blocks the spit.
+- [ ] [Editor] Check that the cone and spray read through the storm and the cobra has no cyan, gold or green.
+- [ ] [Device] Check that the cone reads at a glance and the violet drop reads as Poison.

@@ -1447,6 +1447,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Stalker:
                 case EnemyBehaviourKind.Thornweaver:
                 case EnemyBehaviourKind.Antlion:
+                case EnemyBehaviourKind.Cobra:
                     agent.Behaviour.Tick(behaviourCtx);
                     break;
 

@@ -272,6 +272,19 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _mendCooldown;
         [SerializeField, Min(0f)] private float _mendBrokenSeconds;
 
+        [Header("Spit cone — Cobra only")]
+        [SerializeField, Min(0f)] private float _spitHoldDistance;
+        [SerializeField, Min(0f)] private float _spitCloseDistance;
+        [SerializeField, Min(0f)] private float _spitRearSeconds;
+        [SerializeField, Range(0f, 90f)] private float _spitHalfAngleDegrees;
+        [SerializeField, Min(0f)] private float _spitLength;
+        [SerializeField, Min(0f)] private float _spitDamage;
+        [SerializeField, Range(0f, 1f)] private float _spitPoisonFractionPerSecond;
+        [SerializeField, Min(0f)] private float _spitPoisonSeconds;
+        [SerializeField, Min(1)] private int _spitPoisonMaxStacks;
+        [SerializeField, Min(0f)] private float _spitRecoverSeconds;
+        [SerializeField, Min(0f)] private float _spitCooldownSeconds;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -432,6 +445,11 @@ namespace Soulvail.Game.Authoring
                     mend: _mendChannelSeconds > 0f
                         ? new MendSpec(_mendRange, _mendBreakRange, _mendHurtBelow, _mendChannelSeconds,
                             _mendHealPerSecond, _mendCooldown, _mendBrokenSeconds)
+                        : null,
+                    spitCone: _behaviour == EnemyBehaviourKind.Cobra
+                        ? new SpitConeSpec(_spitHoldDistance, _spitCloseDistance, _spitRearSeconds,
+                            _spitHalfAngleDegrees, _spitLength, _spitDamage, _spitPoisonFractionPerSecond,
+                            _spitPoisonSeconds, _spitPoisonMaxStacks, _spitRecoverSeconds, _spitCooldownSeconds)
                         : null);
             }
             catch (ArgumentException inner)

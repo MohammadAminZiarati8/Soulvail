@@ -256,7 +256,7 @@ _No milestone. The owner is setting the next direction._
 **The carrion vulture, the Sunscar's stage-22 enemy and its last new one** (owner, 2026-11-13; design [GD §8.14](../GameDesign.md)). No Jungle role: untargetable in the air. From stage 22 it circles the hero at 7 m, shown only by its shadow and out of reach as a burrowed antlion is; every 4–6 s it locks a red-orange line 10 m long for 1.0 s, dives down it, and sits grounded and targetable for 2 s before it climbs. The Sunscar then holds eleven enemies; its cousins and bosses come later. Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order. SS-14b uses the owner's TRELLIS sculpt (path in the spec) and may run beside SS-14a; SS-14c needs both; SS-14d needs all three and SS-13d. Playtestable from SS-14d with DT-01's test start at Sunscar stage 22.
 
 - [x] **SS-14a** — The vulture in core: out of reach aloft, a locked dive line, a grounded window (M)
-- [ ] SS-14b — The model: the owner's vulture on Rig_Hawk, flight and ground clips (M)
+- [x] **SS-14b** — The model: the owner's vulture on Rig_Hawk, flight and ground clips (M)
 - [ ] SS-14c — The body: prefab, animator, the ground shadow and the dive (M)
 - [ ] SS-14d — The vulture in the Sunscar: data, roster from stage 22 (M)
 

@@ -19,6 +19,8 @@ parser=argparse.ArgumentParser(description='Repair an image-to-3D scan without l
 parser.add_argument('source')
 parser.add_argument('output')
 parser.add_argument('--target-triangles',type=int,default=180000)
+parser.add_argument('--point-shell', action='store_true',
+    help='Rebuild overlapping surface sheets from positive density samples.')
 parser.add_argument('--texture-size',type=int,default=2048)
 parser.add_argument('--preview-dir')
 parser.add_argument('--blend')
@@ -81,20 +83,44 @@ bm=bmesh.new();bm.from_mesh(body.data)
 bmesh.ops.remove_doubles(bm,verts=list(bm.verts),dist=1e-6)
 bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
 bm.to_mesh(body.data);bm.free()
-# Give open sheets a real closed thickness before voxelization. Voxelizing an open
-# fragmented scan directly keeps only its few already-enclosed fragments.
-solid=body.modifiers.new('CloseOpenSheets','SOLIDIFY')
-solid.solidify_mode='EXTRUDE'
-solid.thickness=0.006*scale;solid.offset=0
-solid.use_even_offset=False
-bpy.ops.object.modifier_apply(modifier=solid.name)
-bpy.context.view_layer.update()
-log('SHELL_SIZE='+str(tuple(body.dimensions)))
-assert all(body.dimensions[k] <= source.dimensions[k] * 1.05 for k in range(3)), 'Shell distortion'
-mod=body.modifiers.new('ClosedSurface','REMESH')
-mod.mode='VOXEL';mod.voxel_size=0.002*scale
-mod.use_smooth_shade=True
-bpy.ops.object.modifier_apply(modifier=mod.name)
+if args.point_shell:
+    # Overlapping, oppositely oriented sheets can cancel during signed voxelization.
+    # A dense sampling of both sides contributes positive density independent of winding.
+    group = bpy.data.node_groups.new('Point shell', 'GeometryNodeTree')
+    group.interface.new_socket(name='Geometry', in_out='INPUT', socket_type='NodeSocketGeometry')
+    group.interface.new_socket(name='Geometry', in_out='OUTPUT', socket_type='NodeSocketGeometry')
+    entry = group.nodes.new('NodeGroupInput')
+    samples = group.nodes.new('GeometryNodeDistributePointsOnFaces')
+    samples.inputs['Density'].default_value = 1000000 / scale**2
+    volume = group.nodes.new('GeometryNodePointsToVolume')
+    volume.resolution_mode = 'VOXEL_SIZE'
+    volume.inputs['Voxel Size'].default_value = 0.002 * scale
+    volume.inputs['Radius'].default_value = 0.005 * scale
+    surface = group.nodes.new('GeometryNodeVolumeToMesh')
+    surface.inputs['Threshold'].default_value = 0.15
+    exit_node = group.nodes.new('NodeGroupOutput')
+    group.links.new(entry.outputs['Geometry'], samples.inputs['Mesh'])
+    group.links.new(samples.outputs['Points'], volume.inputs['Points'])
+    group.links.new(volume.outputs['Volume'], surface.inputs['Volume'])
+    group.links.new(surface.outputs['Mesh'], exit_node.inputs['Geometry'])
+    modifier = body.modifiers.new('Point shell', 'NODES')
+    modifier.node_group = group
+    bpy.ops.object.modifier_apply(modifier=modifier.name)
+else:
+    # Give open sheets a real closed thickness before voxelization. Voxelizing an open
+    # fragmented scan directly keeps only its few already-enclosed fragments.
+    solid=body.modifiers.new('CloseOpenSheets','SOLIDIFY')
+    solid.solidify_mode='EXTRUDE'
+    solid.thickness=0.006*scale;solid.offset=0
+    solid.use_even_offset=False
+    bpy.ops.object.modifier_apply(modifier=solid.name)
+    bpy.context.view_layer.update()
+    log('SHELL_SIZE='+str(tuple(body.dimensions)))
+    assert all(body.dimensions[k] <= source.dimensions[k] * 1.05 for k in range(3)), 'Shell distortion'
+    mod=body.modifiers.new('ClosedSurface','REMESH')
+    mod.mode='VOXEL';mod.voxel_size=0.002*scale
+    mod.use_smooth_shade=True
+    bpy.ops.object.modifier_apply(modifier=mod.name)
 log('REMESH='+json.dumps(topology(body.data)))
 log('REMESH_RAW='+json.dumps(topology(body.data,False)))
 body.data.calc_loop_triangles()

@@ -113,11 +113,21 @@ SWATCHES = {
     "caller_fur": (1, 2, "C7AB88", "927151"),
     "caller_cloak": (5, 0, "50433B", "241E1C"),
     "caller_bone": (5, 1, "E4D5BD", "AE997B"),
+    # SS-14b: bottom corners beside the Cobra ramps.
+    "vulture_umber": (1, 2, "704022", "3B2010"),
+    "vulture_edge": (1, 2, "9C7B59", "68472C"),
+    "vulture_skin": (5, 0, "CCC7BB", "8D8882"),
+    "vulture_ruff": (5, 0, "EDE5D6", "B3A497"),
+    "vulture_horn": (5, 1, "4C3E33", "241A14"),
 }
 SWATCH_NAMES = list(SWATCHES)
 TOP_INSETS = ("priest_ochre", "priest_bone", "priest_umber")
 BOTTOM_INSETS = ("cobra_sand", "cobra_umber", "cobra_bone")
 CALLER_INSETS = ("caller_fur", "caller_cloak", "caller_bone")
+VULTURE_INSETS = {
+    "vulture_umber": 0, "vulture_edge": 56, "vulture_skin": 0,
+    "vulture_ruff": 56, "vulture_horn": 0,
+}
 TOP_INSET_LEFT, TOP_INSET_RIGHT, TOP_INSET_HEIGHT = 8, 56, 4
 INSETS = {
     "antlion_tan": (92, 95), "antlion_ochre": (97, 100),
@@ -147,6 +157,9 @@ def uv_for(swatch, t):
     """Where on the atlas a surface of `swatch` samples, `t` from 0 (the light top) to 1."""
     col, row = SWATCHES[swatch][0], SWATCHES[swatch][1]
     t = min(1.0, max(0.0, t))
+    if swatch in VULTURE_INSETS:
+        x = col * COL_W + VULTURE_INSETS[swatch] + 1.5 + 5 * t
+        return x / ATLAS, 1.0 - ((row + 1) * ROW_H - 2) / ATLAS
     if swatch in CALLER_INSETS:
         return (col * COL_W + 1.5 + 5 * t) / ATLAS, 1.0 - (row * ROW_H + 2) / ATLAS
     if swatch in TOP_INSETS:
@@ -183,6 +196,12 @@ def build_atlas(tex_dir):
     for row in range(ATLAS // ROW_H):
         img[row * ROW_H:(row + 1) * ROW_H, :, :] = unused[:, None, :]
     for name, (col, row, top, bottom) in SWATCHES.items():
+        if name in VULTURE_INSETS:
+            left = col * COL_W + VULTURE_INSETS[name]
+            mix = np.linspace(0.0, 1.0, 8, dtype=np.float32)[:, None]
+            bottom_row = (row + 1) * ROW_H
+            img[bottom_row - 4:bottom_row, left:left + 8, :] = rgb(top) * (1 - mix) + rgb(bottom) * mix
+            continue
         if name in TOP_INSETS or name in BOTTOM_INSETS or name in CALLER_INSETS:
             # Horizontal ramps in the first or last block of rows. The older vertical
             # ramps sample rows 8-120 of a cell, leaving four-pixel guard strips.

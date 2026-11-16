@@ -9,9 +9,9 @@ _2026-11-16._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-14a** — Vulture core dive cycle. |
-| **Next task** | SS-14b — Vulture model. |
-| **Verified** | EditMode 6823/6915, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-14b** — Vulture model and clips. |
+| **Next task** | SS-14c — Vulture body. |
+| **Verified** | EditMode 6833/6925, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

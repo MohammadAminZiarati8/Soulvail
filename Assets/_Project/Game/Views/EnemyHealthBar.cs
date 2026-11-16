@@ -143,6 +143,9 @@ namespace Soulvail.Game.Views
         [Min(1f)]
         [SerializeField] private float _eliteWidthDp = 48f;
 
+        [Tooltip("Show full health while the body is visible, even before the first hit.")]
+        [SerializeField] private bool _alwaysShow;
+
         private float _ghostFraction = 1f;
         private float _ghostHoldRemaining;
 
@@ -404,7 +407,8 @@ namespace Soulvail.Game.Views
         }
 
         /// <summary>Whether the bar is currently drawn at all.</summary>
-        public bool IsShown => _id != EnemyView.Unbound && !_isBoss && !_hidden && (_isElite || HasStatuses || _shownRemaining > 0f);
+        public bool IsShown => _id != EnemyView.Unbound && !_isBoss && !_hidden &&
+            (_alwaysShow || _isElite || HasStatuses || _shownRemaining > 0f);
 
         /// <summary>
         /// Told what it is standing over, on the rental. Before the body is in service.
@@ -720,7 +724,7 @@ namespace Soulvail.Game.Views
                 return 0f;
             }
 
-            if (_isElite || HasStatuses)
+            if (_alwaysShow || _isElite || HasStatuses)
             {
                 return 1f;
             }

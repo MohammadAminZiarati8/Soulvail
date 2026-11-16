@@ -257,7 +257,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] **SS-14a** — The vulture in core: out of reach aloft, a locked dive line, a grounded window (M)
 - [x] **SS-14b** — The model: the owner's vulture on Rig_Hawk, flight and ground clips (M)
-- [ ] SS-14c — The body: prefab, animator, the ground shadow and the dive (M)
+- [x] **SS-14c** — The body: prefab, animator, the ground shadow and the dive (M)
 - [ ] SS-14d — The vulture in the Sunscar: data, roster from stage 22 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.

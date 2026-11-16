@@ -9,9 +9,9 @@ _2026-11-16._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-14b** — Vulture model and clips. |
-| **Next task** | SS-14c — Vulture body. |
-| **Verified** | EditMode 6833/6925, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-14c** — Vulture body. |
+| **Next task** | SS-14d — Vulture roster. |
+| **Verified** | EditMode 6857/6949, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -31,7 +31,7 @@ Save v8. Clash UI/LocKeys. Mirrored six-circle arc: tap fires on Auto, hold togg
 Status icons, pooled CC, immune bosses. Marksman trim, Quiver, lit arrows, Volley, roll/flinch, silent resume.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
-Cobra fan. Callers channel 2 s, raising chasing tornadoes.
+Cobra fan. Callers channel 2 s for tornadoes. Vulture rig ready.
 Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 

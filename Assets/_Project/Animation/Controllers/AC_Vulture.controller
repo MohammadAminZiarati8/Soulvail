@@ -1,0 +1,1077 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1102 &-6958791907417056976
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Dive
+  m_Speed: 2.5641026
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: -2432950850026996372}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: 5753061369840366251, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!1101 &-6214870892804768660
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions: []
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -883279260756773749}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.98
+  m_HasExitTime: 1
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &-5385632236767047658
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 0
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -1230082859390970539}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &-5347543983370097630
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 4
+  - m_ConditionMode: 1
+    m_ConditionEvent: Hit
+    m_EventTreshold: 0
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: 6651788044113879294}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &-4726904763645603181
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 0
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -1230082859390970539}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1102 &-4714734759716429858
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Glide
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: -1883957488644965172}
+  - {fileID: 1317877338011748691}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: -6927138721796107683, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!1101 &-2520438607014824016
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 0
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -1230082859390970539}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1107 &-2478717159357383099
+AnimatorStateMachine:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Base Layer
+  m_ChildStates:
+  - serializedVersion: 1
+    m_State: {fileID: -1230082859390970539}
+    m_Position: {x: 0, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: -4714734759716429858}
+    m_Position: {x: 230, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 2119281337497041883}
+    m_Position: {x: 230, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: -6958791907417056976}
+    m_Position: {x: 460, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: -843226699234857655}
+    m_Position: {x: 460, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 3565599573331318838}
+    m_Position: {x: 690, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: -883279260756773749}
+    m_Position: {x: 690, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 6651788044113879294}
+    m_Position: {x: 690, y: 180, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: -1102561559294962185}
+    m_Position: {x: 920, y: 90, z: 0}
+  m_ChildStateMachines: []
+  m_AnyStateTransitions:
+  - {fileID: 2615232436126127336}
+  m_EntryTransitions: []
+  m_StateMachineTransitions: {}
+  m_StateMachineBehaviours: []
+  m_AnyStatePosition: {x: 50, y: 20, z: 0}
+  m_EntryPosition: {x: 50, y: 120, z: 0}
+  m_ExitPosition: {x: 800, y: 120, z: 0}
+  m_ParentStateMachinePosition: {x: 800, y: 20, z: 0}
+  m_DefaultState: {fileID: -1230082859390970539}
+--- !u!1101 &-2432950850026996372
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions: []
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -843226699234857655}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.98
+  m_HasExitTime: 1
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!21 &-2124676545741691300
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_VultureShadow
+  m_Shader: {fileID: 4800000, guid: 650dd9526735d5b46b79224bc6e94025, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords:
+  - _SURFACE_TYPE_TRANSPARENT
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 1
+  m_CustomRenderQueue: 2990
+  stringTagMap:
+    RenderType: Transparent
+  disabledShaderPasses:
+  - DepthOnly
+  - SHADOWCASTER
+  - MOTIONVECTORS
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 3849244991139192620}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: 65a603927cc95a24b85e39403c8a38ff, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _AddPrecomputedVelocity: 0
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
+    - _Blend: 0
+    - _BlendOp: 0
+    - _Cull: 0
+    - _Cutoff: 0.5
+    - _DstBlend: 10
+    - _DstBlendAlpha: 10
+    - _QueueOffset: 0
+    - _SampleGI: 0
+    - _SrcBlend: 5
+    - _SrcBlendAlpha: 1
+    - _Surface: 1
+    - _XRMotionVectorsPass: 1
+    - _ZWrite: 0
+    m_Colors:
+    - _BaseColor: {r: 0.19, g: 0.145, b: 0.095, a: 0.51}
+    - _Color: {r: 1, g: 0.28999996, b: 0.12199997, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
+--- !u!1101 &-1966836251846759642
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 2
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -4714734759716429858}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &-1883957488644965172
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 3
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -6958791907417056976}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &-1346051824589166229
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 4
+  - m_ConditionMode: 1
+    m_ConditionEvent: Hit
+    m_EventTreshold: 0
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: 6651788044113879294}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1102 &-1230082859390970539
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Climb
+  m_Speed: 1.2222222
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: 4512224504816801167}
+  - {fileID: 6126601010157612313}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: -8584954368866131259, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!1102 &-1102561559294962185
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Death
+  m_Speed: 2.2
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: 7427359826236882827, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!1102 &-883279260756773749
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Idle_Ground
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: -5385632236767047658}
+  - {fileID: -5347543983370097630}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: 508376882382672109, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!1102 &-843226699234857655
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Strike
+  m_Speed: 3.5714285
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: 7047832422839513159}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: -6804629054045912906, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!43 &-471084494365396723
+Mesh:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Vulture Shadow Quad
+  serializedVersion: 12
+  m_SubMeshes:
+  - serializedVersion: 2
+    firstByte: 0
+    indexCount: 6
+    topology: 0
+    baseVertex: 0
+    firstVertex: 0
+    vertexCount: 4
+    localAABB:
+      m_Center: {x: 0, y: 0, z: 0}
+      m_Extent: {x: 1.37, y: 0, z: 0.63}
+  m_Shapes:
+    vertices: []
+    shapes: []
+    channels: []
+    fullWeights: []
+  m_BindPose: []
+  m_BoneNameHashes: 
+  m_RootBoneNameHash: 0
+  m_BonesAABB: []
+  m_VariableBoneCountWeights:
+    m_Data: 
+  m_MeshCompression: 0
+  m_IsReadable: 1
+  m_KeepVertices: 1
+  m_KeepIndices: 1
+  m_IndexFormat: 0
+  m_IndexBuffer: 000001000200000002000300
+  m_VertexData:
+    serializedVersion: 3
+    m_VertexCount: 4
+    m_Channels:
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 3
+    - stream: 0
+      offset: 12
+      format: 0
+      dimension: 3
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 24
+      format: 0
+      dimension: 2
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    m_DataSize: 128
+    _typelessdata: 295cafbf00000000ae4721bf000000000000803f000000000000000000000000295cafbf00000000ae47213f000000000000803f00000000000000000000803f295caf3f00000000ae47213f000000000000803f000000000000803f0000803f295caf3f00000000ae4721bf000000000000803f000000000000803f00000000
+  m_CompressedMesh:
+    m_Vertices:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_UV:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Normals:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Tangents:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Weights:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_NormalSigns:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_TangentSigns:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_FloatColors:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_BoneIndices:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Triangles:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_UVInfo: 0
+  m_LocalAABB:
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 1.37, y: 0, z: 0.63}
+  m_MeshUsageFlags: 0
+  m_CookingOptions: 30
+  m_BakedConvexCollisionMesh: 
+  m_BakedTriangleCollisionMesh: 
+  'm_MeshMetrics[0]': 1
+  'm_MeshMetrics[1]': 1
+  m_MeshOptimizationFlags: 1
+  m_StreamData:
+    serializedVersion: 2
+    offset: 0
+    size: 0
+    path: 
+  m_MeshLodInfo:
+    serializedVersion: 2
+    m_LodSelectionCurve:
+      serializedVersion: 1
+      m_LodSlope: 0
+      m_LodBias: 0
+    m_NumLevels: 1
+    m_SubMeshes:
+    - serializedVersion: 2
+      m_Levels:
+      - serializedVersion: 1
+        m_IndexStart: 0
+        m_IndexCount: 0
+--- !u!91 &9100000
+AnimatorController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AC_Vulture
+  serializedVersion: 5
+  m_AnimatorParameters:
+  - m_Name: VulturePhase
+    m_Type: 3
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  - m_Name: Turning
+    m_Type: 4
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  - m_Name: Dead
+    m_Type: 4
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  - m_Name: Hit
+    m_Type: 9
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  - m_Name: Attack
+    m_Type: 9
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  - m_Name: Speed
+    m_Type: 1
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  - m_Name: WalkRate
+    m_Type: 1
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  - m_Name: AttackRate
+    m_Type: 1
+    m_DefaultFloat: 0
+    m_DefaultInt: 0
+    m_DefaultBool: 0
+    m_Controller: {fileID: 9100000}
+  m_AnimatorLayers:
+  - serializedVersion: 5
+    m_Name: Base Layer
+    m_StateMachine: {fileID: -2478717159357383099}
+    m_Mask: {fileID: 0}
+    m_Motions: []
+    m_Behaviours: []
+    m_BlendingMode: 0
+    m_SyncedLayerIndex: -1
+    m_DefaultWeight: 0
+    m_IKPass: 0
+    m_SyncedLayerAffectsTiming: 0
+    m_Controller: {fileID: 9100000}
+--- !u!1101 &1317877338011748691
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 1
+  - m_ConditionMode: 1
+    m_ConditionEvent: Turning
+    m_EventTreshold: 0
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: 2119281337497041883}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1102 &2119281337497041883
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Flap
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: 7123099359694965610}
+  - {fileID: -1966836251846759642}
+  - {fileID: 7686807540563174862}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: -8021617189038211478, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!1101 &2615232436126127336
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 1
+    m_ConditionEvent: Dead
+    m_EventTreshold: 0
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 4
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -1102561559294962185}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.75
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 0
+--- !u!1102 &3565599573331318838
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Land
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: -2520438607014824016}
+  - {fileID: -1346051824589166229}
+  - {fileID: -6214870892804768660}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: -5239200352049922042, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!28 &3849244991139192620
+Texture2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Vulture Shadow Silhouette
+  m_ImageContentsHash:
+    serializedVersion: 2
+    Hash: 00000000000000000000000000000000
+  m_IsAlphaChannelOptional: 0
+  serializedVersion: 4
+  m_Width: 128
+  m_Height: 64
+  m_CompleteImageSize: 8192
+  m_MipsStripped: 0
+  m_TextureFormat: 12
+  m_MipCount: 1
+  m_IsReadable: 1
+  m_IsPreProcessed: 0
+  m_IgnoreMipmapLimit: 1
+  m_MipmapLimitGroupName: 
+  m_StreamingMipmaps: 0
+  m_StreamingMipmapsPriority: 0
+  m_VTOnly: 0
+  m_AlphaIsTransparency: 0
+  m_ImageCount: 1
+  m_TextureDimension: 2
+  m_TextureSettings:
+    serializedVersion: 2
+    m_FilterMode: 1
+    m_Aniso: 1
+    m_MipBias: 0
+    m_WrapU: 1
+    m_WrapV: 1
+    m_WrapW: 1
+  m_LightmapFormat: 0
+  m_ColorSpace: 1
+  m_PlatformBlob: 
+  image data: 8192
+  _typelessdata: 0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa8100499224c91b13ffffffffaaaaaaaae8004992e46e3901ffffffffaaaaaaaae80049f2246c0d68ffffffffaaaaaaaa81004992247d023affffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa4c00499c18899158ffffffffaaaaaaaaff3a71570a9de009ffffffffaaaaaaaaffeb010000000000ffffffffaaaaaaaaffeb000200000000ffffffffaaaaaaaaff3aab03b1d00acdffffffffaaaaaaaa4c004e0227702227ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa3b0089915cc9957cffffffffaaaaaaaafe61a7f00ae9900effffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaafe61100ff5588335ffffffffaaaaaaaa3b0070a2277ab227ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa4600499224c99918ffffffffaaaaaaaa80004992247d02d1ffffffffaaaaaaaa0a00499224498224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa2500c99144499684ffffffffaaaaaaaaf646eff00ee9100fffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaf646588ff5588339ffffffffaaaaaaaa250078a2244bc224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0a00499224499204ffffffffaaaaaaaa8000499224c96b0affffffffaaaaaaaa46004992247c0227ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa2e00499218499824ffffffffaaaaaaaaa10049c2fa1d7453ffffffffaaaaaaaabe0049f224ac0f68ffffffffaaaaaaaa6b00499ae44f82d1ffffffffaaaaaaaacb10dd680af79057ffffffffaaaaaaaaf9017e32fad02840ffffffffaaaaaaaab70049f224f483d1ffffffffaaaaaaaa1e004992244902ffffffffffaaaaaaaa150049922449520effffffffaaaaaaaa330049922449420affffffffaaaaaaaa640049922449ce09ffffffffaaaaaaaa9800499ee4ff3d09ffffffffaaaaaaaae834e9100ff1c009ffffffffaaaaaaaafffc003000013000ffffffffaaaaaaaafffc000060000260ffffffffaaaaaaaae83458833998038dffffffffaaaaaaaa98004ff224fe0f69ffffffffaaaaaaaa64004992244f028dffffffffaaaaaaaa3300499224490291ffffffffaaaaaaaa15004992244982b1ffffffffaaaaaaaa1e0049922449f21bffffffffaaaaaaaab7004992e4b9690effffffffaaaaaaaaf901c97d739c2040ffffffffaaaaaaaacb10dc0ad198af3effffffffaaaaaaaa6b004df224496e0effffffffaaaaaaaabe004992e4773901ffffffffaaaaaaaaa100497297c22afaffffffffaaaaaaaa2e004902274c9224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa20004992a4c99124ffffffffaaaaaaaa8c004962fb147413ffffffffaaaaaaaad4004992246c2d40ffffffffaaaaaaaab000c99be4f60f69ffffffffaaaaaaaae7139df052b9d9daffffffffaaaaaaaaff6e632f401d104fffffffffaaaaaaaaff464f3cd6000400ffffffffaaaaaaaaff971e100a130000ffffffffaaaaaaaaff985a0360000000ffffffffaaaaaaaaff4c4fbe6d000000ffffffffaaaaaaaaff65c93f49000000ffffffffaaaaaaaaff88f92d09000000ffffffffaaaaaaaaffb4b90b00000000ffffffffaaaaaaaaffdf310700000000ffffffffaaaaaaaafffa210000000000ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaafffa000300000000ffffffffaaaaaaaaffdfa30300000000ffffffffaaaaaaaaffb4f50300000000ffffffffaaaaaaaaff88fe0349000000ffffffffaaaaaaaaff657f2269000000ffffffffaaaaaaaaff4c4fbe6d000000ffffffffaaaaaaaaff98e93400000000ffffffffaaaaaaaaff97c00c31800600ffffffffaaaaaaaaff464eee72020000ffffffffaaaaaaaaff6e2f2740c0aa39ffffffffaaaaaaaae713d02af6f463b7ffffffffaaaaaaaab0007df224bf3d09ffffffffaaaaaaaad4004992246e2940ffffffffaaaaaaaa8c004972db8208faffffffffaaaaaaaa200049d224789224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa34004991e4499224ffffffffaaaaaaaade00a57077c99d24ffffffffaaaaaaaaff24003401e69497ffffffffaaaaaaaaffc5ec030000f001ffffffffaaaaaaaaffaccf0700000000ffffffffaaaaaaaafffe010000000000ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaafffe000200000000ffffffffaaaaaaaaffac7b0e00000000ffffffffaaaaaaaaffc57909000000ecffffffffaaaaaaaaff240200681acd3effffffffaaaaaaaade0010bbfa7e9224ffffffffaaaaaaaa340068f224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa8f00b9fd0ec99d24ffffffffaaaaaaaac50cffbf6da590bbffffffffaaaaaaaaf72749429202c009ffffffffaaaaaaaaff27494e92000000ffffffffaaaaaaaaff7fe9647b000000ffffffffaaaaaaaafffb001000000000ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaafffb000020000000ffffffffaaaaaaaaff7f5a33db000000ffffffffaaaaaaaaff274f4292000000ffffffffaaaaaaaaf72749429200048dffffffffaaaaaaaac50cffbf6d105b3fffffffffaaaaaaaa8f00f683f57e9224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa3f00c99b2449f20effffffffaaaaaaaaa201e690b8f9cd09ffffffffaaaaaaaaff4713f072b9cb49ffffffffaaaaaaaaffc4003000192000ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffc4000060c00240ffffffffaaaaaaaaff478036f6f5238dffffffffaaaaaaaaa201185d27fe038dffffffffaaaaaaaa3f007d92244982f5ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa9b00ef90bc499224ffffffffaaaaaaaaf50012504e7799e4ffffffffaaaaaaaaff4e0020009c1077ffffffffaaaaaaaaffe3000000009001ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffe300000000002cffffffffaaaaaaaaff4e000040d0b83affffffffaaaaaaaaf50080a4b1acff24ffffffffaaaaaaaa9b0058df27499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa69003791c4499224ffffffffaaaaaaaaf3009ce072f99d24ffffffffaaaaaaaaff24002001e5949bffffffffaaaaaaaaffbc00000002900affffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaafff5000000000020ffffffffaaaaaaaaff8600000080363affffffffaaaaaaaaff4d00000023f578ffffffffaaaaaaaaffee000000031000ffffffffaaaaaaaaffee000000000620ffffffffaaaaaaaaff4d0000002237e7ffffffffaaaaaaaaff86000000131073ffffffffaaaaaaaafff5000000001000ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffff499224499224ffffffffaaaaaaaaffbc000000000435ffffffffaaaaaaaaff240000481a4b3fffffffffaaaaaaaaf300d038d6fe9324ffffffffaaaaaaaa6900a0ef24499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa3b00799124499224ffffffffaaaaaaaaae0094f0db499224ffffffffaaaaaaaae20012e096499e24ffffffffaaaaaaaafe0000406eff9d24ffffffffaaaaaaaaff020030496e9be4ffffffffaaaaaaaaff210000002597fcffffffffaaaaaaaaff140000681b6b3fffffffffaaaaaaaaf6009036d6fe9324ffffffffaaaaaaaa880018ed27499224ffffffffaaaaaaaaa800f79057b9979cffffffffaaaaaaaaff910350011e100affffffffaaaaaaaaff910006a8c00c31ffffffffaaaaaaaaa80098af3ef3c327ffffffffaaaaaaaa8800e690dc499224ffffffffaaaaaaaaf60093e072f99d24ffffffffaaaaaaaaff14003001e596dbffffffffaaaaaaaaff2100000023fb27ffffffffaaaaaaaaff020020696dfd24ffffffffaaaaaaaafe0000b091fe9f24ffffffffaaaaaaaae20080c4d64f9224ffffffffaaaaaaaaae009068ff499224ffffffffaaaaaaaa3b00e89324499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0100499024499224ffffffffaaaaaaaa0400589224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa3b0089917c499ce4ffffffffaaaaaaaafd2ca6600eef1453ffffffffaaaaaaaafd2c108dd15a2f3affffffffaaaaaaaa3b0070b2274ef224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0400c99024499224ffffffffaaaaaaaa0100489224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0100499024499224ffffffffaaaaaaaabf00ef105379979bffffffffaaaaaaaabf00582f3aeb433fffffffffaaaaaaaa0100489224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa4c00499124499224ffffffffaaaaaaaa4c00689224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa0000499224499224ffffffffaaaaaaaa
+  m_StreamData:
+    serializedVersion: 2
+    offset: 0
+    size: 0
+    path: 
+--- !u!1101 &4512224504816801167
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 1
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -4714734759716429858}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &6126601010157612313
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 2
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -4714734759716429858}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1102 &6651788044113879294
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Hit
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions:
+  - {fileID: -4726904763645603181}
+  - {fileID: 7168368503618807239}
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: -8050595491530102982, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
+--- !u!1101 &7047832422839513159
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 4
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: 3565599573331318838}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &7123099359694965610
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions:
+  - m_ConditionMode: 6
+    m_ConditionEvent: VulturePhase
+    m_EventTreshold: 3
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -6958791907417056976}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.9
+  m_HasExitTime: 0
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &7168368503618807239
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions: []
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -883279260756773749}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.98
+  m_HasExitTime: 1
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1
+--- !u!1101 &7686807540563174862
+AnimatorStateTransition:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_Conditions: []
+  m_DstStateMachine: {fileID: 0}
+  m_DstState: {fileID: -4714734759716429858}
+  m_Solo: 0
+  m_Mute: 0
+  m_IsExit: 0
+  serializedVersion: 3
+  m_TransitionDuration: 0
+  m_TransitionOffset: 0
+  m_ExitTime: 0.98
+  m_HasExitTime: 1
+  m_HasFixedDuration: 1
+  m_InterruptionSource: 0
+  m_OrderedInterruption: 1
+  m_CanTransitionToSelf: 1

@@ -110,6 +110,7 @@ namespace Soulvail.Game.Views
         private readonly int _turningId = Animator.StringToHash("Turning");
         private readonly int _antlionPhaseId = Animator.StringToHash("AntlionPhase");
         private readonly int _shinePhaseId = Animator.StringToHash("ShinePhase");
+        private readonly int _vulturePhaseId = Animator.StringToHash("VulturePhase");
         private readonly int _cobraPhaseId = Animator.StringToHash("CobraPhase");
         private readonly int _channelingId = Animator.StringToHash("Channeling");
         private readonly int _mendingId = Animator.StringToHash("Mending");
@@ -139,6 +140,7 @@ namespace Soulvail.Game.Views
         private IDisposable _hiddenSubscription;
         private IDisposable _antlionPhaseSubscription;
         private IDisposable _shineSubscription;
+        private IDisposable _vultureSubscription;
         private IDisposable _cobraPhaseSubscription;
         private IDisposable _cobraSpatSubscription;
         private IDisposable _mendStartedSubscription;
@@ -150,6 +152,7 @@ namespace Soulvail.Game.Views
         private bool? _hasStrikeMissed;
         private bool? _hasAntlionPhase;
         private bool? _hasShinePhase;
+        private bool? _hasVulturePhase;
         private bool? _hasCobraPhase;
         private bool? _hasMending;
         private bool? _hasChanneling;
@@ -225,6 +228,7 @@ namespace Soulvail.Game.Views
             _hiddenSubscription = hub.Subscribe<EnemyHiddenChanged>(OnHiddenChanged);
             _antlionPhaseSubscription = hub.Subscribe<AntlionPhaseChanged>(OnAntlionPhaseChanged);
             _shineSubscription = hub.Subscribe<EnemyShineChanged>(OnShineChanged);
+            _vultureSubscription = hub.Subscribe<VulturePhaseChanged>(OnVulturePhaseChanged);
             _cobraPhaseSubscription = hub.Subscribe<CobraPhaseChanged>(OnCobraPhaseChanged);
             _cobraSpatSubscription = hub.Subscribe<CobraSpat>(OnCobraSpat);
             _mendStartedSubscription = hub.Subscribe<PriestMendStarted>(OnMendStarted);
@@ -283,7 +287,7 @@ namespace Soulvail.Game.Views
                 velocity.y = 0f;
                 bool turning = !_dead && !_stunned && _previousYaw.HasValue &&
                     Mathf.Abs(Mathf.DeltaAngle(_previousYaw.Value, yaw)) > 10f * dt &&
-                    velocity.sqrMagnitude < 0.1f * 0.1f;
+                    (_hasVulturePhase == true || velocity.sqrMagnitude < 0.1f * 0.1f);
                 _animator.SetBool(_turningId, turning);
                 _previousYaw = yaw;
             }
@@ -410,6 +414,11 @@ namespace Soulvail.Game.Views
                 _animator.SetInteger(_shinePhaseId, 0);
             }
 
+            if (_hasVulturePhase == true)
+            {
+                _animator.SetInteger(_vulturePhaseId, (int)VulturePhase.Climb);
+            }
+
             if (_hasCobraPhase == true)
             {
                 _animator.SetInteger(_cobraPhaseId, (int)CobraPhase.Hold);
@@ -491,6 +500,7 @@ namespace Soulvail.Game.Views
             _hiddenSubscription?.Dispose();
             _antlionPhaseSubscription?.Dispose();
             _shineSubscription?.Dispose();
+            _vultureSubscription?.Dispose();
             _cobraPhaseSubscription?.Dispose();
             _cobraSpatSubscription?.Dispose();
             _mendStartedSubscription?.Dispose();
@@ -700,6 +710,23 @@ namespace Soulvail.Game.Views
             }
         }
 
+        private void OnVulturePhaseChanged(VulturePhaseChanged evt)
+        {
+            if (_animator == null || !_animator.isActiveAndEnabled || _dead || !IsMine(evt.Id))
+            {
+                return;
+            }
+
+            if (_hasVulturePhase ??= HasParameter(_vulturePhaseId, AnimatorControllerParameterType.Int))
+            {
+                _animator.SetInteger(_vulturePhaseId, (int)evt.Phase);
+                if (evt.Phase != VulturePhase.Grounded)
+                {
+                    _animator.ResetTrigger(_hitId);
+                }
+            }
+        }
+
         private void OnCobraPhaseChanged(CobraPhaseChanged evt)
         {
             // The release event starts Spit. Recover may be published in the same tick.
@@ -829,7 +856,10 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            _animator.SetTrigger(_hitId);
+            if (_hasVulturePhase != true || _animator.GetInteger(_vulturePhaseId) == (int)VulturePhase.Grounded)
+            {
+                _animator.SetTrigger(_hitId);
+            }
         }
 
         private void OnDied(EnemyDied evt)

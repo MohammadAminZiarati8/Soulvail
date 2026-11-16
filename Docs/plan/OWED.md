@@ -810,3 +810,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 8. **[Device]** Check that the ring and funnel read immediately at phone size.
 
 - **SS-14a (after SS-14d):** Start Sunscar stage 22 via DT-01. Check that auto-aim skips the circling vulture, a sidestep clears its locked strip, and it can be hit during the two-second landing window.
+
+- **SS-14c (after SS-14d):** From DT-01, start Sunscar stage 22 and check the climb fade, wing-shaped shadow and dive tell over the storm, landing and grounded health bar. Repeat the shadow and tell readability check on device.

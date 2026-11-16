@@ -797,3 +797,14 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - With SS-13d, use DT-01 at Sunscar stage 18. Watch the staff raise and the sand spiral. Interrupt a channel with a hit and look for the short scatter.
 - Let a tornado rise and chase the hero. Check the red-orange ring through the funnel and sandstorm, then kill its caller and watch the ring drop and the funnel collapse.
+
+### SS-13d — Storm Caller at Sunscar stage 18
+
+1. **[Editor]** Use DT-01 to start Sunscar at stage 18. Callers hold about 12 m and flee inside 6 m.
+2. **[Editor]** Watch the caller plant and raise its staff as sand spirals for 2 s. Interrupt it with one arrow and check that the spiral scatters without a tornado.
+3. **[Editor]** Let a channel finish. A dark ochre funnel rises 2 m in front of the caller on a fully visible red-orange ring. Walk away to outpace it.
+4. **[Editor]** Stand inside the ring to check quiet HP ticks and a gentle pull, then walk clear. Roll through it to check damage immunity.
+5. **[Editor]** Check that the funnel crosses cover and enemies freely, leaves enemies and pets unharmed and unmoved, and stays out of auto-aim.
+6. **[Editor]** Check the two-funnel arena cap and kill a caller to see its funnel collapse immediately.
+7. **[Editor]** Check that the funnel stands out against the sandstorm and that the caller wears neither cyan nor gold.
+8. **[Device]** Check that the ring and funnel read immediately at phone size.

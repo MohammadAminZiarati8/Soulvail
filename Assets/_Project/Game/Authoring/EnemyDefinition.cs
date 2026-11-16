@@ -285,6 +285,25 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _spitRecoverSeconds;
         [SerializeField, Min(0f)] private float _spitCooldownSeconds;
 
+        [Header("Storm call — Storm Caller only")]
+        [SerializeField, Min(0f)] private float _stormHoldDistance;
+        [SerializeField, Min(0f)] private float _stormFleeDistance;
+        [SerializeField, Min(0f)] private float _stormFleeSeconds;
+        [SerializeField, Min(0f)] private float _stormFleeSpeedMultiplier;
+        [SerializeField, Min(0f)] private float _stormChannelReach;
+        [SerializeField, Min(0f)] private float _stormChannelSeconds;
+        [SerializeField, Min(0f)] private float _stormBrokenSeconds;
+        [SerializeField, Min(0f)] private float _stormRechannelSeconds;
+        [SerializeField, Min(0f)] private float _stormRiseAhead;
+        [SerializeField, Min(0f)] private float _stormDriftSpeed;
+        [SerializeField, Min(0f)] private float _stormTurnDegreesPerSecond;
+        [SerializeField, Min(0f)] private float _stormTornadoSeconds;
+        [SerializeField, Min(0f)] private float _stormRadius;
+        [SerializeField, Min(0f)] private float _stormDamagePerSecond;
+        [SerializeField, Min(0f)] private float _stormPullRadius;
+        [SerializeField, Min(0f)] private float _stormPullSpeed;
+        [SerializeField, Min(0f)] private float _stormCollapseSeconds;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -450,6 +469,13 @@ namespace Soulvail.Game.Authoring
                         ? new SpitConeSpec(_spitHoldDistance, _spitCloseDistance, _spitRearSeconds,
                             _spitHalfAngleDegrees, _spitLength, _spitDamage, _spitPoisonFractionPerSecond,
                             _spitPoisonSeconds, _spitPoisonMaxStacks, _spitRecoverSeconds, _spitCooldownSeconds)
+                        : null,
+                    stormCall: _behaviour == EnemyBehaviourKind.StormCaller
+                        ? new StormCallSpec(_stormHoldDistance, _stormFleeDistance, _stormFleeSeconds,
+                            _stormFleeSpeedMultiplier, _stormChannelReach, _stormChannelSeconds, _stormBrokenSeconds,
+                            _stormRechannelSeconds, _stormRiseAhead, _stormDriftSpeed, _stormTurnDegreesPerSecond,
+                            _stormTornadoSeconds, _stormRadius, _stormDamagePerSecond, _stormPullRadius,
+                            _stormPullSpeed, _stormCollapseSeconds)
                         : null);
             }
             catch (ArgumentException inner)

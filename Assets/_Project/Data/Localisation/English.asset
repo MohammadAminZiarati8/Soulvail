@@ -541,6 +541,8 @@ MonoBehaviour:
     _text: Jackal Priest
   - _key: enemy.cobra.name
     _text: Spitting cobra
+  - _key: enemy.storm-caller.name
+    _text: Storm caller
   - _key: enemy.frog.name
     _text: Frog
   - _key: enemy.pitcher.name

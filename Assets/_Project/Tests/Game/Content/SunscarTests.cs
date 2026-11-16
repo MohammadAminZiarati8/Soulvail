@@ -47,6 +47,7 @@ public sealed class SunscarTests
     private static readonly ContentId Antlion = new("enemy.antlion");
     private static readonly ContentId Priest = new("enemy.jackal-priest");
     private static readonly ContentId Cobra = new("enemy.cobra");
+    private static readonly ContentId Caller = new("enemy.storm-caller");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -60,14 +61,14 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriestCobra()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriestCobraCaller()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
             Is.EqualTo(new[]
             {
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
-                (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0),
+                (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0),
             }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
@@ -743,6 +744,120 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Caller_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Caller.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/StormCaller.asset")));
+        EnemySpec spec = Catalog().Enemy(Caller);
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.storm-caller.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((55f, 2f, 7, 15, 31f)));
+        Assert.That(spec.IsLight, Is.False);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That(spec.ContactDamage, Is.Zero);
+        Assert.That(spec.AggroRange, Is.EqualTo(30f));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.StormCaller));
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/StormCaller.prefab").GetComponent<EnemyView>()));
+        Assert.That(look.BodyScale, Is.EqualTo(1f));
+        Assert.That(spec.StormCall, Is.Not.Null);
+        StormCallSpec stormCall = spec.StormCall;
+        Assert.That((stormCall.HoldDistance, stormCall.FleeDistance, stormCall.FleeSeconds, stormCall.FleeSpeedMultiplier),
+            Is.EqualTo((12f, 6f, 1.2f, 1.4f)));
+        Assert.That((stormCall.ChannelReach, stormCall.ChannelSeconds, stormCall.BrokenSeconds, stormCall.RechannelSeconds),
+            Is.EqualTo((16f, 2f, 3f, 6f)));
+        Assert.That((stormCall.RiseAhead, stormCall.DriftSpeed, stormCall.TurnDegreesPerSecond, stormCall.TornadoSeconds),
+            Is.EqualTo((2f, 1.6f, 60f, 8f)));
+        Assert.That((stormCall.Radius, stormCall.DamagePerSecond, stormCall.PullRadius, stormCall.PullSpeed,
+                stormCall.CollapseSeconds), Is.EqualTo((1.5f, 10f, 3f, 1f, 0.4f)));
+    }
+
+    [Test]
+    public void Caller_ExistingEnemies_NoStormCall()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Caller)
+            {
+                Assert.That(spec.StormCall, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Caller_DriftIsHalfTheRanger()
+    {
+        ContentCatalog catalog = Catalog();
+        Assert.That(catalog.Enemy(Caller).StormCall.DriftSpeed,
+            Is.EqualTo(catalog.Character(Ranger).Movement.Speed * 0.5f));
+    }
+
+    [Test]
+    public void Caller_PullWeakerThanEveryClass()
+    {
+        StormCallSpec stormCall = Catalog().Enemy(Caller).StormCall;
+        foreach (CharacterSpec character in AuthoredCharacters())
+        {
+            Assert.That(stormCall.PullSpeed, Is.LessThan(character.Movement.Speed * 0.5f), character.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Caller_DriftSlowerThanEveryClass()
+    {
+        StormCallSpec stormCall = Catalog().Enemy(Caller).StormCall;
+        foreach (CharacterSpec character in AuthoredCharacters())
+        {
+            Assert.That(stormCall.DriftSpeed, Is.LessThan(character.Movement.Speed), character.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Caller_HoldsInsideTheStormsClearing()
+    {
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        StormCallSpec stormCall = Catalog().Enemy(Caller).StormCall;
+        Assert.That(stormCall.HoldDistance, Is.LessThan(storm.ClearRadius));
+        Assert.That(stormCall.FleeDistance, Is.LessThan(stormCall.HoldDistance));
+    }
+
+    [Test]
+    public void Caller_TwoSecondStaySurvivable()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        ContentCatalog catalog = Catalog(mode);
+        float damage = 2f * catalog.Enemy(Caller).StormCall.DamagePerSecond * mode.Scaling.Damage.At(18);
+        Assert.That(damage, Is.LessThan(catalog.Character(Ranger).MaxHp));
+    }
+
+    [Test]
+    public void Caller_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Caller).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Storm caller"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_CallerFrom18()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(17, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra }));
+        count = mode.RosterFor(18, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_CobraFrom16()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -909,6 +1024,16 @@ public sealed class SunscarTests
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1, keepHeroAlive: true,
             requireAllEnemies: false);
         Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Cobra));
+    }
+
+    [Test]
+    public void Sunscar_Stage18_WavesClear()
+    {
+        RecordingEvents events = AssertStageWavesClear(18,
+            new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Scorpling },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 2, keepHeroAlive: true,
+            requireAllEnemies: false);
+        Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Caller));
     }
 
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>

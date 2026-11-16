@@ -9,9 +9,9 @@ _2026-11-16._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-13d** — Caller data and stage-18 roster. |
-| **Next task** | SS-14a — Vulture core. |
-| **Verified** | EditMode 6804/6896, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-14a** — Vulture core dive cycle. |
+| **Next task** | SS-14b — Vulture model. |
+| **Verified** | EditMode 6823/6915, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

@@ -89,6 +89,9 @@ public enum EnemyBehaviourKind
 
     /// <summary>Keeps its distance and channels a chasing tornado.</summary>
     StormCaller,
+
+    /// <summary>Circles out of reach, dives down a locked lane, then lands exposed.</summary>
+    Vulture,
 }
 
 /// <summary>
@@ -289,7 +292,7 @@ public sealed class EnemySpec
         BroodSpec brood = null,
         SidewinderSpec sidewinder = null,
         ShineSpec shine = null, BurrowSpec burrow = null, MendSpec mend = null,
-        SpitConeSpec spitCone = null, StormCallSpec stormCall = null)
+        SpitConeSpec spitCone = null, StormCallSpec stormCall = null, DiveSpec dive = null)
     {
         if (id.Value is null)
         {
@@ -473,6 +476,13 @@ public sealed class EnemySpec
         }
 
         StormCall = stormCall;
+
+        if ((behaviour == EnemyBehaviourKind.Vulture) != (dive is not null))
+        {
+            throw new ArgumentException("A DiveSpec is required for Vulture and only for Vulture.", nameof(dive));
+        }
+
+        Dive = dive;
         SpitCone = spitCone;
         Shine = shine;
         Burrow = burrow;
@@ -649,6 +659,8 @@ public sealed class EnemySpec
     public SpitConeSpec SpitCone { get; }
 
     public StormCallSpec StormCall { get; }
+
+    public DiveSpec Dive { get; }
 
     /// <summary>
     /// Where it lurks and how it strikes, or <see langword="null"/> on an archetype that does not.

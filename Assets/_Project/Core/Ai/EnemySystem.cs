@@ -425,6 +425,12 @@ public sealed class EnemySystem
         // (EnemyAgent.Initialise, ledger row 2), so this is applying depth to an archetype's
         // authored numbers and never on top of a previous life's.
         _scaling.Apply(agent, _depth);
+        // Scaling refills health and clears its external flag. Preserve the spawn stance.
+        if (IsOutOfReach(agent))
+        {
+            agent.Health.SetExternalInvulnerable(true);
+        }
+
         if (spec.Shine is ShineSpec shine)
         {
             // At spawn, contact damage carries only the depth modifier. Reuse it even
@@ -721,7 +727,7 @@ public sealed class EnemySystem
             return false;
         }
 
-        if (IsBurrowedAntlion(agent))
+        if (IsOutOfReach(agent))
         {
             return true;
         }
@@ -748,7 +754,7 @@ public sealed class EnemySystem
             return false;
         }
 
-        if (!IsBurrowedAntlion(agent))
+        if (!IsOutOfReach(agent))
         {
             Announce(enemyId, Statuses.Marked, agent.CrowdControl.Mark(Scaled(agent, Statuses.Marked, seconds)));
         }
@@ -798,7 +804,7 @@ public sealed class EnemySystem
             return false;
         }
 
-        if (!IsBurrowedAntlion(agent)
+        if (!IsOutOfReach(agent)
             && agent.Poison.Apply(damagePerStackPerSecond, Scaled(agent, Statuses.Poisoned, seconds)))
         {
             _events.Publish(new EnemyStatusChanged(enemyId, Statuses.Poisoned, agent.Poison.Remaining, agent.Poison.Stacks));
@@ -968,7 +974,7 @@ public sealed class EnemySystem
         DamageResult result;
         if (execute)
         {
-            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss || IsBurrowedAntlion(agent))
+            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss || IsOutOfReach(agent))
             {
                 return DamageResult.None;
             }
@@ -1395,6 +1401,11 @@ public sealed class EnemySystem
                 antlion.SurfaceHoldSeconds = MathF.Max(agent.CrowdControl.Remaining(Statuses.Stunned),
                     agent.CrowdControl.Remaining(Statuses.Rooted));
             }
+            else if (agent.Behaviour is VultureBehaviour { State: VulturePhase.Grounded } vulture)
+            {
+                vulture.GroundedHoldSeconds = MathF.Max(agent.CrowdControl.Remaining(Statuses.Stunned),
+                    agent.CrowdControl.Remaining(Statuses.Rooted));
+            }
 
             agent.CrowdControl.Tick(ctx.Dt, agent.Id, ctx.Events, Statuses);
 
@@ -1468,6 +1479,7 @@ public sealed class EnemySystem
                 case EnemyBehaviourKind.Antlion:
                 case EnemyBehaviourKind.Cobra:
                 case EnemyBehaviourKind.StormCaller:
+                case EnemyBehaviourKind.Vulture:
                     agent.Behaviour.Tick(behaviourCtx);
                     break;
 
@@ -1731,10 +1743,10 @@ public sealed class EnemySystem
 
     /// <summary>JG-26a: a boss refuses a status whose boss scale is zero — no timer, no event.</summary>
     private static bool Shrugs(EnemyAgent agent, StatusRule rule) =>
-        IsBurrowedAntlion(agent) || (agent.Behaviour is BossBehaviour && !(rule.BossScale > 0f));
+        IsOutOfReach(agent) || (agent.Behaviour is BossBehaviour && !(rule.BossScale > 0f));
 
-    private static bool IsBurrowedAntlion(EnemyAgent agent) =>
-        agent.Behaviour is AntlionBehaviour && !agent.IsVulnerable;
+    private static bool IsOutOfReach(EnemyAgent agent) =>
+        agent.Behaviour is (AntlionBehaviour or VultureBehaviour) && !agent.IsVulnerable;
 
     /// <summary>Rule 1: an agent driven by a <see cref="BossSpec"/> takes the rule's share; an Elite takes full.</summary>
     private static float Scaled(EnemyAgent agent, StatusRule rule, float seconds) =>
@@ -1923,10 +1935,11 @@ public sealed class EnemySystem
             EnemyBlackboard blackboard = agent.Blackboard;
             Vector3 position = agent.Position;
 
-            // Burrows and storm calls are aimed at the actual hero.
+            // Burrows, storm calls and dives are aimed at the actual hero.
             Vector3 quarry = playerPosition;
             bool lured = false;
-            bool heroOnly = agent.Spec.Behaviour is EnemyBehaviourKind.Antlion or EnemyBehaviourKind.StormCaller;
+            bool heroOnly = agent.Spec.Behaviour is EnemyBehaviourKind.Antlion
+                or EnemyBehaviourKind.StormCaller or EnemyBehaviourKind.Vulture;
 
             if (!heroOnly && agent.Spec.Behaviour != EnemyBehaviourKind.Boss
                 && lures is not null && lures.TryGetLure(position, out Vector3 decoy))
@@ -2073,7 +2086,7 @@ public sealed class EnemySystem
                     agent.BroodFacing = intent.FacingXZ;
                 }
 
-                if (agent.CrowdControl.IsRooted && !IsBurrowedAntlion(agent))
+                if (agent.CrowdControl.IsRooted && !IsOutOfReach(agent))
                 {
                     Inner.EnemyMove(new EnemyMoveIntent(intent.Id, Vector3.Zero, intent.FacingXZ));
 

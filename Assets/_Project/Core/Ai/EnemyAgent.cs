@@ -290,11 +290,6 @@ public sealed class EnemyAgent
         PendingBoltLanding = null;
         BoltDamage = spec.Shine?.BoltDamage ?? 0f;
 
-        // After the blackboard, and the order is load-bearing the same way the two health lines
-        // below are: a behaviour's Reset clears StateTimer, and doing it before Blackboard.Reset
-        // would simply have that clear it again — harmless today, and exactly the kind of ordering
-        // that stops being harmless the first time a behaviour remembers something Reset does not.
-        //
         // Kept when the kind still matches and rebuilt when it does not (rule 4). The `as` is what
         // asks that question without a second field to keep in step: an agent coming back as the
         // archetype it just was finds its own behaviour and pays nothing, and one whose archetype
@@ -314,6 +309,7 @@ public sealed class EnemyAgent
             EnemyBehaviourKind.Antlion => Behaviour as AntlionBehaviour ?? new AntlionBehaviour(this),
             EnemyBehaviourKind.Cobra => Behaviour as CobraBehaviour ?? new CobraBehaviour(this),
             EnemyBehaviourKind.StormCaller => Behaviour as StormCallerBehaviour ?? new StormCallerBehaviour(this),
+            EnemyBehaviourKind.Vulture => Behaviour as VultureBehaviour ?? new VultureBehaviour(this),
 
             // Boss falls through to null on purpose, and it is the one kind that does so while
             // meaning something. A BossBehaviour cannot be built from an EnemySpec — it needs the
@@ -323,9 +319,6 @@ public sealed class EnemyAgent
             // caller that can, and EnemySystem.Tick refuses loudly if it ever meets one without.
             _ => null,
         };
-
-        // Reset whatever survived: a behaviour left mid-telegraph would come back mid-telegraph.
-        Behaviour?.Reset();
 
         // Ledger row 2, and the whole of its answer. Every modifier goes, whoever put it there:
         // this agent may have died at stage 40 wearing DepthScaling's three PercentMults, and it
@@ -351,6 +344,9 @@ public sealed class EnemyAgent
         // archetype's hit points — a Husk arriving with a Warden's 90.
         Health.MaxHp.Base = spec.MaxHp;
         Health.Reset();
+
+        // After the blackboard and health resets: the vulture starts this life invulnerable.
+        Behaviour?.Reset();
 
         // Seeded after Health.Reset, and the order is load-bearing again: Blackboard.Reset zeroed
         // these two, and a zero HP fraction does not read as "not filled in yet" — it reads as

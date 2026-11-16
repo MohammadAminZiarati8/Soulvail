@@ -808,3 +808,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 6. **[Editor]** Check the two-funnel arena cap and kill a caller to see its funnel collapse immediately.
 7. **[Editor]** Check that the funnel stands out against the sandstorm and that the caller wears neither cyan nor gold.
 8. **[Device]** Check that the ring and funnel read immediately at phone size.
+
+- **SS-14a (after SS-14d):** Start Sunscar stage 22 via DT-01. Check that auto-aim skips the circling vulture, a sidestep clears its locked strip, and it can be hit during the two-second landing window.

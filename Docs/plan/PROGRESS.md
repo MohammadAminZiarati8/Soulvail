@@ -2,20 +2,20 @@
 
 [OWED](OWED.md). History in Git.
 
-_2026-11-16._
+_2026-11-17._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-14c** — Vulture body. |
-| **Next task** | SS-14d — Vulture roster. |
-| **Verified** | EditMode 6857/6949, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-14d** — Vulture roster. |
+| **Next task** | Sunscar stage-22 playtest. |
+| **Verified** | EditMode 6865/6957, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
-Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions at 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16, callers 18. Brood sacs pulse, then drop three scorplings. Antlions tunnel, warn, erupt and stay exposed 2.5 s. DT-01 starts any place.
+Jungle rotates 3 arenas. Sunscar waves open the portal. Scorpions 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16, callers 18, vultures 22. Broods drop 3 scorplings. Antlions tunnel, warn, erupt and expose for 2.5 s. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 but bosses. Boss adds die with it, 0 XP.
@@ -31,7 +31,7 @@ Save v8. Clash UI/LocKeys. Mirrored six-circle arc: tap fires on Auto, hold togg
 Status icons, pooled CC, immune bosses. Marksman trim, Quiver, lit arrows, Volley, roll/flinch, silent resume.
 Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
-Cobra fan. Callers channel 2 s for tornadoes. Vulture rig ready.
+Cobra fan. Callers channel 2 s. Vultures circle, dive and land exposed for 2 s.
 Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
 Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 

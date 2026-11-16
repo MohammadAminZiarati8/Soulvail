@@ -48,6 +48,7 @@ public sealed class SunscarTests
     private static readonly ContentId Priest = new("enemy.jackal-priest");
     private static readonly ContentId Cobra = new("enemy.cobra");
     private static readonly ContentId Caller = new("enemy.storm-caller");
+    private static readonly ContentId Vulture = new("enemy.vulture");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
 
     [Test]
@@ -61,14 +62,14 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriestCobraCaller()
+    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriestCobraCallerVulture()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
             Is.EqualTo(new[]
             {
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
-                (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0),
+                (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Vulture, 22, 0),
             }));
         Assert.That(mode.BossRoster, Is.Empty);
         Assert.That(mode.ScriptedStages, Is.Empty);
@@ -845,6 +846,96 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Vulture_Asset_MatchesDesign()
+    {
+        EnemyDefinition definition = BootEnemies().Single(enemy => enemy.Id == Vulture.Value);
+        Assert.That(definition, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<EnemyDefinition>(Root + "Data/Enemies/Vulture.asset")));
+        EnemySpec spec = Catalog().Enemy(Vulture);
+        Assert.That(spec.NameKey.Key, Is.EqualTo("enemy.vulture.name"));
+        Assert.That((spec.MaxHp, spec.MoveSpeed, spec.TargetPriority, spec.ThreatCost, spec.XpValue),
+            Is.EqualTo((50f, 4f, 6, 14, 31f)));
+        Assert.That(spec.IsLight, Is.True);
+        Assert.That(spec.IsElite, Is.False);
+        Assert.That(spec.ContactDamage, Is.Zero);
+        Assert.That(spec.AggroRange, Is.EqualTo(30f));
+        Assert.That(spec.Behaviour, Is.EqualTo(EnemyBehaviourKind.Vulture));
+        EnemyLook look = definition.ToLook();
+        Assert.That(look.Body, Is.SameAs(
+            AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Vulture.prefab").GetComponent<EnemyView>()));
+        Assert.That(look.BodyScale, Is.EqualTo(1f));
+        Assert.That(spec.Dive, Is.Not.Null);
+        DiveSpec dive = spec.Dive;
+        Assert.That((dive.CircleRadius, dive.CircleSpeed, dive.ApproachSpeed), Is.EqualTo((7f, 4f, 6f)));
+        Assert.That((dive.MinIntervalSeconds, dive.MaxIntervalSeconds, dive.LockSeconds), Is.EqualTo((4f, 6f, 1f)));
+        Assert.That((dive.LineLength, dive.LineHalfWidth, dive.DiveSeconds, dive.DiveDamage),
+            Is.EqualTo((10f, 0.6f, 0.4f, 14f)));
+        Assert.That((dive.GroundedSeconds, dive.ClimbSeconds), Is.EqualTo((2f, 0.6f)));
+    }
+
+    [Test]
+    public void Vulture_ExistingEnemies_NoDive()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { Root + "Data/Enemies" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
+            if (spec.Id != Vulture)
+            {
+                Assert.That(spec.Dive, Is.Null, path);
+            }
+        }
+    }
+
+    [Test]
+    public void Vulture_LineSidestepInLock()
+    {
+        DiveSpec dive = Catalog().Enemy(Vulture).Dive;
+        foreach (CharacterSpec character in AuthoredCharacters())
+        {
+            Assert.That(character.Movement.Speed * dive.LockSeconds,
+                Is.GreaterThanOrEqualTo(2f * dive.LineHalfWidth), character.Id.Value);
+        }
+    }
+
+    [Test]
+    public void Vulture_LineOverrunsTheHero()
+    {
+        DiveSpec dive = Catalog().Enemy(Vulture).Dive;
+        Assert.That(dive.LineLength, Is.GreaterThan(dive.CircleRadius));
+    }
+
+    [Test]
+    public void Vulture_CirclesInsideTheStormsClearing()
+    {
+        var storm = Arena(DunesPath).GetComponentInChildren<SunscarSandstormView>(true);
+        Assert.That(Catalog().Enemy(Vulture).Dive.CircleRadius, Is.LessThan(storm.ClearRadius));
+    }
+
+    [Test]
+    public void Vulture_NameKey_InEveryLanguage()
+    {
+        LocKey key = Catalog().Enemy(Vulture).NameKey;
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset");
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset");
+        Assert.That(english.ToDictionary()[key], Is.EqualTo("Carrion vulture"));
+        Assert.That(pseudo.ToDictionary()[key], Is.Not.Empty);
+    }
+
+    [Test]
+    public void Sunscar_RosterByStage_VultureFrom22()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        int count = mode.RosterFor(21, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller }));
+        count = mode.RosterFor(22, roster);
+        Assert.That(roster.Take(count).Select(entry => entry.SpecId),
+            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture }));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_CallerFrom18()
     {
         ModeSpec mode = Mode("Sunscar");
@@ -1036,16 +1127,35 @@ public sealed class SunscarTests
         Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Caller));
     }
 
+    [Test]
+    public void Sunscar_Stage22_WavesClear()
+    {
+        RecordingEvents events = AssertStageWavesClear(22,
+            new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture, Scorpling },
+            maxSeconds: 300, sidestepTells: true, dodgeLandings: true, seed: 2, keepHeroAlive: true,
+            requireAllEnemies: false, spendRangerPoints: true);
+        Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Vulture));
+    }
+
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
 
     private static RecordingEvents AssertStageWavesClear(
         int stage, ContentId[] expectedEnemies, int maxSeconds,
         bool sidestepTells = false, bool dodgeLandings = false, int seed = 7, bool keepHeroAlive = false,
-        bool requireAllEnemies = true)
+        bool requireAllEnemies = true, bool spendRangerPoints = false)
     {
         const float frameTime = 1f / 32f;
-        ContentCatalog catalog = Catalog(Mode("Sunscar"));
+        ModeSpec mode = Mode("Sunscar");
+        ContentCatalog catalog = Catalog(mode);
+        if (spendRangerPoints)
+        {
+            SkillSpec[] skills = AssetDatabase.FindAssets("t:SkillDefinition", new[] { Root + "Data/Skills/Ranger" })
+                .Select(guid => AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec())
+                .ToArray();
+            var tree = AssetDatabase.LoadAssetAtPath<SkillTreeDefinition>(Root + "Data/Trees/Ranger.asset");
+            catalog = new ContentCatalog(catalog.Characters, catalog.Enemies, new[] { mode }, skills, new[] { tree.ToSpec() });
+        }
         var random = new SeededRandom(seed);
         var events = new RecordingEvents();
         var intents = new RecordingIntents();
@@ -1056,6 +1166,18 @@ public sealed class SunscarTests
         try
         {
             session.Start(new RunConfig(Sunscar, Ranger, random.Seed, stage, SpawnPlan.Empty, snapshot));
+            if (spendRangerPoints)
+            {
+                session.TakeNode(new ContentId("skill.ranger.quick-draw"));
+                session.TakeNode(new ContentId("skill.ranger.quick-draw-2"));
+                session.TakeNode(new ContentId("skill.ranger.quick-draw-3"));
+                var volley = new ContentId("skill.ranger.volley");
+                session.TakeNode(volley);
+                session.TakeNode(new ContentId("skill.ranger.volley-2"));
+                session.TakeNode(new ContentId("skill.ranger.volley-3"));
+                session.SetAutoCast(volley, true);
+            }
+
             Health heroHealth = null;
             if (keepHeroAlive)
             {
@@ -1079,6 +1201,7 @@ public sealed class SunscarTests
             NumericsVector3 player = NumericsVector3.Zero;
             var movementExtents = new NumericsVector3(12f, 0f, 12f);
             int tellsRead = 0;
+            int divesRead = 0;
             int shotsRead = 0;
             int ringsRead = 0;
             for (int frame = 0; frame < maxSeconds * 32 && events.Count<StageCleared>() == 0; frame++)
@@ -1115,9 +1238,17 @@ public sealed class SunscarTests
                     }
                 }
 
-                // Keep the stage-6 Ranger within aggro range of the four spawn points.
                 if (sidestepTells)
                 {
+                    IReadOnlyList<VultureDiveLocked> dives = events.Of<VultureDiveLocked>();
+                    for (; divesRead < dives.Count; divesRead++)
+                    {
+                        var direction = dives[divesRead].Direction;
+                        var sideways = new NumericsVector3(-direction.Y, 0f, direction.X);
+                        player += (NumericsVector3.Dot(sideways, player) > 0f ? -sideways : sideways) * 3f;
+                    }
+
+                    // Keep the Ranger within aggro range of the four spawn points.
                     player = NumericsVector3.Clamp(player, -movementExtents, movementExtents);
                 }
 

@@ -206,7 +206,11 @@ public sealed class RangerTests
                 continue;
             }
 
-            Assert.That(spec.Movement.Speed, Is.GreaterThan(enemy.MoveSpeed), $"a kiter outruns {enemy.Id}.");
+            // GD §8.14 tests the vulture's dive sidestep separately. Its move speed is for circling aloft.
+            if (enemy.Behaviour != EnemyBehaviourKind.Vulture)
+            {
+                Assert.That(spec.Movement.Speed, Is.GreaterThan(enemy.MoveSpeed), $"a kiter outruns {enemy.Id}.");
+            }
         }
 
         float husk = HuskHpAt(1);

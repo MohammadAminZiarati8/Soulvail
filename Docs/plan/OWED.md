@@ -812,3 +812,14 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - **SS-14a (after SS-14d):** Start Sunscar stage 22 via DT-01. Check that auto-aim skips the circling vulture, a sidestep clears its locked strip, and it can be hit during the two-second landing window.
 
 - **SS-14c (after SS-14d):** From DT-01, start Sunscar stage 22 and check the climb fade, wing-shaped shadow and dive tell over the storm, landing and grounded health bar. Repeat the shadow and tell readability check on device.
+
+
+### SS-14d — Carrion vulture, Sunscar stage 22
+
+1. **Editor:** Use DT-01 to start Sunscar at stage 22. The vulture climbs on spawn, then its shadow circles about 7 m from the hero.
+2. **Editor:** Auto-aim, hits, stuns and poison skip an airborne vulture.
+3. **Editor:** The red-orange line locks through the hero for 1 s after 4–6 s of circling. Stand still to take one hit, then sidestep the next line to avoid it.
+4. **Editor:** It lands beyond the hero on open ground, takes shots and stuns during the 2 s grounded window, then climbs again.
+5. **Editor:** Check two vultures take turns diving and pets attack only during the grounded window.
+6. **Editor:** Check the shadow and line through the sandstorm. The vulture should read as larger and darker than the pet hawk, with no cyan or gold.
+7. **Device:** Check the shadow and line on a phone and verify the line reads in time to sidestep.

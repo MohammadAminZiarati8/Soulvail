@@ -21,7 +21,7 @@ namespace Soulvail.Tests.Game.Authoring;
 /// than 5.6 (rule 1: the band was scaled by the factor the owner's M2-03 retune already applied to
 /// the Oathbound), and Bone Bolt's damage is 9 rather than 7 (rule 2: seven kills a stage-1 Husk in
 /// six hits, outside GD §6.2's three-to-five, before a run has started). Both are asserted here
-/// <em>with their controls</em> — <see cref="Speed_EveryClassOutrunsEveryEnemyExceptApex"/> and, in
+/// <em>with their controls</em> — <see cref="Speed_EveryClassOutrunsGroundEnemiesExceptApex"/> and, in
 /// <c>TimeToKillTests</c>, <c>BoneBolt_AtTheDocumentedSevenWouldBreakTheBand</c> — so that a row
 /// which passes is a row that measured something rather than one that restated a constant.
 /// </para>
@@ -133,7 +133,7 @@ public sealed class GravecallerTests
     }
 
     [Test]
-    public void Speed_EveryClassOutrunsEveryEnemyExceptApex()
+    public void Speed_EveryClassOutrunsGroundEnemiesExceptApex()
     {
         // GD §6.1's row is a range and its *purpose* is a rule — "every class must feel faster than
         // almost every enemy". Asserted as the ratio rather than as a pair of pinned numbers,
@@ -152,6 +152,12 @@ public sealed class GravecallerTests
                     continue;
                 }
 
+                // GD §8.14 tests the vulture's dive sidestep separately. Its move speed is for circling aloft.
+                if (enemy.Behaviour == EnemyBehaviourKind.Vulture)
+                {
+                    continue;
+                }
+
                 float ratio = character.Movement.Speed / enemy.MoveSpeed;
 
                 if (ratio <= 1f)
@@ -163,7 +169,7 @@ public sealed class GravecallerTests
             }
         }
 
-        ContentValidationTests.AssertNoProblems(problems, "GD §6.1: every class outruns every enemy except the Apex (GD §9.2)");
+        ContentValidationTests.AssertNoProblems(problems, "GD §6.1: every class outruns ground enemies except the Apex (GD §9.2)");
     }
 
     [Test]

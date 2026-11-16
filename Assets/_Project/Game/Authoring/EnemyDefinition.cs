@@ -304,6 +304,20 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Min(0f)] private float _stormPullSpeed;
         [SerializeField, Min(0f)] private float _stormCollapseSeconds;
 
+        [Header("Dive — Vulture only")]
+        [SerializeField, Min(0f)] private float _diveCircleRadius;
+        [SerializeField, Min(0f)] private float _diveCircleSpeed;
+        [SerializeField, Min(0f)] private float _diveApproachSpeed;
+        [SerializeField, Min(0f)] private float _diveMinIntervalSeconds;
+        [SerializeField, Min(0f)] private float _diveMaxIntervalSeconds;
+        [SerializeField, Min(0f)] private float _diveLockSeconds;
+        [SerializeField, Min(0f)] private float _diveLineLength;
+        [SerializeField, Min(0f)] private float _diveLineHalfWidth;
+        [SerializeField, Min(0f)] private float _diveSeconds;
+        [SerializeField, Min(0f)] private float _diveDamage;
+        [SerializeField, Min(0f)] private float _diveGroundedSeconds;
+        [SerializeField, Min(0f)] private float _diveClimbSeconds;
+
         [Header("Look — a colour, a size, and a body of its own if it has one (GD §11.3)")]
         [Tooltip("What this archetype's body is tinted. The Husk authors M_BoneGrey's own " +
                  "colour, so the shared prefab is drawn exactly as it was before the look " +
@@ -476,6 +490,12 @@ namespace Soulvail.Game.Authoring
                             _stormRechannelSeconds, _stormRiseAhead, _stormDriftSpeed, _stormTurnDegreesPerSecond,
                             _stormTornadoSeconds, _stormRadius, _stormDamagePerSecond, _stormPullRadius,
                             _stormPullSpeed, _stormCollapseSeconds)
+                        : null,
+                    dive: _behaviour == EnemyBehaviourKind.Vulture
+                        ? new DiveSpec(_diveCircleRadius, _diveCircleSpeed, _diveApproachSpeed,
+                            _diveMinIntervalSeconds, _diveMaxIntervalSeconds, _diveLockSeconds,
+                            _diveLineLength, _diveLineHalfWidth, _diveSeconds, _diveDamage,
+                            _diveGroundedSeconds, _diveClimbSeconds)
                         : null);
             }
             catch (ArgumentException inner)

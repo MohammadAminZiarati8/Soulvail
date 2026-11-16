@@ -592,6 +592,8 @@ MonoBehaviour:
     _text: "[Sp\xEEtt\xEE\xF1g \xE7\xF4br\xE1 \xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.storm-caller.name
     _text: "[St\xF4rm \xE7\xE1ll\xE9r \xB7\xB7\xB7\xB7\xB7]"
+  - _key: enemy.vulture.name
+    _text: "[\xC7\xE1rr\xEE\xF4\xF1 v\xFBlt\xFBr\xE9 \xB7\xB7\xB7\xB7\xB7\xB7]"
   - _key: enemy.frog.name
     _text: "[Fr\xF4g \xB7\xB7]"
   - _key: enemy.pitcher.name

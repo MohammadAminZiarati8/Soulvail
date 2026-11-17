@@ -314,6 +314,26 @@ public sealed class CobraBodyTests
 
     private void Die(int id) => _events.Publish(new EnemyDied(id, new ContentId("enemy.cobra"), Numerics.Vector3.Zero));
 
+    // A body saved inactive is injected by its pool but never woken, so its feedback throws on every
+    // enemy hit and telegraph in the arena until the first one of its kind spawns.
+    [Test]
+    public void EnemyBodies_AreSavedActive()
+    {
+        string[] asleep = AssetDatabase.FindAssets("t:Prefab", new[] { Project + "Prefabs/Enemies" })
+            .Select(AssetDatabase.GUIDToAssetPath)
+            .Where(path => !AssetDatabase.LoadAssetAtPath<GameObject>(path).activeSelf)
+            .ToArray();
+        Assert.That(asleep, Is.Empty);
+    }
+
+    // The base body's grey placeholder capsule must not draw over the snake.
+    [Test]
+    public void Cobra_HidesTheBasePlaceholderMesh()
+    {
+        var cobra = Load<GameObject>("Prefabs/Enemies/Cobra.prefab");
+        Assert.That(cobra.transform.Find("Mesh").gameObject.activeSelf, Is.False);
+    }
+
     private GameObject Spawn(string path)
     {
         var root = Object.Instantiate(Load<GameObject>(path));

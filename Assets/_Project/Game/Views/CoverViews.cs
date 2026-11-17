@@ -88,6 +88,13 @@ public sealed class CoverViews : IDisposable
 
     private void Lift(GameObject cover)
     {
+        // A scene unload destroys the cover before the scope disposes this. Throwing here would abort
+        // the container's disposal and leave every tickable of the dead run ticking for good.
+        if (cover == null || _root == null)
+        {
+            return;
+        }
+
         cover.SetActive(false);
         cover.transform.SetParent(_root.transform, false);
     }

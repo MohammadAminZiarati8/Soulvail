@@ -227,8 +227,14 @@ namespace Soulvail.Game.Views
                 _aim.enabled = false;
             }
             HideFlight();
-            _sparks?.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            _bursts?.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            if (_sparks != null)
+            {
+                _sparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+            if (_bursts != null)
+            {
+                _bursts.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
         }
 
         private void HideFlight()
@@ -242,7 +248,10 @@ namespace Soulvail.Game.Views
                 _trail.Clear();
                 _trail.enabled = false;
             }
-            _windLines?.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            if (_windLines != null)
+            {
+                _windLines.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
         }
 
         private void LateUpdate()

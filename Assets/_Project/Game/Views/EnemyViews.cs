@@ -342,6 +342,10 @@ public sealed class EnemyViews : IDisposable
         view.Bind(evt.Id, position);
         view.GetComponent<EnemyStatusView>()?.Bind(evt.Id);
 
+        // Handed over here and not injected: the body is prewarmed inside this constructor, where
+        // the container cannot yet resolve this object.
+        view.GetComponent<PriestMendView>()?.Follow(this);
+
         _byId[evt.Id] = new Rental(view, pool);
 
         // Body resolves itself when Awake has not run, which outside play mode it never does

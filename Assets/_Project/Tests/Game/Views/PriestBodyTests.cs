@@ -311,6 +311,27 @@ public sealed class PriestBodyTests
         Assert.That(_beam.enabled, Is.False);
     }
 
+    // EnemyViews prewarms every body inside its own constructor, so a body that asks the container
+    // for EnemyViews asks for an object still being built and the run scope fails to compose.
+    [Test]
+    public void EnemyBodies_NeverInjectTheCensusThatPrewarmsThem()
+    {
+        const System.Reflection.BindingFlags Any = System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+        string[] offenders = AssetDatabase.FindAssets("t:Prefab", new[] { Root + "Prefabs/Enemies" })
+            .Select(guid => AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid)))
+            .SelectMany(prefab => prefab.GetComponentsInChildren<MonoBehaviour>(true))
+            .Where(component => component != null)
+            .Select(component => component.GetType())
+            .Distinct()
+            .Where(type => type.GetMethods(Any).Any(method =>
+                method.IsDefined(typeof(InjectAttribute), true)
+                && method.GetParameters().Any(parameter => parameter.ParameterType == typeof(EnemyViews))))
+            .Select(type => type.Name)
+            .ToArray();
+        Assert.That(offenders, Is.Empty);
+    }
+
     private void Spawn()
     {
         _events = new DomainEventHub();

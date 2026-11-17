@@ -65,21 +65,33 @@ namespace Soulvail.Game.Views
 
         private int Id => _boundId != EnemyView.Unbound ? _boundId : _body != null ? _body.Id : EnemyView.Unbound;
 
+        // The hub alone, and never EnemyViews: this body is prewarmed inside EnemyViews' own
+        // constructor, so asking the container for it here asks for an object still being built and
+        // takes the whole run scope down. EnemyViews hands itself over at spawn instead (Follow).
         [Inject]
-        public void Construct(DomainEventHub hub, EnemyViews enemies)
+        public void Construct(DomainEventHub hub)
         {
             _beamBlock ??= new MaterialPropertyBlock();
             _discBlock ??= new MaterialPropertyBlock();
             _body = GetComponent<EnemyView>();
             Unsubscribe();
             _hub = hub ?? throw new ArgumentNullException(nameof(hub));
-            _enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
             Subscribe();
             _colour[0] = new GradientColorKey(ShamanView.Lime, 0f);
             _colour[1] = new GradientColorKey(ShamanView.Lime, 1f);
             _gradient.SetKeys(_colour, _alpha);
             TurnOff();
         }
+
+        public void Construct(DomainEventHub hub, EnemyViews enemies)
+        {
+            Construct(hub);
+            Follow(enemies);
+        }
+
+        /// <summary>Hands over the census the beam finds its ally's body in.</summary>
+        public void Follow(EnemyViews enemies) =>
+            _enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
 
         public void Bind(int enemyId, DomainEventHub hub, EnemyViews enemies)
         {

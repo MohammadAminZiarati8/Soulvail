@@ -825,3 +825,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 7. **Device:** Check the shadow and line on a phone and verify the line reads in time to sidestep.
 
 - [ ] **SS-15b** — At game zoom, check that the oversized right claw clears the left claw during Sweep, the tail rises in SlamWindup and the tip holds steady through Pinned. Use the Duneclaw FBX animation preview.
+
+- SS-15a (2026-11-18): no standalone manual check; core suite verifies sweep/slam, protection, recovery and phase cancellation. Check visible tells and walking dodges after SS-15c/SS-15e wire the fight.

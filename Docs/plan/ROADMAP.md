@@ -262,7 +262,7 @@ _No milestone. The owner is setting the next direction._
 
 **The Duneclaw, Sunscar's stage-5 boss** ([GD §9.3](../GameDesign.md#93-the-sunscar--stage-5-the-duneclaw)). Build SS-15a and SS-15b first. SS-15c and SS-15d join the body and arena mechanic before SS-15e wires up the fight.
 
-- [ ] [SS-15a](tasks/SS-15a-duneclaw-core.md) — Locked sweep and slam, tail recovery and final-phase combo (M)
+- [x] SS-15a — Locked sweep and slam, tail recovery and final-phase combo (M)
 - [x] SS-15b — Duneclaw model from the shipped Scorpion rig and ten clips (M)
 - [ ] [SS-15c](tasks/SS-15c-duneclaw-body.md) — Boss prefab, readable attack tells and sound cues (M)
 - [ ] [SS-15d](tasks/SS-15d-duneclaw-slabs.md) — Sandstone slabs that shatter and extend the recovery (M)

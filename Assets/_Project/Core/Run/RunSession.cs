@@ -283,6 +283,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // stage of a seeded run depend on how long this fight took (ADR-0011).
         _bossBehaviours = new Dictionary<ContentId, Func<EnemyAgent, IEnemyBehaviour>>
         {
+            [new ContentId("boss.duneclaw")] =
+                agent => new DuneclawBehaviour(agent, new DuneclawStats()),
             [new ContentId("boss.warden")] =
                 agent => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
             [new ContentId("boss.croaker")] =

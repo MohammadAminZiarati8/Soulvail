@@ -9,9 +9,9 @@ _2026-11-18._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-15d** — Duneclaw slabs. |
-| **Next task** | **SS-15e** — Stage 5; needs go. |
-| **Verified** | EditMode 6908/7000; 0 failed, 1 inconclusive, 91 skipped. Slabs/views 12/12; clean. |
+| **Last merged** | **SS-15e** — Duneclaw stage 5. |
+| **Next task** | None authorised. |
+| **Verified** | EditMode 6914/7006; 0 failed, 1 inconclusive, 91 skipped. Boss 6/6; format clean. |
 
 ## What works
 
@@ -33,7 +33,7 @@ Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
 Cobra fan. Callers channel 2 s. Vultures circle, dive and land exposed for 2 s.
 Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
-Duneclaw tells/cues, aimed slam, 2 s pin, P2 0.35 s combo. Two fixed slabs shatter once: 3 s pin. Stage pending.
+Duneclaw at Sunscar 5: 1000 HP, level-9 Ranger probe 80.70 s. Three scorplings at 66%, clear at 33%; portal to 6. Slabs extend pin to 3 s.
 Skirmisher runs/fires. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.
@@ -58,5 +58,5 @@ Guards judge pet hits by source: back/side land, hawk always.
 5. HUD ~15 draws. No PlayMode Continue test. Low disk. Bosses unprofiled.
 6. Mother pod Frogs survive phases (JG-12h). Unload can restore destroyed cover (MK-02b).
 7. RangerSandbox: no IRunSession/EnemyViews.
-8. Warlord death dissolve shows unpainted atlas.
+8. Warlord dissolve shows unpainted atlas.
 9. PlayMode unload destroys cover/VFX/player, logs errors.

@@ -1031,3 +1031,5 @@ MonoBehaviour:
     _text: Frenzy 3
   - _key: skill.packleader.frenzy-3.description
     _text: Frenzy grants +40%, and its cooldown drops to 24 s.
+  - _key: enemy.duneclaw.name
+    _text: The Duneclaw

@@ -71,7 +71,15 @@ public sealed class SunscarTests
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
                 (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Vulture, 22, 0),
             }));
-        Assert.That(mode.BossRoster, Is.Empty);
+        Assert.That(mode.BossRoster, Has.Count.EqualTo(1));
+        for (int stage = 1; stage <= mode.FinalStage; stage++)
+        {
+            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage == 5));
+            if (stage == 5)
+            {
+                Assert.That(boss.Value, Is.EqualTo("boss.duneclaw"));
+            }
+        }
         Assert.That(mode.ScriptedStages, Is.Empty);
     }
 
@@ -1154,7 +1162,7 @@ public sealed class SunscarTests
                 .Select(guid => AssetDatabase.LoadAssetAtPath<SkillDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec())
                 .ToArray();
             var tree = AssetDatabase.LoadAssetAtPath<SkillTreeDefinition>(Root + "Data/Trees/Ranger.asset");
-            catalog = new ContentCatalog(catalog.Characters, catalog.Enemies, new[] { mode }, skills, new[] { tree.ToSpec() });
+            catalog = new ContentCatalog(catalog.Characters, catalog.Enemies, new[] { mode }, skills, new[] { tree.ToSpec() }, catalog.Bosses);
         }
         var random = new SeededRandom(seed);
         var events = new RecordingEvents();
@@ -1519,7 +1527,8 @@ public sealed class SunscarTests
 
     private static ContentCatalog Catalog(params ModeSpec[] modes) =>
         new(new[] { AssetDatabase.LoadAssetAtPath<CharacterDefinition>(Root + "Data/Characters/Ranger.asset").ToSpec() },
-            BootEnemies().Select(enemy => enemy.ToSpec()).ToArray(), modes: modes);
+            BootEnemies().Select(enemy => enemy.ToSpec()).ToArray(), modes: modes,
+            bosses: new[] { AssetDatabase.LoadAssetAtPath<BossDefinition>(Root + "Data/Enemies/DuneclawBoss.asset").ToSpec() });
 
     private static EnemyDefinition[] BootEnemies()
     {

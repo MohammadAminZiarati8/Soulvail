@@ -266,7 +266,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-15b — Duneclaw model from the shipped Scorpion rig and ten clips (M)
 - [x] SS-15c — Boss prefab, readable attack tells and sound cues (M)
 - [x] SS-15d — Sandstone slabs that shatter and extend the recovery (M)
-- [ ] [SS-15e](tasks/SS-15e-duneclaw-stage.md) — Stage 5 boss roster, scorplings and clear flow (M)
+- [x] SS-15e — Stage 5 boss roster, scorplings and clear flow (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

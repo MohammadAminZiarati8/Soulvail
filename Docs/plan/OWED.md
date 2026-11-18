@@ -837,3 +837,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [ ] **[Editor, after SS-15e]** In stage 5 bait a locked slam onto each slab, walk clear, and see dust and a 3 s pin. Repeat on the spent patch for the ordinary 2 s pin; confirm slabs stay still as the boss moves and clear on despawn/reuse.
 - [ ] **[device, deferred: no reference device]** Confirm the dark cracks and danger circle remain legible together.
+
+## SS-15e — Duneclaw stage 5 (2026-11-18)
+
+- [Editor] DT-01 to Sunscar stage 5: read sweep/slam in each phase, bait a slab, see three scorplings at 66% and none at 33%, then take the north portal to normal stage 6.
+- [device] Play stage 4 through 6 and time the fight. Check tells at phone size, cue audibility, near/far walking escapes and slab placement. Probe baseline: level-9 Ranger, unspent points, authored bow, 1000 base boss HP, 80.70 s.

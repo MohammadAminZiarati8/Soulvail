@@ -100,7 +100,10 @@ MonoBehaviour:
   - _arenaId: arena.sunscar.dunes
     _firstStage: 1
     _lastStage: 0
-  _bossRoster: []
+  _bossRoster:
+  - _bossId: boss.duneclaw
+    _everyNStages: 0
+    _atStage: 5
   _scriptedStages: []
   _ordeals: []
   _hasVeilrot: 0

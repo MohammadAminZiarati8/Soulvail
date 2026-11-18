@@ -9,9 +9,9 @@ _2026-11-18._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-15e** — Duneclaw stage 5. |
+| **Last merged** | **SS-15f** — Smooth Duneclaw cast/recovery turns. |
 | **Next task** | None authorised. |
-| **Verified** | EditMode 6914/7006; 0 failed, 1 inconclusive, 91 skipped. Boss 6/6; format clean. |
+| **Verified** | EditMode 6916/7008; 0 failed, 1 inconclusive, 91 skipped. Both turn regressions pass; format clean, no compiler errors/new analyzer warnings. |
 
 ## What works
 
@@ -34,6 +34,7 @@ Wind-up blocks hits/debuffs.
 Cobra fan. Callers channel 2 s. Vultures circle, dive and land exposed for 2 s.
 Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
 Duneclaw at Sunscar 5: 1000 HP, level-9 Ranger probe 80.70 s. Three scorplings at 66%, clear at 33%; portal to 6. Slabs extend pin to 3 s.
+Duneclaw's model turns at 360 degrees/s across casts and recovery; attack tells stay locked.
 Skirmisher runs/fires. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

@@ -13,6 +13,7 @@ namespace Soulvail.Game.Views
     public sealed class DuneclawView : MonoBehaviour, IPoolable
     {
         private const int Segments = 64;
+        private const float TurnDegreesPerSecond = 360f;
         [SerializeField] private Animator _animator;
         [SerializeField] private Transform _model;
         [SerializeField] private MeshFilter _tell;
@@ -49,6 +50,7 @@ namespace Soulvail.Game.Views
         private bool _committed;
         private bool _slam;
         private Quaternion _heading;
+        private Quaternion _visualHeading;
         private Vector3 _tellCentre;
 
         public bool IsShowing => _tellRenderer != null && _tellRenderer.enabled;
@@ -211,7 +213,7 @@ namespace Soulvail.Game.Views
             _audio.Stop();
             _committed = true;
             _slam = false;
-            _heading = transform.rotation;
+            _heading = _model.rotation;
             _remaining = ClipLength("Phase");
             Play("Phase");
         }
@@ -245,6 +247,11 @@ namespace Soulvail.Game.Views
             {
                 return;
             }
+            // The root follows core's intent immediately; carry the visible world heading
+            // across root turns, including the release from a committed attack.
+            _visualHeading = Quaternion.RotateTowards(_visualHeading,
+                _committed ? _heading : transform.rotation, TurnDegreesPerSecond * dt);
+            _model.rotation = _visualHeading;
             if (IsShowing)
             {
                 _elapsed += dt;
@@ -277,7 +284,6 @@ namespace Soulvail.Game.Views
                     return;
                 }
                 _committed = false;
-                _model.localRotation = Quaternion.identity;
             }
             if (!_committed)
             {
@@ -296,7 +302,6 @@ namespace Soulvail.Game.Views
         private void LateUpdate() => Step(Time.deltaTime);
         private void Pose()
         {
-            _model.rotation = _heading;
             _tell.transform.SetPositionAndRotation(new Vector3(_tellCentre.x, 0.08f, _tellCentre.z), Quaternion.identity);
             Vector3 scale = transform.lossyScale;
             _tell.transform.localScale = new Vector3(1f / scale.x, 1f / scale.y, 1f / scale.z);
@@ -362,6 +367,7 @@ namespace Soulvail.Game.Views
             if (_model != null)
             {
                 _model.localRotation = Quaternion.identity;
+                _visualHeading = _model.rotation;
             }
             if (_animator != null && _animator.runtimeAnimatorController != null)
             {

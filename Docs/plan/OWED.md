@@ -842,3 +842,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [Editor] DT-01 to Sunscar stage 5: read sweep/slam in each phase, bait a slab, see three scorplings at 66% and none at 33%, then take the north portal to normal stage 6.
 - [device] Play stage 4 through 6 and time the fight. Check tells at phone size, cue audibility, near/far walking escapes and slab placement. Probe baseline: level-9 Ranger, unspent points, authored bow, 1000 base boss HP, 80.70 s.
+
+- SS-15f: In Sunscar stage 5, circle Duneclaw during sweep/slam windup and recovery. Check the body turns smoothly into its next cast/chase, the tail stays planted during recovery, and the attack tell remains fixed.

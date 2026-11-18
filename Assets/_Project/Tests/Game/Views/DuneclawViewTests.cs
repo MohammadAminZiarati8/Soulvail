@@ -94,6 +94,39 @@ public sealed class DuneclawViewTests
         Assert.That(owner.IsShowing, Is.False);
     }
 
+    [TestCase(DuneclawMove.Sweep)]
+    [TestCase(DuneclawMove.Slam)]
+    public void CastAndRecovery_TurnSmoothly_WithoutMovingLockedTell(DuneclawMove move)
+    {
+        DuneclawView view = Body(17);
+        _parent.SetActive(true);
+        Transform model = Field<Transform>(view, "_model");
+        _events.Publish(Arm(17, move));
+        Assert.That(Vector3.Angle(model.forward, Vector3.forward), Is.LessThan(0.01f));
+        view.Step(0.05f);
+        Assert.That(Vector3.Angle(model.forward, Vector3.forward), Is.EqualTo(18f).Within(0.01f));
+        view.Step(0.2f);
+        Assert.That(Vector3.Angle(model.forward, Vector3.right), Is.LessThan(0.01f));
+
+        Vector3 centre = Field<MeshFilter>(view, "_tell").transform.position;
+        view.GetComponent<EnemyView>().Apply(new EnemyMoveIntent(17, NVector3.Zero, -NVector2.UnitY), 0.01f);
+        view.Step(0.05f);
+        Assert.That(Vector3.Angle(model.forward, Vector3.right), Is.LessThan(0.01f));
+        Assert.That(Field<MeshFilter>(view, "_tell").transform.position, Is.EqualTo(centre));
+        _events.Publish(new DuneclawImpact(17, move, new NVector3(6, 0, 3), 0.8f));
+        view.Step(0.8f);
+        Assert.That(Vector3.Angle(model.forward, Vector3.right), Is.LessThan(0.01f), "Recovery release preserves the visible heading.");
+        view.Step(0.05f);
+        Assert.That(Vector3.Angle(model.forward, Vector3.right), Is.EqualTo(18f).Within(0.01f));
+        view.Step(0.2f);
+        Assert.That(Vector3.Angle(model.forward, Vector3.back), Is.LessThan(0.01f));
+
+        _events.Publish(Arm(17, move));
+        Assert.That(Vector3.Angle(model.forward, Vector3.back), Is.LessThan(0.01f), "The next cast must also ease into its heading.");
+        view.Step(0.05f);
+        Assert.That(Vector3.Angle(model.forward, Vector3.back), Is.EqualTo(18f).Within(0.01f));
+    }
+
     [Test]
     public void ImpactAndPhase_ClearTell_AndPinUsesRecovery()
     {

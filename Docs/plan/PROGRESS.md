@@ -2,16 +2,16 @@
 
 [OWED](OWED.md). History in Git.
 
-_2026-11-17._
+_2026-11-18._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-14d** — Vulture roster. |
-| **Next task** | Sunscar stage-22 playtest. |
-| **Verified** | EditMode 6865/6957, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-15b** — Duneclaw art. |
+| **Next task** | **SS-15a** — Duneclaw core. |
+| **Verified** | EditMode 6871/6963, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

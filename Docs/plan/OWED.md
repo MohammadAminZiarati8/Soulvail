@@ -823,3 +823,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 5. **Editor:** Check two vultures take turns diving and pets attack only during the grounded window.
 6. **Editor:** Check the shadow and line through the sandstorm. The vulture should read as larger and darker than the pet hawk, with no cyan or gold.
 7. **Device:** Check the shadow and line on a phone and verify the line reads in time to sidestep.
+
+- [ ] **SS-15b** — At game zoom, check that the oversized right claw clears the left claw during Sweep, the tail rises in SlamWindup and the tip holds steady through Pinned. Use the Duneclaw FBX animation preview.

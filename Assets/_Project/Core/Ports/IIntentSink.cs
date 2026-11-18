@@ -25,6 +25,8 @@ public readonly struct LaneProbeIntent
     public readonly Vector3 Direction;
     public readonly float Reach;
     public readonly float Radius;
+    public readonly ShardbackProbeKey Key;
+    public readonly int Lane;
 
     public LaneProbeIntent(int enemyId, Vector3 from, Vector3 direction, float reach, float radius)
     {
@@ -33,7 +35,40 @@ public readonly struct LaneProbeIntent
         Direction = direction;
         Reach = reach;
         Radius = radius;
+        Key = default;
+        Lane = 0;
     }
+    public LaneProbeIntent(int enemyId, Vector3 from, Vector3 direction, float reach,
+        float radius, ShardbackProbeKey key, int lane) : this(enemyId, from, direction, reach, radius)
+    {
+        if (!key.IsValid)
+        {
+            throw new System.ArgumentException("A valid key is required.", nameof(key));
+        }
+        if (lane < 0 || lane > 3)
+        {
+            throw new System.ArgumentOutOfRangeException(nameof(lane));
+        }
+        if (!Finite(from) || !Finite(direction) || (direction.X == 0f && direction.Z == 0f))
+        {
+            throw new System.ArgumentException("Finite origin and nonzero XZ direction are required.");
+        }
+        if (!(reach > 0f) || float.IsInfinity(reach))
+        {
+            throw new System.ArgumentOutOfRangeException(nameof(reach));
+        }
+        if (!(radius > 0f) || float.IsInfinity(radius))
+        {
+            throw new System.ArgumentOutOfRangeException(nameof(radius));
+        }
+        Key = key;
+        Lane = lane;
+    }
+
+    private static bool Finite(Vector3 value) =>
+        !float.IsNaN(value.X) && !float.IsInfinity(value.X)
+        && !float.IsNaN(value.Y) && !float.IsInfinity(value.Y)
+        && !float.IsNaN(value.Z) && !float.IsInfinity(value.Z);
 }
 
 /// <summary>Collider question only. The body reports a hit point; core chooses the bind outcome.</summary>

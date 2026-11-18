@@ -9,9 +9,9 @@ _2026-11-18._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-16a** — Shardback core. |
-| **Next task** | SS-16b1 awaits owner go; b1 facts → b2 physics → b3 core → b4 lifecycle. |
-| **Verified** | Docs only; EditMode not run. Prior: 6952/7044 passed, 0 failed/1 inconclusive/91 skipped (2026-11-18 20:12 UTC); Shardback 36/36. |
+| **Last merged** | **SS-16b1** — Correlated obstruction facts. |
+| **Next task** | SS-16b2 awaits owner go; b2 physics → b3 core → b4 lifecycle. |
+| **Verified** | EditMode 6955/7047 passed, 0 failed/1 inconclusive/91 skipped (2026-11-18 20:48 UTC); b1 3/3. Compile/format clean. |
 
 ## What works
 
@@ -35,7 +35,7 @@ Cobra fan. Callers: 2 s channel. Vultures circle/dive/land exposed 2 s.
 Hero Poison: violet drop/stacks/timer/quiet HP ticks; Space/death clears.
 Duneclaw Sunscar 5: 1000 HP, L9 Ranger 80.70 s. 3 scorplings at 66%, clear at 33%; portal 6. Slabs: 3 s pin.
 Duneclaw turns 360 degrees/s in casts/recovery; tells locked.
-Shardback core: locked fan (3 strips)/burst, recovery, phase cancel.
+Shardback core: locked fan/burst, recovery, phase cancel; probe facts/routing.
 Skirmisher runs/fires: Ricochet 11/Second Wind 14 (roll guard/pips)/Whirlwind 17/Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

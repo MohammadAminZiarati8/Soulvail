@@ -298,6 +298,7 @@ public sealed class BindProbeAdapterTests
         public void ReportConeHits(ReadOnlySpan<int> ids) { }
         public void ReportChargeHits(ReadOnlySpan<int> ids) { }
         public void End() { }
+        public void ReportShardbackStop(in ShardbackStop report) { }
         public void ReportLaneStop(int enemyId, bool hit, float distance) { }
 
         public void ReportBindAnchor(int id, bool hit, System.Numerics.Vector3 point)

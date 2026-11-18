@@ -273,7 +273,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SS-16a — Core fan, burst, recovery and phase cancellation (M)
 - [ ] SS-16b — Charge, pillars and cover-clipped fans (split below; specification complete, implementation not authorised)
-  - [ ] [SS-16b1 — Correlated obstruction facts](tasks/SS-16b1-probe-contract.md) (M, 3 counted; depends on 16a)
+  - [x] SS-16b1 — Correlated obstruction facts (M, 3 counted; depends on 16a)
   - [ ] [SS-16b2 — Measure lanes and stable pillar identity](tasks/SS-16b2-probe-adapter.md) (M, 5 counted; depends on 16b1)
   - [ ] [SS-16b3 — Charge travel and clipped fans in core](tasks/SS-16b3-charge-and-fan.md) (M, 6 counted; depends on 16b2)
   - [ ] [SS-16b4 — Execute pillar lifetime and break decisions](tasks/SS-16b4-pillar-lifecycle.md) (M, 4 counted; depends on 16b3)

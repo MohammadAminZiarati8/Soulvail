@@ -52,6 +52,9 @@ namespace Soulvail.Core.Ports;
 /// </remarks>
 public interface IRunSession
 {
+    /// <summary>Forwards valid facts to a living boss listener outside its phase beat.</summary>
+    void ReportShardbackStop(in ShardbackStop report);
+
     /// <summary>Answers the live boss's pending lane probe; unknown or dead ids are ignored.</summary>
     void ReportLaneStop(int enemyId, bool hit, float distance);
 

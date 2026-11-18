@@ -88,6 +88,30 @@ public sealed class LaneProbeAdapterTests
     public void Constructor_RefusesAnEmptyMask() =>
         Assert.Throws<ArgumentException>(() => _ = new LaneProbeAdapter(0));
 
+    [Test]
+    public void LaneProbe_Extended_Preserved()
+    {
+        var buffer = new IntentBuffer();
+        var key = new ShardbackProbeKey(Guid.NewGuid(), 7);
+        var legacy = Lane(_origin, Vector3.forward, 9);
+        var extended = new LaneProbeIntent(12, _origin.ToNum(), new System.Numerics.Vector3(2, 3, 4), 17, 0.7f, key, 3);
+        // Exercise the existing private forwarding gate without widening production visibility.
+        Type gateType = typeof(Soulvail.Core.Ai.EnemySystem).GetNestedType("RootGate",
+            System.Reflection.BindingFlags.NonPublic);
+        var gate = (IIntentSink)Activator.CreateInstance(gateType, new object[] { new Soulvail.Core.Ai.EnemyRegistry(8) });
+        gateType.GetProperty("Inner").SetValue(gate, buffer);
+        gate.LaneProbe(legacy);
+        gate.LaneProbe(extended);
+        Assert.That(buffer.LaneProbes.Count, Is.EqualTo(2));
+        Assert.That(buffer.LaneProbes[0], Is.EqualTo(legacy));
+        Assert.That(buffer.LaneProbes[0].Key.IsValid, Is.False);
+        Assert.That(buffer.LaneProbes[1], Is.EqualTo(extended));
+        buffer.Clear();
+        Assert.That(buffer.LaneProbes, Is.Empty);
+        ((IIntentSink)buffer).LaneProbe(extended);
+        Assert.That(buffer.LaneProbes[0], Is.EqualTo(extended));
+    }
+
     private LaneProbeIntent Lane(Vector3 from, Vector3 direction, int id = 1) =>
         new(id, from.ToNum(), direction.ToNum(), Reach, Radius);
 
@@ -111,6 +135,7 @@ public sealed class LaneProbeAdapterTests
         public void ReportChargeHits(ReadOnlySpan<int> ids) { }
         public void ReportBindAnchor(int targetId, bool hit, System.Numerics.Vector3 point) { }
         public void End() { }
+        public void ReportShardbackStop(in ShardbackStop report) { }
         public void ReportLaneStop(int enemyId, bool hit, float distance) => Answers.Add((enemyId, hit, distance));
     }
 }

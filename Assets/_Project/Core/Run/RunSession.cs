@@ -1786,6 +1786,17 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         _binds.ReportAnchor(targetId, hit, point);
     }
 
+    public void ReportShardbackStop(in ShardbackStop report)
+    {
+        RequireRunning(nameof(ReportShardbackStop));
+        if (report.IsValid && State.Enemies.Registry.TryGet(report.BossId, out EnemyAgent agent) && agent.IsAlive
+            && agent.Behaviour is BossBehaviour boss && !boss.IsInBeat
+            && boss.Inner is IShardbackProbeListener listener)
+        {
+            listener.OnShardbackStop(report);
+        }
+    }
+
     public void ReportLaneStop(int enemyId, bool hit, float distance)
     {
         RequireRunning(nameof(ReportLaneStop));

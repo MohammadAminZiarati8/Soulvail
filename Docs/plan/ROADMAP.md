@@ -269,9 +269,9 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-15e — Stage 5 boss roster, scorplings and clear flow (M)
 - [x] SS-15f — Smooth Duneclaw's visible turns into casts and out of recovery (S)
 
-**The Shardback, Sunscar's stage-10 boss** (owner choice, 2026-11-18; design [GD §9.4](../GameDesign.md#94-the-sunscar--stage-10-the-shardback)). Giant glassback: locked shard lanes, a pillar-breaking charge and a short-range shell burst. Always damageable outside phase beats; no reflection. Design/spec work only is authorised. Build one task at a time on the owner's go. Later titles receive binding Files/API/test specs before implementation; split further if any exceeds eight files.
+**The Shardback, Sunscar's stage-10 boss** (owner choice, 2026-11-18; design [GD §9.4](../GameDesign.md#94-the-sunscar--stage-10-the-shardback)). Giant glassback: locked shard lanes, a pillar-breaking charge and a short-range shell burst. Always damageable outside phase beats; no reflection. SS-16a core built; later work requires the owner's go. Later titles receive binding Files/API/test specs before implementation; split further if any exceeds eight files.
 
-- [ ] [SS-16a](tasks/SS-16a-shardback-attacks.md) — Core fan, burst, recovery and phase cancellation (M)
+- [x] SS-16a — Core fan, burst, recovery and phase cancellation (M)
 - [ ] SS-16b — Charge travel, obstruction facts, three one-use pillars and cover-clipped fans (M; depends on 16a; scope the facts/adapter ripple before building)
 - [ ] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M; may precede 16b)
 - [ ] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M; depends on 16b/c; split audio if needed)

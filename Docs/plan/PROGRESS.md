@@ -10,8 +10,8 @@ _2026-11-18._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **SS-15f** — Smooth Duneclaw cast/recovery turns. |
-| **Next task** | None authorised. |
-| **Verified** | EditMode 6916/7008; 0 failed, 1 inconclusive, 91 skipped. Both turn regressions pass; format clean, no compiler errors/new analyzer warnings. |
+| **Next task** | Shardback design + SS-16a spec drafted; implementation not authorised. |
+| **Verified** | Shardback docs/spec checks clean; spec body 3998 bytes. EditMode 6916/7008; 0 failed, 1 inconclusive, 91 skipped (2026-11-18 19:47 UTC). No gameplay code changed. |
 
 ## What works
 

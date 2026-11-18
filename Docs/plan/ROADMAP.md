@@ -269,6 +269,16 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-15e — Stage 5 boss roster, scorplings and clear flow (M)
 - [x] SS-15f — Smooth Duneclaw's visible turns into casts and out of recovery (S)
 
+**The Shardback, Sunscar's stage-10 boss** (owner choice, 2026-11-18; design [GD §9.4](../GameDesign.md#94-the-sunscar--stage-10-the-shardback)). Giant glassback: locked shard lanes, a pillar-breaking charge and a short-range shell burst. Always damageable outside phase beats; no reflection. Design/spec work only is authorised. Build one task at a time on the owner's go. Later titles receive binding Files/API/test specs before implementation; split further if any exceeds eight files.
+
+- [ ] [SS-16a](tasks/SS-16a-shardback-attacks.md) — Core fan, burst, recovery and phase cancellation (M)
+- [ ] SS-16b — Charge travel, obstruction facts, three one-use pillars and cover-clipped fans (M; depends on 16a; scope the facts/adapter ripple before building)
+- [ ] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M; may precede 16b)
+- [ ] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M; depends on 16b/c; split audio if needed)
+- [ ] SS-16e — Sunscar stage 10, phase adds, HP probe and clear flow to 11 (M; depends on 16d)
+
+SS-16b must distinguish stable pillar slots from ordinary cover/boundaries without putting collider decisions in core. It must reject stale reports, preserve broken pillars across beats, stop moving-body damage at the obstruction, and test a fight with all pillars spent. SS-16d verifies tell/damage alignment and restores cover on a fresh fight. SS-16e probes actual stage-10 Ranger arrival damage (75–105 s), checks 66/33% beats and two zero-XP bombardiers, and guards stages 5/9/11 plus the Jungle roster. No later task is authorised by this plan.
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

@@ -264,7 +264,7 @@ _No milestone. The owner is setting the next direction._
 
 - [x] SS-15a — Locked sweep and slam, tail recovery and final-phase combo (M)
 - [x] SS-15b — Duneclaw model from the shipped Scorpion rig and ten clips (M)
-- [ ] [SS-15c](tasks/SS-15c-duneclaw-body.md) — Boss prefab, readable attack tells and sound cues (M)
+- [x] SS-15c — Boss prefab, readable attack tells and sound cues (M)
 - [ ] [SS-15d](tasks/SS-15d-duneclaw-slabs.md) — Sandstone slabs that shatter and extend the recovery (M)
 - [ ] [SS-15e](tasks/SS-15e-duneclaw-stage.md) — Stage 5 boss roster, scorplings and clear flow (M)
 

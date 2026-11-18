@@ -9,16 +9,16 @@ _2026-11-18._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-15a** — Duneclaw core. |
-| **Next task** | **SS-15c** — Duneclaw body. |
-| **Verified** | EditMode 6896/6988, 0 failed, 1 inconclusive, 91 skipped; Duneclaw 25/25. Format clean. |
+| **Last merged** | **SS-15c** — Duneclaw body. |
+| **Next task** | **SS-15d** — Slabs; awaits go. |
+| **Verified** | EditMode 6900/6992; 0 failed, 1 inconclusive, 91 skipped. Body 4/4; format/compiler clean. |
 
 ## What works
 
-Jungle: 3 arenas. Sunscar waves open portal. Scorpions 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16, callers 18, vultures 22. Broods drop 3 scorplings. Antlions tunnel, warn, erupt and expose for 2.5 s. DT-01 starts any place.
+Jungle: 3 arenas. Sunscar clear opens portal. Scorpions 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16, callers 18, vultures 22. Broods drop 3 scorplings. Antlions tunnel, warn, erupt and expose for 2.5 s. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
-Scripted 1–29 but bosses. Boss adds die with it, 0 XP.
+Scripted 1–29 except bosses. Boss adds: die with boss, 0 XP.
 Thornheart: spokes/pods/slam/heart ×2. Mother: shields/lobs/spray/pod.
 Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it.
 Gravemaw (25): burrow past cover, rise in open. Ring, bite+throw, tremor/rocks. At 50%, 2 rings and crack Frogs. 986 HP, 4 pillars.
@@ -33,25 +33,25 @@ Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
 Cobra fan. Callers channel 2 s. Vultures circle, dive and land exposed for 2 s.
 Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
-Duneclaw core/art: sweep/slam, 2 s pin, P2 0.35 s combo. Body/stage pending.
-Skirmisher fires running. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
+Duneclaw body/tells/cues, aimed slam, 2 s pin, P2 0.35 s combo. Slabs/stage pending; OWED checks.
+Skirmisher runs/fires. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
-Beastmaster: paired axes/1.2 s, stationary, cover turns axes. Swift Hands.
-Pets hunt last mark, idle in slots. Auto Pounce/Quick Swap. Packleader: Hounds/Howl 11, Boar/Pelts 14, Hawk 17, Frenzy 20.
+Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.
+Pets: hunt last mark, slot idle; Auto Pounce/Quick Swap. Packleader: Hounds/Howl 11, Boar/Pelts 14, Hawk 17, Frenzy 20.
 Frenzy: +30% bite/speed/dmg 8 s; 10 s, +40%/24 s.
 Boar holds 5 m. Globs stop on cover, +30% dmg, 25% slow.
-Bond Barrier: swap shields 15% HP, landing+3 s. Quick Swap 25%, 2 m shove. Swap 0 dmg.
+Bond Barrier: swap shield 15% HP, landing+3 s. Quick Swap: 25%, shove 2 m, swap 0 dmg.
 Guards judge pet hits by source: back/side land, hawk always.
 
 ## Missing
 
-1. Gravecaller over, Emberwright under. Warden >120 s near 33. No run past 19.
+1. Gravecaller over, Emberwright under. Warden >120 s near 33. No run >19.
 2. Sanctum plays as zero; Pact ~1 in 62.
 3. Missing audio, Elites, feel pass and 2nd language.
 
 ## Known issues
 
-1. ArenaView warns on zero-spawn reload. TimeManager rewrites.
+1. ArenaView: zero-spawn warning; TimeManager rewrites.
 2. ContactDamage pending. Invalid tree saves strand Continue.
 3. Non-binding boundary bolts leave bodies. Pooled Bind/Move snap without autoSyncTransforms.
 4. Sanctum draws a frame late; nothing damages a Wight; Knight Charge root snaps 0.22 m.
@@ -59,4 +59,4 @@ Guards judge pet hits by source: back/side land, hawk always.
 6. Mother pod Frogs survive phases (JG-12h). Unload can restore destroyed cover (MK-02b).
 7. RangerSandbox: no IRunSession/EnemyViews.
 8. Warlord death dissolve shows unpainted atlas.
-9. PlayMode unload destroys cover/VFX/player; logs errors.
+9. PlayMode unload destroys cover/VFX/player, logs errors.

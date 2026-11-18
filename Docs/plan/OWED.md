@@ -827,3 +827,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] **SS-15b** — At game zoom, check that the oversized right claw clears the left claw during Sweep, the tail rises in SlamWindup and the tip holds steady through Pinned. Use the Duneclaw FBX animation preview.
 
 - SS-15a (2026-11-18): no standalone manual check; core suite verifies sweep/slam, protection, recovery and phase cancellation. Check visible tells and walking dodges after SS-15c/SS-15e wire the fight.
+
+## SS-15c — Duneclaw body (2026-11-18)
+
+- [Editor] Fire sweep and slam tells on the Duneclaw prefab; check claw/stinger glow, posed tail aim, and the scrape/rattle starting with the marked areas.
+- [device, after SS-15e] Check sector/circle readability and distinct local cues during the stage-5 fight.

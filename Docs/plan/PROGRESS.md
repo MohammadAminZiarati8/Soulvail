@@ -9,9 +9,9 @@ _2026-11-18._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-16a** — Shardback core fan, burst and recovery. |
-| **Next task** | SS-16b: binding spec + owner authorisation needed. |
-| **Verified** | EditMode 6952/7044; failed 0/inconclusive 1/skipped 91 (2026-11-18 20:12 UTC). Shardback 36/36; allocation/format/compiler/analyzers clean. |
+| **Last merged** | **SS-16a** — Shardback core. |
+| **Next task** | SS-16b1 awaits owner go; b1 facts → b2 physics → b3 core → b4 lifecycle. |
+| **Verified** | Docs only; EditMode not run. Prior: 6952/7044 passed, 0 failed/1 inconclusive/91 skipped (2026-11-18 20:12 UTC); Shardback 36/36. |
 
 ## What works
 

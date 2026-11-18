@@ -272,12 +272,18 @@ _No milestone. The owner is setting the next direction._
 **The Shardback, Sunscar's stage-10 boss** (owner choice, 2026-11-18; design [GD §9.4](../GameDesign.md#94-the-sunscar--stage-10-the-shardback)). Giant glassback: locked shard lanes, a pillar-breaking charge and a short-range shell burst. Always damageable outside phase beats; no reflection. SS-16a core built; later work requires the owner's go. Later titles receive binding Files/API/test specs before implementation; split further if any exceeds eight files.
 
 - [x] SS-16a — Core fan, burst, recovery and phase cancellation (M)
-- [ ] SS-16b — Charge travel, obstruction facts, three one-use pillars and cover-clipped fans (M; depends on 16a; scope the facts/adapter ripple before building)
+- [ ] SS-16b — Charge, pillars and cover-clipped fans (split below; specification complete, implementation not authorised)
+  - [ ] [SS-16b1 — Correlated obstruction facts](tasks/SS-16b1-probe-contract.md) (M, 3 counted; depends on 16a)
+  - [ ] [SS-16b2 — Measure lanes and stable pillar identity](tasks/SS-16b2-probe-adapter.md) (M, 5 counted; depends on 16b1)
+  - [ ] [SS-16b3 — Charge travel and clipped fans in core](tasks/SS-16b3-charge-and-fan.md) (M, 6 counted; depends on 16b2)
+  - [ ] [SS-16b4 — Execute pillar lifetime and break decisions](tasks/SS-16b4-pillar-lifecycle.md) (M, 4 counted; depends on 16b3)
 - [ ] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M; may precede 16b)
 - [ ] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M; depends on 16b/c; split audio if needed)
 - [ ] SS-16e — Sunscar stage 10, phase adds, HP probe and clear flow to 11 (M; depends on 16d)
 
-SS-16b must distinguish stable pillar slots from ordinary cover/boundaries without putting collider decisions in core. It must reject stale reports, preserve broken pillars across beats, stop moving-body damage at the obstruction, and test a fight with all pillars spent. SS-16d verifies tell/damage alignment and restores cover on a fresh fight. SS-16e probes actual stage-10 Ranger arrival damage (75–105 s), checks 66/33% beats and two zero-XP bombardiers, and guards stages 5/9/11 plus the Jungle roster. No later task is authorised by this plan.
+SS-16b is binding in its four ordered specs; implement one only on the owner's go. The combined scope exceeds eight substantial files. Full additive ripple is listed too: extend the existing LaneProbeIntent rather than IIntentSink (so IntentBuffer/RootGate/four sink fakes need no new method), add a separate report door and four session stubs, then wire a dedicated physics adapter at the facts seam. Legacy Warlord/Apex probes remain cover-only. Shardback's stable slots are explicit owner/lifetime-bound markers; ordinary cover cannot become a pillar. ArenaView.PlayBounds supplies boundary clipping on the Unity side: Dunes walls are Default-layer colliders, and no Boundary layer exists. Core rejects stale/duplicate reports, preserves spent slots through beats, clips fan lanes independently and limits charge damage to observed travel. Synthetic all-spent/fresh-fight tests land in 16b3/b4. No production assets or stage registration change in 16b.
+
+SS-16d authors the three-slot cover, verifies tell/damage alignment and proves restoration on the real fresh fight using 16b4's lifecycle. SS-16e probes actual stage-10 Ranger arrival damage (75–105 s), checks 66/33% beats and two zero-XP bombardiers, and guards stages 5/9/11 plus the Jungle roster. No implementation is authorised by this plan.
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

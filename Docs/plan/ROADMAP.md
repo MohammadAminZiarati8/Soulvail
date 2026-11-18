@@ -260,6 +260,14 @@ _No milestone. The owner is setting the next direction._
 - [x] **SS-14c** — The body: prefab, animator, the ground shadow and the dive (M)
 - [x] SS-14d — The vulture in the Sunscar: data, roster from stage 22 (M)
 
+**The Duneclaw, Sunscar's stage-5 boss** ([GD §9.3](../GameDesign.md#93-the-sunscar--stage-5-the-duneclaw)). Build SS-15a and SS-15b first. The model needs the owner's TRELLIS sculpt. SS-15c and SS-15d join the body and arena mechanic before SS-15e wires up the fight.
+
+- [ ] [SS-15a](tasks/SS-15a-duneclaw-core.md) — Locked sweep and slam, tail recovery and final-phase combo (M)
+- [ ] [SS-15b](tasks/SS-15b-duneclaw-model.md) — The Duneclaw sculpt, scorpion rig and clips (M)
+- [ ] [SS-15c](tasks/SS-15c-duneclaw-body.md) — Boss prefab, readable attack tells and sound cues (M)
+- [ ] [SS-15d](tasks/SS-15d-duneclaw-slabs.md) — Sandstone slabs that shatter and extend the recovery (M)
+- [ ] [SS-15e](tasks/SS-15e-duneclaw-stage.md) — Stage 5 boss roster, scorplings and clear flow (M)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

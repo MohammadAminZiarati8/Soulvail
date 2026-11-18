@@ -524,6 +524,16 @@ Past stage 20, bosses recycle with stacking Ordeals and one previously-unseen at
 
 **The Archon is the design centerpiece.** It's where Veilrot becomes mechanical instead of numerical, and where the game's theme and its systems finally say the same thing.
 
+### 9.3 The Sunscar — stage 5, the Duneclaw
+
+The Duneclaw is a giant sand scorpion with chipped sandstone-colored armor, six short legs, an oversized right pincer and a heavy segmented tail. Dusty ochre, umber and bleached bone keep the silhouette readable against the sand. The claw and stinger light up in the danger colour during their respective tells.
+
+- **Pincer sweep.** The Duneclaw closes at a walk, opens its large claw and marks an arc in front of it. The arc holds its heading through impact. Walk past the edge or out of reach.
+- **Tail slam.** It rears up and locks a circle at the player's feet. Walk out of the circle and turn back to fire while it pulls the stinger out of the sand. The slam pins it for 2 s.
+- **Sandstone slabs.** Two cracked slabs sit flush with the floor on open sand. Bait the centre of the slam onto one to shatter it and extend the pin to 3 s. The slabs and debris carry no damage and do not obstruct movement or shots.
+- **Phases.** It opens alone. At 66% it shakes loose three scorplings during a 1.5 s invulnerable beat and stays still while they start across the sand. At 33% another beat clears the surviving brood. The Duneclaw then follows every sweep with a fresh tail-slam tell and still gives the full recovery after impact.
+- **First boss pacing.** Both attacks have distinct visual and audio cues and can be answered at walking speed. Aim for 75–90 s in a stage-5 Ranger damage probe. The usual north portal opens on victory.
+
 ---
 
 ## 10. Veilrot — the signature system

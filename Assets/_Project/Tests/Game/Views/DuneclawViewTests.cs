@@ -194,6 +194,67 @@ public sealed class DuneclawViewTests
         AssertCleared(view);
     }
 
+    [Test]
+    public void SlabView_StationaryAndNonblocking_ShatterAndDespawnCleanUp()
+    {
+        DuneclawView view = Body(17);
+        DuneclawView other = Body(18);
+        _parent.SetActive(true);
+        var serialized = new SerializedObject(view);
+        var slabs = new Transform[2];
+        var tiles = new GameObject[2];
+        var dust = new ParticleSystem[2];
+        for (int i = 0; i < 2; i++)
+        {
+            slabs[i] = (Transform)serialized.FindProperty("_slabs").GetArrayElementAtIndex(i).objectReferenceValue;
+            tiles[i] = (GameObject)serialized.FindProperty("_slabTiles").GetArrayElementAtIndex(i).objectReferenceValue;
+            dust[i] = (ParticleSystem)serialized.FindProperty("_slabDust").GetArrayElementAtIndex(i).objectReferenceValue;
+            Assert.That(slabs[i].gameObject.activeSelf, Is.False);
+            Assert.That(slabs[i].GetComponentsInChildren<Collider>(true), Is.Empty);
+            Assert.That(slabs[i].GetComponentsInChildren<Unity.AI.Navigation.NavMeshModifier>(true), Is.Empty);
+            Assert.That(slabs[i].GetComponentsInChildren<Unity.AI.Navigation.NavMeshModifierVolume>(true), Is.Empty);
+            Assert.That(dust[i].main.playOnAwake, Is.False);
+            _events.Publish(new DuneclawSlabPlaced(17, i, new NVector3(i * 7 - 3.5f, 0, 2)));
+            Assert.That(slabs[i].gameObject.activeSelf, Is.True);
+            Assert.That(tiles[i].activeSelf, Is.True);
+            Assert.That(slabs[i].parent, Is.EqualTo(_parent.transform));
+        }
+        Assert.That(other.transform.Find("Slab0").gameObject.activeSelf, Is.False);
+        view.transform.SetPositionAndRotation(new Vector3(10, 0, 8), Quaternion.Euler(0, 90, 0));
+        view.transform.localScale = Vector3.one * 1.7f;
+        view.Step(0f);
+        Assert.That(slabs[0].position, Is.EqualTo(new Vector3(-3.5f, 0, 2)));
+        Assert.That(slabs[0].lossyScale, Is.EqualTo(Vector3.one));
+        var stone = slabs[0].Find("Intact/Sandstone").GetComponent<Renderer>();
+        Assert.That(stone.bounds.size.x, Is.EqualTo(1.6f).Within(1e-4f));
+        _events.Publish(new BossPhaseChanged(17, 2, 3));
+        Assert.That(tiles[0].activeSelf, Is.True);
+        _events.Publish(new DuneclawSlabShattered(18, 0));
+        Assert.That(tiles[0].activeSelf, Is.True);
+        _events.Publish(new DuneclawSlabShattered(17, 0));
+        Assert.That(tiles[0].activeSelf, Is.False);
+        Assert.That(dust[0].isPlaying, Is.True);
+        Assert.That(tiles[1].activeSelf, Is.True);
+        dust[0].Simulate(0.1f, true, false);
+        Assert.That(dust[0].particleCount, Is.GreaterThan(0));
+        view.OnDespawn();
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.That(slabs[i].gameObject.activeSelf, Is.False);
+            Assert.That(slabs[i].parent, Is.EqualTo(view.transform));
+            Assert.That(dust[i].particleCount, Is.Zero);
+            Assert.That(dust[i].isPlaying, Is.False);
+        }
+        view.OnSpawn();
+        _events.Publish(new DuneclawSlabPlaced(17, 0, NVector3.Zero));
+        Assert.That(tiles[0].activeSelf, Is.True);
+        _events.Publish(new DuneclawSlabShattered(17, -1));
+        _events.Publish(new DuneclawSlabPlaced(17, 2, NVector3.Zero));
+        typeof(DuneclawView).GetMethod("OnDestroy", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(view, null);
+        Assert.That(slabs[0].gameObject.activeSelf, Is.False);
+        _events.Publish(new DuneclawSlabPlaced(17, 0, NVector3.Zero));
+        Assert.That(slabs[0].gameObject.activeSelf, Is.False, "Disposal unsubscribes slab facts.");
+    }
     private DuneclawView Body(int id)
     {
         var root = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(Project + "Prefabs/Enemies/Duneclaw.prefab"), _parent.transform);

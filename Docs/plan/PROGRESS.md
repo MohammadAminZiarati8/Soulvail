@@ -9,20 +9,20 @@ _2026-11-18._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-15c** — Duneclaw body. |
-| **Next task** | **SS-15d** — Slabs; awaits go. |
-| **Verified** | EditMode 6900/6992; 0 failed, 1 inconclusive, 91 skipped. Body 4/4; format/compiler clean. |
+| **Last merged** | **SS-15d** — Duneclaw slabs. |
+| **Next task** | **SS-15e** — Stage 5; needs go. |
+| **Verified** | EditMode 6908/7000; 0 failed, 1 inconclusive, 91 skipped. Slabs/views 12/12; clean. |
 
 ## What works
 
-Jungle: 3 arenas. Sunscar clear opens portal. Scorpions 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16, callers 18, vultures 22. Broods drop 3 scorplings. Antlions tunnel, warn, erupt and expose for 2.5 s. DT-01 starts any place.
+Jungle: 3. Sunscar portal on clear. Scorpions 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16, callers 18, vultures 22. Broods drop 3 scorplings. Antlions tunnel, warn, erupt and expose for 2.5 s. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal. Bosses: Warden/Croaker, 10 Mother, 15 Warlord, 20 Thornheart.
 Scripted 1–29 except bosses. Boss adds: die with boss, 0 XP.
 Thornheart: spokes/pods/slam/heart ×2. Mother: shields/lobs/spray/pod.
 Stalker (22+) lurks. Thornweaver (24+): holds 10 m, ≤ 2 walls past you, die with it.
 Gravemaw (25): burrow past cover, rise in open. Ring, bite+throw, tremor/rocks. At 50%, 2 rings and crack Frogs. 986 HP, 4 pillars.
-Apex 30: eye/feint, streak, +15% window, 1580 HP, 4 stones, panthers 66–33%, win.
+Apex 30: eye/feint, streak, +15% window, 1580 HP, 4 stones, panthers 66–33%.
 Stones stop dash/rake. Hunt: +30% speed, 3 lanes, 2 pounces.
 Warlord: guard, sweep/charge, stone daze, adds, shatter/combo in P2.
 Shaman (17–19): guard ≤12 m, hold 11 m, flee <4 m. Heal 10%, haste 25% in 8 m. XP 32, priority 8.
@@ -33,7 +33,7 @@ Killshot: 3 m, 4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
 Cobra fan. Callers channel 2 s. Vultures circle, dive and land exposed for 2 s.
 Hero Poison: violet drop, stacks, timer, quiet HP ticks. Space or death clears it.
-Duneclaw body/tells/cues, aimed slam, 2 s pin, P2 0.35 s combo. Slabs/stage pending; OWED checks.
+Duneclaw tells/cues, aimed slam, 2 s pin, P2 0.35 s combo. Two fixed slabs shatter once: 3 s pin. Stage pending.
 Skirmisher runs/fires. Ricochet 11, Second Wind 14 (roll guard, pips), Whirlwind 17, Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

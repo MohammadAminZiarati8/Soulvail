@@ -23,6 +23,12 @@ namespace Soulvail.Game.Views
         [SerializeField] private AudioClip _sweepCue;
         [SerializeField] private AudioClip _slamCue;
 
+        [SerializeField] private Transform[] _slabs = new Transform[2];
+        [SerializeField] private GameObject[] _slabTiles = new GameObject[2];
+        [SerializeField] private ParticleSystem[] _slabDust = new ParticleSystem[2];
+        private IDisposable _slabPlaced;
+        private IDisposable _slabShattered;
+
         private readonly Vector3[] _vertices = new Vector3[Segments + 2];
         private readonly Color[] _colors = new Color[Segments + 2];
         private readonly int _colorId = Shader.PropertyToID("_BaseColor");
@@ -56,6 +62,8 @@ namespace Soulvail.Game.Views
             _body = GetComponent<EnemyView>();
             _clips = _animator.runtimeAnimatorController.animationClips;
             EnsureMesh();
+            _slabPlaced = events.Subscribe<DuneclawSlabPlaced>(OnSlabPlaced);
+            _slabShattered = events.Subscribe<DuneclawSlabShattered>(OnSlabShattered);
             _armed = events.Subscribe<DuneclawArmed>(OnArmed);
             _impact = events.Subscribe<DuneclawImpact>(OnImpact);
             _phase = events.Subscribe<BossPhaseChanged>(OnPhase);
@@ -88,6 +96,47 @@ namespace Soulvail.Game.Views
             }
             _mesh.triangles = triangles;
             _tell.sharedMesh = _mesh;
+        }
+
+        private void OnSlabPlaced(DuneclawSlabPlaced evt)
+        {
+            if (!IsMine(evt.BossId) || (uint)evt.Slot >= (uint)_slabs.Length || _slabs[evt.Slot] == null)
+            {
+                return;
+            }
+            Transform slab = _slabs[evt.Slot];
+            slab.SetParent(transform.parent, false);
+            slab.SetPositionAndRotation(evt.Position.ToUnity(), Quaternion.identity);
+            slab.localScale = Vector3.one;
+            _slabDust[evt.Slot].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            _slabTiles[evt.Slot].SetActive(true);
+            slab.gameObject.SetActive(true);
+        }
+
+        private void OnSlabShattered(DuneclawSlabShattered evt)
+        {
+            if (!IsMine(evt.BossId) || (uint)evt.Slot >= (uint)_slabs.Length
+                || _slabs[evt.Slot] == null || !_slabTiles[evt.Slot].activeSelf)
+            {
+                return;
+            }
+            _slabTiles[evt.Slot].SetActive(false);
+            _slabDust[evt.Slot].Play(true);
+        }
+
+        private void ClearSlabs()
+        {
+            for (int i = 0; i < _slabs.Length; i++)
+            {
+                if (_slabs[i] == null)
+                {
+                    continue;
+                }
+                _slabDust[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                _slabs[i].gameObject.SetActive(false);
+                _slabs[i].SetParent(transform, false);
+                _slabTiles[i].SetActive(false);
+            }
         }
 
         private void OnArmed(DuneclawArmed evt)
@@ -184,6 +233,7 @@ namespace Soulvail.Game.Views
             }
             ClearTell();
             _audio.Stop();
+            ClearSlabs();
             _dead = true;
             _committed = false;
             Play("Death");
@@ -300,6 +350,7 @@ namespace Soulvail.Game.Views
 
         private void ResetPresentation()
         {
+            ClearSlabs();
             ClearTell();
             _dead = _committed = _slam = false;
             _duration = _elapsed = _remaining = _strikeRemaining = 0f;
@@ -327,6 +378,8 @@ namespace Soulvail.Game.Views
 
         private void DisposeSubscriptions()
         {
+            _slabPlaced?.Dispose();
+            _slabShattered?.Dispose();
             _armed?.Dispose();
             _impact?.Dispose();
             _phase?.Dispose();
@@ -336,6 +389,7 @@ namespace Soulvail.Game.Views
 
         private void OnDestroy()
         {
+            ClearSlabs();
             DisposeSubscriptions();
             if (_mesh != null)
             {

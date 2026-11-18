@@ -832,3 +832,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [Editor] Fire sweep and slam tells on the Duneclaw prefab; check claw/stinger glow, posed tail aim, and the scrape/rattle starting with the marked areas.
 - [device, after SS-15e] Check sector/circle readability and distinct local cues during the stage-5 fight.
+
+## SS-15d — Duneclaw sandstone slabs (2026-11-18)
+
+- [ ] **[Editor, after SS-15e]** In stage 5 bait a locked slam onto each slab, walk clear, and see dust and a 3 s pin. Repeat on the spent patch for the ordinary 2 s pin; confirm slabs stay still as the boss moves and clear on despawn/reuse.
+- [ ] **[device, deferred: no reference device]** Confirm the dark cracks and danger circle remain legible together.

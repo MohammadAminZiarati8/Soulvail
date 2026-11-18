@@ -13,6 +13,13 @@ public sealed class DuneclawBehaviour : IEnemyBehaviour, IBossPhaseListener
     private DuneclawMove _next;
     private DuneclawArmed _armed;
     private float _remaining;
+    private readonly Vector3[] _slabs = new Vector3[2];
+    private readonly bool[] _intact = new bool[2];
+    private bool _initialised;
+    private bool _placed;
+    private Vector3 _spawn;
+    private Vector3 _initialPlayer;
+    private Vector2 _initialFacing;
     private Vector2 _facing = Vector2.UnitY;
 
     public DuneclawBehaviour(EnemyAgent agent, DuneclawStats stats)
@@ -27,6 +34,7 @@ public sealed class DuneclawBehaviour : IEnemyBehaviour, IBossPhaseListener
 
     public void Tick(in EnemyTickContext ctx)
     {
+        PlaceSlabs(ctx);
         if (IsArmed)
         {
             _remaining -= ctx.Dt;
@@ -108,10 +116,81 @@ public sealed class DuneclawBehaviour : IEnemyBehaviour, IBossPhaseListener
         // In phase 2 the short stationary gap replaces the sweep's ordinary recovery.
         _remaining = sweep ? Phase >= 2 ? _stats.ComboGapSeconds.Value : _stats.SweepRecoverySeconds.Value
             : _stats.SlamRecoverySeconds.Value;
+        if (!sweep)
+        {
+            for (int slot = 0; slot < _slabs.Length; slot++)
+            {
+                float tolerance = _stats.SlabAimRadius.Value;
+                if (_intact[slot] && MathF.Sqrt(DistanceSquared(_armed.Target, _slabs[slot])) <= tolerance)
+                {
+                    _intact[slot] = false;
+                    _remaining = _stats.SlabRecoverySeconds.Value;
+                    ctx.Events.Publish(new DuneclawSlabShattered(_agent.Id, slot));
+                    break;
+                }
+            }
+        }
         ctx.Events.Publish(new DuneclawImpact(_agent.Id, _armed.Move, _armed.Target, _remaining));
         _next = sweep ? DuneclawMove.Slam : DuneclawMove.Sweep;
         IsArmed = false;
         IsRecovering = true;
+    }
+
+    private void PlaceSlabs(in EnemyTickContext ctx)
+    {
+        if (!_initialised)
+        {
+            _initialised = true;
+            _spawn = _agent.Blackboard.SelfPosition;
+            _initialPlayer = _agent.Blackboard.PlayerPosition;
+            Vector3 delta = _initialPlayer - _spawn;
+            var facing = new Vector2(delta.X, delta.Z);
+            _initialFacing = facing == Vector2.Zero ? Vector2.UnitY : Vector2.Normalize(facing);
+        }
+        // An empty report cannot distinguish an unmeasured arena from one without floor.
+        if (_placed || ctx.OpenGround.Count == 0)
+        {
+            return;
+        }
+        _placed = true;
+        var side = new Vector3(_initialFacing.Y, 0f, -_initialFacing.X);
+        float spacing = _stats.SlabMinimumSpacing.Value;
+        float spacingSquared = spacing * spacing;
+        for (int slot = 0; slot < _slabs.Length; slot++)
+        {
+            Vector3 desired = _spawn + side * (_stats.SlabOffset.Value * (slot == 0 ? -1f : 1f));
+            float tolerance = _stats.SlabPlacementTolerance.Value;
+            float best = float.PositiveInfinity;
+            Vector3 chosen = default;
+            for (int i = 0; i < ctx.OpenGround.Count; i++)
+            {
+                Vector3 point = ctx.OpenGround[i];
+                float distance = DistanceSquared(point, desired);
+                if (!float.IsFinite(point.Y) || !(distance <= tolerance * tolerance) || !(distance < best)
+                    || !(DistanceSquared(point, _spawn) >= spacingSquared)
+                    || !(DistanceSquared(point, _initialPlayer) >= spacingSquared)
+                    || (slot > 0 && _intact[0] && !(DistanceSquared(point, _slabs[0]) >= spacingSquared)))
+                {
+                    continue;
+                }
+                best = distance;
+                chosen = point;
+            }
+            if (float.IsPositiveInfinity(best))
+            {
+                continue;
+            }
+            _slabs[slot] = chosen;
+            _intact[slot] = true;
+            ctx.Events.Publish(new DuneclawSlabPlaced(_agent.Id, slot, chosen));
+        }
+    }
+
+    private float DistanceSquared(Vector3 a, Vector3 b)
+    {
+        float x = a.X - b.X;
+        float z = a.Z - b.Z;
+        return x * x + z * z;
     }
 
     private void Stand(in EnemyTickContext ctx) =>
@@ -131,5 +210,8 @@ public sealed class DuneclawBehaviour : IEnemyBehaviour, IBossPhaseListener
     {
         OnPhaseEntered(0);
         _facing = Vector2.UnitY;
+        _initialised = _placed = false;
+        Array.Clear(_slabs, 0, _slabs.Length);
+        Array.Clear(_intact, 0, _intact.Length);
     }
 }

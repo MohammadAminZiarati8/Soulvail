@@ -44,3 +44,29 @@ public readonly struct DuneclawImpact
         RecoverySeconds = recoverySeconds;
     }
 }
+
+public readonly struct DuneclawSlabPlaced
+{
+    public readonly int BossId;
+    public readonly int Slot;
+    public readonly Vector3 Position;
+
+    public DuneclawSlabPlaced(int bossId, int slot, Vector3 position)
+    {
+        BossId = bossId;
+        Slot = slot;
+        Position = position;
+    }
+}
+
+public readonly struct DuneclawSlabShattered
+{
+    public readonly int BossId;
+    public readonly int Slot;
+
+    public DuneclawSlabShattered(int bossId, int slot)
+    {
+        BossId = bossId;
+        Slot = slot;
+    }
+}

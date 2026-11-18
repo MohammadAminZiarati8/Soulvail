@@ -16,5 +16,10 @@ public sealed class DuneclawStats
     public Stat SlamWindupSeconds { get; } = new(1f);
     public Stat SlamRecoverySeconds { get; } = new(2f);
     public Stat SlamDamage { get; } = new(16f);
+    public Stat SlabOffset { get; } = new(3.5f);
+    public Stat SlabPlacementTolerance { get; } = new(1.5f);
+    public Stat SlabMinimumSpacing { get; } = new(3f);
+    public Stat SlabAimRadius { get; } = new(0.8f);
+    public Stat SlabRecoverySeconds { get; } = new(3f);
     public Stat ComboGapSeconds { get; } = new(0.35f);
 }

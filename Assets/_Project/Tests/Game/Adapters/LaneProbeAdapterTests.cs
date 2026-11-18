@@ -85,6 +85,23 @@ public sealed class LaneProbeAdapterTests
     }
 
     [Test]
+    public void Resolve_TaggedProbes_AreIsolated()
+    {
+        Solid(_origin + Vector3.forward * 5f, LayerMask.NameToLayer("Cover"));
+        var intents = new IntentBuffer();
+        var session = new RecordingSession();
+        var tagged = new LaneProbeIntent(7, _origin.ToNum(), System.Numerics.Vector3.UnitZ,
+            Reach, Radius, new ShardbackProbeKey(Guid.NewGuid(), 1), 0);
+        ((IIntentSink)intents).LaneProbe(tagged);
+        ((IIntentSink)intents).LaneProbe(Lane(_origin, Vector3.forward, 9));
+        Assert.That(_probe.Probe(tagged, out _), Is.False);
+        _probe.Resolve(intents, session);
+        Assert.That(session.Answers.Count, Is.EqualTo(1));
+        Assert.That(session.Answers[0].Id, Is.EqualTo(9));
+        Assert.That(session.Answers[0].Hit, Is.True);
+    }
+
+    [Test]
     public void Constructor_RefusesAnEmptyMask() =>
         Assert.Throws<ArgumentException>(() => _ = new LaneProbeAdapter(0));
 

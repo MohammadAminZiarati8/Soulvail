@@ -1212,6 +1212,9 @@ namespace Soulvail.Game.Composition
             builder.Register<LaneProbeAdapter>(Lifetime.Scoped)
                 .WithParameter("cover", _coverLayer);
 
+            builder.Register<ShardbackProbeAdapter>(Lifetime.Scoped)
+                .WithParameter("cover", _coverLayer);
+
             // Put cover on the ticker's constructor chain without growing its public signature:
             // BossViews is already required there, and both listeners must precede Start.
             builder.RegisterEntryPoint<RunTicker>(Lifetime.Scoped)

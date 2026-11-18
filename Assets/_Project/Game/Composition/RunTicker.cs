@@ -138,6 +138,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
     private readonly ConeOverlapQuery _cone;
     private readonly BindProbeAdapter _bindProbe;
     private readonly LaneProbeAdapter _laneProbe;
+    private readonly ShardbackProbeAdapter _shardbackProbe;
     private readonly BindingChainView _bindingChains;
     private readonly ChainLinkViews _chainLinks;
 
@@ -188,8 +189,10 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
         BindingChainView bindingChains = null,
         LaneProbeAdapter laneProbe = null,
         ChainLinkViews chainLinks = null,
-        PetViews petViews = null)
+        PetViews petViews = null,
+        ShardbackProbeAdapter shardbackProbe = null)
     {
+        _shardbackProbe = shardbackProbe;
         _chainLinks = chainLinks;
         _petViews = petViews;
         _bindProbe = bindProbe;
@@ -528,6 +531,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         _bindProbe?.Resolve(_intents, _session);
         _laneProbe?.Resolve(_intents, _session);
+        _shardbackProbe?.Resolve(_intents, _session);
 
         ApplyKnockbacks();
         _bindingChains?.Step(_snapshot.Dt);

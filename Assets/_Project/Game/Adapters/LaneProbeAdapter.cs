@@ -25,6 +25,8 @@ public sealed class LaneProbeAdapter
     public bool Probe(in LaneProbeIntent probe, out float distance)
     {
         distance = 0f;
+        if (probe.Key.Lifetime != Guid.Empty || probe.Key.Cast != 0)
+        { return false; }
         Vector3 direction = probe.Direction.ToUnity();
         if (!(probe.Reach > 0f) || !float.IsFinite(probe.Reach)
             || !(probe.Radius > 0f) || !float.IsFinite(probe.Radius)
@@ -47,6 +49,8 @@ public sealed class LaneProbeAdapter
         for (int i = 0; i < intents.LaneProbes.Count; i++)
         {
             LaneProbeIntent probe = intents.LaneProbes[i];
+            if (probe.Key.Lifetime != Guid.Empty || probe.Key.Cast != 0)
+            { continue; }
             bool hit = Probe(probe, out float distance);
             session.ReportLaneStop(probe.EnemyId, hit, distance);
         }

@@ -157,6 +157,7 @@ public sealed class FrameOrderTests
     private InputAdapter _input;
     private RunTicker _ticker;
     private EnemyView _body;
+    private Soulvail.Game.Arena.ArenaPool _probeArenas;
 
     /// <summary>
     /// The frame's one-press buffer for CC §6.2's slot buttons. Real rather than a fake: it is half
@@ -259,6 +260,9 @@ public sealed class FrameOrderTests
 
         _skillArc = new SkillArcInput(_core);
 
+        _probeArenas = new Soulvail.Game.Arena.ArenaPool(_container,
+            Array.Empty<Soulvail.Game.Arena.ArenaView>(), null, _hub, player);
+
         _ticker = new RunTicker(
             _core,
             _core,
@@ -295,7 +299,9 @@ public sealed class FrameOrderTests
             SpawnPlan.Empty,
             new TapToFocusAdapter(_input, _core, cameraObject.AddComponent<Camera>()),
             _skillArc,
-            cone);
+            cone,
+            laneProbe: new LaneProbeAdapter(LayerMask.GetMask("Cover")),
+            shardbackProbe: new ShardbackProbeAdapter(LayerMask.GetMask("Cover"), _probeArenas));
 
         // Announced the way core announces it, so the body arrives through the subscription M1-07
         // wired rather than by this fixture reaching into the census.
@@ -312,6 +318,8 @@ public sealed class FrameOrderTests
     [TearDown]
     public void DropTheFrame()
     {
+        _probeArenas?.Dispose();
+        _probeArenas = null;
         // First, and unconditionally: it writes Time.timeScale and Application.targetFrameRate, so a
         // row that ended paused would otherwise leave the Editor — and every later fixture in the
         // run — on a frozen clock.
@@ -371,6 +379,49 @@ public sealed class FrameOrderTests
     /// The whole chain in one run of frames: every adjacency of AR §18.1's order, each pinned by a
     /// consequence a reordering removes.
     /// </summary>
+    [UnityTest]
+    public IEnumerator Facts_TaggedOnly_AfterSync()
+    {
+        var arenaObject = new GameObject("Probe arena");
+        Track(arenaObject);
+        arenaObject.transform.position = Origin;
+        var arena = arenaObject.AddComponent<Soulvail.Game.Arena.ArenaView>();
+        typeof(Soulvail.Game.Arena.ArenaView).GetField("_halfSize",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            .SetValue(arena, new Vector2(20f, 20f));
+        typeof(Soulvail.Game.Arena.ArenaPool).GetProperty("Active").SetValue(_probeArenas, arena);
+        var cover = new GameObject("Moving cover") { layer = LayerMask.NameToLayer("Cover") };
+        Track(cover);
+        cover.transform.position = Origin + new Vector3(10f, 1f, 5f);
+        cover.AddComponent<BoxCollider>().size = new Vector3(1f, 2f, 1f);
+        Physics.SyncTransforms();
+        var key = new ShardbackProbeKey(Guid.NewGuid(), 1);
+        _core.OnProbeTick = () =>
+        {
+            cover.transform.position = Origin + new Vector3(0f, 1f, 5f);
+            ((IIntentSink)_intents).LaneProbe(new LaneProbeIntent(7, Origin.ToNum(), CoreVector3.UnitZ, 12f, 1f, key, 0));
+            ((IIntentSink)_intents).LaneProbe(new LaneProbeIntent(9, Origin.ToNum(), CoreVector3.UnitZ, 12f, 0.8f));
+        };
+        yield return Frame();
+        Assert.That(_core.TaggedReports, Is.EqualTo(1));
+        Assert.That(_core.LegacyReports, Is.EqualTo(1));
+        Assert.That(_core.TaggedStop.Kind, Is.EqualTo(ShardbackStopKind.Cover));
+        Assert.That(_core.TaggedStop.Distance, Is.EqualTo(3.5f).Within(0.01f));
+        Assert.That(_core.TaggedStop.Key, Is.EqualTo(key));
+        Assert.That(_core.TaggedStop.BossId, Is.EqualTo(7));
+        Assert.That(_core.TaggedStop.Lane, Is.Zero);
+        Assert.That(_core.LegacyDistance, Is.EqualTo(3.7f).Within(0.01f));
+        _pause.Pause(PauseReason.Menu);
+        yield return Frame();
+        Assert.That(_core.TaggedReports, Is.EqualTo(1));
+        Assert.That(_core.LegacyReports, Is.EqualTo(1));
+        _pause.Resume(PauseReason.Menu);
+        yield return Frame();
+        Assert.That(_core.TaggedReports, Is.EqualTo(2));
+        Assert.That(_core.LegacyReports, Is.EqualTo(2));
+        LogAssert.NoUnexpectedReceived();
+    }
+
     [UnityTest]
     public IEnumerator Ticker_RunsTheStepsInOrder()
     {
@@ -1671,6 +1722,7 @@ public sealed class FrameOrderTests
                 new CoreVector3(MinionWalk.x, MinionWalk.y, MinionWalk.z),
                 new CoreVector2(0f, 1f)));
 
+            OnProbeTick?.Invoke();
             if (!EmitCone)
             {
                 return;
@@ -1720,8 +1772,13 @@ public sealed class FrameOrderTests
         public void ReportChargeHits(ReadOnlySpan<int> enemyIds) => _touched.Add("charge-facts");
 
         public void ReportBindAnchor(int targetId, bool hit, System.Numerics.Vector3 point) { }
-        public void ReportShardbackStop(in ShardbackStop report) { }
-        public void ReportLaneStop(int enemyId, bool hit, float distance) { }
+        public Action OnProbeTick { get; set; }
+        public int TaggedReports { get; private set; }
+        public int LegacyReports { get; private set; }
+        public ShardbackStop TaggedStop { get; private set; }
+        public float LegacyDistance { get; private set; }
+        public void ReportShardbackStop(in ShardbackStop report) { TaggedReports++; TaggedStop = report; }
+        public void ReportLaneStop(int enemyId, bool hit, float distance) { LegacyReports++; LegacyDistance = distance; }
 
         public void End()
         {

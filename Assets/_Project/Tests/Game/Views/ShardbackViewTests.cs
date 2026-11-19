@@ -35,6 +35,7 @@ public sealed class ShardbackViewTests
     private EnemyView _body;
     private MeshFilter _mesh;
     private MeshRenderer _tell;
+    private MeshFilter _effect;
     private AudioSource _audio;
     private Animator _animator;
     private Guid _lifetime;
@@ -54,6 +55,7 @@ public sealed class ShardbackViewTests
         _audio = _root.GetComponent<AudioSource>();
         _mesh = _root.transform.Find("AttackTell").GetComponent<MeshFilter>();
         _tell = _mesh.GetComponent<MeshRenderer>();
+        _effect = _root.transform.Find("AttackEffect").GetComponent<MeshFilter>();
         _lifetime = Guid.NewGuid();
         _events.Publish(new ShardbackFightStarted(Boss, _lifetime));
     }
@@ -95,6 +97,10 @@ public sealed class ShardbackViewTests
     {
         _root.transform.localScale = Vector3.one * 1.7f;
         ShardbackArmed armed = Arm(move, 1);
+        _body.Apply(new EnemyMoveIntent(Boss, Num.Vector3.Zero, armed.Facing), 0f);
+        _view.Step(0f);
+        AssertPoint(_animator.transform.forward, Vector3.right);
+        Assert.That(EffectVisible, Is.False);
         Assert.That(_tell.enabled, Is.EqualTo(move == ShardbackMove.Burst));
         _events.Publish(new ShardbackClipped(Boss, armed.Key, 5f, 7f, 3f));
         Assert.That(_tell.enabled, Is.True);
@@ -107,7 +113,7 @@ public sealed class ShardbackViewTests
             foreach (Vector3 point in vertices.Skip(1))
             {
                 Vector3 world = _mesh.transform.TransformPoint(point);
-                Assert.That(Vector3.Distance(world, origin), Is.EqualTo(4f).Within(0.001f));
+                Assert.That(Vector3.Distance(world, origin), Is.EqualTo(5.5f).Within(0.001f));
             }
         }
         else
@@ -118,11 +124,13 @@ public sealed class ShardbackViewTests
             float[] lengths = { 5f, 7f, 3f };
             for (int lane = 0; lane < laneCount; lane++)
             {
-                Quaternion bearing = Quaternion.Euler(0f, angles[lane], 0f);
+                // With a +X cast, Core's positive XZ rotation points toward +Z.
+                float radians = angles[lane] * Mathf.Deg2Rad;
+                Vector3 bearing = new(Mathf.Cos(radians), 0f, Mathf.Sin(radians));
                 Vector3 start = WorldMidpoint(vertices, lane * 4);
                 Vector3 end = WorldMidpoint(vertices, lane * 4 + 2);
                 AssertPoint(start, origin);
-                AssertPoint(end, origin + bearing * (Vector3.right * lengths[lane]));
+                AssertPoint(end, origin + bearing * lengths[lane]);
                 Assert.That(Vector3.Distance(_mesh.transform.TransformPoint(vertices[lane * 4]),
                     _mesh.transform.TransformPoint(vertices[lane * 4 + 1])), Is.EqualTo(2f * armed.HalfWidth).Within(0.001f));
             }
@@ -133,6 +141,37 @@ public sealed class ShardbackViewTests
         _view.Step(5f);
         Assert.That(_tell.enabled, Is.True, "Only Core ends a warning.");
         AssertPoint(_mesh.transform.TransformPoint(vertices[1]), before);
+        Assert.That(EffectVisible, Is.False);
+
+        if (move == ShardbackMove.Charge)
+        {
+            _events.Publish(new ShardbackChargeStarted(Boss, armed.Key));
+            Assert.That(_tell.enabled, Is.False);
+            Assert.That(EffectVisible, Is.True);
+            Assert.That(_effect.sharedMesh.vertices[2].z, Is.Zero);
+            _events.Publish(new ShardbackChargeAdvanced(Boss, armed.Key, 2f));
+            Assert.That(_effect.sharedMesh.vertices[2].z, Is.EqualTo(2f));
+            _events.Publish(new ShardbackChargeAdvanced(Boss, armed.Key, 6f));
+            Assert.That(_effect.sharedMesh.vertices[2].z, Is.EqualTo(2f));
+        }
+        float travel = move == ShardbackMove.Charge ? 2f : 0f;
+        _events.Publish(new ShardbackImpact(Boss, armed.Move, armed.Origin, 2f, armed.Key, travel));
+        Assert.That(_tell.enabled, Is.False);
+        Assert.That(EffectVisible, Is.True);
+        Vector3[] release = _effect.sharedMesh.vertices;
+        if (move == ShardbackMove.Charge)
+            Assert.That(release[2].z, Is.EqualTo(2f));
+        else
+        {
+            int count = move == ShardbackMove.Fan ? 12 : vertices.Length;
+            Assert.That(release.Take(count), Is.EqualTo(vertices.Take(count)));
+        }
+        _body.Apply(new EnemyMoveIntent(Boss, Num.Vector3.Zero, Num.Vector2.UnitY), 0f);
+        _view.Step(0.01f);
+        AssertPoint(_animator.transform.forward, Vector3.forward);
+        AssertPoint(_effect.transform.forward, Vector3.right);
+        _view.Step(0.5f);
+        Assert.That(EffectVisible, Is.False);
     }
 
     [Test]
@@ -175,8 +214,11 @@ public sealed class ShardbackViewTests
         AssertPose("Idle");
 
         burst = Arm(ShardbackMove.Burst, 2);
+        _events.Publish(new ShardbackImpact(Boss, burst.Move, burst.Origin, 2f, burst.Key));
+        Assert.That(EffectVisible, Is.True);
         _events.Publish(new EnemyDied(Boss, _spec, _origin.ToNum()));
         Assert.That(_tell.enabled, Is.False);
+        Assert.That(EffectVisible, Is.False);
         Assert.That(_audio.clip, Is.Null);
         AssertPose("Death");
         _view.OnDespawn();
@@ -280,7 +322,7 @@ public sealed class ShardbackViewTests
     private ShardbackArmed Arm(ShardbackMove move, ulong cast)
     {
         var evt = new ShardbackArmed(Boss, move, _origin.ToNum(), Num.Vector2.UnitX,
-            move == ShardbackMove.Burst ? 4f : 12f, move == ShardbackMove.Fan ? 0.6f : 1f,
+            move == ShardbackMove.Burst ? 5.5f : 12f, move == ShardbackMove.Fan ? 0.6f : 1f,
             25f, move == ShardbackMove.Fan ? 1f : 1.2f, new ShardbackProbeKey(_lifetime, cast));
         _events.Publish(evt);
         return evt;
@@ -288,6 +330,8 @@ public sealed class ShardbackViewTests
 
     private Vector3 WorldMidpoint(Vector3[] vertices, int index) =>
         _mesh.transform.TransformPoint((vertices[index] + vertices[index + 1]) * 0.5f);
+
+    private bool EffectVisible => _effect.GetComponent<MeshRenderer>().enabled;
 
     private static void AssertPoint(Vector3 actual, Vector3 expected) =>
         Assert.That(Vector3.Distance(actual, expected), Is.LessThan(0.001f));

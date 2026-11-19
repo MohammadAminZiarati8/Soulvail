@@ -51,7 +51,7 @@ public sealed class ShardbackBehaviourTests
         Assert.That(_intents.EnemyMoves.Count, Is.EqualTo(1));
         Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.UnitX * 2f));
         Place(Vector3.UnitZ * 10f);
-        Tick(0f);
+        Tick(0.125f);
         ShardbackArmed armed = LastArm();
         Assert.That(armed.BossId, Is.EqualTo(_agent.Id));
         Assert.That(armed.Origin, Is.EqualTo(Vector3.Zero));
@@ -73,6 +73,44 @@ public sealed class ShardbackBehaviourTests
         Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(armed.Facing));
         Assert.That(_intents.EnemyMoves.Count, Is.EqualTo(3));
         AssertStanding();
+    }
+
+    [Test]
+    public void Facing_TurnsThroughRecoveryAndApproach_ThenLocksThroughHit()
+    {
+        Tick(0f);
+        AnswerFan();
+        Place(Vector3.UnitX * 4f);
+        Tick(1f);
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(Vector2.UnitY));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+
+        Tick(0.125f);
+        Assert.That(_intents.LastEnemyMove.FacingXZ.X, Is.EqualTo(MathF.Sqrt(0.5f)).Within(0.0001f));
+        AssertStanding();
+        Tick(0.125f);
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(Vector2.UnitX));
+        Tick(0.875f);
+
+        Place(-Vector3.UnitX * 4f);
+        Tick(0.125f);
+        Assert.That(_events.Count<ShardbackArmed>(), Is.EqualTo(1));
+        Tick(0.4f);
+        ShardbackArmed charge = LastArm();
+        Assert.That(charge.Move, Is.EqualTo(ShardbackMove.Charge));
+        Assert.That(charge.Facing, Is.EqualTo(-Vector2.UnitX));
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(charge.Facing));
+        Answer(0, ShardbackStopKind.None, charge.Reach);
+
+        Place(Vector3.UnitZ * 4f);
+        Tick(1.2f);
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(charge.Facing));
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(-Vector3.UnitX * 10f));
+        Place(-Vector3.UnitX * 4f);
+        _agent.Blackboard.SelfPosition = -Vector3.UnitX * charge.Reach;
+        Tick(1f);
+        Assert.That(_player.Health.Current, Is.EqualTo(82f));
+        Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(charge.Facing));
     }
 
     [TestCase(0f, 0f, true)] // Three overlapping strips, one hit.
@@ -145,7 +183,7 @@ public sealed class ShardbackBehaviourTests
                 AssertStanding();
                 Assert.That(_events.Count<ShardbackArmed>(), Is.EqualTo(i + 1));
             }
-            Tick(recovery > 0f ? 100f : 0f);
+            Tick(100f);
         }
         Assert.That(_events.Count<ShardbackFightStarted>(), Is.EqualTo(1));
     }
@@ -180,14 +218,14 @@ public sealed class ShardbackBehaviourTests
     }
 
     [TestCase(0f, true)]
-    [TestCase(4f, true)]
-    [TestCase(4.001f, false)]
+    [TestCase(5.5f, true)]
+    [TestCase(5.501f, false)]
     [TestCase(float.NaN, false)]
     [TestCase(float.PositiveInfinity, false)]
     public void Burst_PhasesAndDisc_Edges(float distance, bool hit)
     {
         ArmBurst();
-        Assert.That(LastArm().Reach, Is.EqualTo(4f));
+        Assert.That(LastArm().Reach, Is.EqualTo(5.5f));
         Assert.That(LastArm().HalfWidth, Is.Zero);
         Assert.That(LastArm().AngleDegrees, Is.Zero);
         Place(new Vector3(distance, 80f, 0f));

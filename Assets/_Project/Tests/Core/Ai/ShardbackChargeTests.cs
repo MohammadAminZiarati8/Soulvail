@@ -106,6 +106,9 @@ public sealed class ShardbackChargeTests
         Assert.That(Velocity(), Is.EqualTo(Vector3.Zero));
         Assert.That(_player.Health.Current, Is.EqualTo(82f), "The charge can hit only once even after i-frames.");
         ShardbackImpact impact = _events.Single<ShardbackImpact>();
+        Assert.That(impact.TravelDistance, Is.EqualTo(8f));
+        Assert.That(_events.Of<ShardbackChargeAdvanced>().Select(e => (e.Key, e.Distance)),
+            Is.EqualTo(new[] { (probe.Key, 2f), (probe.Key, 6f), (probe.Key, 8f) }));
         Assert.That((impact.Move, impact.Key, impact.RecoverySeconds),
             Is.EqualTo((ShardbackMove.Charge, probe.Key, 1.5f)));
     }
@@ -158,9 +161,36 @@ public sealed class ShardbackChargeTests
         Assert.That(_events.Count<ShardbackImpact>(), Is.Zero);
         Tick(0.125f);
         Assert.That(_events.Single<ShardbackImpact>().RecoverySeconds, Is.EqualTo(1.5f));
+        Assert.That(_events.Single<ShardbackImpact>().TravelDistance, Is.EqualTo(2f));
+        Assert.That(_events.Single<ShardbackChargeAdvanced>().Distance, Is.EqualTo(2f));
         Assert.That(_events.Count<ShardbackPillarBroken>(), Is.Zero);
         Assert.That(_player.Health.Current, Is.EqualTo(100f));
         Assert.That(Velocity(), Is.EqualTo(Vector3.Zero));
+    }
+
+    [TestCase(5.4f, true)]
+    [TestCase(5.5f, false)]
+    public void Charge_LeadingContact_UsesObservedBodyPosition(float hero, bool hit)
+    {
+        LaneProbeIntent probe = ArmCharge();
+        Answer(probe, ShardbackStopKind.None, probe.Reach);
+        _agent.Blackboard.PlayerPosition = Vector3.UnitZ * hero;
+        Tick(1.2f);
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+        MoveTo(4f);
+        Assert.That(_player.Health.Current, Is.EqualTo(hit ? 82f : 100f));
+        Tick(0.25f);
+        Assert.That(_events.Single<ShardbackImpact>().TravelDistance, Is.EqualTo(4f));
+    }
+
+    [TestCase(float.NaN)]
+    [TestCase(float.PositiveInfinity)]
+    [TestCase(-1f)]
+    public void ChargeFeedback_RejectsInvalidDistance(float distance)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ShardbackChargeAdvanced(_agent.Id, default, distance));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ShardbackImpact(
+            _agent.Id, ShardbackMove.Charge, Vector3.Zero, 1.5f, default, distance));
     }
 
     [Test]

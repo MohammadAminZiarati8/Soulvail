@@ -865,3 +865,11 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - **SS-16e [Editor/device]** Listen for the fan rattle, charge scrape and burst crack
   over Ranger arrows, bombardier lobs and both phase beats. Judge whether each cue
   is distinct and balanced. Time a played fight with dodges and take the north portal.
+
+## SS-16f — Shardback attack feedback
+
+- **[Device]** Play Sunscar stage 10 in portrait with weather active. Check that the pale fan
+  streaks, charge launch and stop, and 5.5 m burst pulse are distinguishable from the red warnings.
+  Check the fan beside a pillar and the charge ending against one.
+- **[Editor/device]** Listen for the fan rattle, charge scrape and burst crack at combat volume.
+  Check cue timing against the release and check the mix alongside weather and the Ranger's bow.

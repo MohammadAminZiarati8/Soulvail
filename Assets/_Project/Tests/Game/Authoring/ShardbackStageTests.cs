@@ -19,6 +19,7 @@ using UnityEngine;
 using VContainer;
 using Object = UnityEngine.Object;
 using Position = System.Numerics.Vector3;
+using Direction = System.Numerics.Vector2;
 
 namespace Soulvail.Tests.Game.Authoring;
 
@@ -104,6 +105,101 @@ public sealed class ShardbackStageTests
         Assert.That(fight.StandingPillars, Is.Empty);
     }
 
+    [TestCase(ShardbackMove.Fan, "hit", 14f)]
+    [TestCase(ShardbackMove.Fan, "sidestep", 0f)]
+    [TestCase(ShardbackMove.Fan, "cover", 0f)]
+    [TestCase(ShardbackMove.Charge, "hit", 18f)]
+    [TestCase(ShardbackMove.Charge, "sidestep", 0f)]
+    [TestCase(ShardbackMove.Charge, "cover", 0f)]
+    [TestCase(ShardbackMove.Burst, "hit", 16f)]
+    [TestCase(ShardbackMove.Burst, "walk", 0f)]
+    public void StageTen_ResolvedAttackChecksRangerDamage(ShardbackMove move, string response, float damage)
+    {
+        using var fight = new Fight(useBossBody: true);
+        if (move == ShardbackMove.Burst)
+        {
+            fight.Until(() => fight.Events.Count<BossBeatEnded>() == 1, 50f);
+        }
+        else
+        {
+            fight.Until(() => fight.Events.Count<EnemySpawned>() == 1, 10f);
+            Position boss = fight.BossPosition;
+            Position aim = Position.UnitZ;
+            if (response == "cover")
+            {
+                Position pillar = fight.StandingPillars.Single(p => p.Slot == 0).transform.position.ToNum();
+                Position delta = pillar - boss;
+                aim = Position.Normalize(new Position(delta.X, 0f, delta.Z));
+            }
+            fight.Player = boss + aim * 6f;
+        }
+
+        var noTarget = new ContentId("enemy.none");
+        fight.Target = noTarget;
+        if (move == ShardbackMove.Charge && response != "cover")
+        {
+            fight.Until(() => fight.Events.Count<ShardbackArmed>() == 1, 3f);
+            Position aimedAt = fight.Player;
+            fight.Player += Position.UnitX * 2f;
+            fight.Until(() => fight.Events.Count<ShardbackImpact>() == 1, 2f);
+            fight.Player = aimedAt;
+        }
+
+        fight.Until(() => fight.Events.Of<ShardbackArmed>().Any(e => e.Move == move), 18f);
+        ShardbackArmed armed = fight.Events.Of<ShardbackArmed>().Last(e => e.Move == move);
+        if (move == ShardbackMove.Burst)
+        {
+            float radius = response == "walk" ? 2f : 5f;
+            Position retreat = OpenRetreat(fight.Arena, armed.Origin, armed.Reach);
+            fight.Player = armed.Origin + retreat * radius;
+            if (response == "walk")
+                fight.Move = new Direction(retreat.X, retreat.Z);
+        }
+        else
+        {
+            fight.Until(() => fight.Events.Of<ShardbackClipped>().Any(e => e.Key.Equals(armed.Key)), 0.3f);
+            fight.AssertPlayback(armed, "AttackTell");
+            ShardbackClipped clipped = fight.Events.Of<ShardbackClipped>().Single(e => e.Key.Equals(armed.Key));
+            float along = Position.Dot(fight.Player - armed.Origin, new Position(armed.Facing.X, 0f, armed.Facing.Y));
+            if (response == "cover")
+                Assert.That(clipped.Centre, Is.LessThan(along - 1f));
+            else
+                Assert.That(clipped.Centre, Is.GreaterThan(along + 0.5f));
+            if (response == "sidestep")
+            {
+                if (move == ShardbackMove.Fan)
+                    fight.Until(() => fight.Session.State.Time >= fight.ArmedAt + 0.45f, 0.55f);
+                fight.Move = Direction.UnitX;
+            }
+        }
+        if (move == ShardbackMove.Burst)
+            fight.AssertPlayback(armed, "AttackTell");
+
+        int previousHits = fight.Events.Count<PlayerDamaged>();
+        fight.Until(() => fight.Events.Of<ShardbackImpact>().Any(e => e.Key.Equals(armed.Key)), 4f);
+        fight.AssertPlayback(armed, "AttackEffect");
+        PlayerDamaged[] hits = fight.Events.Of<PlayerDamaged>().Skip(previousHits).Where(e => !e.Blocked).ToArray();
+        Position atImpact = fight.SampledPlayer - armed.Origin;
+        float distance = new Direction(atImpact.X, atImpact.Z).Length();
+        Assert.That(hits.Select(e => e.ToHp), Is.EqualTo(damage > 0f ? new[] { damage } : Array.Empty<float>()),
+            $"Ranger ended {distance:F2} m from the cast origin.");
+        if (response == "walk")
+            Assert.That(distance, Is.GreaterThan(armed.Reach));
+    }
+
+    private static Position OpenRetreat(ArenaView arena, Position origin, float reach)
+    {
+        foreach (Position direction in new[] { Position.UnitZ, -Position.UnitZ, Position.UnitX, -Position.UnitX })
+        {
+            Position end = origin + direction * (reach + 0.6f);
+            if (arena.PlayBounds.Contains(new Vector2(end.X, end.Z))
+                && !Physics.SphereCast(origin.ToUnity() + Vector3.up * 0.9f, 0.45f, direction.ToUnity(), out _,
+                    reach + 0.6f, LayerMask.GetMask("Cover", "Default"), QueryTriggerInteraction.Ignore))
+                return direction;
+        }
+        throw new AssertionException("Expected a clear walking line out of the first burst.");
+    }
+
     [Test]
     public void PhaseBeats_SummonTwoZeroXpBombardiersAndClearSurvivor()
     {
@@ -153,10 +249,16 @@ public sealed class ShardbackStageTests
         private readonly IObjectResolver _container;
         private readonly ArenaPool _arenas;
         private readonly ShardbackProbeAdapter _probe;
+        private readonly bool _useBossBody;
+        private readonly PlayerView _playerBody;
+        private EnemyView _bossBody;
+        private ShardbackView _bossView;
+        private Position _player;
         private int _read;
 
-        public Fight()
+        public Fight(bool useBossBody = false)
         {
+            _useBossBody = useBossBody;
             var boot = Boot();
             EnemyDefinition[] enemies = Definitions<EnemyDefinition>(boot, "_enemies");
             CharacterDefinition ranger = Object.Instantiate(Load<CharacterDefinition>(Root + "Data/Characters/Ranger.asset"));
@@ -184,15 +286,18 @@ public sealed class ShardbackStageTests
             var looks = new EnemyLookBook(enemies.ToDictionary(d => d.ToSpec().Id, d => d.ToLook()));
             _covers = new CoverViews(looks, _events.Hub, _room.transform);
             _container = new ContainerBuilder().Build();
-            var player = new GameObject("Ranger arrival marker").AddComponent<PlayerView>();
-            player.transform.SetParent(_room.transform, false);
+            _playerBody = useBossBody
+                ? Object.Instantiate(Load<GameObject>(Root + "Prefabs/Player/Player_Ranger.prefab"), _room.transform)
+                    .GetComponent<PlayerView>()
+                : new GameObject("Ranger arrival marker").AddComponent<PlayerView>();
+            _playerBody.transform.SetParent(_room.transform, false);
             var dunes = Load<GameObject>(DunesPath + "Arena_Dunes.prefab").GetComponent<ArenaView>();
-            _arenas = new ArenaPool(_container, new[] { dunes }, _room.transform, _events.Hub, player);
+            _arenas = new ArenaPool(_container, new[] { dunes }, _room.transform, _events.Hub, _playerBody);
             _probe = new ShardbackProbeAdapter(LayerMask.GetMask("Cover"), _arenas);
             Session = new RunSession(catalog, random, _events, _intents,
                 new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), _events), 64, 28, 64);
             Session.Start(new RunConfig(Sunscar, Ranger, random.Seed, 10, SpawnPlan.Empty, restore));
-            Player = player.Position.ToNum();
+            Player = _playerBody.Position.ToNum();
         }
 
         public RunSession Session { get; }
@@ -203,8 +308,31 @@ public sealed class ShardbackStageTests
         public float BaseHp { get; }
         public Position CentralSpawn => Arena.transform.position.ToNum() + new Position(0f, 0f, 2f);
         public float SpawnedAt { get; private set; }
-        public Position Player { get; set; }
+        public float ArmedAt { get; private set; }
+        public Position BossPosition => _bossBody.Position.ToNum();
+        public Position SampledPlayer => _world.PlayerPosition;
+        public Position Player
+        {
+            get => _useBossBody ? _playerBody.Position.ToNum() : _player;
+            set
+            {
+                _player = value;
+                if (_useBossBody)
+                    _playerBody.Teleport(value.ToUnity());
+            }
+        }
+        public Direction Move { get; set; }
         public ContentId? Target { get; set; }
+
+        public void AssertPlayback(in ShardbackArmed armed, string meshName)
+        {
+            Vector3 heading = new(armed.Facing.X, 0f, armed.Facing.Y);
+            Vector3 body = _bossBody.GetComponentInChildren<Animator>().transform.forward;
+            MeshRenderer renderer = _bossBody.transform.Find(meshName).GetComponent<MeshRenderer>();
+            Assert.That(renderer.enabled, Is.True, meshName);
+            Assert.That(Vector3.Angle(body, heading), Is.LessThan(0.1f));
+            Assert.That(Vector3.Angle(renderer.transform.forward, heading), Is.LessThan(0.1f));
+        }
 
         public void Until(Func<bool> condition, float seconds)
         {
@@ -218,6 +346,7 @@ public sealed class ShardbackStageTests
             _world.Clear();
             _world.Dt = Frame;
             _world.PlayerPosition = Player;
+            _world.MoveInput = Move;
             _world.HasGate = true;
             _world.GatePosition = Arena.GatePosition.ToNum();
             _world.SpawnPoints = _arenas.SpawnPoints;
@@ -234,6 +363,8 @@ public sealed class ShardbackStageTests
             }
             _intents.Clear();
             Session.Tick(_world);
+            if (_useBossBody && _intents.HasPlayerMove)
+                _playerBody.Apply(_intents.PlayerMove, Frame);
             for (; _read < Events.All.Count; _read++)
             {
                 switch (Events.All[_read])
@@ -241,10 +372,23 @@ public sealed class ShardbackStageTests
                     case EnemySpawned spawned:
                         _alive.Add(spawned.Id, (spawned.SpecId, spawned.Position));
                         if (spawned.SpecId == Shardback)
+                        {
                             SpawnedAt = Session.State.Time;
+                            if (_useBossBody)
+                            {
+                                var body = Load<GameObject>(Root + "Prefabs/Enemies/Shardback.prefab");
+                                _bossBody = Object.Instantiate(body, _room.transform).GetComponent<EnemyView>();
+                                _bossBody.Bind(spawned.Id, spawned.Position.ToUnity());
+                                _bossView = _bossBody.GetComponent<ShardbackView>();
+                                _bossView.Construct(_events.Hub);
+                            }
+                        }
                         break;
                     case EnemyDied died:
                         _alive.Remove(died.Id);
+                        break;
+                    case ShardbackArmed:
+                        ArmedAt = Session.State.Time;
                         break;
                     case EnemyDespawned gone:
                         _alive.Remove(gone.Id);
@@ -254,7 +398,16 @@ public sealed class ShardbackStageTests
             foreach (EnemyMoveIntent move in _intents.EnemyMoves)
             {
                 if (_alive.TryGetValue(move.Id, out var enemy))
-                    _alive[move.Id] = (enemy.Spec, enemy.At + move.Velocity * Frame);
+                {
+                    if (_bossBody != null && _bossBody.Id == move.Id)
+                    {
+                        _bossBody.Apply(move, Frame);
+                        _bossView.Step(Frame);
+                        _alive[move.Id] = (enemy.Spec, _bossBody.Position.ToNum());
+                    }
+                    else
+                        _alive[move.Id] = (enemy.Spec, enemy.At + move.Velocity * Frame);
+                }
             }
             if (_intents.LaneProbes.Count > 0)
             {

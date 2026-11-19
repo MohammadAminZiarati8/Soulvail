@@ -280,6 +280,7 @@ _No milestone. The owner is setting the next direction._
 - [x] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M)
 - [x] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M)
 - [x] SS-16e — Sunscar stage 10, phase adds, HP probe and clear flow to 11 (S)
+- [x] SS-16f — Shardback turning, attack effects, charge contact and 5.5 m burst (M)
 
 SS-16b is binding in its four ordered specs; implement one only on the owner's go. The combined scope exceeds eight substantial files. Full additive ripple is listed too: extend the existing LaneProbeIntent rather than IIntentSink (so IntentBuffer/RootGate/four sink fakes need no new method), add a separate report door and four session stubs, then wire a dedicated physics adapter at the facts seam. Legacy Warlord/Apex probes remain cover-only. Shardback's stable slots are explicit owner/lifetime-bound markers; ordinary cover cannot become a pillar. ArenaView.PlayBounds supplies boundary clipping on the Unity side: Dunes walls are Default-layer colliders, and no Boundary layer exists. Core rejects stale/duplicate reports, preserves spent slots through beats, clips fan lanes independently and limits charge damage to observed travel. Synthetic all-spent/fresh-fight tests land in 16b3/b4. No production assets or stage registration change in 16b.
 

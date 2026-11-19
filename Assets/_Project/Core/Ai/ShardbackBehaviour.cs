@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
@@ -33,6 +34,7 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
     private float _recovery;
     private float _pillarRecovery;
     private float _speed;
+    private float _frontReach;
     private float _stallSeconds;
     private float _stalled;
     private float _progress;
@@ -67,7 +69,11 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
     {
         _remaining -= MathF.Max(0f, ctx.Dt);
         if (_remaining > 0f)
+        {
+            EnemyBlackboard board = _agent.Blackboard;
+            TurnTowards(Flat(board.PlayerPosition - board.SelfPosition), ctx.Dt);
             return Vector3.Zero;
+        }
 
         _state = State.Approach;
         return Approach(ctx);
@@ -82,9 +88,8 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
 
         if (flat.Length() <= _stats.CastRange.Value)
         {
-            if (flat.LengthSquared() > 0f)
-                _facing = Vector2.Normalize(flat);
-            Arm(ctx);
+            if (flat == Vector2.Zero || TurnTowards(flat, ctx.Dt))
+                Arm(ctx);
             return Vector3.Zero;
         }
 
@@ -94,8 +99,20 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
         if (!float.IsFinite(path.LengthSquared()) || !(path.LengthSquared() > 0f))
             return Vector3.Zero;
 
-        _facing = Vector2.Normalize(path);
-        return Ground(_facing * _stats.MoveSpeed.Value);
+        TurnTowards(path, ctx.Dt);
+        return Ground(Vector2.Normalize(path) * _stats.MoveSpeed.Value);
+    }
+
+    private bool TurnTowards(Vector2 direction, float dt)
+    {
+        float lengthSquared = direction.LengthSquared();
+        if (!(lengthSquared > 0f) || !float.IsFinite(lengthSquared))
+            return false;
+
+        Vector2 target = Vector2.Normalize(direction);
+        float maxDegrees = Math.Clamp(_stats.TurnDegreesPerSecond.Value * MathF.Max(0f, dt), 0f, 180f);
+        _facing = Flat(PlayerMotor.RotateTowards(Ground(_facing), Ground(target), maxDegrees));
+        return _facing == target;
     }
 
     private void Arm(in EnemyTickContext ctx)
@@ -129,6 +146,7 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
         if (charge)
         {
             _speed = MathF.Max(0f, _stats.ChargeSpeed.Value);
+            _frontReach = MathF.Max(0f, _stats.ChargeFrontReach.Value);
             _pillarRecovery = _stats.PillarRecoverySeconds.Value;
             _stallSeconds = _stats.ChargeStallSeconds.Value;
         }
@@ -190,6 +208,7 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
         {
             if (_stops[0].Distance == 0f)
             {
+                _progress = 0f;
                 FinishCharge(ctx, reachedStop: true);
                 return Vector3.Zero;
             }
@@ -216,22 +235,27 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
     private Vector3 Travel(in EnemyTickContext ctx)
     {
         ShardbackStop stop = _stops[0];
-        float observed = ObserveProgress(_progress);
+        float observed = MathF.Max(_progress, ObserveProgress(_progress));
         // A world-space position can round the commanded endpoint to just short in local space.
         bool reachedStop = observed >= stop.Distance || (observed > 0f
             && Vector2.Dot(Flat(_agent.Blackboard.SelfPosition) - _chargeEnd, _armed.Facing) >= 0f);
         if (reachedStop)
             observed = stop.Distance;
 
+        // The two character controllers can touch while their centres are still apart.
+        // Include the leading contact without allowing a hit at or past a blocking stop.
+        Vector2 point = Flat(_agent.Blackboard.PlayerPosition - _armed.Origin);
+        float contact = MathF.Min(stop.Distance, observed + _frontReach);
+        if (!_chargeAttemptedHit && !_agent.Blackboard.QuarryIsADecoy
+            && InStrip(point, _armed.Facing, stop, _progress, contact))
+        {
+            _chargeAttemptedHit = true;
+            ctx.Player.ApplyDamage(_damage, ctx.Now);
+        }
+
         if (observed > _progress)
         {
-            Vector2 point = Flat(_agent.Blackboard.PlayerPosition - _armed.Origin);
-            if (!_chargeAttemptedHit && !_agent.Blackboard.QuarryIsADecoy
-                && InStrip(point, _armed.Facing, stop, _progress, observed))
-            {
-                _chargeAttemptedHit = true;
-                ctx.Player.ApplyDamage(_damage, ctx.Now);
-            }
+            ctx.Events.Publish(new ShardbackChargeAdvanced(_agent.Id, _armed.Key, observed));
             _stalled = 0f;
         }
         else
@@ -281,7 +305,8 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
             ShardbackMove.Charge when _phase > 0 => ShardbackMove.Burst,
             _ => ShardbackMove.Fan
         };
-        ctx.Events.Publish(new ShardbackImpact(_agent.Id, _armed.Move, _armed.Origin, recovery, _armed.Key));
+        float travel = _armed.Move == ShardbackMove.Charge ? _progress : 0f;
+        ctx.Events.Publish(new ShardbackImpact(_agent.Id, _armed.Move, _armed.Origin, recovery, _armed.Key, travel));
     }
 
     private bool InStrip(Vector2 point, Vector2 direction, in ShardbackStop stop) =>

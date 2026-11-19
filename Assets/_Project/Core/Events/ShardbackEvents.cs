@@ -44,18 +44,44 @@ public readonly struct ShardbackImpact
     public readonly Vector3 Origin;
     public readonly float RecoverySeconds;
     public readonly ShardbackProbeKey Key;
+    public readonly float TravelDistance;
 
     public ShardbackImpact(int bossId, ShardbackMove move, Vector3 origin, float recoverySeconds)
         : this(bossId, move, origin, recoverySeconds, default) { }
 
     public ShardbackImpact(int bossId, ShardbackMove move, Vector3 origin, float recoverySeconds,
         ShardbackProbeKey key)
+        : this(bossId, move, origin, recoverySeconds, key, 0f) { }
+
+    public ShardbackImpact(int bossId, ShardbackMove move, Vector3 origin, float recoverySeconds,
+        ShardbackProbeKey key, float travelDistance)
     {
+        if (!(travelDistance >= 0f) || !float.IsFinite(travelDistance))
+            throw new ArgumentOutOfRangeException(nameof(travelDistance));
+
         BossId = bossId;
         Move = move;
         Origin = origin;
         RecoverySeconds = recoverySeconds;
         Key = key;
+        TravelDistance = travelDistance;
+    }
+}
+
+public readonly struct ShardbackChargeAdvanced
+{
+    public readonly int BossId;
+    public readonly ShardbackProbeKey Key;
+    public readonly float Distance;
+
+    public ShardbackChargeAdvanced(int bossId, ShardbackProbeKey key, float distance)
+    {
+        if (!(distance > 0f) || !float.IsFinite(distance))
+            throw new ArgumentOutOfRangeException(nameof(distance));
+
+        BossId = bossId;
+        Key = key;
+        Distance = distance;
     }
 }
 

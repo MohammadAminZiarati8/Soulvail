@@ -857,3 +857,11 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - **[Editor, after SS-16e]** In the Sunscar stage-10 fight, check the clipped fan lanes, charge strip and filled burst disc through Dunes weather. Listen for the rattle, scrape and brittle crack. Bait the boss into a pillar, watch its rubble persist through a phase beat, then start a fresh fight and check all three pillars stand again.
 - **[device]** Check the tells and three cues on a phone in portrait.
+
+- **SS-16e [Editor/device]** Start Sunscar stage 10 as the Ranger. At portrait scale,
+  read the locked fan lanes, charge strip and burst disc through the sandstorm and
+  overlapping bombardier tells. Check clipped lanes against intact pillars and
+  confirm the tells stay legible after a pillar breaks.
+- **SS-16e [Editor/device]** Listen for the fan rattle, charge scrape and burst crack
+  over Ranger arrows, bombardier lobs and both phase beats. Judge whether each cue
+  is distinct and balanced. Time a played fight with dodges and take the north portal.

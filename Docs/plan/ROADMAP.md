@@ -279,11 +279,11 @@ _No milestone. The owner is setting the next direction._
   - [x] SS-16b4 — Execute pillar lifetime and break decisions (M, 4 counted; depends on 16b3)
 - [x] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M)
 - [x] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M)
-- [ ] SS-16e — Sunscar stage 10, phase adds, HP probe and clear flow to 11 (M; depends on 16d)
+- [x] SS-16e — Sunscar stage 10, phase adds, HP probe and clear flow to 11 (S)
 
 SS-16b is binding in its four ordered specs; implement one only on the owner's go. The combined scope exceeds eight substantial files. Full additive ripple is listed too: extend the existing LaneProbeIntent rather than IIntentSink (so IntentBuffer/RootGate/four sink fakes need no new method), add a separate report door and four session stubs, then wire a dedicated physics adapter at the facts seam. Legacy Warlord/Apex probes remain cover-only. Shardback's stable slots are explicit owner/lifetime-bound markers; ordinary cover cannot become a pillar. ArenaView.PlayBounds supplies boundary clipping on the Unity side: Dunes walls are Default-layer colliders, and no Boundary layer exists. Core rejects stale/duplicate reports, preserves spent slots through beats, clips fan lanes independently and limits charge damage to observed travel. Synthetic all-spent/fresh-fight tests land in 16b3/b4. No production assets or stage registration change in 16b.
 
-SS-16d verified locked tells and broke and restored authored cover with the real charge and fresh fight lifecycle. SS-16e probes actual stage-10 Ranger arrival damage (75–105 s), checks 66/33% beats and two zero-XP bombardiers, and guards stages 5/9/11 plus the Jungle roster. No implementation is authorised by this plan.
+SS-16d verified locked tells and broke and restored authored cover with the real charge and fresh fight lifecycle. SS-16e measured 89.63 s with the stage-10 Ranger, including both beats, and guards the two zero-XP bombardiers, Sunscar stages 5/9/11 and the Jungle boss schedule.
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

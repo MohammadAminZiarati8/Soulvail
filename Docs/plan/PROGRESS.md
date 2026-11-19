@@ -9,9 +9,9 @@ _2026-11-19._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-16d** — Shardback presentation. |
-| **Next task** | SS-16e — Sunscar stage 10, HP, adds and portal. |
-| **Verified** | EditMode 7009/7101, 0 failed, 1 inconclusive, 91 skipped. Compiler, analyzers and format clean. |
+| **Last merged** | **SS-16e** — Shardback in Sunscar stage 10. |
+| **Next task** | Awaiting owner selection. |
+| **Verified** | EditMode 7012/7104, 0 failed, 1 inconclusive, 91 skipped. Compiler, analyzers and format clean. |
 
 ## What works
 
@@ -35,7 +35,7 @@ Cobra fan. Callers: 2 s channel. Vultures circle/dive/land exposed 2 s.
 Hero Poison: violet drop/stacks/timer/quiet HP ticks; Space/death clears.
 Duneclaw Sunscar 5: 1000 HP, L9 Ranger 80.70 s. 3 scorplings at 66%, clear at 33%; portal 6. Slabs: 3 s pin.
 Duneclaw turns 360 degrees/s in casts/recovery; tells locked.
-Shardback: locked tells, shell playback, three restoring pillars and cues.
+Shardback Sunscar 10: 1025 HP, L18 Ranger 89.63 s. Three pillars; two zero-XP beetles at 66%, clear at 33%; portal 11.
 Skirmisher runs/fires: Ricochet 11/Second Wind 14 (roll guard/pips)/Whirlwind 17/Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

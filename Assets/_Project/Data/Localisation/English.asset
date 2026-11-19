@@ -1033,3 +1033,5 @@ MonoBehaviour:
     _text: Frenzy grants +40%, and its cooldown drops to 24 s.
   - _key: enemy.duneclaw.name
     _text: The Duneclaw
+  - _key: enemy.shardback.name
+    _text: Shardback

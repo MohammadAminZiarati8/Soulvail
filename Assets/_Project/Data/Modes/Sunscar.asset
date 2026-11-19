@@ -104,6 +104,9 @@ MonoBehaviour:
   - _bossId: boss.duneclaw
     _everyNStages: 0
     _atStage: 5
+  - _bossId: boss.shardback
+    _everyNStages: 0
+    _atStage: 10
   _scriptedStages: []
   _ordeals: []
   _hasVeilrot: 0

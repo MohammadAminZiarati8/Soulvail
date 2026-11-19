@@ -71,13 +71,17 @@ public sealed class SunscarTests
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
                 (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Vulture, 22, 0),
             }));
-        Assert.That(mode.BossRoster, Has.Count.EqualTo(1));
+        Assert.That(mode.BossRoster, Has.Count.EqualTo(2));
         for (int stage = 1; stage <= mode.FinalStage; stage++)
         {
-            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage == 5));
+            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage is 5 or 10));
             if (stage == 5)
             {
                 Assert.That(boss.Value, Is.EqualTo("boss.duneclaw"));
+            }
+            else if (stage == 10)
+            {
+                Assert.That(boss.Value, Is.EqualTo("boss.shardback"));
             }
         }
         Assert.That(mode.ScriptedStages, Is.Empty);
@@ -1528,7 +1532,9 @@ public sealed class SunscarTests
     private static ContentCatalog Catalog(params ModeSpec[] modes) =>
         new(new[] { AssetDatabase.LoadAssetAtPath<CharacterDefinition>(Root + "Data/Characters/Ranger.asset").ToSpec() },
             BootEnemies().Select(enemy => enemy.ToSpec()).ToArray(), modes: modes,
-            bosses: new[] { AssetDatabase.LoadAssetAtPath<BossDefinition>(Root + "Data/Enemies/DuneclawBoss.asset").ToSpec() });
+            bosses: new[] { "DuneclawBoss", "ShardbackBoss" }
+                .Select(name => AssetDatabase.LoadAssetAtPath<BossDefinition>(Root + $"Data/Enemies/{name}.asset").ToSpec())
+                .ToArray());
 
     private static EnemyDefinition[] BootEnemies()
     {

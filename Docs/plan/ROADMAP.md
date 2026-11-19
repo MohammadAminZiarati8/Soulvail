@@ -277,7 +277,7 @@ _No milestone. The owner is setting the next direction._
   - [x] SS-16b2 — Measure lanes and stable pillar identity (M, 5 counted; depends on 16b1)
   - [x] SS-16b3 — Charge travel and clipped fans in core (M, 6 counted; depends on 16b2)
   - [x] SS-16b4 — Execute pillar lifetime and break decisions (M, 4 counted; depends on 16b3)
-- [ ] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M; may precede 16b)
+- [x] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M)
 - [ ] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M; depends on 16b/c; split audio if needed)
 - [ ] SS-16e — Sunscar stage 10, phase adds, HP probe and clear flow to 11 (M; depends on 16d)
 

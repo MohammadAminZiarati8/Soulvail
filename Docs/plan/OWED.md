@@ -848,3 +848,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ## SS-16a — Shardback core (2026-11-18)
 
 - No owner Editor/device steps: core only; full EditMode suite and format gate verified. Live fight checks belong to later tasks.
+
+### SS-16c — Shardback poses
+
+- [Editor, after SS-16d] At gameplay zoom, watch one fan, charge, burst and pillar recovery. Check that the raised fan, low scrape and burst brace read as distinct silhouettes and that both ivory cases open with the dark center visible during recovery.

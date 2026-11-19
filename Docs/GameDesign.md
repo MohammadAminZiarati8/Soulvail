@@ -553,6 +553,41 @@ Owner choice, 2026-11-18: a giant glassback beetle after the Duneclaw. The timin
 
 ---
 
+### 9.5 The Sunscar — stage 15, the Sunscar Hierophant
+
+A jackal high priest with a stepped sandstone headdress, broad shoulders and a separate sun-disc
+staff. The player reads which part of the floor will erupt, crosses its edge, then plants and fires.
+Stage 14's priest introduces the target-priority problem that returns in the middle phase.
+
+- **Staff sweep.** The Hierophant walks into 3.25 m range and draws the staff back over a locked
+  100° sector. After a 1.0 s tell it sweeps once for 16 damage, then recovers for 1.25 s. Walk
+  around either side or back out of reach.
+- **Sun seal.** Three flush sandstone seals mark the west, centre and east strips of the Dunes'
+  open middle. Each strip is 4 m wide and 18 m long, running north–south. The boss raises its
+  staff, lights the seal nearest the hero in X and marks the whole strip red-orange for 1.3 s.
+  The strip erupts once for 20 damage and the boss lowers its staff for 2 s. Step sideways across
+  a long edge. The rectangle stays fixed through impact and cover does not block the eruption.
+  Outside the marked strip is safe. Weather remains cosmetic.
+- **Phases.** Open with a seal and alternate with the sweep. At 66% and 33%, the standard 1.5 s
+  invulnerable beat cancels the current cast and restarts with a seal. At 66% it summons one
+  ordinary Jackal Priest and one Jackal Slinger, both worth zero XP. The priest can mend the slinger
+  and the player's hits still interrupt it. Both adds are cleared on the 33% beat or boss death.
+  Below 33%, every seal cast becomes a pair. After a 0.3 s gap, the second seal chooses the nearest
+  different strip to the hero's new position and gets its own full warning. The 2 s firing window
+  follows the second impact. The boss is targetable and damageable outside phase beats.
+- **Presentation.** Use a low scrape for the sweep and a rising stone chime for the seal. Show the
+  full footprint from the first warning frame, use a stronger fill to show time to impact, then
+  swap to a brief release effect on the damage tick. The seal's carving lights separately. These
+  warnings need to survive the Dunes' sandstorm and remain legible on a portrait phone.
+- **Arena and pacing.** Spawn centrally in the existing Dunes, with an open walking route across
+  a long edge from every walkable point in a strip. Confirm that the escape edge stays visible at
+  the normal portrait camera scale. Measure a roughly 90 s fight (75–105 s acceptance band) using
+  the Stage 15 Ranger damage probe, including both beats, and derive HP from that probe. Victory
+  opens the usual north portal to Stage 16. The existing priest body and seal stand-ins support
+  the prototype while the owner prepares the two TRELLIS source models.
+
+---
+
 ## 10. Veilrot — the signature system
 
 This is what separates Soulvail from every other mobile wave shooter. **If we cut one thing from this document, it should not be this.**

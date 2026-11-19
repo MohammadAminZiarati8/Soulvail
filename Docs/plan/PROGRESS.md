@@ -10,7 +10,7 @@ _2026-11-19._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | **Sunscar regular waves** — 24 scripted stages. |
-| **Next task** | Sunscar stage 15 boss, on owner's go. |
+| **Next task** | [SS-17a](tasks/SS-17a-hierophant-core.md), Hierophant core, on owner's go. |
 | **Verified** | EditMode 7055/7147, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works

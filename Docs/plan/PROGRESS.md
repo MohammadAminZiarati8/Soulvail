@@ -2,16 +2,16 @@
 
 [OWED](OWED.md).
 
-_2026-11-19._
+_2026-11-20._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **Sunscar regular waves** — 24 scripted stages. |
-| **Next task** | [SS-17a](tasks/SS-17a-hierophant-core.md), Hierophant core, on owner's go. |
-| **Verified** | EditMode 7055/7147, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-17a** — Hierophant sweep, seals and final pair in Core. |
+| **Next task** | [SS-17b](tasks/SS-17b-hierophant-presentation.md), on owner's go. |
+| **Verified** | EditMode 7095/7187, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

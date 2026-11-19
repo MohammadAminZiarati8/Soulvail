@@ -290,7 +290,7 @@ SS-16d verified locked tells and broke and restored authored cover with the real
 
 **The Sunscar Hierophant, Sunscar's stage-15 boss** ([GD §9.5](../GameDesign.md#95-the-sunscar--stage-15-the-sunscar-hierophant)). Staff sweep, fixed floor seals and a final two-seal cast. The prototype runs on existing art through SS-17c. SS-17d waits for the owner's two TRELLIS models. Each task starts on the owner's go.
 
-- [ ] [SS-17a](tasks/SS-17a-hierophant-core.md) — Locked sweep, seal selection, final pair and cancellation (M)
+- [x] **SS-17a** — Locked sweep, seal selection, final pair and cancellation (M)
 - [ ] [SS-17b](tasks/SS-17b-hierophant-presentation.md) — Prototype body, phase-safe tells, seal stand-ins and cues (M)
 - [ ] [SS-17c](tasks/SS-17c-hierophant-stage.md) — Stage 15 registration, priest and slinger, HP probe and portal (S)
 - [ ] [SS-17d](tasks/SS-17d-hierophant-models.md) — Import the Hierophant body and one reusable sandstone seal (M)

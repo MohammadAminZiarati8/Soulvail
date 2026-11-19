@@ -130,6 +130,98 @@ public sealed class ShardbackProbeRoutingTests
         Assert.Throws<InvalidOperationException>(() => session.ReportShardbackStop(report));
     }
 
+    [Test]
+    public void Reports_MissingStaleRecycled_Reject()
+    {
+        var events = new RecordingEvents();
+        var intents = new RecordingIntents();
+        var random = new FixedRandom(0.5f);
+        var session = new RunSession(Catalog(), random, events, intents,
+            new RunRecorder(random, new FixedClock(default), events), 8, 8, 8);
+        session.Start(new RunConfig(new ContentId("mode.test"), Character().Id, 0, 1, SpawnPlan.Empty, null));
+        var enemies = (EnemySystem)typeof(RunState).GetProperty("Enemies", BindingFlags.Instance | BindingFlags.NonPublic)
+            .GetValue(session.State);
+        EnemyAgent agent = enemies.Registry.Spawn(Body(), Vector3.Zero);
+        var bossSpec = new BossSpec(new ContentId("boss.test"), Body().Id,
+            new[] { new BossPhaseSpec(1f), new BossPhaseSpec(0.5f) }, 1.5f);
+        var shardback = new ShardbackBehaviour(agent, new ShardbackStats());
+        var boss = new BossBehaviour(agent, bossSpec, shardback);
+        typeof(EnemyAgent).GetProperty("Behaviour").SetValue(agent, boss);
+        var player = new PlayerCombat(Character(), events, intents, 8);
+        var projectiles = new ProjectileSystem(events, 8);
+        agent.Blackboard.PlayerPosition = Vector3.UnitZ * 4f;
+        float now = 0f;
+        void Tick(float dt)
+        {
+            now += dt;
+            boss.Tick(new EnemyTickContext(dt, now, player, intents, events, projectiles, enemies));
+        }
+        void Answer(ShardbackProbeKey key, int lane, float distance = 12f,
+            ShardbackStopKind kind = ShardbackStopKind.None) =>
+            session.ReportShardbackStop(new ShardbackStop(agent.Id, key, lane, kind, distance, -1));
+
+        Tick(0f);
+        ShardbackProbeKey first = events.Single<ShardbackArmed>().Key;
+        Assert.That(events.Single<ShardbackFightStarted>().Lifetime, Is.EqualTo(first.Lifetime));
+        session.ReportShardbackStop(default);
+        session.ReportShardbackStop(new ShardbackStop(agent.Id + 1, first, 3, ShardbackStopKind.None, 12f, -1));
+        Answer(first, 0);
+        Answer(Key(), 3);
+        Answer(new ShardbackProbeKey(first.Lifetime, first.Cast + 1), 3);
+        Answer(first, 3, 13f, ShardbackStopKind.Cover);
+        Answer(first, 3, 11f);
+        Answer(first, 1, 2f, ShardbackStopKind.Cover);
+        Answer(first, 1);
+        Answer(first, 2);
+        Tick(4f);
+        Assert.That(intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(events.Count<ShardbackClipped>(), Is.Zero);
+        Assert.That(events.Count<ShardbackImpact>(), Is.Zero);
+
+        Answer(first, 3);
+        Assert.That(events.Count<ShardbackClipped>(), Is.Zero, "Reports never publish or apply damage.");
+        Assert.That(player.Health.Current, Is.EqualTo(100f));
+        Tick(0f);
+        Assert.That(events.Single<ShardbackClipped>().Centre, Is.EqualTo(2f));
+        Assert.That(events.Single<ShardbackImpact>().Key, Is.EqualTo(first));
+        Assert.That(player.Health.Current, Is.EqualTo(100f));
+        Answer(first, 3);
+        Tick(0f);
+        Assert.That(events.Count<ShardbackClipped>(), Is.EqualTo(1));
+
+        events.Clear();
+        Tick(1.25f);
+        ShardbackProbeKey cancelled = events.Single<ShardbackArmed>().Key;
+        Answer(cancelled, 0, 0f, ShardbackStopKind.Cover);
+        agent.Health.ApplyDamage(Body().MaxHp * 0.6f, now);
+        Tick(0f);
+        Assert.That(boss.IsInBeat, Is.True);
+        Answer(cancelled, 0);
+        Tick(2f);
+        Assert.That(boss.IsInBeat, Is.False);
+        Answer(cancelled, 3);
+        Assert.That(events.Count<ShardbackClipped>(), Is.Zero);
+        Assert.That(events.Count<ShardbackImpact>(), Is.Zero);
+
+        agent.Health.Reset();
+        boss.Reset();
+        events.Clear();
+        Tick(0f);
+        ShardbackProbeKey fresh = events.Single<ShardbackArmed>().Key;
+        Assert.That(fresh.Cast, Is.EqualTo(first.Cast), "The same numeric cast is reused.");
+        Assert.That(fresh.Lifetime, Is.Not.EqualTo(first.Lifetime));
+        Answer(fresh, 1);
+        Answer(fresh, 2);
+        Answer(first, 3);
+        Tick(1f);
+        Assert.That(events.Count<ShardbackImpact>(), Is.Zero);
+        Answer(fresh, 3);
+        Tick(0f);
+        Assert.That(events.Single<ShardbackClipped>().Key, Is.EqualTo(fresh));
+        Assert.That(events.Single<ShardbackImpact>().Key, Is.EqualTo(fresh));
+        Assert.That(player.Health.Current, Is.EqualTo(86f));
+    }
+
     private sealed class Listener : IEnemyBehaviour, IShardbackProbeListener
     {
         public int Count;

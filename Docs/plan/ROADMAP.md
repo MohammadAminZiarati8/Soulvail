@@ -275,7 +275,7 @@ _No milestone. The owner is setting the next direction._
 - [ ] SS-16b — Charge, pillars and cover-clipped fans (split below; specification complete, implementation not authorised)
   - [x] SS-16b1 — Correlated obstruction facts (M, 3 counted; depends on 16a)
   - [x] SS-16b2 — Measure lanes and stable pillar identity (M, 5 counted; depends on 16b1)
-  - [ ] [SS-16b3 — Charge travel and clipped fans in core](tasks/SS-16b3-charge-and-fan.md) (M, 6 counted; depends on 16b2)
+  - [x] SS-16b3 — Charge travel and clipped fans in core (M, 6 counted; depends on 16b2)
   - [ ] [SS-16b4 — Execute pillar lifetime and break decisions](tasks/SS-16b4-pillar-lifecycle.md) (M, 4 counted; depends on 16b3)
 - [ ] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M; may precede 16b)
 - [ ] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M; depends on 16b/c; split audio if needed)

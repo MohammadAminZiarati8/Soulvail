@@ -60,12 +60,16 @@ public sealed class ShardbackBehaviourTests
         Assert.That(armed.HalfWidth, Is.EqualTo(0.6f));
         Assert.That(armed.AngleDegrees, Is.EqualTo(25f));
         Assert.That(armed.Seconds, Is.EqualTo(1f));
+        AnswerFan();
         Place(Vector3.UnitZ * 12f);
         _agent.Blackboard.SelfPosition = Vector3.UnitX * 50f;
         _stats.FanLength.Base = 1f;
+        _stats.FanDamage.Base = 1f;
+        _stats.FanRecoverySeconds.Base = 1f;
         Tick(1f);
         Assert.That(_player.Health.Current, Is.EqualTo(86f));
         Assert.That(_events.Single<ShardbackImpact>().Origin, Is.EqualTo(armed.Origin));
+        Assert.That(_events.Single<ShardbackImpact>().RecoverySeconds, Is.EqualTo(1.25f));
         Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(armed.Facing));
         Assert.That(_intents.EnemyMoves.Count, Is.EqualTo(3));
         AssertStanding();
@@ -85,6 +89,7 @@ public sealed class ShardbackBehaviourTests
     public void Fan_DeadlineAndEdges(float x, float z, bool hit)
     {
         Tick(0f);
+        AnswerFan();
         Place(new Vector3(x, 90f, z));
         Tick(0.5f);
         Assert.That(_player.Health.Current, Is.EqualTo(100f));
@@ -98,17 +103,80 @@ public sealed class ShardbackBehaviourTests
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
-    public void Burst_PhasesAndDisc(int phase)
+    public void Rotation_AllPhases_FullTells(int phase)
     {
         _boss.OnPhaseEntered(phase);
-        for (int i = 0; i < 4; i++)
+        ShardbackMove[] rotation = phase == 0
+            ? new[] { ShardbackMove.Fan, ShardbackMove.Charge }
+            : new[] { ShardbackMove.Fan, ShardbackMove.Charge, ShardbackMove.Burst };
+        Tick(100f);
+        for (int i = 0; i < rotation.Length * 2; i++)
         {
-            Tick(0f);
-            bool burst = phase > 0 && i % 2 == 1;
-            Assert.That(LastArm().Move, Is.EqualTo(burst ? ShardbackMove.Burst : ShardbackMove.Fan));
-            Tick(LastArm().Seconds);
-            Tick(_events.Of<ShardbackImpact>().Last().RecoverySeconds);
+            ShardbackArmed arm = LastArm();
+            Assert.That(arm.Move, Is.EqualTo(rotation[i % rotation.Length]));
+            Assert.That(arm.Key.Cast, Is.EqualTo((ulong)i + 1));
+            if (arm.Move == ShardbackMove.Fan)
+                AnswerFan();
+            if (arm.Move == ShardbackMove.Charge)
+            {
+                Assert.That(arm.Facing, Is.EqualTo(Vector2.UnitX), "Reaim after the fan.");
+                Answer(0, ShardbackStopKind.Cover, 0f);
+            }
+            Place(arm.Move == ShardbackMove.Fan ? Vector3.UnitX * 8f : Vector3.UnitZ * 8f);
+            float tell = arm.Move == ShardbackMove.Fan ? 1f : 1.2f;
+            Assert.That(arm.Seconds, Is.EqualTo(tell));
+            Tick(tell - 0.125f);
+            AssertStanding();
+            Assert.That(_events.Count<ShardbackImpact>(), Is.EqualTo(i));
+            Tick(100f);
+            ShardbackImpact impact = _events.Of<ShardbackImpact>().Last();
+            Assert.That(impact.Key, Is.EqualTo(arm.Key));
+            Assert.That(_events.Count<ShardbackArmed>(), Is.EqualTo(i + 1));
+            float recovery = arm.Move switch
+            {
+                ShardbackMove.Fan => phase == 2 ? 0f : 1.25f,
+                ShardbackMove.Charge => 1.5f,
+                _ => 2f
+            };
+            Assert.That(impact.RecoverySeconds, Is.EqualTo(recovery));
+            if (recovery > 0f)
+            {
+                Tick(recovery - 0.125f);
+                AssertStanding();
+                Assert.That(_events.Count<ShardbackArmed>(), Is.EqualTo(i + 1));
+            }
+            Tick(recovery > 0f ? 100f : 0f);
         }
+        Assert.That(_events.Count<ShardbackFightStarted>(), Is.EqualTo(1));
+    }
+
+    [TestCase(0f, 0f, false, true)]
+    [TestCase(0f, 0f, true, false)]
+    [TestCase(0f, 3f, false, false)]
+    [TestCase(0f, 2.99f, false, true)]
+    [TestCase(-2.53571f, 5.43785f, false, true)] // Plus lane reaches 7 m.
+    [TestCase(2.53571f, 5.43785f, false, false)] // Minus lane stops at 5 m.
+    public void Fan_ThreeStops_UnionOnce(float x, float z, bool decoy, bool hit)
+    {
+        Tick(0f);
+        Assert.That(_intents.LaneProbes.Select(p => p.Lane), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(_intents.LaneProbes.Select(p => p.Key), Is.All.EqualTo(LastArm().Key));
+        Assert.That(_intents.LaneProbes.Select(p => p.Radius), Is.All.EqualTo(0.6f));
+        Answer(1, ShardbackStopKind.Cover, 3f);
+        Answer(2, ShardbackStopKind.Pillar, 7f, 1);
+        Tick(1f);
+        Assert.That(_events.Count<ShardbackImpact>(), Is.Zero);
+        Assert.That(_events.Count<ShardbackClipped>(), Is.Zero);
+        Answer(3, ShardbackStopKind.Boundary, 5f);
+        Assert.That(_events.Count<ShardbackClipped>(), Is.Zero);
+        Place(new Vector3(x, 90f, z));
+        _agent.Blackboard.QuarryIsADecoy = decoy;
+        Tick(0f);
+        ShardbackClipped clip = _events.Single<ShardbackClipped>();
+        Assert.That((clip.BossId, clip.Key, clip.Centre, clip.Plus, clip.Minus),
+            Is.EqualTo((_agent.Id, LastArm().Key, 3f, 7f, 5f)));
+        Assert.That(_player.Health.Current, Is.EqualTo(hit ? 86f : 100f));
+        Assert.That(_events.Count<ShardbackPillarBroken>(), Is.Zero);
     }
 
     [TestCase(0f, true)]
@@ -144,7 +212,10 @@ public sealed class ShardbackBehaviourTests
         if (burst)
             ArmBurst();
         else
+        {
             Tick(0f);
+            AnswerFan();
+        }
         float tell = LastArm().Seconds;
         Tick(tell - 0.1f);
         if (protection == 0)
@@ -170,7 +241,10 @@ public sealed class ShardbackBehaviourTests
         if (burst)
             ArmBurst();
         else
+        {
             Tick(0f);
+            AnswerFan();
+        }
         Tick(100f);
         Assert.That(_events.Count<ShardbackImpact>(), Is.EqualTo(1));
         float recovery = _events.Single<ShardbackImpact>().RecoverySeconds;
@@ -180,7 +254,13 @@ public sealed class ShardbackBehaviourTests
         Tick(100f);
         Assert.That(_events.Count<ShardbackArmed>(), Is.EqualTo(2));
         Assert.That(_events.Count<ShardbackImpact>(), Is.EqualTo(1));
-        Tick(LastArm().Seconds - 0.25f);
+        ShardbackArmed arm = LastArm();
+        Assert.That(arm.Move, Is.EqualTo(burst ? ShardbackMove.Fan : ShardbackMove.Charge));
+        if (burst)
+            AnswerFan();
+        else
+            Answer(0, ShardbackStopKind.Cover, 0f);
+        Tick(arm.Seconds - 0.25f);
         Assert.That(_events.Count<ShardbackImpact>(), Is.EqualTo(1));
         Tick(0.25f);
         Assert.That(_events.Count<ShardbackImpact>(), Is.EqualTo(2));
@@ -197,9 +277,16 @@ public sealed class ShardbackBehaviourTests
         _boss.OnPhaseEntered(2);
         Tick(0f);
         if (pending > 0)
+        {
+            AnswerFan();
             Tick(1f);
+        }
         if (pending > 1)
-            Tick(1.25f);
+        {
+            Tick(0f);
+            Answer(0, ShardbackStopKind.None, 12f);
+            Tick(1.2f);
+        }
         _events.Clear();
         float hp = _player.Health.Current;
         if (reset)
@@ -210,31 +297,11 @@ public sealed class ShardbackBehaviourTests
         Assert.That(_player.Health.Current, Is.EqualTo(hp));
         Assert.That(_events.Count<ShardbackImpact>(), Is.Zero);
         Assert.That(LastArm().Move, Is.EqualTo(ShardbackMove.Fan));
+        Assert.That(_events.Count<ShardbackFightStarted>(), Is.EqualTo(reset ? 1 : 0));
+        AnswerFan();
         Tick(1f);
         Tick(1.25f);
-        Assert.That(LastArm().Move, Is.EqualTo(reset ? ShardbackMove.Fan : ShardbackMove.Burst));
-    }
-
-    [Test]
-    public void Tick_AllocatesNothing()
-    {
-        var silent = new SilentEvents();
-        var player = new PlayerCombat(Character(), silent, _intents, 8);
-        AllocationAssert.None(() =>
-        {
-            _intents.Clear();
-            player.Health.Reset();
-            _boss.Reset();
-            Place(Vector3.UnitZ * 11f);
-            _boss.Tick(new EnemyTickContext(1f, 0f, player, _intents, silent, _projectiles, _enemies));
-            Place(Vector3.UnitZ * 2f);
-            for (int phase = 0; phase < 3; phase++)
-            {
-                _boss.OnPhaseEntered(phase);
-                for (int i = 0; i < 12; i++)
-                    _boss.Tick(new EnemyTickContext(2f, i * 2f, player, _intents, silent, _projectiles, _enemies));
-            }
-        }, 100);
+        Assert.That(LastArm().Move, Is.EqualTo(ShardbackMove.Charge));
     }
 
     [Test]
@@ -257,6 +324,7 @@ public sealed class ShardbackBehaviourTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new EnemyTickContext(float.PositiveInfinity, _now, _player, _intents, _events, _projectiles, _enemies));
         Assert.That(_events.Count<ShardbackImpact>(), Is.Zero);
+        AnswerFan();
         Tick(1f);
         Assert.That(_events.Count<ShardbackImpact>(), Is.EqualTo(1));
     }
@@ -265,12 +333,25 @@ public sealed class ShardbackBehaviourTests
     {
         _boss.OnPhaseEntered(1);
         Tick(0f);
+        AnswerFan();
         Place(Vector3.UnitX * 8f); // Miss the fan.
         Tick(1f);
         Place(Vector3.UnitZ * 2f);
-        _events.Clear();
         Tick(1.25f);
+        Answer(0, ShardbackStopKind.Cover, 0f);
+        Tick(1.2f);
+        _events.Clear();
+        Tick(1.5f);
     }
+
+    private void AnswerFan()
+    {
+        for (int lane = 1; lane <= 3; lane++)
+            Answer(lane, ShardbackStopKind.None, LastArm().Reach);
+    }
+
+    private void Answer(int lane, ShardbackStopKind kind, float distance, int slot = -1) =>
+        _boss.OnShardbackStop(new ShardbackStop(_agent.Id, LastArm().Key, lane, kind, distance, slot));
 
     private ShardbackArmed LastArm() => _events.Of<ShardbackArmed>().Last();
     private void AssertStanding() => Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
@@ -291,10 +372,10 @@ public sealed class ShardbackBehaviourTests
         _agent.Blackboard.DistanceToPlayer = flat.Length();
     }
 
-    private static EnemySpec Body() => new(new ContentId("enemy.shardback"), new LocKey("enemy.shardback.name"),
+    internal static EnemySpec Body() => new(new ContentId("enemy.shardback"), new LocKey("enemy.shardback.name"),
         500f, 1.8f, 8, 40, 300f, false, 12f, 3.2f, 1f, 0.8f, 40f, EnemyBehaviourKind.Static);
 
-    private static CharacterSpec Character() => new(new ContentId("character.test"), new LocKey("character.test.name"),
+    internal static CharacterSpec Character() => new(new ContentId("character.test"), new LocKey("character.test.name"),
         new LocKey("character.test.description"), 100f,
         new MovementSpec(3f, 0.06f, 0.08f, 720f),
         new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),

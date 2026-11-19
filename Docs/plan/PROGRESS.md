@@ -9,9 +9,9 @@ _2026-11-19._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-16b2** — Measure lanes and stable pillar identity. |
-| **Next task** | SS-16b3 awaits owner go; b4 follows. |
-| **Verified** | EditMode 6962/7054: 0 failed/1 inconclusive/91 skipped; adapters 12/12. PlayMode frame-order 21/21. Compile/analyzers/format clean. |
+| **Last merged** | **SS-16b3** — Charge travel and clipped fans in core. |
+| **Next task** | SS-16b4 — Execute pillar lifetime and break decisions. |
+| **Verified** | EditMode 6983/7075, 0 failed, 1 inconclusive, 91 skipped. Shardback 59/59. Compiler, analyzers and format clean. |
 
 ## What works
 
@@ -35,7 +35,7 @@ Cobra fan. Callers: 2 s channel. Vultures circle/dive/land exposed 2 s.
 Hero Poison: violet drop/stacks/timer/quiet HP ticks; Space/death clears.
 Duneclaw Sunscar 5: 1000 HP, L9 Ranger 80.70 s. 3 scorplings at 66%, clear at 33%; portal 6. Slabs: 3 s pin.
 Duneclaw turns 360 degrees/s in casts/recovery; tells locked.
-Shardback: core fan/burst/recovery; keyed footprint stops and stable pillar slots.
+Shardback core: clipped fans, swept charge, burst; one break per slot per fight.
 Skirmisher runs/fires: Ricochet 11/Second Wind 14 (roll guard/pips)/Whirlwind 17/Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

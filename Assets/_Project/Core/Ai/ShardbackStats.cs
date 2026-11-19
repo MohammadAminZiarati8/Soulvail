@@ -12,6 +12,14 @@ public sealed class ShardbackStats
     public Stat FanWindupSeconds { get; } = new(1f);
     public Stat FanDamage { get; } = new(14f);
     public Stat FanRecoverySeconds { get; } = new(1.25f);
+    public Stat ChargeLength { get; } = new(12f);
+    public Stat ChargeHalfWidth { get; } = new(1f);
+    public Stat ChargeWindupSeconds { get; } = new(1.2f);
+    public Stat ChargeSpeed { get; } = new(10f);
+    public Stat ChargeDamage { get; } = new(18f);
+    public Stat ChargeRecoverySeconds { get; } = new(1.5f);
+    public Stat PillarRecoverySeconds { get; } = new(3f);
+    public Stat ChargeStallSeconds { get; } = new(0.25f);
     public Stat BurstRadius { get; } = new(4f);
     public Stat BurstWindupSeconds { get; } = new(1.2f);
     public Stat BurstDamage { get; } = new(16f);

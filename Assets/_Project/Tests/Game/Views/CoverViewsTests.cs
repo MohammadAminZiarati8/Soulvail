@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Soulvail.Core.Content;
@@ -157,6 +158,24 @@ public sealed class CoverViewsTests
         Assert.That(_views.Version, Is.EqualTo(2));
         _hub.Publish(new StageArrived(11, default));
         Assert.That(_views.Version, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void UnmarkedCover_IgnoresShardbackLifecycle()
+    {
+        Spawn(7, _mother, Vector3.zero);
+        Guid lifetime = Guid.NewGuid();
+        _hub.Publish(new ShardbackFightStarted(7, lifetime));
+        _hub.Publish(new ShardbackPillarBroken(7, lifetime, 0));
+        Assert.That(_views.Version, Is.EqualTo(1));
+        Assert.That(_views.LiveCount, Is.EqualTo(1));
+        foreach (Collider collider in _parent.GetComponentsInChildren<Collider>())
+        {
+            Assert.That(collider.enabled, Is.True);
+        }
+
+        _hub.Publish(new EnemyDespawned(7));
+        Assert.That(_views.LiveCount, Is.Zero);
     }
 
     // Rule 4: actual physics bounds and a ray, rather than prefab-space Collider.bounds (Traps §5).

@@ -272,11 +272,11 @@ _No milestone. The owner is setting the next direction._
 **The Shardback, Sunscar's stage-10 boss** (owner choice, 2026-11-18; design [GD §9.4](../GameDesign.md#94-the-sunscar--stage-10-the-shardback)). Giant glassback: locked shard lanes, a pillar-breaking charge and a short-range shell burst. Always damageable outside phase beats; no reflection. SS-16a core built; later work requires the owner's go. Later titles receive binding Files/API/test specs before implementation; split further if any exceeds eight files.
 
 - [x] SS-16a — Core fan, burst, recovery and phase cancellation (M)
-- [ ] SS-16b — Charge, pillars and cover-clipped fans (split below; specification complete, implementation not authorised)
+- [x] SS-16b — Charge, pillars and cover-clipped fans (split below)
   - [x] SS-16b1 — Correlated obstruction facts (M, 3 counted; depends on 16a)
   - [x] SS-16b2 — Measure lanes and stable pillar identity (M, 5 counted; depends on 16b1)
   - [x] SS-16b3 — Charge travel and clipped fans in core (M, 6 counted; depends on 16b2)
-  - [ ] [SS-16b4 — Execute pillar lifetime and break decisions](tasks/SS-16b4-pillar-lifecycle.md) (M, 4 counted; depends on 16b3)
+  - [x] SS-16b4 — Execute pillar lifetime and break decisions (M, 4 counted; depends on 16b3)
 - [ ] SS-16c — Shardback body on the shipped Beetle rig, separate crystal cases and attack clips (M; may precede 16b)
 - [ ] SS-16d — Boss prefab, locked tells, shell openings, pillar break presentation and three sound cues (M; depends on 16b/c; split audio if needed)
 - [ ] SS-16e — Sunscar stage 10, phase adds, HP probe and clear flow to 11 (M; depends on 16d)

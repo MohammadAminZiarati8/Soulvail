@@ -873,3 +873,10 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
   Check the fan beside a pillar and the charge ending against one.
 - **[Editor/device]** Listen for the fan rattle, charge scrape and burst crack at combat volume.
   Check cue timing against the release and check the mix alongside weather and the Ranger's bow.
+
+
+## SS-16f follow-up — Shardback attack readability
+
+- **[Device]** In portrait-scale Sunscar stage 10 with weather active, check that the pale footprint
+  reads before its red fill, and that the fill reaches the edge on release. Watch the glass-crystal
+  splinters beside a pillar and the hollow shell shockwave at the burst edge.

@@ -14,6 +14,8 @@ namespace Soulvail.Game.Views
     public sealed class ShardbackView : MonoBehaviour, IPoolable
     {
         private const int CircleSegments = 64;
+        private const int ShardsPerLane = 4;
+        private const int ShardVertices = 6;
         private const float FlashSeconds = 0.16f;
         [SerializeField] private Animator _animator;
         [SerializeField] private MeshFilter _tell;
@@ -23,15 +25,20 @@ namespace Soulvail.Game.Views
         [SerializeField] private AudioClip _chargeCue;
         [SerializeField] private AudioClip _burstCue;
 
-        private readonly Vector3[] _vertices = new Vector3[CircleSegments + 1];
-        private readonly Color[] _colors = new Color[CircleSegments + 1];
+        private readonly Vector3[] _vertices = new Vector3[CircleSegments * 2];
+        private readonly Color[] _colors = new Color[CircleSegments * 2];
         private readonly int[] _circle = new int[CircleSegments * 3];
+        private readonly int[] _ring = new int[CircleSegments * 6];
+        private readonly int[] _shards = new int[3 * ShardsPerLane * 24];
         private readonly int[] _strips = new int[18];
         private readonly int[] _strip = new int[6];
         private IDisposable[] _subscriptions;
         private EnemyView _body;
         private AnimationClip[] _clips;
         private Mesh _mesh;
+        private MeshFilter _fill;
+        private MeshRenderer _fillRenderer;
+        private Mesh _fillMesh;
         private MeshFilter _effect;
         private MeshRenderer _effectRenderer;
         private Mesh _effectMesh;
@@ -42,8 +49,9 @@ namespace Soulvail.Game.Views
         private ShardbackArmed _effectCast;
         private Quaternion _effectHeading;
         private ShardbackClipped _clip;
+        private ShardbackClipped _effectClip;
         private string _state;
-        private float _elapsed;
+        private float _fillFraction;
         private float _release;
         private float _recovery;
         private float _effectTime;
@@ -64,6 +72,7 @@ namespace Soulvail.Game.Views
                 events.Subscribe<ShardbackFightStarted>(OnFightStarted),
                 events.Subscribe<ShardbackArmed>(OnArmed),
                 events.Subscribe<ShardbackClipped>(OnClipped),
+                events.Subscribe<ShardbackTellProgress>(OnTellProgress),
                 events.Subscribe<ShardbackChargeStarted>(OnChargeStarted),
                 events.Subscribe<ShardbackChargeAdvanced>(OnChargeAdvanced),
                 events.Subscribe<ShardbackImpact>(OnImpact),
@@ -93,33 +102,66 @@ namespace Soulvail.Game.Views
             {
                 _circle[i * 3 + 1] = i + 1;
                 _circle[i * 3 + 2] = (i + 1) % CircleSegments + 1;
+                int next = (i + 1) % CircleSegments;
+                SetQuad(_ring, i * 6, i * 2, i * 2 + 1, next * 2, next * 2 + 1);
             }
             for (int i = 0; i < 3; i++)
-            {
-                int vertex = i * 4;
-                int index = i * 6;
-                _strips[index] = vertex;
-                _strips[index + 1] = vertex + 1;
-                _strips[index + 2] = vertex + 2;
-                _strips[index + 3] = vertex + 2;
-                _strips[index + 4] = vertex + 1;
-                _strips[index + 5] = vertex + 3;
-            }
+                SetQuad(_strips, i * 6, i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3);
+            IndexShards();
             Array.Copy(_strips, _strip, _strip.Length);
             _mesh = new Mesh { name = "Shardback attack tell" };
             _mesh.MarkDynamic();
             _tell.sharedMesh = _mesh;
 
-            var effect = new GameObject("AttackEffect", typeof(MeshFilter), typeof(MeshRenderer));
-            effect.transform.SetParent(transform, false);
-            _effect = effect.GetComponent<MeshFilter>();
-            _effectRenderer = effect.GetComponent<MeshRenderer>();
-            _effectRenderer.sharedMaterial = _tellRenderer.sharedMaterial;
-            _effectRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            _effectRenderer.receiveShadows = false;
-            _effectMesh = new Mesh { name = "Shardback attack effect" };
-            _effectMesh.MarkDynamic();
-            _effect.sharedMesh = _effectMesh;
+            _fill = CreateLayer("AttackFill", _tellRenderer.sortingOrder + 1, out _fillMesh, out _fillRenderer);
+            _effect = CreateLayer("AttackEffect", _tellRenderer.sortingOrder + 2, out _effectMesh, out _effectRenderer);
+        }
+
+        private MeshFilter CreateLayer(string label, int order, out Mesh mesh, out MeshRenderer renderer)
+        {
+            var layer = new GameObject(label, typeof(MeshFilter), typeof(MeshRenderer));
+            layer.transform.SetParent(transform, false);
+            renderer = layer.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = _tellRenderer.sharedMaterial;
+            renderer.sortingOrder = order;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.enabled = false;
+            mesh = new Mesh { name = label };
+            mesh.MarkDynamic();
+            MeshFilter filter = layer.GetComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
+            return filter;
+        }
+
+        private static void SetQuad(int[] indices, int start, int a, int b, int c, int d)
+        {
+            indices[start] = a;
+            indices[start + 1] = b;
+            indices[start + 2] = c;
+            indices[start + 3] = c;
+            indices[start + 4] = b;
+            indices[start + 5] = d;
+        }
+
+        private void IndexShards()
+        {
+            for (int shard = 0; shard < 3 * ShardsPerLane; shard++)
+            {
+                int vertex = shard * ShardVertices;
+                for (int side = 0; side < 4; side++)
+                {
+                    int left = vertex + 2 + side;
+                    int right = vertex + 2 + (side + 1) % 4;
+                    int index = shard * 24 + side * 6;
+                    _shards[index] = vertex;
+                    _shards[index + 1] = left;
+                    _shards[index + 2] = right;
+                    _shards[index + 3] = vertex + 1;
+                    _shards[index + 4] = right;
+                    _shards[index + 5] = left;
+                }
+            }
         }
 
         private bool IsMine(int id) => !_dead && isActiveAndEnabled && _body != null && _body.Id == id && _body.IsBound;
@@ -163,10 +205,7 @@ namespace Soulvail.Game.Views
             if (Application.isPlaying)
                 _audio.Play();
             if (evt.Move == ShardbackMove.Burst)
-            {
-                FillDisc();
-                ShowMesh(_circle);
-            }
+                ShowTell();
         }
 
         private void OnClipped(ShardbackClipped evt)
@@ -176,18 +215,64 @@ namespace Soulvail.Game.Views
                 return;
 
             _clip = evt;
-            if (_cast.Move == ShardbackMove.Fan)
-                FillFan();
-            else
-                FillStrip(0, 0f, evt.Centre);
-            ShowMesh(_cast.Move == ShardbackMove.Fan ? _strips : _strip);
+            ShowTell();
         }
 
-        private void FillFan()
+        private void OnTellProgress(ShardbackTellProgress evt)
         {
-            FillStrip(0, 0f, _clip.Centre);
-            FillStrip(4, _cast.AngleDegrees, _clip.Plus);
-            FillStrip(8, -_cast.AngleDegrees, _clip.Minus);
+            if (!Matches(evt.BossId, evt.Key) || !_tellRenderer.enabled || evt.Fraction <= _fillFraction)
+                return;
+
+            _fillFraction = evt.Fraction;
+            Color tint = Palette.Danger;
+            tint.a = 0.76f;
+            DrawTell(_fillMesh, _fillFraction, tint);
+            Pose(_fill.transform, _cast, _heading, 0.09f);
+            _fillRenderer.enabled = true;
+        }
+
+        private void ShowTell()
+        {
+            Color light = Color.Lerp(Palette.Danger, Color.white, 0.38f);
+            light.a = 0.36f;
+            DrawTell(_mesh, 1f, light);
+            Pose(_tell.transform, _cast, _heading, 0.08f);
+            _tellRenderer.enabled = true;
+        }
+
+        private void DrawTell(Mesh mesh, float fraction, Color tint)
+        {
+            int[] indices;
+            int count;
+            if (_cast.Move == ShardbackMove.Burst)
+            {
+                FillDisc(_cast.Reach * fraction);
+                indices = _circle;
+                count = CircleSegments + 1;
+            }
+            else
+            {
+                FillStrip(0, 0f, _clip.Centre * fraction);
+                bool fan = _cast.Move == ShardbackMove.Fan;
+                if (fan)
+                {
+                    FillStrip(4, _cast.AngleDegrees, _clip.Plus * fraction);
+                    FillStrip(8, -_cast.AngleDegrees, _clip.Minus * fraction);
+                }
+                indices = fan ? _strips : _strip;
+                count = fan ? 12 : 4;
+            }
+            Array.Fill(_colors, Palette.Vertex(tint), 0, count);
+            Write(mesh, indices, count);
+        }
+
+        private void Write(Mesh mesh, int[] indices, int count)
+        {
+            if (mesh.vertexCount != count)
+                mesh.Clear();
+            mesh.SetVertices(_vertices, 0, count);
+            mesh.SetColors(_colors, 0, count);
+            mesh.SetTriangles(indices, 0);
         }
 
         private void FillStrip(int start, float angle, float length)
@@ -202,23 +287,19 @@ namespace Soulvail.Game.Views
             _vertices[start + 3] = end + side;
         }
 
-        private void FillDisc()
+        private void FillDisc(float radius)
         {
             _vertices[0] = Vector3.zero;
             for (int i = 0; i < CircleSegments; i++)
             {
-                float angle = 2f * Mathf.PI * i / CircleSegments;
-                _vertices[i + 1] = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * _cast.Reach;
+                _vertices[i + 1] = CircleDirection(i) * radius;
             }
         }
 
-        private void ShowMesh(int[] indices)
+        private static Vector3 CircleDirection(int index)
         {
-            _mesh.vertices = _vertices;
-            _mesh.SetTriangles(indices, 0);
-            Pose(_tell.transform, _cast, _heading, 0.08f);
-            PaintTell();
-            _tellRenderer.enabled = true;
+            float angle = 2f * Mathf.PI * index / CircleSegments;
+            return new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
         }
 
         private void Pose(Transform meshTransform, in ShardbackArmed cast, Quaternion heading, float height)
@@ -229,14 +310,6 @@ namespace Soulvail.Game.Views
             meshTransform.localScale = new Vector3(1f / scale.x, 1f / scale.y, 1f / scale.z);
         }
 
-        private void PaintTell()
-        {
-            Color tint = Palette.Danger;
-            tint.a = Mathf.Lerp(0.38f, 0.84f, _cast.Seconds > 0f ? Mathf.Clamp01(_elapsed / _cast.Seconds) : 1f);
-            Array.Fill(_colors, Palette.Vertex(tint));
-            _mesh.colors = _colors;
-        }
-
         private void OnChargeStarted(ShardbackChargeStarted evt)
         {
             if (!Matches(evt.BossId, evt.Key) || _cast.Move != ShardbackMove.Charge || _travelling)
@@ -245,6 +318,7 @@ namespace Soulvail.Game.Views
             _travelling = true;
             _shownTravel = 0f;
             _tellRenderer.enabled = false;
+            _fillRenderer.enabled = false;
             ShowChargeEffect(0f, FlashSeconds);
             Play("ChargeTravel");
         }
@@ -273,16 +347,8 @@ namespace Soulvail.Game.Views
                 return;
             }
 
-            if (evt.Move == ShardbackMove.Fan)
-            {
-                FillFan();
-                ShowEffect(_strips, 0.28f);
-            }
-            else
-            {
-                FillDisc();
-                ShowEffect(_circle, 0.42f);
-            }
+            BeginEffect(evt.Move == ShardbackMove.Fan ? 0.34f : 0.46f);
+            StepEffect(0f);
             CancelCast();
             _recovery = evt.RecoverySeconds;
             string release = evt.Move == ShardbackMove.Fan ? "FanRelease" : "BurstRelease";
@@ -300,17 +366,20 @@ namespace Soulvail.Game.Views
                 _vertices[2] += Vector3.up * 0.85f;
                 _vertices[3] += Vector3.up * 0.85f;
             }
-            ShowEffect(_strip, duration);
+            BeginEffect(duration);
+            if (_effectMesh.vertexCount != 4)
+                _effectMesh.Clear();
+            _effectMesh.SetVertices(_vertices, 0, 4);
+            _effectMesh.SetTriangles(_strip, 0);
+            StepEffect(0f);
         }
 
-        private void ShowEffect(int[] indices, float duration)
+        private void BeginEffect(float duration)
         {
             _effectCast = _cast;
             _effectHeading = _heading;
+            _effectClip = _clip;
             _effectTime = _effectDuration = duration;
-            _effectMesh.vertices = _vertices;
-            _effectMesh.SetTriangles(indices, 0);
-            StepEffect(0f);
         }
 
         private void StepEffect(float dt)
@@ -327,19 +396,74 @@ namespace Soulvail.Game.Views
 
             Pose(_effect.transform, _effectCast, _effectHeading, 0.12f);
             float fade = _effectTime / _effectDuration;
-            Color bright = new(1f, 0.95f, 0.83f, fade);
-            Color dim = new(0.96f, 0.73f, 0.48f, 0.2f * fade);
-            Array.Fill(_colors, Palette.Vertex(bright));
-            if (_effectCast.Move == ShardbackMove.Burst)
-                _colors[0] = Palette.Vertex(dim);
+            float travel = Mathf.Clamp01((1f - fade) / 0.72f);
+            Color bright = Palette.Vertex(new Color(1f, 0.96f, 0.84f, fade));
+            Color dim = Palette.Vertex(new Color(0.96f, 0.73f, 0.48f, 0.34f * fade));
+            if (_effectCast.Move == ShardbackMove.Fan)
+                DrawSplinters(travel, bright, dim);
+            else if (_effectCast.Move == ShardbackMove.Burst)
+                DrawShockwave(travel, bright, dim);
             else
             {
-                int lanes = _effectCast.Move == ShardbackMove.Fan ? 3 : 1;
-                for (int i = 0; i < lanes; i++)
-                    _colors[i * 4] = _colors[i * 4 + 1] = Palette.Vertex(dim);
+                _colors[0] = _colors[1] = dim;
+                _colors[2] = _colors[3] = bright;
+                _effectMesh.SetColors(_colors, 0, 4);
             }
-            _effectMesh.colors = _colors;
             _effectRenderer.enabled = true;
+        }
+
+        private void DrawShockwave(float travel, Color bright, Color dim)
+        {
+            float outer = _effectCast.Reach * Mathf.Lerp(0.16f, 1f, travel);
+            float inner = outer * 0.8f;
+            for (int i = 0; i < CircleSegments; i++)
+            {
+                Vector3 radial = CircleDirection(i);
+                int vertex = i * 2;
+                _vertices[vertex] = radial * inner;
+                _vertices[vertex + 1] = radial * outer + Vector3.up * 0.17f;
+                _colors[vertex] = dim;
+                _colors[vertex + 1] = bright;
+            }
+            Write(_effectMesh, _ring, CircleSegments * 2);
+        }
+
+        private void DrawSplinters(float travel, Color bright, Color dim)
+        {
+            DrawLaneSplinters(0, 0f, _effectClip.Centre, travel, bright, dim);
+            DrawLaneSplinters(1, _effectCast.AngleDegrees, _effectClip.Plus, travel, bright, dim);
+            DrawLaneSplinters(2, -_effectCast.AngleDegrees, _effectClip.Minus, travel, bright, dim);
+            Write(_effectMesh, _shards, 3 * ShardsPerLane * ShardVertices);
+        }
+
+        private void DrawLaneSplinters(int lane, float degrees, float length, float travel, Color bright, Color dim)
+        {
+            Quaternion heading = Quaternion.Euler(0f, -degrees, 0f);
+            for (int i = 0; i < ShardsPerLane; i++)
+            {
+                int vertex = (lane * ShardsPerLane + i) * ShardVertices;
+                if (!(length > 0f))
+                {
+                    Array.Clear(_vertices, vertex, ShardVertices);
+                    continue;
+                }
+
+                float fraction = 0.19f - i * 0.04f + travel * (0.81f - i * 0.08f);
+                float tip = length * fraction;
+                float tail = Mathf.Max(0f, tip - (0.82f - i * 0.11f));
+                float middle = Mathf.Lerp(tail, tip, 0.56f);
+                float width = _effectCast.HalfWidth * (0.34f - i * 0.048f);
+                float side = _effectCast.HalfWidth * ((i - 1.5f) * 0.34f);
+                float height = 0.28f + (0.13f * i) + (0.23f * Mathf.Sin(Mathf.PI * travel));
+                _vertices[vertex] = heading * new Vector3(side, height, tail);
+                _vertices[vertex + 1] = heading * new Vector3(side, height + 0.15f, tip);
+                _vertices[vertex + 2] = heading * new Vector3(side - width, height, middle);
+                _vertices[vertex + 3] = heading * new Vector3(side, height + width, middle);
+                _vertices[vertex + 4] = heading * new Vector3(side + width, height, middle);
+                _vertices[vertex + 5] = heading * new Vector3(side, height - width, middle);
+                Array.Fill(_colors, dim, vertex, ShardVertices);
+                _colors[vertex + 1] = _colors[vertex + 3] = bright;
+            }
         }
 
         private void ClearEffect()
@@ -378,9 +502,9 @@ namespace Soulvail.Game.Views
             {
                 if (_tellRenderer.enabled)
                 {
-                    _elapsed += dt;
                     Pose(_tell.transform, _cast, _heading, 0.08f);
-                    PaintTell();
+                    if (_fillRenderer.enabled)
+                        Pose(_fill.transform, _cast, _heading, 0.09f);
                 }
                 return;
             }
@@ -427,10 +551,12 @@ namespace Soulvail.Game.Views
         {
             _cast = default;
             _clip = default;
-            _elapsed = _release = _recovery = 0f;
+            _fillFraction = _release = _recovery = 0f;
             _travelling = false;
             if (_tellRenderer != null)
                 _tellRenderer.enabled = false;
+            if (_fillRenderer != null)
+                _fillRenderer.enabled = false;
             if (_audio != null)
             {
                 _audio.Stop();
@@ -461,11 +587,13 @@ namespace Soulvail.Game.Views
             if (Application.isPlaying)
             {
                 Destroy(_mesh);
+                Destroy(_fillMesh);
                 Destroy(_effectMesh);
             }
             else
             {
                 DestroyImmediate(_mesh);
+                DestroyImmediate(_fillMesh);
                 DestroyImmediate(_effectMesh);
             }
         }

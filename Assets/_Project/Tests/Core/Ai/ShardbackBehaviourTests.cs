@@ -113,6 +113,34 @@ public sealed class ShardbackBehaviourTests
         Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(charge.Facing));
     }
 
+    [Test]
+    public void TellProgress_UsesTheCastDeadline_AndCompletesBeforeImpact()
+    {
+        Tick(0f);
+        ShardbackArmed armed = LastArm();
+        Assert.That(_events.Count<ShardbackTellProgress>(), Is.Zero);
+        AnswerFan();
+        Tick(armed.Seconds * 0.5f);
+        ShardbackTellProgress half = _events.Single<ShardbackTellProgress>();
+        Assert.That((half.BossId, half.Key, half.Fraction), Is.EqualTo((armed.BossId, armed.Key, 0.5f)));
+        Assert.That(_events.Count<ShardbackImpact>(), Is.Zero);
+
+        Tick(armed.Seconds * 0.5f);
+        var order = _events.All.Where(e => e is ShardbackTellProgress or ShardbackImpact).ToArray();
+        Assert.That(order.Length, Is.EqualTo(3));
+        Assert.That(((ShardbackTellProgress)order[1]).Fraction, Is.EqualTo(1f));
+        Assert.That(((ShardbackImpact)order[2]).Key, Is.EqualTo(armed.Key));
+    }
+
+    [TestCase(-0.01f)]
+    [TestCase(1.01f)]
+    [TestCase(float.NaN)]
+    [TestCase(float.PositiveInfinity)]
+    public void TellProgress_RejectsFractionsOutsideTheUnitInterval(float fraction)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ShardbackTellProgress(_agent.Id, default, fraction));
+    }
+
     [TestCase(0f, 0f, true)] // Three overlapping strips, one hit.
     [TestCase(0.6f, 12f, true)]
     [TestCase(-0.6f, 12f, true)]

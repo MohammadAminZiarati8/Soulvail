@@ -201,6 +201,8 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
                 ? new ShardbackClipped(_agent.Id, _armed.Key, _stops[0].Distance, 0f, 0f)
                 : new ShardbackClipped(_agent.Id, _armed.Key, _stops[1].Distance, _stops[2].Distance, _stops[3].Distance));
         }
+        float fraction = _remaining > 0f ? 1f - _remaining / _armed.Seconds : 1f;
+        ctx.Events.Publish(new ShardbackTellProgress(_agent.Id, _armed.Key, fraction));
         if (_remaining > 0f)
             return Vector3.Zero;
 

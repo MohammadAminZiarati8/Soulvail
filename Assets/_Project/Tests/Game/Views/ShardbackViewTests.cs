@@ -35,6 +35,7 @@ public sealed class ShardbackViewTests
     private EnemyView _body;
     private MeshFilter _mesh;
     private MeshRenderer _tell;
+    private MeshFilter _fill;
     private MeshFilter _effect;
     private AudioSource _audio;
     private Animator _animator;
@@ -55,6 +56,7 @@ public sealed class ShardbackViewTests
         _audio = _root.GetComponent<AudioSource>();
         _mesh = _root.transform.Find("AttackTell").GetComponent<MeshFilter>();
         _tell = _mesh.GetComponent<MeshRenderer>();
+        _fill = _root.transform.Find("AttackFill").GetComponent<MeshFilter>();
         _effect = _root.transform.Find("AttackEffect").GetComponent<MeshFilter>();
         _lifetime = Guid.NewGuid();
         _events.Publish(new ShardbackFightStarted(Boss, _lifetime));
@@ -104,6 +106,7 @@ public sealed class ShardbackViewTests
         Assert.That(_tell.enabled, Is.EqualTo(move == ShardbackMove.Burst));
         _events.Publish(new ShardbackClipped(Boss, armed.Key, 5f, 7f, 3f));
         Assert.That(_tell.enabled, Is.True);
+        Assert.That(FillVisible, Is.False);
         Vector3[] vertices = _mesh.sharedMesh.vertices;
         Vector3 origin = _origin + Vector3.up * 0.08f;
         if (move == ShardbackMove.Burst)
@@ -136,17 +139,38 @@ public sealed class ShardbackViewTests
             }
         }
 
+        _events.Publish(new ShardbackTellProgress(Boss, new ShardbackProbeKey(_lifetime, 2), 0.75f));
+        Assert.That(FillVisible, Is.False);
+        _events.Publish(new ShardbackTellProgress(Boss, armed.Key, 0.5f));
+        Assert.That(FillVisible, Is.True);
+        Vector3[] filled = _fill.sharedMesh.vertices;
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            if (move == ShardbackMove.Burst)
+                AssertPoint(filled[i], vertices[i] * 0.5f);
+            else if (i % 4 < 2)
+                AssertPoint(filled[i], vertices[i]);
+            else
+                AssertPoint(filled[i], (vertices[i] + vertices[i - 2]) * 0.5f);
+        }
+        Assert.That(_fill.sharedMesh.colors[0].a, Is.GreaterThan(_mesh.sharedMesh.colors[0].a));
+        Assert.That(_mesh.sharedMesh.vertices, Is.EqualTo(vertices));
+
         Vector3 before = _mesh.transform.TransformPoint(vertices[1]);
         _root.transform.SetPositionAndRotation(new Vector3(9f, 0f, 5f), Quaternion.Euler(0f, 65f, 0f));
         _view.Step(5f);
         Assert.That(_tell.enabled, Is.True, "Only Core ends a warning.");
         AssertPoint(_mesh.transform.TransformPoint(vertices[1]), before);
+        Assert.That(_fill.sharedMesh.vertices, Is.EqualTo(filled), "Only the Core clock advances the fill.");
         Assert.That(EffectVisible, Is.False);
+        _events.Publish(new ShardbackTellProgress(Boss, armed.Key, 1f));
+        Assert.That(_fill.sharedMesh.vertices, Is.EqualTo(vertices));
 
         if (move == ShardbackMove.Charge)
         {
             _events.Publish(new ShardbackChargeStarted(Boss, armed.Key));
             Assert.That(_tell.enabled, Is.False);
+            Assert.That(FillVisible, Is.False);
             Assert.That(EffectVisible, Is.True);
             Assert.That(_effect.sharedMesh.vertices[2].z, Is.Zero);
             _events.Publish(new ShardbackChargeAdvanced(Boss, armed.Key, 2f));
@@ -157,14 +181,37 @@ public sealed class ShardbackViewTests
         float travel = move == ShardbackMove.Charge ? 2f : 0f;
         _events.Publish(new ShardbackImpact(Boss, armed.Move, armed.Origin, 2f, armed.Key, travel));
         Assert.That(_tell.enabled, Is.False);
+        Assert.That(FillVisible, Is.False);
         Assert.That(EffectVisible, Is.True);
         Vector3[] release = _effect.sharedMesh.vertices;
         if (move == ShardbackMove.Charge)
             Assert.That(release[2].z, Is.EqualTo(2f));
+        else if (move == ShardbackMove.Fan)
+        {
+            Assert.That(release, Has.Length.EqualTo(72));
+            Assert.That(release.All(v => v.y > 0f), Is.True);
+            _view.Step(0.25f);
+            Vector3[] fired = _effect.sharedMesh.vertices;
+            float[] angles = { 0f, 25f, -25f };
+            float[] lengths = { 5f, 7f, 3f };
+            for (int lane = 0; lane < 3; lane++)
+            {
+                float radians = angles[lane] * Mathf.Deg2Rad;
+                Vector3 direction = new(-Mathf.Sin(radians), 0f, Mathf.Cos(radians));
+                var laneVertices = fired.Skip(lane * 24).Take(24).ToArray();
+                Assert.That(laneVertices.All(v => Vector3.Dot(v, direction) <= lengths[lane] + 0.001f), Is.True);
+                Assert.That(Vector3.Dot(laneVertices[1], direction), Is.EqualTo(lengths[lane]).Within(0.001f));
+                Assert.That(Vector3.Dot(fired[lane * 24 + 1] - release[lane * 24 + 1], direction), Is.GreaterThan(1f));
+            }
+        }
         else
         {
-            int count = move == ShardbackMove.Fan ? 12 : vertices.Length;
-            Assert.That(release.Take(count), Is.EqualTo(vertices.Take(count)));
+            Assert.That(release, Has.Length.EqualTo(128));
+            Assert.That(release.All(v => new Vector2(v.x, v.z).magnitude > 0f), Is.True);
+            _view.Step(0.35f);
+            float outer = _effect.sharedMesh.vertices.Max(v => new Vector2(v.x, v.z).magnitude);
+            Assert.That(outer, Is.EqualTo(armed.Reach).Within(0.001f));
+            Assert.That(outer, Is.GreaterThan(release.Max(v => new Vector2(v.x, v.z).magnitude)));
         }
         _body.Apply(new EnemyMoveIntent(Boss, Num.Vector3.Zero, Num.Vector2.UnitY), 0f);
         _view.Step(0.01f);
@@ -204,10 +251,15 @@ public sealed class ShardbackViewTests
     public void Cancellation_ClearsCastAndRejectsStaleEvents()
     {
         ShardbackArmed burst = Arm(ShardbackMove.Burst, 1);
+        _events.Publish(new ShardbackTellProgress(Boss, burst.Key, 0.5f));
+        Assert.That(FillVisible, Is.True);
         _events.Publish(new BossPhaseChanged(Boss + 1, 1, 3));
         Assert.That(_tell.enabled, Is.True);
         _events.Publish(new BossPhaseChanged(Boss, 1, 3));
         Assert.That(_tell.enabled, Is.False);
+        Assert.That(FillVisible, Is.False);
+        _events.Publish(new ShardbackTellProgress(Boss, burst.Key, 1f));
+        Assert.That(FillVisible, Is.False);
         Assert.That(_audio.clip, Is.Null);
         _events.Publish(burst);
         _events.Publish(new ShardbackImpact(Boss, burst.Move, burst.Origin, 2f, burst.Key));
@@ -332,6 +384,7 @@ public sealed class ShardbackViewTests
         _mesh.transform.TransformPoint((vertices[index] + vertices[index + 1]) * 0.5f);
 
     private bool EffectVisible => _effect.GetComponent<MeshRenderer>().enabled;
+    private bool FillVisible => _fill.GetComponent<MeshRenderer>().enabled;
 
     private static void AssertPoint(Vector3 actual, Vector3 expected) =>
         Assert.That(Vector3.Distance(actual, expected), Is.LessThan(0.001f));

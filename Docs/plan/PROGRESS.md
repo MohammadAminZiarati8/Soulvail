@@ -9,9 +9,9 @@ _2026-11-19._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-16f** — Shardback turn and attack feedback. |
+| **Last merged** | **SS-16f follow-up** — Fill, shards and shockwave. |
 | **Next task** | Awaiting owner selection. |
-| **Verified** | EditMode 7026/7118, 0 failed, 1 inconclusive, 91 skipped. Compiler, analyzers and format clean. |
+| **Verified** | EditMode 7031/7123, 0 failed, 1 inconclusive, 91 skipped. Compiler, analyzers and format clean. |
 
 ## What works
 

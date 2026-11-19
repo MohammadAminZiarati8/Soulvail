@@ -97,6 +97,23 @@ public readonly struct ShardbackChargeStarted
     }
 }
 
+public readonly struct ShardbackTellProgress
+{
+    public readonly int BossId;
+    public readonly ShardbackProbeKey Key;
+    public readonly float Fraction;
+
+    public ShardbackTellProgress(int bossId, ShardbackProbeKey key, float fraction)
+    {
+        if (!(fraction >= 0f && fraction <= 1f))
+            throw new ArgumentOutOfRangeException(nameof(fraction));
+
+        BossId = bossId;
+        Key = key;
+        Fraction = fraction;
+    }
+}
+
 public readonly struct ShardbackFightStarted
 {
     public readonly int BossId;

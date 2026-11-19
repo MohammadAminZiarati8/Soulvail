@@ -9,9 +9,9 @@ _2026-11-20._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-17a** — Hierophant sweep, seals and final pair in Core. |
-| **Next task** | [SS-17b](tasks/SS-17b-hierophant-presentation.md), on owner's go. |
-| **Verified** | EditMode 7095/7187, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-17b** — Hierophant prototype tells, seals and cues. |
+| **Next task** | [SS-17c](tasks/SS-17c-hierophant-stage.md), on owner's go. |
+| **Verified** | EditMode 7099/7191, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

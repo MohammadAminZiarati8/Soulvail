@@ -883,3 +883,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 
 - Sunscar regular waves — Sample stages 4, 14, 22 and 24 in the Editor for readable tells, wave pacing and crowding. Check the stage 5 and 10 portals lead into the authored waves. This is an encounter check before XP curve and boss reward tuning.
+
+## SS-17b — Hierophant presentation
+
+- [Editor] In SS-17c's live Dunes fight, listen for the sweep scrape and seal warning cue. The preview verified the clips selected by each arm event and the footprint-to-impact swap.
+- [Device] In SS-17c's live fight, check that the safe edge stays visible at portrait scale through the active sandstorm.

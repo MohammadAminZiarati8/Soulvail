@@ -7,6 +7,7 @@ namespace Soulvail.Game.Views
     public sealed class ShardbackPillar : MonoBehaviour
     {
         [SerializeField, Range(0, 2)] private int _slot;
+        [SerializeField] private GameObject _rubble;
         private (Collider Component, bool Enabled)[] _colliders;
         private (Renderer Component, bool Enabled)[] _renderers;
 
@@ -51,7 +52,11 @@ namespace Soulvail.Game.Views
             _renderers = new (Renderer, bool)[renderers.Length];
             for (int i = 0; i < renderers.Length; i++)
             {
-                _renderers[i] = (renderers[i], renderers[i].enabled);
+                Renderer renderer = renderers[i];
+                if (_rubble == null || !renderer.transform.IsChildOf(_rubble.transform))
+                {
+                    _renderers[i] = (renderer, renderer.enabled);
+                }
             }
         }
 
@@ -102,6 +107,10 @@ namespace Soulvail.Game.Views
             }
 
             IsBroken = broken;
+            if (_rubble != null)
+            {
+                _rubble.SetActive(broken);
+            }
         }
     }
 }

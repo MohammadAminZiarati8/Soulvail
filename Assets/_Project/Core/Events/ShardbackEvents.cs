@@ -59,6 +59,18 @@ public readonly struct ShardbackImpact
     }
 }
 
+public readonly struct ShardbackChargeStarted
+{
+    public readonly int BossId;
+    public readonly ShardbackProbeKey Key;
+
+    public ShardbackChargeStarted(int bossId, ShardbackProbeKey key)
+    {
+        BossId = bossId;
+        Key = key;
+    }
+}
+
 public readonly struct ShardbackFightStarted
 {
     public readonly int BossId;

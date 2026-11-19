@@ -198,6 +198,7 @@ public sealed class ShardbackBehaviour : IEnemyBehaviour, IBossPhaseListener, IS
             _stalled = 0f;
             _chargeAttemptedHit = false;
             _state = State.Travel;
+            ctx.Events.Publish(new ShardbackChargeStarted(_agent.Id, _armed.Key));
             return ChargeVelocity(ctx.Dt);
         }
 

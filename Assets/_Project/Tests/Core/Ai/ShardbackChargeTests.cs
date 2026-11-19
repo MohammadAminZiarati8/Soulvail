@@ -44,6 +44,29 @@ public sealed class ShardbackChargeTests
     }
 
     [Test]
+    public void ChargeStart_OnlyOnceAfterClipping()
+    {
+        LaneProbeIntent probe = ArmCharge();
+        Assert.That(_events.Count<ShardbackChargeStarted>(), Is.Zero);
+        Answer(probe, ShardbackStopKind.Cover, 7f);
+        Tick(0.5f);
+        Assert.That(_events.Count<ShardbackClipped>(), Is.EqualTo(1));
+        Assert.That(_events.Count<ShardbackChargeStarted>(), Is.Zero);
+        Tick(0.8f);
+        Tick(0.1f);
+        ShardbackChargeStarted start = _events.Single<ShardbackChargeStarted>();
+        Assert.That((start.BossId, start.Key), Is.EqualTo((_agent.Id, probe.Key)));
+
+        _boss.Reset();
+        _events.Clear();
+        probe = ArmCharge();
+        Answer(probe, ShardbackStopKind.Unknown, 0f);
+        Tick(1.3f);
+        Assert.That(_events.Count<ShardbackChargeStarted>(), Is.Zero);
+        Assert.That(_events.Single<ShardbackImpact>().Key, Is.EqualTo(probe.Key));
+    }
+
+    [Test]
     public void Charge_ObservedSweep_StopsDamage()
     {
         LaneProbeIntent probe = ArmCharge();

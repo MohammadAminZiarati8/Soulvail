@@ -852,3 +852,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ### SS-16c — Shardback poses
 
 - [Editor, after SS-16d] At gameplay zoom, watch one fan, charge, burst and pillar recovery. Check that the raised fan, low scrape and burst brace read as distinct silhouettes and that both ivory cases open with the dark center visible during recovery.
+
+## SS-16d — Shardback presentation
+
+- **[Editor, after SS-16e]** In the Sunscar stage-10 fight, check the clipped fan lanes, charge strip and filled burst disc through Dunes weather. Listen for the rattle, scrape and brittle crack. Bait the boss into a pillar, watch its rubble persist through a phase beat, then start a fresh fight and check all three pillars stand again.
+- **[device]** Check the tells and three cues on a phone in portrait.

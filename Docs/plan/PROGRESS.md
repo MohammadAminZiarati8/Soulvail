@@ -9,16 +9,17 @@ _2026-11-19._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-16f follow-up** — Fill, shards and shockwave. |
-| **Next task** | Awaiting owner selection. |
-| **Verified** | EditMode 7031/7123, 0 failed, 1 inconclusive, 91 skipped. Compiler, analyzers and format clean. |
+| **Last merged** | **Sunscar regular waves** — 24 scripted stages. |
+| **Next task** | Sunscar stage 15 boss, on owner's go. |
+| **Verified** | EditMode 7055/7147, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
-Jungle: 3; clear → Sunscar. Scorpions 1, beetles 2, broods 4, vipers 6, slingers 8, glassbacks 9, antlions 11, priests 14, cobras 16, callers 18, vultures 22. Broods drop 3 scorplings. Antlions tunnel/warn/erupt, exposed 2.5 s. DT-01: any place.
+Jungle clear → Sunscar. DT-01: any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Waves → cyan portal; Warden/Croaker, Mother 10/Warlord 15/Thornheart 20.
 Scripted 1–29 except bosses; adds die with boss, 0 XP.
+Sunscar: 24 regular stages, 2–5 waves, 5–35 authored enemies. XP curve and boss reward tuning pending for level 30 after stage 24.
 Thornheart: spokes/pods/slam/heart ×2. Mother: shields/lobs/spray/pod.
 Stalker 22+ lurks. Thornweaver 24+: 10 m, ≤2 walls past you; die with it.
 Gravemaw 25: burrow past cover/rise open; ring, bite/throw, tremor/rocks. 50%: 2 rings/crack Frogs. 986 HP/4 pillars.
@@ -33,9 +34,9 @@ Killshot: 3 m/4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
 Cobra fan. Callers: 2 s channel. Vultures circle/dive/land exposed 2 s.
 Hero Poison: violet drop/stacks/timer/quiet HP ticks; Space/death clears.
-Duneclaw Sunscar 5: 1000 HP, L9 Ranger 80.70 s. 3 scorplings at 66%, clear at 33%; portal 6. Slabs: 3 s pin.
+Duneclaw Sunscar 5: 1000 HP, DT-01 L8 Ranger 81.60 s. 3 scorplings at 66%, clear at 33%; portal 6. Slabs: 3 s pin.
 Duneclaw turns 360 degrees/s in casts/recovery; tells locked.
-Shardback Sunscar 10: 1025 HP, L18 Ranger 89.63 s. Smooth turns, 5.5 m burst. 3 pillars, 2 zero-XP beetles at 66%, clear at 33%, portal 11.
+Shardback Sunscar 10: 1025 HP, DT-01 L16 Ranger 92.37 s. Smooth turns, 5.5 m burst. 3 pillars, 2 zero-XP beetles at 66%, clear at 33%, portal 11.
 Skirmisher runs/fires: Ricochet 11/Second Wind 14 (roll guard/pips)/Whirlwind 17/Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

@@ -286,6 +286,10 @@ SS-16b is binding in its four ordered specs; implement one only on the owner's g
 
 SS-16d verified locked tells and broke and restored authored cover with the real charge and fresh fight lifecycle. SS-16e measured 89.63 s with the stage-10 Ranger, including both beats, and guards the two zero-XP bombardiers, Sunscar stages 5/9/11 and the Jungle boss schedule.
 
+- [x] **Sunscar regular waves** — Script all 24 regular stages, with two to five waves and five to 35 enemies per stage (S)
+
+Sunscar's next bosses are stages 15, 20, 25 and 30, one at a time on the owner's go. Balance target: level 30 after stage 24, with at most one level earned per boss. The regular waves set the full-clear XP budgets. The XP curve and boss rewards need a separate tuning pass to reach that target.
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

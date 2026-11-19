@@ -880,3 +880,6 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - **[Device]** In portrait-scale Sunscar stage 10 with weather active, check that the pale footprint
   reads before its red fill, and that the fill reaches the edge on release. Watch the glass-crystal
   splinters beside a pillar and the hollow shell shockwave at the burst edge.
+
+
+- Sunscar regular waves — Sample stages 4, 14, 22 and 24 in the Editor for readable tells, wave pacing and crowding. Check the stage 5 and 10 portals lead into the authored waves. This is an encounter check before XP curve and boss reward tuning.

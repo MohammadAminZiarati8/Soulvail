@@ -107,7 +107,1153 @@ MonoBehaviour:
   - _bossId: boss.shardback
     _everyNStages: 0
     _atStage: 10
-  _scriptedStages: []
+  _scriptedStages:
+  - _stage: 1
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 3
+  - _stage: 2
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+  - _stage: 3
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+  - _stage: 4
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 3
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 4
+    - _wave: 2
+      _specId: enemy.brood
+      _count: 1
+  - _stage: 6
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+  - _stage: 7
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 1
+      _specId: enemy.brood
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 2
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.brood
+      _count: 1
+  - _stage: 8
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 2
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 2
+  - _stage: 9
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 2
+  - _stage: 11
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 1
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 2
+    - _wave: 2
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.antlion
+      _count: 1
+  - _stage: 12
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 1
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 2
+    - _wave: 2
+      _specId: enemy.jackal
+      _count: 2
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.antlion
+      _count: 1
+  - _stage: 13
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 1
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 2
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.antlion
+      _count: 1
+  - _stage: 14
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.antlion
+      _count: 1
+  - _stage: 16
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+  - _stage: 17
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+  - _stage: 18
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 1
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 4
+      _specId: enemy.storm-caller
+      _count: 1
+  - _stage: 19
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 1
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 1
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+  - _stage: 21
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 2
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+  - _stage: 22
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 1
+      _specId: enemy.vulture
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 4
+      _specId: enemy.vulture
+      _count: 1
+  - _stage: 23
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 4
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 1
+      _specId: enemy.vulture
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 4
+      _specId: enemy.vulture
+      _count: 1
+  - _stage: 24
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 5
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 1
+      _specId: enemy.vulture
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 2
+    - _wave: 2
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 4
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 4
+      _specId: enemy.vulture
+      _count: 1
+  - _stage: 26
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.vulture
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 4
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 5
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 5
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 5
+      _specId: enemy.vulture
+      _count: 1
+  - _stage: 27
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.vulture
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 4
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 5
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 5
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 5
+      _specId: enemy.vulture
+      _count: 1
+  - _stage: 28
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.vulture
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 4
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 5
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 5
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 5
+      _specId: enemy.vulture
+      _count: 1
+  - _stage: 29
+    _spawns:
+    - _wave: 1
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 1
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 1
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 1
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 2
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 2
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 2
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 2
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 2
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 3
+      _specId: enemy.scorpion
+      _count: 2
+    - _wave: 3
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 3
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal
+      _count: 1
+    - _wave: 3
+      _specId: enemy.jackal-priest
+      _count: 1
+    - _wave: 3
+      _specId: enemy.vulture
+      _count: 1
+    - _wave: 4
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 4
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 4
+      _specId: enemy.viper
+      _count: 1
+    - _wave: 4
+      _specId: enemy.glassback
+      _count: 1
+    - _wave: 4
+      _specId: enemy.antlion
+      _count: 1
+    - _wave: 4
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.scorpion
+      _count: 3
+    - _wave: 5
+      _specId: enemy.beetle
+      _count: 1
+    - _wave: 5
+      _specId: enemy.cobra
+      _count: 1
+    - _wave: 5
+      _specId: enemy.storm-caller
+      _count: 1
+    - _wave: 5
+      _specId: enemy.vulture
+      _count: 1
   _ordeals: []
   _hasVeilrot: 0
   _hasSanctum: 0

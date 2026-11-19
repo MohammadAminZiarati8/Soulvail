@@ -84,7 +84,60 @@ public sealed class SunscarTests
                 Assert.That(boss.Value, Is.EqualTo("boss.shardback"));
             }
         }
-        Assert.That(mode.ScriptedStages, Is.Empty);
+        Assert.That(mode.ScriptedStages.Select(script => script.Stage),
+            Is.EqualTo(Enumerable.Range(1, 30).Where(stage => stage % 5 != 0)));
+    }
+
+    [TestCase(1, 2, 5, 90)]
+    [TestCase(2, 2, 7, 135)]
+    [TestCase(3, 2, 9, 174)]
+    [TestCase(4, 2, 11, 234)]
+    [TestCase(6, 3, 12, 246)]
+    [TestCase(7, 3, 14, 312)]
+    [TestCase(8, 3, 16, 336)]
+    [TestCase(9, 3, 19, 408)]
+    [TestCase(11, 3, 18, 384)]
+    [TestCase(12, 3, 20, 432)]
+    [TestCase(13, 3, 21, 459)]
+    [TestCase(14, 3, 22, 491)]
+    [TestCase(16, 4, 22, 484)]
+    [TestCase(17, 4, 24, 538)]
+    [TestCase(18, 4, 24, 546)]
+    [TestCase(19, 4, 26, 587)]
+    [TestCase(21, 4, 26, 572)]
+    [TestCase(22, 4, 28, 634)]
+    [TestCase(23, 4, 30, 689)]
+    [TestCase(24, 4, 32, 737)]
+    [TestCase(26, 5, 32, 725)]
+    [TestCase(27, 5, 33, 755)]
+    [TestCase(28, 5, 34, 782)]
+    [TestCase(29, 5, 35, 800)]
+    public void Sunscar_ScriptedStage_MatchesWaveAndXpBudget(int stage, int waves, int enemies, int xp)
+    {
+        ModeSpec mode = Mode("Sunscar");
+        ContentCatalog catalog = Catalog(mode);
+        Assert.That(mode.TryGetScriptedStage(stage, out ScriptedStage script), Is.True);
+        Assert.That(script.WaveCount, Is.EqualTo(waves));
+        Assert.That(script.Spawns.Sum(spawn => spawn.Count), Is.EqualTo(enemies));
+        Assert.That(script.Spawns.GroupBy(spawn => spawn.Wave).Select(wave => wave.Sum(spawn => spawn.Count)),
+            Is.All.LessThanOrEqualTo(8));
+
+        float clearXp = 0f;
+        foreach (ScriptedSpawn spawn in script.Spawns)
+        {
+            Assert.That(mode.Roster.Any(entry => entry.SpecId == spawn.SpecId && entry.IntroducedAtStage <= stage),
+                Is.True, $"{spawn.SpecId} appears before its introduction.");
+            EnemySpec enemy = catalog.Enemy(spawn.SpecId);
+            float reward = enemy.XpValue;
+            if (enemy.Brood is BroodSpec brood)
+            {
+                reward += brood.Count * catalog.Enemy(brood.Child).XpValue;
+            }
+
+            clearXp += spawn.Count * reward;
+        }
+
+        Assert.That(clearXp, Is.EqualTo(xp));
     }
 
     [Test]
@@ -1097,35 +1150,35 @@ public sealed class SunscarTests
 
     [Test]
     public void Sunscar_Stage6_WavesClear() =>
-        AssertStageWavesClear(6, new[] { Scorpion, Beetle, Brood, Viper, Scorpling }, maxSeconds: 240, sidestepTells: true);
+        AssertStageWavesClear(6, new[] { Scorpion, Beetle, Viper },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true);
 
     [Test]
     public void Sunscar_Stage8_WavesClear() =>
-        AssertStageWavesClear(8, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Scorpling },
+        AssertStageWavesClear(8, new[] { Scorpion, Beetle, Viper, Jackal },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true);
 
     [Test]
     public void Sunscar_Stage9_WavesClear() =>
-        AssertStageWavesClear(9, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Scorpling },
+        AssertStageWavesClear(9, new[] { Scorpion, Beetle, Viper, Jackal, Glassback },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true);
 
     [Test]
     public void Sunscar_Stage11_WavesClear() =>
-        AssertStageWavesClear(11, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Scorpling },
+        AssertStageWavesClear(11, new[] { Scorpion, Beetle, Viper, Jackal, Antlion },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 11);
 
     [Test]
     public void Sunscar_Stage14_WavesClear() =>
-        AssertStageWavesClear(14, new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Scorpling },
+        AssertStageWavesClear(14, new[] { Scorpion, Beetle, Viper, Jackal, Glassback, Antlion, Priest },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1);
 
     [Test]
     public void Sunscar_Stage16_WavesClear()
     {
         RecordingEvents events = AssertStageWavesClear(16,
-            new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Scorpling },
-            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1, keepHeroAlive: true,
-            requireAllEnemies: false);
+            new[] { Scorpion, Beetle, Viper, Jackal, Glassback, Antlion, Priest, Cobra },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1, keepHeroAlive: true);
         Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Cobra));
     }
 
@@ -1133,9 +1186,8 @@ public sealed class SunscarTests
     public void Sunscar_Stage18_WavesClear()
     {
         RecordingEvents events = AssertStageWavesClear(18,
-            new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Scorpling },
-            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 2, keepHeroAlive: true,
-            requireAllEnemies: false);
+            new[] { Scorpion, Beetle, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller },
+            maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 2, keepHeroAlive: true);
         Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Caller));
     }
 
@@ -1143,9 +1195,9 @@ public sealed class SunscarTests
     public void Sunscar_Stage22_WavesClear()
     {
         RecordingEvents events = AssertStageWavesClear(22,
-            new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture, Scorpling },
+            new[] { Scorpion, Beetle, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture },
             maxSeconds: 300, sidestepTells: true, dodgeLandings: true, seed: 2, keepHeroAlive: true,
-            requireAllEnemies: false, spendRangerPoints: true);
+            spendRangerPoints: true);
         Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Vulture));
     }
 
@@ -1155,7 +1207,7 @@ public sealed class SunscarTests
     private static RecordingEvents AssertStageWavesClear(
         int stage, ContentId[] expectedEnemies, int maxSeconds,
         bool sidestepTells = false, bool dodgeLandings = false, int seed = 7, bool keepHeroAlive = false,
-        bool requireAllEnemies = true, bool spendRangerPoints = false)
+        bool spendRangerPoints = false)
     {
         const float frameTime = 1f / 32f;
         ModeSpec mode = Mode("Sunscar");
@@ -1318,10 +1370,10 @@ public sealed class SunscarTests
                 }
             }
 
-            Assert.That(events.Count<WaveStarted>(), Is.GreaterThan(0));
+            Assert.That(mode.TryGetScriptedStage(stage, out ScriptedStage script), Is.True);
+            Assert.That(events.Count<WaveStarted>(), Is.EqualTo(script.WaveCount));
             IEnumerable<ContentId> spawnedEnemies = events.Of<EnemySpawned>().Select(e => e.SpecId).Distinct();
-            Assert.That(spawnedEnemies,
-                requireAllEnemies ? Is.EquivalentTo(expectedEnemies) : Is.SubsetOf(expectedEnemies));
+            Assert.That(spawnedEnemies, Is.EquivalentTo(expectedEnemies));
             var survivors = events.Of<EnemySpawned>()
                 .Where(spawn => session.State.IsEnemyAlive(spawn.Id))
                 .Select(spawn => $"{spawn.SpecId} at {positions.GetValueOrDefault(spawn.Id, spawn.Position)}");

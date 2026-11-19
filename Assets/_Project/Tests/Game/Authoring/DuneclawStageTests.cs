@@ -155,7 +155,7 @@ public sealed class DuneclawStageTests
         ModeSpec mode = Catalog().Mode(Mode);
         Assert.That(mode.FinalStage, Is.EqualTo(30));
         Assert.That(mode.TryGetBossFor(6, out _), Is.False);
-        Assert.That(mode.TryGetScriptedStage(6, out _), Is.False);
+        Assert.That(mode.TryGetScriptedStage(6, out _), Is.True);
         Assert.That(fight.Events.Of<EnemySpawned>().Last().SpecId, Is.Not.EqualTo(Duneclaw));
     }
 

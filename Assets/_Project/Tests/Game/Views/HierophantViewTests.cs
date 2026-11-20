@@ -266,6 +266,30 @@ public sealed class HierophantViewTests
     }
 
     [Test]
+    public void Ward_FollowsItsEndpoints_AndClearsOnInterruptionAndPhase()
+    {
+        Place(Boss);
+        var tether = _floor.Find("Priest ward").GetComponent<LineRenderer>();
+        var priest = new Num.Vector3(-3f, 0f, 6f);
+        _events.Publish(new HierophantWard(Boss + 1, 9, true, priest));
+        Assert.That(tether.enabled, Is.False);
+        _events.Publish(new HierophantWard(Boss, 9, true, priest));
+        Assert.That(tether.enabled, Is.True);
+        Assert.That(tether.GetPosition(0), Is.EqualTo(new Vector3(-3f, 1.25f, 6f)));
+        _body.transform.position = Vector3.right;
+        _view.Step(0f);
+        Assert.That(tether.GetPosition(1), Is.EqualTo(new Vector3(1f, 1.8f, 0f)));
+        _events.Publish(new HierophantWard(Boss, 9, false, default));
+        Assert.That(tether.enabled, Is.False);
+        _events.Publish(new HierophantWard(Boss, 9, true, priest));
+        _events.Publish(new BossPhaseChanged(Boss, 1, 3));
+        Assert.That(tether.enabled, Is.False);
+        _events.Publish(new HierophantWard(Boss, 9, true, priest));
+        ReleaseBody();
+        Assert.That(tether.enabled, Is.False);
+    }
+
+    [Test]
     public void Lifecycle_ClearsAndRebinds()
     {
         Place(Boss);

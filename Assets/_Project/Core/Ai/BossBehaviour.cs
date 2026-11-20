@@ -163,6 +163,7 @@ public sealed class BossBehaviour : IEnemyBehaviour
 
         if (entered)
         {
+            (Inner as HierophantBehaviour)?.SuspendWard(ctx.Now, ctx.Events);
             if (Inner is IBossPhaseListener listener)
             {
                 listener.OnPhaseEntered(_phases.Current);

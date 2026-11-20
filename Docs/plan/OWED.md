@@ -904,3 +904,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [device] Start Sunscar stage 15 in portrait. Confirm the Hierophant towers over the Ranger, the staff swing reads inside the 120-degree warning, and the health bar clears the headdress.
 - [device] Kite along a wall and around cover through the final phase. Check that the locked Sun Seal is visible in the sandstorm and that each cast has a readable escape edge.
+
+- **SS-17f [device].** DT-01 Sunscar stage 15. Confirm the priest's tether and the auto-aim switch read in portrait, then tag the priest and use the five-second damage window.

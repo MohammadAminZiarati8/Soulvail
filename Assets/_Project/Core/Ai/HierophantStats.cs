@@ -18,4 +18,8 @@ public sealed class HierophantStats
     public Stat SealDamage { get; } = new(20f);
     public Stat SealRecoverySeconds { get; } = new(1.5f);
     public Stat SealPairGapSeconds { get; } = new(0.3f);
+    public Stat AddReplacementSeconds { get; } = new(18f);
+    public Stat AddBonus { get; } = new(0.25f);
+    public Stat WardDamageScale { get; } = new(0.5f);
+    public Stat WardBreakSeconds { get; } = new(5f);
 }

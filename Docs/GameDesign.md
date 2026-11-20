@@ -557,7 +557,7 @@ Owner choice, 2026-11-18: a giant glassback beetle after the Duneclaw. The timin
 
 A jackal high priest roughly 3.6 m tall with a stepped sandstone headdress, broad shoulders and
 a separate sun-disc staff. The player reads the line on the floor, crosses its edge, then plants and fires.
-Stage 14's priest introduces the target-priority problem that returns in the middle phase.
+Stage 14's priest introduces the target-priority problem that returns when the escort arrives.
 
 - **Staff sweep.** The Hierophant walks into 4 m range and draws the staff back over a locked
   120° sector. After a 1.0 s tell it sweeps once for 16 damage, then recovers for 1.25 s. Walk
@@ -569,12 +569,16 @@ Stage 14's priest introduces the target-priority problem that returns in the mid
   Outside the marked strip is safe. Weather remains cosmetic.
 - **Phases.** Open with a seal and alternate with the sweep. If the hero stays out of sweep reach
   for 2 s of pursuit, cast another seal. At 66% and 33%, the standard 1.5 s
-  invulnerable beat cancels the current cast and restarts with a seal. At 66% it summons one
-  ordinary Jackal Priest and one Jackal Slinger, both worth zero XP. The priest can mend the slinger
-  and the player's hits still interrupt it. Both adds are cleared on the 33% beat or boss death.
+  invulnerable beat cancels the current cast and restarts with a seal.
   Below 33%, every seal cast becomes a pair. After a 0.3 s gap, the second seal aims through the
   hero's new position, lights a different carving and gets its own full warning. The 1.5 s firing window
   follows the second impact. The boss is targetable and damageable outside phase beats.
+- **Escort and ward.** After the first two completed attacks and their recovery, summon a Jackal
+  Priest and Jackal Slinger. Both have 25% more HP, and the slinger deals 25% more damage.
+  A replacement pair arrives 18 s after the last add falls. Both grant zero XP and die with the
+  boss. The priest channels a visible tether that halves incoming boss damage and gives the priest
+  priority in auto-aim. A hit that damages the priest breaks the channel for 5 s. Phase beats drop
+  the ward and preserve the escort.
 - **Presentation.** Use a low scrape for the sweep and a rising stone chime for the seal. Show the
   full footprint from the first warning frame, use a stronger fill to show time to impact, then
   swap to a brief release effect on the damage tick. The seal's carving lights separately. These

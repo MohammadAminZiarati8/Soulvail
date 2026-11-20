@@ -43,6 +43,8 @@ namespace Soulvail.Game.Views
         private Mesh _warningMesh;
         private Mesh _fillMesh;
         private Mesh _releaseMesh;
+        private LineRenderer _ward;
+        private Vector3 _wardSource;
         private HierophantArmed _cast;
         private string _pose;
         private float _progress;
@@ -61,6 +63,7 @@ namespace Soulvail.Game.Views
                 events.Subscribe<HierophantArmed>(OnArmed),
                 events.Subscribe<HierophantTellProgress>(OnProgress),
                 events.Subscribe<HierophantImpact>(OnImpact),
+                events.Subscribe<HierophantWard>(OnWard),
                 events.Subscribe<BossPhaseChanged>(OnPhase),
                 events.Subscribe<EnemyDied>(OnDeath),
             };
@@ -85,6 +88,18 @@ namespace Soulvail.Game.Views
             _warning = CreateLayer("Warning", 0, out _warningMesh);
             _fill = CreateLayer("Progress", 1, out _fillMesh);
             _release = CreateLayer("Release", 2, out _releaseMesh);
+            var tether = new GameObject("Priest ward");
+            tether.transform.SetParent(_floor, false);
+            _ward = tether.AddComponent<LineRenderer>();
+            _ward.sharedMaterial = _footprintMaterial;
+            _ward.sortingOrder = 5;
+            _ward.shadowCastingMode = ShadowCastingMode.Off;
+            _ward.receiveShadows = false;
+            _ward.positionCount = 2;
+            _ward.widthMultiplier = 0.24f;
+            _ward.startColor = Palette.Vertex(new Color(1f, 0.73f, 0.24f));
+            _ward.endColor = Palette.Vertex(new Color(1f, 0.95f, 0.66f));
+            _ward.enabled = false;
 
             for (int i = 0; i < ArcSegments; i++)
             {
@@ -242,8 +257,29 @@ namespace Soulvail.Game.Views
             if (IsMine(evt.EnemyId))
             {
                 ClearAttack();
+                if (_ward != null)
+                    _ward.enabled = false;
                 Play("Idle");
             }
+        }
+
+        private void OnWard(HierophantWard evt)
+        {
+            if (!IsMine(evt.BossId) || _ward == null)
+                return;
+
+            _ward.enabled = evt.Active;
+            if (!evt.Active)
+                return;
+
+            _wardSource = evt.PriestPosition.ToUnity() + Vector3.up * 1.25f;
+            UpdateWard();
+        }
+
+        private void UpdateWard()
+        {
+            _ward.SetPosition(0, _wardSource);
+            _ward.SetPosition(1, transform.position + Vector3.up * 1.8f);
         }
 
         private void OnDeath(EnemyDied evt)
@@ -260,6 +296,9 @@ namespace Soulvail.Game.Views
         {
             if (_body == null || !IsMine(_body.Id) || !(dt >= 0f) || !float.IsFinite(dt))
                 return;
+
+            if (_ward != null && _ward.enabled)
+                UpdateWard();
 
             _recovery = Mathf.Max(0f, _recovery - dt);
             if (_flash > 0f)
@@ -328,7 +367,10 @@ namespace Soulvail.Game.Views
         {
             ClearAttack();
             if (_floor != null)
+            {
+                _ward.enabled = false;
                 _floor.gameObject.SetActive(false);
+            }
             _dead = false;
             Play("Idle");
         }

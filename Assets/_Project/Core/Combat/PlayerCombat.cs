@@ -2642,7 +2642,8 @@ public sealed class PlayerCombat
                 agent.Spec.TargetPriority,
                 agent.Spec.IsElite,
                 agent.IsAlive && agent.IsVulnerable,
-                agent.Health.Current);
+                agent.Health.Current,
+                agent.IsWarding);
         }
 
         return count;

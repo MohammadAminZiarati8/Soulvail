@@ -58,6 +58,7 @@ public readonly struct TargetCandidate
     /// for the finisher bonus.
     /// </summary>
     public readonly float Hp;
+    public readonly bool IsPriorityTarget;
 
     /// <param name="id">The enemy's run-stable id.</param>
     /// <param name="distance">Metres from the player.</param>
@@ -65,7 +66,9 @@ public readonly struct TargetCandidate
     /// <param name="isElite">Whether it is an Elite.</param>
     /// <param name="isVulnerable">Whether damage can land on it right now.</param>
     /// <param name="hp">Effective hit points remaining.</param>
-    public TargetCandidate(int id, float distance, int priority, bool isElite, bool isVulnerable, float hp)
+    /// <param name="isPriorityTarget">Whether the enemy is actively channeling a boss ward.</param>
+    public TargetCandidate(int id, float distance, int priority, bool isElite, bool isVulnerable, float hp,
+        bool isPriorityTarget = false)
     {
         Id = id;
         Distance = distance;
@@ -73,5 +76,6 @@ public readonly struct TargetCandidate
         IsElite = isElite;
         IsVulnerable = isVulnerable;
         Hp = hp;
+        IsPriorityTarget = isPriorityTarget;
     }
 }

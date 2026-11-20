@@ -415,16 +415,32 @@ public sealed class EnemySystem
     /// <exception cref="InvalidOperationException">
     /// The registry is full at its capacity. The caller chooses which enemies matter (GD §11).
     /// </exception>
-    public EnemyAgent Spawn(ContentId specId, Vector3 position)
+    public EnemyAgent Spawn(ContentId specId, Vector3 position) =>
+        Spawn(specId, position, isSummon: false);
+
+    private EnemyAgent Spawn(ContentId specId, Vector3 position, bool isSummon,
+        HierophantBehaviour escortOwner = null, float hpBonus = 0f, float damageBonus = 0f)
     {
         EnemySpec spec = _catalog.Enemy(specId);
 
         EnemyAgent agent = Registry.Spawn(spec, position);
+        agent.PaysXp = !isSummon;
+        agent.IsSummon = isSummon;
+        agent.EscortOwner = escortOwner;
 
         // The registry has just wiped and re-based all three of this agent's stats
         // (EnemyAgent.Initialise, ledger row 2), so this is applying depth to an archetype's
         // authored numbers and never on top of a previous life's.
         _scaling.Apply(agent, _depth);
+        if (hpBonus > 0f)
+        {
+            agent.Health.MaxHp.Add(new Modifier(ModifierKind.PercentMult, hpBonus, escortOwner));
+            agent.Health.Reset();
+        }
+        if (damageBonus > 0f)
+        {
+            agent.ContactDamage.Add(new Modifier(ModifierKind.PercentMult, damageBonus, escortOwner));
+        }
         // Scaling refills health and clears its external flag. Preserve the spawn stance.
         if (IsOutOfReach(agent))
         {
@@ -471,15 +487,12 @@ public sealed class EnemySystem
     /// </summary>
     /// <exception cref="KeyNotFoundException">As <see cref="Spawn"/>.</exception>
     /// <exception cref="InvalidOperationException">As <see cref="Spawn"/>.</exception>
-    public EnemyAgent SpawnSummon(ContentId specId, Vector3 position)
-    {
-        EnemyAgent agent = Spawn(specId, position);
+    public EnemyAgent SpawnSummon(ContentId specId, Vector3 position) =>
+        Spawn(specId, position, isSummon: true);
 
-        agent.PaysXp = false;
-        agent.IsSummon = true;
-
-        return agent;
-    }
+    internal EnemyAgent SpawnEscort(ContentId specId, Vector3 position, HierophantBehaviour owner,
+        float hpBonus, float damageBonus) =>
+        Spawn(specId, position, isSummon: true, owner, hpBonus, damageBonus);
 
     /// <summary>The authored boss data used by the director before spawning its body.</summary>
     internal BossSpec Boss(ContentId bossId) => _catalog.Boss(bossId);
@@ -622,6 +635,10 @@ public sealed class EnemySystem
     {
         if (Registry.TryGet(id, out EnemyAgent agent))
         {
+            if (agent.Behaviour is BossBehaviour { Inner: HierophantBehaviour hierophant })
+                hierophant.SuspendWard(hierophant.LastTickTime, _events);
+            agent.EscortOwner?.OnEscortDespawn(id, Registry, _events);
+
             if (agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
             {
                 priest.LoseMend();
@@ -987,7 +1004,10 @@ public sealed class EnemySystem
             // A boss wraps its fighting behaviour. Its phase beat owns the same external flag,
             // so only bypass the Warlord's guard while the wrapper is outside that beat.
             bool ignoreGuard = pierceGuard && FindGuard(agent) is not null;
-            result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value, now, ignoreGuard);
+            float wardScale = agent.Behaviour is BossBehaviour { Inner: HierophantBehaviour hierophant }
+                ? hierophant.WardDamageScale(Registry)
+                : 1f;
+            result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value * wardScale, now, ignoreGuard);
         }
 
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future
@@ -1001,6 +1021,13 @@ public sealed class EnemySystem
         if (result.Blocked && heroPosition is Vector3 landing && agent.Behaviour is ChaserBehaviour { IsShining: true } chaser)
         {
             chaser.QueueReflection(now, landing);
+        }
+
+        if (result.ToHp > 0f)
+        {
+            agent.EscortOwner?.OnEscortHit(enemyId, result.Killed, now, Registry, _events);
+            if (result.Killed && agent.Behaviour is BossBehaviour { Inner: HierophantBehaviour deadHierophant })
+                deadHierophant.SuspendWard(now, _events);
         }
 
         _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed, result.Blocked));
@@ -1460,6 +1487,12 @@ public sealed class EnemySystem
                     ctx.Intents.EnemyMove(new EnemyMoveIntent(agent.Id, Vector3.Zero, Vector2.Zero));
                 }
 
+                continue;
+            }
+
+            if (agent.IsWarding)
+            {
+                ctx.Intents.EnemyMove(new EnemyMoveIntent(agent.Id, Vector3.Zero, Vector2.Zero));
                 continue;
             }
 

@@ -243,6 +243,9 @@ public sealed class EnemyAgent
     /// </summary>
     public bool IsSummon { get; internal set; }
 
+    internal HierophantBehaviour EscortOwner { get; set; }
+    internal bool IsWarding => EscortOwner?.IsWardPriest(Id) == true;
+
     /// <summary>
     /// A stalker gone hidden: no auto-aim, skill or focus selects it, though anything that reaches it
     /// still hurts it (JG-22a rule 5). False on every other kind and on the dead.
@@ -270,6 +273,7 @@ public sealed class EnemyAgent
         IsVulnerable = true;
         PaysXp = true;
         IsSummon = false;
+        EscortOwner = null;
         IsHidden = false;
         RevealedUntil = float.NegativeInfinity;
 

@@ -24,6 +24,8 @@ public sealed class HierophantBehaviourTests
     private HierophantBehaviour _boss;
     private HierophantStats _stats;
     private float _now;
+    private readonly ContentId _priest = new("enemy.jackal-priest");
+    private readonly ContentId _slinger = new("enemy.jackal");
 
     [SetUp]
     public void SetUp()
@@ -35,7 +37,9 @@ public sealed class HierophantBehaviourTests
         _player = new PlayerCombat(character, _events, _intents, 8);
         var body = new EnemySpec(new ContentId("enemy.hierophant"), new LocKey("enemy.hierophant.name"),
             500f, 1.8f, 8, 40, 300f, false, 12f, 3.2f, 1f, 0.8f, 40f, EnemyBehaviourKind.Static);
-        _enemies = new EnemySystem(new ContentCatalog(new[] { character }, new[] { body }), _events,
+        var priest = AddSpec(_priest);
+        var slinger = AddSpec(_slinger);
+        _enemies = new EnemySystem(new ContentCatalog(new[] { character }, new[] { body, priest, slinger }), _events,
             new FixedRandom(0.5f), new DepthScaling(Scalings.Design()), 8);
         _agent = _enemies.Registry.Spawn(body, Vector3.Zero);
         _stats = new HierophantStats();
@@ -323,10 +327,57 @@ public sealed class HierophantBehaviourTests
     }
 
     [Test]
+    public void Escort_WaitsForOpeningAndBothSlots_ThenReplacesOnlyAfterLastLoss()
+    {
+        EnemyAgent regularPriest = _enemies.Spawn(_priest, Vector3.Zero);
+        EnemyAgent regularSlinger = _enemies.Spawn(_slinger, Vector3.Zero);
+        float regularSlingerHp = regularSlinger.Health.Current;
+        float regularSlingerDamage = regularSlinger.ContactDamage.Value;
+        for (int i = 0; i < 4; i++)
+            _enemies.Spawn(_slinger, Vector3.Zero);
+
+        Place(0f, 2f);
+        Tick(0f);
+        Tick(1.3f);
+        Tick(1.5f);
+        Tick(1f);
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(7));
+        Tick(1.25f);
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(7), "One free slot cannot produce half a pair.");
+        _enemies.Despawn(regularSlinger.Id);
+        Tick(0f);
+
+        EnemyAgent priest = _enemies.Registry.Alive[^2];
+        EnemyAgent slinger = _enemies.Registry.Alive[^1];
+        Assert.That((priest.Spec.Id, slinger.Spec.Id), Is.EqualTo((_priest, _slinger)));
+        Assert.That(priest.Health.Current, Is.EqualTo(regularPriest.Health.MaxHp.Value * 1.25f).Within(0.01f));
+        Assert.That(slinger.Health.Current, Is.EqualTo(regularSlingerHp * 1.25f).Within(0.01f));
+        Assert.That(slinger.ContactDamage.Value, Is.EqualTo(regularSlingerDamage * 1.25f).Within(0.01f));
+        Assert.That(priest.IsSummon && slinger.IsSummon, Is.True);
+        _enemies.ApplyDamage(priest.Id, 1000f, _now, _player);
+        Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.False);
+        _enemies.Despawn(priest.Id);
+        Tick(20f);
+        Assert.That(_enemies.Registry.Alive[^1], Is.SameAs(slinger), "One survivor holds the pair slot.");
+        _enemies.ApplyDamage(slinger.Id, 1000f, _now, _player);
+        _enemies.Despawn(slinger.Id);
+        int before = _events.Count<EnemySpawned>();
+        Tick(17.9f);
+        Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(before));
+        Tick(0.2f);
+        Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(before + 2));
+        Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.True);
+        _enemies.Despawn(_enemies.Registry.Alive[^2].Id);
+        Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.False);
+    }
+
+    [Test]
     public void Tick_AllocatesNothing()
     {
         var silent = new SilentEvents();
         var player = new PlayerCombat(ShardbackBehaviourTests.Character(), silent, _intents, 8);
+        for (int i = 0; i < 6; i++)
+            _enemies.Spawn(_slinger, Vector3.Zero);
         AllocationAssert.None(() =>
         {
             _intents.Clear();
@@ -342,6 +393,10 @@ public sealed class HierophantBehaviourTests
             }
         }, 100);
     }
+
+    private static EnemySpec AddSpec(ContentId id) =>
+        new(id, new LocKey(id.Value + ".name"), 100f, 2f, 3, 10, 20f, false,
+            12f, 3.2f, 1f, 0.8f, 40f, EnemyBehaviourKind.Static);
 
     private HierophantArmed LastArm() => _events.Of<HierophantArmed>()[^1];
 

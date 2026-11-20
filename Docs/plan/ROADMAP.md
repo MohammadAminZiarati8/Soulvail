@@ -295,6 +295,8 @@ SS-16d verified locked tells and broke and restored authored cover with the real
 - [x] **SS-17c** — Stage 15 registration, priest and slinger, HP probe and portal (S)
 - [x] **SS-17d** — Import the Hierophant body and one reusable sandstone seal (M)
 - [x] **SS-17e** — Enlarge the Hierophant and aim Sun Seals at the player (M)
+- [x] **SS-17f** — Recurring Jackals and interruptible ward (M)
+- [ ] **SS-17g** — [Sun Seal sandstone eruption](tasks/SS-17g.md) (S)
 
 Sunscar's later bosses are stages 20, 25 and 30, one at a time on the owner's go. Balance target: level 30 after stage 24, with at most one level earned per boss. The regular waves set the full-clear XP budgets. The XP curve and boss rewards need a separate tuning pass to reach that target.
 

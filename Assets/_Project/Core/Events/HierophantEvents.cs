@@ -101,3 +101,19 @@ public readonly struct HierophantImpact
         RecoverySeconds = recoverySeconds;
     }
 }
+
+public readonly struct HierophantWard
+{
+    public readonly int BossId;
+    public readonly int PriestId;
+    public readonly bool Active;
+    public readonly Vector3 PriestPosition;
+
+    public HierophantWard(int bossId, int priestId, bool active, Vector3 priestPosition)
+    {
+        BossId = bossId;
+        PriestId = priestId;
+        Active = active;
+        PriestPosition = priestPosition;
+    }
+}

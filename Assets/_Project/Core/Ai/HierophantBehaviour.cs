@@ -1,16 +1,29 @@
 using System;
 using System.Numerics;
 using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
 using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
 using Soulvail.Core.Run;
 
 namespace Soulvail.Core.Ai;
 
-/// <summary>Locked ground attacks. The boss wrapper owns invulnerability beats and summons.</summary>
+/// <summary>Locked ground attacks and the Hierophant's recurring Jackal escort.</summary>
 public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
 {
     private readonly EnemyAgent _agent;
     private readonly HierophantStats _stats;
+    private readonly ContentId _priestSpec = new("enemy.jackal-priest");
+    private readonly ContentId _slingerSpec = new("enemy.jackal");
+    private int _openingAttacksLeft = 2;
+    private bool _openingComplete;
+    private int _priestId;
+    private int _slingerId;
+    private float _replacementAt;
+    private float _wardReadyAt;
+    private float _now;
+    private bool _wardActive;
+    private Vector3 _wardPosition;
     private bool _telling;
     private int _phase;
     private HierophantMove _next = HierophantMove.SunSeal;
@@ -32,6 +45,7 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
 
     public void Tick(in EnemyTickContext ctx)
     {
+        _now = ctx.Now;
         if (_sealHalfWidth == 0f)
             PlaceSeals(ctx);
 
@@ -49,11 +63,108 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
         }
         else if (_remaining == 0f)
         {
+            _openingComplete = _openingAttacksLeft == 0;
             velocity = Prepare(ctx, dt, available);
         }
 
+        TickEscort(ctx);
         ctx.Intents.EnemyMove(new EnemyMoveIntent(_agent.Id, velocity, _facing));
     }
+
+    internal bool IsWardPriest(int id) => _wardActive && _agent.IsAlive && id == _priestId;
+    internal float LastTickTime => _now;
+
+    internal float WardDamageScale(EnemyRegistry registry) =>
+        _wardActive && IsLiving(registry, _priestId) ? _stats.WardDamageScale.Value : 1f;
+
+    internal void SuspendWard(float now, IDomainEvents events)
+    {
+        if (!_wardActive)
+            return;
+
+        _wardActive = false;
+        _wardReadyAt = now + _stats.WardBreakSeconds.Value;
+        events.Publish(new HierophantWard(_agent.Id, _priestId, false, default));
+    }
+
+    internal void OnEscortHit(int id, bool killed, float now, EnemyRegistry registry, IDomainEvents events)
+    {
+        if (id == _priestId)
+            SuspendWard(now, events);
+        if (killed)
+            OnEscortLost(id, now, registry, events);
+    }
+
+    internal void OnEscortDespawn(int id, EnemyRegistry registry, IDomainEvents events) =>
+        OnEscortLost(id, _now, registry, events);
+
+    private void OnEscortLost(int id, float now, EnemyRegistry registry, IDomainEvents events)
+    {
+        if (id == _priestId)
+        {
+            SuspendWard(now, events);
+            _priestId = 0;
+        }
+        else if (id == _slingerId)
+        {
+            _slingerId = 0;
+        }
+        else
+        {
+            return;
+        }
+
+        if (!IsLiving(registry, _priestId) && !IsLiving(registry, _slingerId))
+            _replacementAt = now + _stats.AddReplacementSeconds.Value;
+    }
+
+    private void TickEscort(in EnemyTickContext ctx)
+    {
+        EnemyRegistry registry = ctx.Enemies.Registry;
+        if (_openingComplete && ctx.Now >= _replacementAt
+            && !IsLiving(registry, _priestId) && !IsLiving(registry, _slingerId)
+            && registry.Capacity - registry.AliveCount >= 2)
+        {
+            Vector3 offset = new(_facing.Y * BossBehaviour.AddRingRadius, 0f,
+                -_facing.X * BossBehaviour.AddRingRadius);
+            _priestId = ctx.Enemies.SpawnEscort(_priestSpec, EscortPosition(_agent.Position + offset),
+                this, _stats.AddBonus.Value, 0f).Id;
+            _slingerId = ctx.Enemies.SpawnEscort(_slingerSpec, EscortPosition(_agent.Position - offset),
+                this, _stats.AddBonus.Value, _stats.AddBonus.Value).Id;
+        }
+
+        if (!registry.TryGet(_priestId, out EnemyAgent priest) || !priest.IsAlive || priest.CrowdControl.IsStunned)
+        {
+            SuspendWard(ctx.Now, ctx.Events);
+            return;
+        }
+
+        if (_wardActive)
+        {
+            if (_wardPosition == priest.Position)
+                return;
+        }
+        else
+        {
+            if (ctx.Now < _wardReadyAt)
+                return;
+
+            (priest.Behaviour as ShamanBehaviour)?.LoseMend();
+            _wardActive = true;
+        }
+
+        _wardPosition = priest.Position;
+        ctx.Events.Publish(new HierophantWard(_agent.Id, _priestId, true, _wardPosition));
+    }
+
+    private Vector3 EscortPosition(Vector3 position)
+    {
+        float edge = _stats.DunesHalfExtent.Value - 1f;
+        return new Vector3(Math.Clamp(position.X, -edge, edge), position.Y, Math.Clamp(position.Z, -edge, edge));
+    }
+
+    private static bool IsLiving(EnemyRegistry registry, int id) =>
+        registry.TryGet(id, out EnemyAgent agent) && agent.IsAlive;
 
     private void PlaceSeals(in EnemyTickContext ctx)
     {
@@ -195,6 +306,8 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
 
     private void Impact(in EnemyTickContext ctx)
     {
+        if (_openingAttacksLeft > 0)
+            _openingAttacksLeft--;
         EnemyBlackboard board = _agent.Blackboard;
         bool seal = _armed.Move == HierophantMove.SunSeal;
         var offset = new Vector2(board.PlayerPosition.X - _armed.Origin.X,
@@ -256,6 +369,11 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
     public void Reset()
     {
         OnPhaseEntered(0);
+        _openingAttacksLeft = 2;
+        _openingComplete = false;
+        _priestId = _slingerId = 0;
+        _replacementAt = _wardReadyAt = _now = 0f;
+        _wardActive = false;
         _sealHalfWidth = 0f;
         _facing = Vector2.UnitY;
     }

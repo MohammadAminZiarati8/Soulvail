@@ -68,6 +68,9 @@ public sealed class TargetScorer
     /// </param>
     public float Score(in TargetCandidate c, bool isCurrent, float dpsOneSecond)
     {
+        if (c.IsPriorityTarget)
+            return float.PositiveInfinity;
+
         // Priority leads, and the distance term is bounded by the weight, so an archetype two
         // points above another cannot be out-scored on closeness alone. That ordering is the
         // design (CC §3.2), not an accident of the arithmetic.

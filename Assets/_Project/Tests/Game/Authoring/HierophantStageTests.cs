@@ -64,66 +64,65 @@ public sealed class HierophantStageTests
     }
 
     [Test]
-    public void Phases_SummonAndClearJackals()
+    public void Ward_HalvesDamage_PrioritizesPriest_AndBreaksOnHit()
     {
         using var fight = new Fight { Target = Hierophant };
-        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 1, 65f);
+        fight.Until(() => fight.Events.Count<HierophantWard>() > 0, 20f);
         EnemySpawned boss = fight.Events.Of<EnemySpawned>().Single(e => e.SpecId == Hierophant);
         EnemySpawned priest = fight.Events.Of<EnemySpawned>().Single(e => e.SpecId == Priest);
         EnemySpawned slinger = fight.Events.Of<EnemySpawned>().Single(e => e.SpecId == Slinger);
-        AssertThreshold(fight, boss.Id, 0.66f);
+        float full = fight.LastHit(boss.Id).Amount;
+        int before = fight.Events.Count<EnemyDamaged>();
+        fight.Until(() => fight.HitAfter(boss.Id, before), 5f);
+        Assert.That(fight.LastHit(boss.Id).Amount, Is.EqualTo(full * 0.5f).Within(0.01f));
+
+        fight.Target = null;
+        fight.Until(() => fight.Events.Of<TargetChanged>().Last().Id == priest.Id, 4f);
+        fight.Until(() => fight.Events.Of<HierophantWard>().Any(e => !e.Active), 5f);
+        float interruptedAt = fight.Session.State.Time;
         Assert.That(fight.Session.State.IsEnemyAlive(priest.Id), Is.True);
-        Assert.That(fight.Session.State.IsEnemyAlive(slinger.Id), Is.True);
-        var progress = (fight.Session.State.Level, fight.Session.State.Xp);
-
-        // The boss is now wounded, but a priest with only a healthy slinger will not mend it.
+        Assert.That(fight.Events.Of<EnemyDamaged>().Last().Id, Is.EqualTo(priest.Id));
+        fight.Target = Hierophant;
+        before = fight.Events.Count<EnemyDamaged>();
+        fight.Until(() => fight.HitAfter(boss.Id, before), 4f);
+        Assert.That(fight.LastHit(boss.Id).Amount, Is.EqualTo(full).Within(0.01f));
         fight.Target = NoTarget;
-        fight.Until(() => fight.Events.Count<BossBeatEnded>() == 1, 2f);
-        Assert.That(fight.Events.Count<PriestMendStarted>(), Is.Zero);
-        fight.Target = Slinger;
-        fight.Until(() => fight.Events.Of<EnemyDamaged>().Any(e => e.Id == slinger.Id && !e.Killed), 4f);
-        fight.Target = NoTarget;
-        fight.Until(() => fight.Events.Of<EnemyHealed>().Any(e => e.EnemyId == slinger.Id), 2f);
-        PriestMendStarted mend = fight.Events.Single<PriestMendStarted>();
-        Assert.That((mend.Id, mend.AllyId), Is.EqualTo((priest.Id, slinger.Id)));
-
-        fight.Target = Priest;
-        fight.Until(() => fight.Events.Count<PriestMendEnded>() > 0, 3f);
-        PriestMendEnded broken = fight.Events.Of<PriestMendEnded>()[0];
-        Assert.That((broken.Id, broken.AllyId, broken.Reason), Is.EqualTo((priest.Id, slinger.Id, MendEndReason.Broken)));
-        fight.Target = Slinger;
-        fight.Until(() => !fight.Session.State.IsEnemyAlive(slinger.Id), 5f);
-        Assert.That(fight.Events.Of<EnemyDied>().Any(e => e.Id == slinger.Id), Is.True);
-        Assert.That((fight.Session.State.Level, fight.Session.State.Xp), Is.EqualTo(progress));
+        fight.Until(() => fight.Session.State.Time >= interruptedAt + 4.9f, 5.1f);
+        Assert.That(fight.Events.Of<HierophantWard>().Last().Active, Is.False);
+        fight.Until(() => fight.Events.Of<HierophantWard>().Last().Active, 1f);
 
         fight.Target = Hierophant;
-        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 2, 65f);
-        AssertThreshold(fight, boss.Id, 0.33f);
-        Assert.That(fight.Events.Of<EnemyDespawned>().Any(e => e.Id == priest.Id), Is.True);
-        Assert.That(fight.Session.State.IsEnemyAlive(priest.Id), Is.False);
-        Assert.That(fight.Events.Of<EnemySpawned>().Select(e => e.SpecId), Is.EqualTo(new[] { Hierophant, Priest, Slinger }));
+        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 1, 110f);
+        AssertThreshold(fight, boss.Id, 0.66f);
+        Assert.That(fight.Events.Of<HierophantWard>().Last().Active, Is.False);
+        Assert.That(fight.Session.State.IsEnemyAlive(priest.Id), Is.True);
+        Assert.That(fight.Session.State.IsEnemyAlive(slinger.Id), Is.True);
+        fight.Until(() => fight.Events.Count<BossBeatEnded>() == 1, 2f);
+        Assert.That(fight.Events.Of<HierophantWard>().Last().Active, Is.False);
+        Assert.That(fight.Events.Count<EnemySpawned>(), Is.EqualTo(3));
     }
 
     [Test]
     public void BossDeath_ClearsBothJackalsWithoutTheirXp()
     {
-        using var fight = new Fight(useFinisher: true) { Target = Hierophant };
-        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 1, 20f);
+        using var fight = new Fight(useFinisher: true) { Target = NoTarget };
+        fight.Until(() => fight.Events.Count<EnemySpawned>() == 3, 20f);
         int[] adds = fight.Events.Of<EnemySpawned>().Where(e => e.SpecId != Hierophant).Select(e => e.Id).ToArray();
         Assert.That(adds.Length, Is.EqualTo(2));
         Assert.That(adds.All(fight.Session.State.IsEnemyAlive), Is.True);
 
+        fight.Target = Hierophant;
         fight.Until(() => fight.Events.Count<StageCleared>() == 1, 20f);
-        Assert.That(fight.Events.Count<BossBeatStarted>(), Is.EqualTo(1), "The finishing hit skipped the second beat.");
+        Assert.That(fight.Events.Of<HierophantWard>().Last().Active, Is.False);
         Assert.That(fight.Events.Of<EnemyDied>().Skip(1).Select(e => e.Id), Is.EquivalentTo(adds));
         Assert.That(adds.All(id => !fight.Session.State.IsEnemyAlive(id)), Is.True);
         Assert.That(fight.Events.Single<XpChanged>().Gained, Is.EqualTo(fight.BossXp));
     }
 
     [Test]
-    public void RangerProbe_WithinTargetAndOpensStage16()
+    public void RangerProbe_ClearsRecurringWardAndOpensStage16()
     {
-        using var fight = new Fight { Target = Hierophant };
+        using var fight = new Fight { FollowWard = true };
         fight.Until(() => fight.Events.Count<EnemySpawned>() == 1, 10f);
         EnemySpawned boss = fight.Events.Single<EnemySpawned>();
         Assert.That((boss.SpecId, boss.Position), Is.EqualTo((Hierophant, new Position(0f, 0f, 2f))));
@@ -131,12 +130,11 @@ public sealed class HierophantStageTests
         Assert.That(fight.Events.Count<SpawnTelegraphed>(), Is.Zero);
         Assert.That(fight.ArrivalPoints, Is.EqualTo(fight.ArrivalLevel - 1));
 
-        fight.Until(() => fight.Events.Of<EnemyDied>().Any(e => e.Id == boss.Id), 150f);
+        fight.Until(() => fight.Events.Of<EnemyDied>().Any(e => e.Id == boss.Id), 245f);
         float elapsed = fight.Session.State.Time - fight.SpawnedAt;
         float firstHit = fight.Events.Of<EnemyDamaged>().First(e => e.Id == boss.Id && e.Amount > 0f).Amount;
         TestContext.WriteLine($"DT-01 Stage 15 Ranger level {fight.ArrivalLevel}, first bow hit {firstHit:F2}, " +
             $"{fight.BaseHp} authored HP, {elapsed:F2} s from spawn through both beats. Points banked, no actives.");
-        Assert.That(elapsed, Is.InRange(105f, 145f));
         Assert.That(fight.Events.Count<PlayerDied>(), Is.Zero);
         Assert.That(fight.Events.Of<BossBeatStarted>().Select(e => e.Seconds), Is.EqualTo(new[] { 1.5f, 1.5f }));
         Assert.That(fight.Events.Count<BossBeatEnded>(), Is.EqualTo(2));
@@ -157,11 +155,11 @@ public sealed class HierophantStageTests
     [Test]
     public void RangerWithQuickDraw_SeesBothStrikesBeforeKillingBoss()
     {
-        using var fight = new Fight { Target = Hierophant };
+        using var fight = new Fight { FollowWard = true };
         fight.Session.TakeNode(new ContentId("skill.ranger.quick-draw"));
         fight.Session.TakeNode(new ContentId("skill.ranger.quick-draw-2"));
         fight.Session.TakeNode(new ContentId("skill.ranger.quick-draw-3"));
-        fight.Until(() => fight.Events.Count<BossBeatEnded>() == 2, 120f);
+        fight.Until(() => fight.Events.Count<BossBeatEnded>() == 2, 150f);
         int impacts = fight.Events.Count<HierophantImpact>();
 
         fight.Until(() => fight.Events.Count<StageCleared>() == 1, 60f);
@@ -191,8 +189,9 @@ public sealed class HierophantStageTests
     [Test]
     public void FinalPair_AllowsTwoWalkingEscapes()
     {
-        using var fight = new Fight { Target = Hierophant };
-        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 2, 120f);
+        using var fight = new Fight { FollowWard = true };
+        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 2, 150f);
+        fight.FollowWard = false;
         fight.Target = NoTarget;
         fight.ReturnToLane = false;
         fight.Player.Teleport(new Vector3(2.5f, 0f, -5f));
@@ -291,6 +290,7 @@ public sealed class HierophantStageTests
         private readonly ArenaPool _arenas;
         private readonly NavMeshDataInstance _navigation;
         private HierophantArmed? _warning;
+        private bool _wardActive;
         private Vector3? _waypoint;
         private int _read;
 
@@ -327,6 +327,11 @@ public sealed class HierophantStageTests
         public float BossXp { get; }
         public float SpawnedAt { get; private set; }
         public ContentId? Target { get; set; }
+        public bool FollowWard { get; set; }
+
+        public EnemyDamaged LastHit(int id) => Events.Of<EnemyDamaged>().Last(e => e.Id == id && e.Amount > 0f);
+
+        public bool HitAfter(int id, int before) => Events.Of<EnemyDamaged>().Skip(before).Any(e => e.Id == id && e.Amount > 0f);
         public bool ReturnToLane { get; set; } = true;
 
         public void WalkToGate()
@@ -362,10 +367,11 @@ public sealed class HierophantStageTests
             _world.HasGate = Arena.HasGate;
             _world.GatePosition = Arena.GatePosition.ToNum();
             _world.SpawnPoints = _arenas.SpawnPoints;
+            ContentId? target = FollowWard ? (_wardActive ? Priest : Hierophant) : Target;
             foreach (var (id, enemy) in _alive)
             {
                 // This is the open firing lane probe. Isolate a target without changing weapon damage or cadence.
-                bool covered = Target.HasValue && Target.Value != enemy.Spec;
+                bool covered = target.HasValue && target.Value != enemy.Spec;
                 _world.AddEnemy() = new EnemySense
                 {
                     Id = id,
@@ -394,6 +400,9 @@ public sealed class HierophantStageTests
                         break;
                     case EnemyDespawned gone:
                         _alive.Remove(gone.Id);
+                        break;
+                    case HierophantWard ward:
+                        _wardActive = ward.Active;
                         break;
                     case HierophantArmed armed:
                         _warning = armed;

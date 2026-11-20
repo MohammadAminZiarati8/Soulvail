@@ -666,8 +666,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.HierophantView
   _animator: {fileID: 7338724975313132970}
   _sweepMotion: {fileID: -8653722278162725603, guid: 04ea02405017b9b44b21371ebddc4f86, type: 3}
-  _raiseMotion: {fileID: 7719806121101089419, guid: 6f168bb2e71ad4441933605b46f1d34e, type: 3}
-  _sealReleaseMotion: {fileID: 4467039709948147482, guid: 6f168bb2e71ad4441933605b46f1d34e, type: 3}
+  _sealMotion: {fileID: 4043807988371827432, guid: 04ea02405017b9b44b21371ebddc4f86, type: 3}
   _footprintMaterial: {fileID: 2100000, guid: 8c98b626af6463147882735e2c1c412a, type: 2}
   _sealPrefab: {fileID: 4587443918365681884, guid: 05edf1616aa0aa34b9f0de5a104e51bd, type: 3}
   _audio: {fileID: 5006332538350323731}

@@ -16,11 +16,12 @@ namespace Soulvail.Game.Views
         private const int ArcSegments = 64;
         private const float ReleaseSeconds = 0.24f;
         private const float SweepStrike = 0.35f;
+        // The imported 32-frame staff chop drops through its impact pose at frame 18.
+        private const float SealStrike = 18f / 32f;
 
         [SerializeField] private Animator _animator;
         [SerializeField] private AnimationClip _sweepMotion;
-        [SerializeField] private AnimationClip _raiseMotion;
-        [SerializeField] private AnimationClip _sealReleaseMotion;
+        [SerializeField] private AnimationClip _sealMotion;
         [SerializeField] private Material _footprintMaterial;
         [SerializeField] private GameObject _sealPrefab;
         [SerializeField] private AudioSource _audio;
@@ -32,6 +33,7 @@ namespace Soulvail.Game.Views
         private readonly Color[] _colors = new Color[ArcSegments + 2];
         private readonly int[] _sector = new int[ArcSegments * 3];
         private readonly int[] _rectangle = { 0, 1, 2, 2, 1, 3 };
+        private readonly int[] _outlineTriangles = new int[48];
 
         private IDisposable[] _subscriptions;
         private EnemyView _body;
@@ -39,10 +41,13 @@ namespace Soulvail.Game.Views
         private Transform _footprint;
         private MeshRenderer _warning;
         private MeshRenderer _fill;
+        private MeshRenderer _outline;
         private MeshRenderer _release;
         private Mesh _warningMesh;
         private Mesh _fillMesh;
+        private Mesh _outlineMesh;
         private Mesh _releaseMesh;
+        private SunSealEruption _eruption;
         private LineRenderer _ward;
         private Vector3 _wardSource;
         private HierophantArmed _cast;
@@ -88,6 +93,8 @@ namespace Soulvail.Game.Views
             _warning = CreateLayer("Warning", 0, out _warningMesh);
             _fill = CreateLayer("Progress", 1, out _fillMesh);
             _release = CreateLayer("Release", 2, out _releaseMesh);
+            _outline = CreateLayer("Warning outline", 6, out _outlineMesh);
+            _eruption = new SunSealEruption(_floor, _footprintMaterial);
             var tether = new GameObject("Priest ward");
             tether.transform.SetParent(_floor, false);
             _ward = tether.AddComponent<LineRenderer>();
@@ -168,14 +175,19 @@ namespace Soulvail.Game.Views
                 ? Quaternion.LookRotation(facing)
                 : Quaternion.identity;
             _footprint.SetPositionAndRotation(evt.Origin.ToUnity(), heading);
-            Draw(_warningMesh, 1f, 0.48f);
+            Draw(_warningMesh, 1f, sweep ? 0.48f : 0.56f);
             _warning.enabled = true;
+            if (!sweep)
+            {
+                DrawSealOutline();
+                _outline.enabled = true;
+            }
             SetSealLight(true);
 
             if (sweep)
                 Play("SweepTell", _sweepMotion.length * SweepStrike / evt.Seconds);
             else
-                Play("SealTell", _raiseMotion.length / evt.Seconds);
+                Play("SealTell", _sealMotion.length * SealStrike / evt.Seconds);
 
             _audio.clip = sweep ? _sweepCue : _sealCue;
             if (Application.isPlaying)
@@ -223,8 +235,48 @@ namespace Soulvail.Game.Views
             if (mesh.vertexCount != vertexCount)
                 mesh.Clear();
             mesh.SetVertices(_vertices, 0, vertexCount);
-            mesh.SetTriangles(triangles, 0);
+            mesh.SetTriangles(triangles, 0, calculateBounds: false);
+            mesh.RecalculateBounds();
             Tint(mesh, Palette.Danger, opacity);
+        }
+
+        private void DrawSealOutline()
+        {
+            float width = _cast.HalfWidth;
+            float reach = _cast.Reach;
+            float edge = Mathf.Min(0.24f, width * 0.5f, reach * 0.25f);
+            var shadow = Palette.Vertex(new Color(0.20f, 0.036f, 0.018f));
+            Color orange = Palette.Vertex(Color.Lerp(Palette.Danger, Color.white, 0.26f));
+            Frame(0, width, reach, 0f, edge, shadow);
+            Frame(4, width, reach, edge * 0.30f, edge * 0.47f, orange);
+            _outlineMesh.SetVertices(_vertices, 0, 32);
+            _outlineMesh.SetColors(_colors, 0, 32);
+            _outlineMesh.SetTriangles(_outlineTriangles, 0, calculateBounds: false);
+            _outlineMesh.RecalculateBounds();
+        }
+
+        private void Frame(int firstQuad, float width, float reach, float inset, float thickness, Color color)
+        {
+            float left = -width + inset;
+            float right = width - inset;
+            float far = reach - inset;
+            OutlineQuad(firstQuad, left, left + thickness, inset, far, color);
+            OutlineQuad(firstQuad + 1, right - thickness, right, inset, far, color);
+            OutlineQuad(firstQuad + 2, left + thickness, right - thickness, inset, inset + thickness, color);
+            OutlineQuad(firstQuad + 3, left + thickness, right - thickness, far - thickness, far, color);
+        }
+
+        private void OutlineQuad(int quad, float left, float right, float near, float far, Color color)
+        {
+            int vertex = quad * 4;
+            float y = quad < 4 ? 0f : 0.008f;
+            _vertices[vertex] = new Vector3(left, y, near);
+            _vertices[vertex + 1] = new Vector3(left, y, far);
+            _vertices[vertex + 2] = new Vector3(right, y, near);
+            _vertices[vertex + 3] = new Vector3(right, y, far);
+            Array.Fill(_colors, color, vertex, 4);
+            for (int i = 0; i < _rectangle.Length; i++)
+                _outlineTriangles[quad * _rectangle.Length + i] = vertex + _rectangle[i];
         }
 
         private void Tint(Mesh mesh, Color color, float opacity)
@@ -242,14 +294,23 @@ namespace Soulvail.Game.Views
 
             HideWarning();
             Draw(_releaseMesh, 1f, 1f);
-            Tint(_releaseMesh, Color.Lerp(Palette.Danger, Color.white, 0.65f), 0.94f);
+            TintRelease(1f);
             _release.enabled = true;
             _flash = ReleaseSeconds;
             _recovery = evt.RecoverySeconds;
             if (evt.Move == HierophantMove.StaffSweep)
                 Play("SweepRelease", _sweepMotion.length * (1f - SweepStrike) / ReleaseSeconds, SweepStrike);
             else
-                Play("SealRelease", _sealReleaseMotion.length / ReleaseSeconds);
+            {
+                Play("SealRelease", _sealMotion.length * (1f - SealStrike) / ReleaseSeconds, SealStrike);
+                _eruption.Begin(_footprint, _cast.Reach, _cast.HalfWidth);
+            }
+        }
+
+        private void TintRelease(float fraction)
+        {
+            float opacity = _cast.Move == HierophantMove.SunSeal ? 0.32f : 0.94f;
+            Tint(_releaseMesh, Color.Lerp(Palette.Danger, Color.white, 0.65f), fraction * opacity);
         }
 
         private void OnPhase(BossPhaseChanged evt)
@@ -257,6 +318,7 @@ namespace Soulvail.Game.Views
             if (IsMine(evt.EnemyId))
             {
                 ClearAttack();
+                _eruption?.Clear();
                 if (_ward != null)
                     _ward.enabled = false;
                 Play("Idle");
@@ -299,6 +361,7 @@ namespace Soulvail.Game.Views
 
             if (_ward != null && _ward.enabled)
                 UpdateWard();
+            _eruption?.Step(dt);
 
             _recovery = Mathf.Max(0f, _recovery - dt);
             if (_flash > 0f)
@@ -306,8 +369,7 @@ namespace Soulvail.Game.Views
                 _flash = Mathf.Max(0f, _flash - dt);
                 if (_flash > 0f)
                 {
-                    Tint(_releaseMesh, Color.Lerp(Palette.Danger, Color.white, 0.65f),
-                        0.94f * _flash / ReleaseSeconds);
+                    TintRelease(_flash / ReleaseSeconds);
                     return;
                 }
 
@@ -347,6 +409,7 @@ namespace Soulvail.Game.Views
         {
             _warning.enabled = false;
             _fill.enabled = false;
+            _outline.enabled = false;
             _audio.Stop();
             _audio.clip = null;
         }
@@ -366,6 +429,7 @@ namespace Soulvail.Game.Views
         private void ResetPresentation()
         {
             ClearAttack();
+            _eruption?.Clear();
             if (_floor != null)
             {
                 _ward.enabled = false;
@@ -387,12 +451,14 @@ namespace Soulvail.Game.Views
         private void OnDestroy()
         {
             DisposeSubscriptions();
+            _eruption?.Dispose();
             if (Application.isPlaying)
             {
                 if (_floor != null)
                     Destroy(_floor.gameObject);
                 Destroy(_warningMesh);
                 Destroy(_fillMesh);
+                Destroy(_outlineMesh);
                 Destroy(_releaseMesh);
             }
             else
@@ -401,6 +467,7 @@ namespace Soulvail.Game.Views
                     DestroyImmediate(_floor.gameObject);
                 DestroyImmediate(_warningMesh);
                 DestroyImmediate(_fillMesh);
+                DestroyImmediate(_outlineMesh);
                 DestroyImmediate(_releaseMesh);
             }
         }

@@ -119,6 +119,11 @@ public sealed class HierophantViewTests
         ChildAnimatorState[] states = controller.layers[0].stateMachine.states;
         Assert.That(states.Select(state => state.state.name),
             Is.EquivalentTo(new[] { "Idle", "Walk", "SweepTell", "SweepRelease", "SealTell", "SealRelease", "Recovery", "Death" }));
+        Motion sealTell = states.Single(state => state.state.name == "SealTell").state.motion;
+        Motion sealRelease = states.Single(state => state.state.name == "SealRelease").state.motion;
+        Assert.That(sealTell.name, Is.EqualTo("Melee_1H_Attack_Chop"));
+        Assert.That(sealRelease, Is.SameAs(sealTell));
+        Assert.That(new SerializedObject(_view).FindProperty("_sealMotion").objectReferenceValue, Is.SameAs(sealTell));
         Assert.That(controller.animationClips.All(clip => clip.events.Length == 0), Is.True);
         var baked = new Mesh();
         try
@@ -263,6 +268,59 @@ public sealed class HierophantViewTests
         AssertPose("Recovery");
         _view.Step(0.75f);
         AssertPose("Idle");
+    }
+
+    [Test]
+    public void SealEruption_FillsLockedStrip_AndSurvivesTheFollowUpWarning()
+    {
+        Place(Boss);
+        HierophantArmed first = Arm(Boss, HierophantMove.SunSeal);
+        _events.Publish(first);
+        MeshFilter outline = Layer("Warning outline");
+        Assert.That(Visible(outline), Is.True);
+        Assert.That(outline.sharedMesh.bounds.min.x, Is.EqualTo(-first.HalfWidth));
+        Assert.That(outline.sharedMesh.bounds.max.x, Is.EqualTo(first.HalfWidth));
+        Assert.That(outline.sharedMesh.bounds.min.z, Is.Zero);
+        Assert.That(outline.sharedMesh.bounds.max.z, Is.EqualTo(first.Reach));
+
+        Transform eruption = _floor.Find("Sandstone eruption");
+        Mesh crack = eruption.Find("Ground crack").GetComponent<MeshFilter>().sharedMesh;
+        Mesh stone = eruption.Find("Rising sandstone").GetComponent<MeshFilter>().sharedMesh;
+        Mesh dust = eruption.Find("Rolling dust").GetComponent<MeshFilter>().sharedMesh;
+        Assert.That(eruption.gameObject.activeSelf, Is.False);
+        _events.Publish(new HierophantTellProgress(Boss, 1f));
+        Assert.That(eruption.gameObject.activeSelf, Is.False);
+        _events.Publish(new HierophantImpact(Boss, first.Move, first.SealSlot, 0f));
+        Assert.That(Visible(outline), Is.False);
+        Assert.That(eruption.gameObject.activeSelf, Is.True);
+        Assert.That(eruption.position, Is.EqualTo(first.Origin.ToUnity()));
+        Assert.That(Vector3.Dot(eruption.forward, new Vector3(first.Facing.X, 0f, first.Facing.Y)),
+            Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(crack.bounds.min.z, Is.Zero);
+        Assert.That(crack.bounds.max.z, Is.EqualTo(first.Reach));
+        Assert.That(dust.bounds.size.z, Is.GreaterThan(first.Reach * 0.9f));
+        Assert.That(stone.bounds.size.z, Is.GreaterThan(first.Reach * 0.9f));
+        float initialHeight = stone.bounds.max.y;
+        Quaternion firstHeading = eruption.rotation;
+        _view.Step(0.3f);
+        Assert.That(stone.bounds.max.y, Is.GreaterThan(initialHeight + 0.4f));
+
+        var second = new HierophantArmed(Boss, first.Move, 1, first.Origin, -Num.Vector2.UnitY,
+            12f, first.HalfWidth, 0f, 1.3f);
+        _events.Publish(second);
+        Assert.That(Visible(outline), Is.True);
+        Assert.That(outline.sharedMesh.bounds.max.z, Is.EqualTo(second.Reach));
+        Assert.That(eruption.rotation, Is.EqualTo(firstHeading));
+        Assert.That(eruption.gameObject.activeSelf, Is.True);
+        _view.Step(0.49f);
+        Assert.That(eruption.gameObject.activeSelf, Is.False);
+        Assert.That(Visible(outline), Is.True);
+        _events.Publish(new HierophantImpact(Boss, second.Move, second.SealSlot, 1.5f));
+        Assert.That(eruption.gameObject.activeSelf, Is.True);
+        Assert.That(crack.bounds.max.z, Is.EqualTo(second.Reach));
+        _events.Publish(new BossPhaseChanged(Boss, 2, 3));
+        Assert.That(eruption.gameObject.activeSelf, Is.False);
+        Assert.That(Visible(outline), Is.False);
     }
 
     [Test]

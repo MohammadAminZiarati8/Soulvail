@@ -580,9 +580,10 @@ Stage 14's priest introduces the target-priority problem that returns when the e
   priority in auto-aim. A hit that damages the priest breaks the channel for 5 s. Phase beats drop
   the ward and preserve the escort.
 - **Presentation.** Use a low scrape for the sweep and a rising stone chime for the seal. Show the
-  full footprint from the first warning frame, use a stronger fill to show time to impact, then
-  swap to a brief release effect on the damage tick. The seal's carving lights separately. These
-  warnings need to survive the Dunes' sandstorm and remain legible on a portrait phone.
+  full outlined footprint from the first warning frame and fill it as time runs down. On the damage
+  tick the staff chops down, and a glowing fracture, rising sandstone and rolling dust extend to
+  the end of the locked strip. The seal's carving lights separately. The warning and eruption
+  must stay legible through the Dunes' sandstorm at portrait scale.
 - **Arena and pacing.** Spawn centrally in the existing Dunes with 1,050 base HP. Verify the
   walking escape near the walls and cover, and check that the escape edge stays visible at the
   normal portrait camera scale. Use the banked-point Stage 15 Ranger probe as a baseline and

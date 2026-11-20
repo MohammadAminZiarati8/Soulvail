@@ -906,3 +906,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [device] Kite along a wall and around cover through the final phase. Check that the locked Sun Seal is visible in the sandstorm and that each cast has a readable escape edge.
 
 - **SS-17f [device].** DT-01 Sunscar stage 15. Confirm the priest's tether and the auto-aim switch read in portrait, then tag the priest and use the five-second damage window.
+
+- **SS-17g [Editor/device].** Play DT-01 Sunscar stage 15 at portrait scale. Check the warning edge, staff chop and eruption in motion under the Dunes sandstorm, including the freshly aimed second warning below 33%. On Android, verify legibility and frame pacing near the wall.

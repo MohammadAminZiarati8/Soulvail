@@ -908,3 +908,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - **SS-17f [device].** DT-01 Sunscar stage 15. Confirm the priest's tether and the auto-aim switch read in portrait, then tag the priest and use the five-second damage window.
 
 - **SS-17g [Editor/device].** Play DT-01 Sunscar stage 15 at portrait scale. Check the warning edge, staff chop and eruption in motion under the Dunes sandstorm, including the freshly aimed second warning below 33%. On Android, verify legibility and frame pacing near the wall.
+
+## SS-17h — Hierophant fire throw and Jackal heal
+
+- [ ] **[device]** Check the staff launch and moving fire in portrait in the Dunes. Break the Priest ward and check that the green channel cue disappears on a hit.

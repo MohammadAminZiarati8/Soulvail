@@ -270,7 +270,8 @@ public sealed class BossSpec
         ContentId enemySpecId,
         IReadOnlyList<BossPhaseSpec> phases,
         float beatSeconds,
-        bool spawnsCentral = false)
+        bool spawnsCentral = false,
+        bool usesAuthoredMaxHp = false)
     {
         if (id.Value is null)
         {
@@ -308,6 +309,7 @@ public sealed class BossSpec
         EnemySpecId = enemySpecId;
         BeatSeconds = beatSeconds;
         SpawnsCentral = spawnsCentral;
+        UsesAuthoredMaxHp = usesAuthoredMaxHp;
 
         _phases = CopyPhases(phases, id);
 
@@ -338,6 +340,9 @@ public sealed class BossSpec
 
     /// <summary>Whether this boss waits for the spawn point nearest the arena mean.</summary>
     public bool SpawnsCentral { get; }
+
+    /// <summary>Use the body's authored maximum HP at every depth where this boss appears.</summary>
+    public bool UsesAuthoredMaxHp { get; }
 
     /// <summary>The most bodies any one of this boss's phases summons.</summary>
     /// <remarks>

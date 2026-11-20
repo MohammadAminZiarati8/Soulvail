@@ -73,6 +73,9 @@ namespace Soulvail.Game.Authoring
         [Tooltip("Spawn at the point nearest the arena middle, once the player is safely away.")]
         [SerializeField] private bool _spawnsCentral;
 
+        [Tooltip("Use the enemy definition's exact maximum HP at the boss stage.")]
+        [SerializeField] private bool _usesAuthoredMaxHp;
+
         /// <summary>
         /// The authored id text, exactly as it sits in the asset — for grouping and diagnostics
         /// before conversion. It is <em>not</em> known to be well-formed: only a
@@ -99,7 +102,8 @@ namespace Soulvail.Game.Authoring
                     new ContentId(_enemySpecId),
                     BuildPhases(),
                     _beatSeconds,
-                    _spawnsCentral);
+                    _spawnsCentral,
+                    _usesAuthoredMaxHp);
             }
             catch (ArgumentException inner)
             {

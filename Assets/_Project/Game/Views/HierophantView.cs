@@ -13,25 +13,22 @@ namespace Soulvail.Game.Views
     [RequireComponent(typeof(EnemyView))]
     public sealed class HierophantView : MonoBehaviour, IPoolable
     {
-        private const int ArcSegments = 64;
         private const float ReleaseSeconds = 0.24f;
-        private const float SweepStrike = 0.35f;
+        private const float ThrowStrike = 0.43f;
         // The imported 32-frame staff chop drops through its impact pose at frame 18.
         private const float SealStrike = 18f / 32f;
 
         [SerializeField] private Animator _animator;
-        [SerializeField] private AnimationClip _sweepMotion;
         [SerializeField] private AnimationClip _sealMotion;
         [SerializeField] private Material _footprintMaterial;
         [SerializeField] private GameObject _sealPrefab;
         [SerializeField] private AudioSource _audio;
-        [SerializeField] private AudioClip _sweepCue;
+        [SerializeField] private AudioClip _throwCue;
         [SerializeField] private AudioClip _sealCue;
 
         private readonly MeshRenderer[] _sealLights = new MeshRenderer[3];
-        private readonly Vector3[] _vertices = new Vector3[ArcSegments + 2];
-        private readonly Color[] _colors = new Color[ArcSegments + 2];
-        private readonly int[] _sector = new int[ArcSegments * 3];
+        private readonly Vector3[] _vertices = new Vector3[32];
+        private readonly Color[] _colors = new Color[32];
         private readonly int[] _rectangle = { 0, 1, 2, 2, 1, 3 };
         private readonly int[] _outlineTriangles = new int[48];
 
@@ -48,6 +45,10 @@ namespace Soulvail.Game.Views
         private Mesh _outlineMesh;
         private Mesh _releaseMesh;
         private SunSealEruption _eruption;
+        private HierophantCastEffects _castEffects;
+        private Transform _staff;
+        private HierophantFireWave _fire;
+        private HierophantHealChannel _heal;
         private LineRenderer _ward;
         private Vector3 _wardSource;
         private HierophantArmed _cast;
@@ -62,12 +63,16 @@ namespace Soulvail.Game.Views
         {
             DisposeSubscriptions();
             _body = GetComponent<EnemyView>();
+            _staff = _animator.transform.Find(
+                "Rig_Medium/root/hips/spine/chest/upperarm.r/lowerarm.r/wrist.r/hand.r/handslot.r/PriestStaff");
             _subscriptions = new[]
             {
                 events.Subscribe<HierophantSealsPlaced>(OnSealsPlaced),
                 events.Subscribe<HierophantArmed>(OnArmed),
                 events.Subscribe<HierophantTellProgress>(OnProgress),
                 events.Subscribe<HierophantImpact>(OnImpact),
+                events.Subscribe<HierophantFireWave>(OnFire),
+                events.Subscribe<HierophantHealChannel>(OnHeal),
                 events.Subscribe<HierophantWard>(OnWard),
                 events.Subscribe<BossPhaseChanged>(OnPhase),
                 events.Subscribe<EnemyDied>(OnDeath),
@@ -95,6 +100,7 @@ namespace Soulvail.Game.Views
             _release = CreateLayer("Release", 2, out _releaseMesh);
             _outline = CreateLayer("Warning outline", 6, out _outlineMesh);
             _eruption = new SunSealEruption(_floor, _footprintMaterial);
+            _castEffects = new HierophantCastEffects(_floor, _footprint, _footprintMaterial);
             var tether = new GameObject("Priest ward");
             tether.transform.SetParent(_floor, false);
             _ward = tether.AddComponent<LineRenderer>();
@@ -107,12 +113,6 @@ namespace Soulvail.Game.Views
             _ward.startColor = Palette.Vertex(new Color(1f, 0.73f, 0.24f));
             _ward.endColor = Palette.Vertex(new Color(1f, 0.95f, 0.66f));
             _ward.enabled = false;
-
-            for (int i = 0; i < ArcSegments; i++)
-            {
-                _sector[i * 3 + 1] = i + 1;
-                _sector[i * 3 + 2] = i + 2;
-            }
 
             var lightColor = new MaterialPropertyBlock();
             lightColor.SetColor("_BaseColor", Color.Lerp(Palette.Danger, Color.white, 0.55f));
@@ -169,78 +169,54 @@ namespace Soulvail.Game.Views
 
             ClearAttack();
             _cast = evt;
-            bool sweep = evt.Move == HierophantMove.StaffSweep;
+            bool fire = evt.Move == HierophantMove.FireThrow;
             var facing = new Vector3(evt.Facing.X, 0f, evt.Facing.Y);
             Quaternion heading = facing != Vector3.zero
                 ? Quaternion.LookRotation(facing)
                 : Quaternion.identity;
             _footprint.SetPositionAndRotation(evt.Origin.ToUnity(), heading);
-            Draw(_warningMesh, 1f, sweep ? 0.48f : 0.56f);
+            DrawStrip(_warningMesh, 0f, evt.Reach, Palette.Danger, 0.56f);
             _warning.enabled = true;
-            if (!sweep)
-            {
-                DrawSealOutline();
-                _outline.enabled = true;
-            }
+            DrawOutline();
+            _outline.enabled = true;
             SetSealLight(true);
 
-            if (sweep)
-                Play("SweepTell", _sweepMotion.length * SweepStrike / evt.Seconds);
+            if (fire)
+                Play("ThrowTell", 0f);
             else
                 Play("SealTell", _sealMotion.length * SealStrike / evt.Seconds);
 
-            _audio.clip = sweep ? _sweepCue : _sealCue;
+            _audio.clip = fire ? _throwCue : _sealCue;
             if (Application.isPlaying)
                 _audio.Play();
         }
 
         private void OnProgress(HierophantTellProgress evt)
         {
-            if (!IsMine(evt.BossId) || _cast.Seconds == 0f || _flash > 0f || evt.Fraction <= _progress)
+            if (!IsMine(evt.BossId) || _cast.Seconds == 0f || !_warning.enabled || evt.Fraction <= _progress)
                 return;
 
             _progress = evt.Fraction;
-            Draw(_fillMesh, _progress, 0.8f);
+            DrawStrip(_fillMesh, 0f, _cast.Reach * _progress, Palette.Danger, 0.8f);
             _fill.enabled = true;
+            if (_cast.Move == HierophantMove.FireThrow)
+                Play("ThrowTell", 0f, _progress * ThrowStrike);
         }
 
-        private void Draw(Mesh mesh, float fraction, float opacity)
+        private void DrawStrip(Mesh mesh, float rear, float front, Color color, float opacity)
         {
-            int vertexCount;
-            int[] triangles;
-            float reach = _cast.Reach * fraction;
-            if (_cast.Move == HierophantMove.StaffSweep)
-            {
-                _vertices[0] = Vector3.zero;
-                for (int i = 0; i <= ArcSegments; i++)
-                {
-                    float radians = Mathf.Lerp(-_cast.HalfAngleDegrees, _cast.HalfAngleDegrees,
-                        (float)i / ArcSegments) * Mathf.Deg2Rad;
-                    _vertices[i + 1] = new Vector3(Mathf.Sin(radians), 0f, Mathf.Cos(radians)) * reach;
-                }
-                vertexCount = ArcSegments + 2;
-                triangles = _sector;
-            }
-            else
-            {
-                float width = _cast.HalfWidth;
-                _vertices[0] = new Vector3(-width, 0f, 0f);
-                _vertices[1] = new Vector3(-width, 0f, reach);
-                _vertices[2] = new Vector3(width, 0f, 0f);
-                _vertices[3] = new Vector3(width, 0f, reach);
-                vertexCount = 4;
-                triangles = _rectangle;
-            }
-
-            if (mesh.vertexCount != vertexCount)
-                mesh.Clear();
-            mesh.SetVertices(_vertices, 0, vertexCount);
-            mesh.SetTriangles(triangles, 0, calculateBounds: false);
+            float width = _cast.HalfWidth;
+            _vertices[0] = new Vector3(-width, 0f, rear);
+            _vertices[1] = new Vector3(-width, 0f, front);
+            _vertices[2] = new Vector3(width, 0f, rear);
+            _vertices[3] = new Vector3(width, 0f, front);
+            mesh.SetVertices(_vertices, 0, 4);
+            mesh.SetTriangles(_rectangle, 0, calculateBounds: false);
             mesh.RecalculateBounds();
-            Tint(mesh, Palette.Danger, opacity);
+            Tint(mesh, color, opacity);
         }
 
-        private void DrawSealOutline()
+        private void DrawOutline()
         {
             float width = _cast.HalfWidth;
             float reach = _cast.Reach;
@@ -288,30 +264,65 @@ namespace Soulvail.Game.Views
 
         private void OnImpact(HierophantImpact evt)
         {
-            if (!IsMine(evt.BossId) || _cast.Seconds == 0f || _flash > 0f
+            if (!IsMine(evt.BossId) || _cast.Seconds == 0f || !_warning.enabled
                 || _cast.Move != evt.Move || _cast.SealSlot != evt.SealSlot)
                 return;
 
             HideWarning();
-            Draw(_releaseMesh, 1f, 1f);
+            _recovery = evt.RecoverySeconds;
+            if (evt.Move == HierophantMove.FireThrow)
+            {
+                Play("ThrowRelease", 0f, ThrowStrike);
+                return;
+            }
+
+            DrawStrip(_releaseMesh, 0f, _cast.Reach, Palette.Danger, 1f);
             TintRelease(1f);
             _release.enabled = true;
             _flash = ReleaseSeconds;
-            _recovery = evt.RecoverySeconds;
-            if (evt.Move == HierophantMove.StaffSweep)
-                Play("SweepRelease", _sweepMotion.length * (1f - SweepStrike) / ReleaseSeconds, SweepStrike);
-            else
-            {
-                Play("SealRelease", _sealMotion.length * (1f - SealStrike) / ReleaseSeconds, SealStrike);
-                _eruption.Begin(_footprint, _cast.Reach, _cast.HalfWidth);
-            }
+            Play("SealRelease", _sealMotion.length * (1f - SealStrike) / ReleaseSeconds, SealStrike);
+            _eruption.Begin(_footprint, _cast.Reach, _cast.HalfWidth);
         }
 
-        private void TintRelease(float fraction)
+        private void OnFire(HierophantFireWave evt)
         {
-            float opacity = _cast.Move == HierophantMove.SunSeal ? 0.32f : 0.94f;
-            Tint(_releaseMesh, Color.Lerp(Palette.Danger, Color.white, 0.65f), fraction * opacity);
+            if (!IsMine(evt.BossId) || _cast.Seconds == 0f || _cast.Move != HierophantMove.FireThrow
+                || _warning.enabled)
+                return;
+
+            _fire = evt;
+            if (!evt.Active)
+            {
+                _release.enabled = false;
+                _castEffects.ClearFire();
+                _cast = default;
+                return;
+            }
+
+            _release.enabled = evt.Front > evt.Rear;
+            if (_release.enabled)
+                DrawStrip(_releaseMesh, evt.Rear, evt.Front, new Color(1f, 0.39f, 0.025f), 0.75f);
+            _castEffects.Fire(_cast.HalfWidth, evt.Rear, evt.Front, evt.Fraction);
+            Play("ThrowRelease", 0f, Mathf.Lerp(ThrowStrike, 0.99f, Mathf.Clamp01(evt.Fraction / 0.55f)));
         }
+
+        private void OnHeal(HierophantHealChannel evt)
+        {
+            if (!IsMine(evt.BossId) || _castEffects == null)
+                return;
+
+            _heal = evt;
+            if (evt.Active)
+                UpdateHeal();
+            else
+                _castEffects.ClearHeal();
+        }
+
+        private void UpdateHeal() =>
+            _castEffects.Heal(_heal.PriestPosition.ToUnity(), transform.position + Vector3.up * 1.8f, _heal.Fraction);
+
+        private void TintRelease(float fraction) =>
+            Tint(_releaseMesh, Color.Lerp(Palette.Danger, Color.white, 0.65f), fraction * 0.32f);
 
         private void OnPhase(BossPhaseChanged evt)
         {
@@ -319,6 +330,8 @@ namespace Soulvail.Game.Views
             {
                 ClearAttack();
                 _eruption?.Clear();
+                _heal = default;
+                _castEffects?.ClearHeal();
                 if (_ward != null)
                     _ward.enabled = false;
                 Play("Idle");
@@ -361,6 +374,16 @@ namespace Soulvail.Game.Views
 
             if (_ward != null && _ward.enabled)
                 UpdateWard();
+            if (_heal.Active)
+                UpdateHeal();
+            if (_cast.Seconds > 0f && _cast.Move == HierophantMove.FireThrow && _staff != null)
+            {
+                Vector3 tip = _staff.TransformPoint(Vector3.forward * 1.34f);
+                if (_fire.Active)
+                    _castEffects.Launch(tip, _fire.Front, _fire.Fraction);
+                else if (_warning.enabled)
+                    _castEffects.Charge(tip, _progress);
+            }
             _eruption?.Step(dt);
 
             _recovery = Mathf.Max(0f, _recovery - dt);
@@ -421,8 +444,10 @@ namespace Soulvail.Game.Views
                 HideWarning();
                 _release.enabled = false;
                 SetSealLight(false);
+                _castEffects.ClearFire();
             }
             _cast = default;
+            _fire = default;
             _progress = _flash = _recovery = 0f;
         }
 
@@ -430,6 +455,8 @@ namespace Soulvail.Game.Views
         {
             ClearAttack();
             _eruption?.Clear();
+            _heal = default;
+            _castEffects?.ClearHeal();
             if (_floor != null)
             {
                 _ward.enabled = false;
@@ -452,6 +479,7 @@ namespace Soulvail.Game.Views
         {
             DisposeSubscriptions();
             _eruption?.Dispose();
+            _castEffects?.Dispose();
             if (Application.isPlaying)
             {
                 if (_floor != null)

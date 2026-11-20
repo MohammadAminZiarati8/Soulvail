@@ -118,13 +118,15 @@ public sealed class HierophantViewTests
         var controller = (AnimatorController)_animator.runtimeAnimatorController;
         ChildAnimatorState[] states = controller.layers[0].stateMachine.states;
         Assert.That(states.Select(state => state.state.name),
-            Is.EquivalentTo(new[] { "Idle", "Walk", "SweepTell", "SweepRelease", "SealTell", "SealRelease", "Recovery", "Death" }));
+            Is.EquivalentTo(new[] { "Idle", "Walk", "ThrowTell", "ThrowRelease", "SealTell", "SealRelease", "Recovery", "Death" }));
         Motion sealTell = states.Single(state => state.state.name == "SealTell").state.motion;
         Motion sealRelease = states.Single(state => state.state.name == "SealRelease").state.motion;
         Assert.That(sealTell.name, Is.EqualTo("Melee_1H_Attack_Chop"));
         Assert.That(sealRelease, Is.SameAs(sealTell));
         Assert.That(new SerializedObject(_view).FindProperty("_sealMotion").objectReferenceValue, Is.SameAs(sealTell));
         Assert.That(controller.animationClips.All(clip => clip.events.Length == 0), Is.True);
+        Assert.That(states.Single(state => state.state.name == "ThrowRelease").state.motion.name,
+            Is.EqualTo("Ranged_Magic_Shoot"));
         var baked = new Mesh();
         try
         {
@@ -210,7 +212,7 @@ public sealed class HierophantViewTests
             Is.SameAs(_prefab.GetComponentInChildren<SkinnedMeshRenderer>()));
         Place(Boss);
         Assert.That(SealPositions(), Is.EqualTo(new[] { Vector3.left * 4f, Vector3.zero, Vector3.right * 4f }));
-        _events.Publish(Arm(Boss, HierophantMove.StaffSweep));
+        _events.Publish(Arm(Boss, HierophantMove.FireThrow));
         Assert.That(_audio.clip.name, Is.EqualTo("DuneclawSweep"));
         AudioClip sweep = _audio.clip;
         _events.Publish(Arm(Boss, HierophantMove.SunSeal));
@@ -218,7 +220,7 @@ public sealed class HierophantViewTests
         Assert.That(_audio.clip, Is.Not.SameAs(sweep));
     }
 
-    [TestCase(HierophantMove.StaffSweep)]
+    [TestCase(HierophantMove.FireThrow)]
     [TestCase(HierophantMove.SunSeal)]
     public void Tell_MatchesCoreAndStaysInPlace(HierophantMove move)
     {
@@ -228,12 +230,12 @@ public sealed class HierophantViewTests
         MeshFilter warning = Layer("Warning");
         MeshFilter progress = Layer("Progress");
         MeshFilter release = Layer("Release");
-        bool sweep = move == HierophantMove.StaffSweep;
-        AssertPose(sweep ? "SweepTell" : "SealTell");
+        bool fire = move == HierophantMove.FireThrow;
+        AssertPose(fire ? "ThrowTell" : "SealTell");
         Assert.That(Visible(warning), Is.True);
         Assert.That(Visible(progress), Is.False);
         Assert.That(Visible(release), Is.False);
-        Assert.That(Lights(), Is.EqualTo(new[] { false, false, !sweep }));
+        Assert.That(Lights(), Is.EqualTo(new[] { false, false, !fire }));
         AssertFootprint(warning, armed, 1f);
         Vector3[] warningWorld = WorldVertices(warning);
         Vector3[] seals = SealPositions();
@@ -249,15 +251,21 @@ public sealed class HierophantViewTests
         Assert.That(WorldVertices(warning), Is.EqualTo(warningWorld));
         Assert.That(SealPositions(), Is.EqualTo(seals));
 
-        _events.Publish(new HierophantImpact(Boss, move, sweep ? 1 : 0, 1f));
+        _events.Publish(new HierophantImpact(Boss, move, fire ? 1 : 0, 1f));
         Assert.That(Visible(warning), Is.True);
         _events.Publish(new HierophantImpact(Boss, move, armed.SealSlot, 1f));
         Assert.That(Visible(warning), Is.False);
         Assert.That(Visible(progress), Is.False);
-        Assert.That(Visible(release), Is.True);
         Assert.That(_audio.clip, Is.Null);
+        AssertPose(fire ? "ThrowRelease" : "SealRelease");
+        if (fire)
+        {
+            Assert.That(Visible(release), Is.False);
+            return;
+        }
+
+        Assert.That(Visible(release), Is.True);
         AssertFootprint(release, armed, 1f);
-        AssertPose(sweep ? "SweepRelease" : "SealRelease");
         float alpha = release.sharedMesh.colors[0].a;
         _view.Step(0.12f);
         Assert.That(Visible(release), Is.True);
@@ -268,6 +276,67 @@ public sealed class HierophantViewTests
         AssertPose("Recovery");
         _view.Step(0.75f);
         AssertPose("Idle");
+    }
+
+    [Test]
+    public void Fire_CarriesTheStaffLaunchIntoTheLiveStrip()
+    {
+        Place(Boss);
+        HierophantArmed armed = Arm(Boss, HierophantMove.FireThrow);
+        Transform staff = _animator.GetComponentInChildren<MeshFilter>().transform;
+        LineRenderer charge = Line("Staff fire");
+        LineRenderer launch = Line("Staff fire launch");
+        MeshFilter crest = _floor.Find("Footprint/Fire wave crest").GetComponent<MeshFilter>();
+        _events.Publish(armed);
+        _events.Publish(new HierophantTellProgress(Boss, 0.8f));
+        AssertPose("ThrowTell");
+        _view.Step(0f);
+        Assert.That(charge.enabled, Is.True);
+        Assert.That(charge.GetPosition(0), Is.EqualTo(staff.TransformPoint(Vector3.forward * 1.34f)));
+
+        _events.Publish(new HierophantImpact(Boss, armed.Move, armed.SealSlot, 1.25f));
+        _events.Publish(new HierophantFireWave(Boss, 0f, 0f, 0f, true));
+        AssertPose("ThrowRelease");
+        Vector3 releaseTip = staff.TransformPoint(Vector3.forward * 1.34f);
+        _view.Step(0f);
+        _events.Publish(new HierophantFireWave(Boss, 0.5f, 1.4f, 0.2f, true));
+        _view.Step(0.1f);
+        Assert.That(launch.enabled, Is.True);
+        Assert.That(launch.GetPosition(0), Is.EqualTo(releaseTip));
+        Assert.That(launch.GetPosition(2), Is.EqualTo(crest.transform.TransformPoint(new Vector3(0f, 0.32f, 1.4f))));
+        Assert.That(Visible(crest), Is.True);
+        var bounds = Layer("Release").sharedMesh.bounds;
+        Assert.That((bounds.min.x, bounds.max.x), Is.EqualTo((-armed.HalfWidth, armed.HalfWidth)));
+        Assert.That(bounds.min.z, Is.EqualTo(0.5f).Within(0.001f));
+        Assert.That(bounds.max.z, Is.EqualTo(1.4f).Within(0.001f));
+
+        _events.Publish(new HierophantFireWave(Boss, 6.1f, 7f, 1f, true));
+        _view.Step(0.1f);
+        Assert.That(launch.enabled, Is.False);
+        Assert.That(crest.sharedMesh.bounds.max.z, Is.EqualTo(7f));
+        _events.Publish(new HierophantFireWave(Boss, 0f, 0f, 1f, false));
+        Assert.That(Visible(crest), Is.False);
+        Assert.That(Visible(Layer("Release")), Is.False);
+    }
+
+    [Test]
+    public void PriestHeal_HasItsOwnCueAndClearsOnEndAndPhase()
+    {
+        Place(Boss);
+        var priest = new Num.Vector3(-2f, 0f, 4f);
+        LineRenderer ward = Line("Priest ward");
+        LineRenderer ring = Line("Priest heal ring");
+        LineRenderer beam = Line("Priest heal beam");
+        _events.Publish(new HierophantHealChannel(Boss, priest, 0.5f, true));
+        Assert.That(ward.enabled, Is.False);
+        Assert.That(ring.enabled && beam.enabled, Is.True);
+        Assert.That(beam.startColor, Is.Not.EqualTo(ward.startColor));
+        Assert.That(beam.GetPosition(0), Is.EqualTo(priest.ToUnity() + Vector3.up * 1.25f));
+        _events.Publish(new HierophantHealChannel(Boss, default, 0f, false));
+        Assert.That(ring.enabled || beam.enabled, Is.False);
+        _events.Publish(new HierophantHealChannel(Boss, priest, 0f, true));
+        _events.Publish(new BossPhaseChanged(Boss, 1, 3));
+        Assert.That(ring.enabled || beam.enabled, Is.False);
     }
 
     [Test]
@@ -306,7 +375,7 @@ public sealed class HierophantViewTests
         Assert.That(stone.bounds.max.y, Is.GreaterThan(initialHeight + 0.4f));
 
         var second = new HierophantArmed(Boss, first.Move, 1, first.Origin, -Num.Vector2.UnitY,
-            12f, first.HalfWidth, 0f, 1.3f);
+            12f, first.HalfWidth, 1.3f);
         _events.Publish(second);
         Assert.That(Visible(outline), Is.True);
         Assert.That(outline.sharedMesh.bounds.max.z, Is.EqualTo(second.Reach));
@@ -352,11 +421,11 @@ public sealed class HierophantViewTests
     {
         Place(Boss);
         var seal = Arm(Boss, HierophantMove.SunSeal);
-        var sweep = Arm(Boss, HierophantMove.StaffSweep);
+        var fire = Arm(Boss, HierophantMove.FireThrow);
         _events.Publish(seal);
         Vector3[] firstPlacement = SealPositions();
         _events.Publish(new HierophantSealsPlaced(Boss + 1, Num.Vector2.One, Num.Vector2.One, Num.Vector2.One));
-        _events.Publish(Arm(Boss + 1, HierophantMove.StaffSweep));
+        _events.Publish(Arm(Boss + 1, HierophantMove.FireThrow));
         _events.Publish(new HierophantTellProgress(Boss + 1, 1f));
         _events.Publish(new HierophantImpact(Boss + 1, seal.Move, seal.SealSlot, 1f));
         _events.Publish(new BossPhaseChanged(Boss + 1, 1, 3));
@@ -378,8 +447,9 @@ public sealed class HierophantViewTests
         Assert.That(_floor.gameObject.activeSelf, Is.True);
         Assert.That(SealPositions(), Is.EqualTo(firstPlacement));
 
-        _events.Publish(sweep);
-        _events.Publish(new HierophantImpact(Boss, sweep.Move, sweep.SealSlot, 2f));
+        _events.Publish(fire);
+        _events.Publish(new HierophantImpact(Boss, fire.Move, fire.SealSlot, 2f));
+        _events.Publish(new HierophantFireWave(Boss, 1.1f, 2f, 0.3f, true));
         Assert.That(Visible(Layer("Release")), Is.True);
         _events.Publish(new EnemyDied(Boss, _spec, Num.Vector3.Zero));
         Place(Boss);
@@ -423,12 +493,13 @@ public sealed class HierophantViewTests
             _floor = _scene.GetRootGameObjects().Single(root => root.name == "Hierophant floor visuals").transform;
     }
 
-    private static HierophantArmed Arm(int boss, HierophantMove move) => move == HierophantMove.StaffSweep
-        ? new HierophantArmed(boss, move, -1, new Num.Vector3(3f, 0f, -2f), Num.Vector2.UnitX, 3.25f, 0f, 50f, 1f)
+    private static HierophantArmed Arm(int boss, HierophantMove move) => move == HierophantMove.FireThrow
+        ? new HierophantArmed(boss, move, -1, new Num.Vector3(3f, 0f, -2f), Num.Vector2.UnitX, 7f, 3.4641016f, 1f)
         : new HierophantArmed(boss, move, 2, new Num.Vector3(4f, 0f, 0f),
-            Num.Vector2.Normalize(Num.Vector2.One), 18f, 2f, 0f, 1.3f);
+            Num.Vector2.Normalize(Num.Vector2.One), 18f, 2f, 1.3f);
 
     private MeshFilter Layer(string label) => _floor.Find("Footprint/" + label).GetComponent<MeshFilter>();
+    private LineRenderer Line(string label) => _floor.Find(label).GetComponent<LineRenderer>();
     private static bool Visible(MeshFilter layer) => layer.GetComponent<MeshRenderer>().enabled;
     private static Vector3[] WorldVertices(MeshFilter layer) =>
         layer.sharedMesh.vertices.Select(layer.transform.TransformPoint).ToArray();
@@ -446,25 +517,12 @@ public sealed class HierophantViewTests
         Vector3 origin = armed.Origin.ToUnity();
         Vector2[] offsets = vertices.Select(point => new Vector2(point.x - origin.x, point.z - origin.z)).ToArray();
         float reach = armed.Reach * fraction;
-        if (armed.Move == HierophantMove.StaffSweep)
-        {
-            Assert.That(offsets[0], Is.EqualTo(Vector2.zero));
-            Assert.That(offsets.Skip(1).Select(point => point.magnitude),
-                Is.All.EqualTo(reach).Within(0.001f));
-            var facing = new Vector2(armed.Facing.X, armed.Facing.Y);
-            Assert.That(Vector2.SignedAngle(facing, offsets[1]), Is.EqualTo(armed.HalfAngleDegrees).Within(0.001f));
-            Assert.That(Vector2.SignedAngle(facing, offsets[^1]), Is.EqualTo(-armed.HalfAngleDegrees).Within(0.001f));
-            Assert.That(Vector2.Angle(facing, offsets[offsets.Length / 2]), Is.Zero.Within(0.001f));
-        }
-        else
-        {
-            var forward = new Vector2(armed.Facing.X, armed.Facing.Y);
-            var right = new Vector2(forward.y, -forward.x);
-            Assert.That(offsets.Select(point => Vector2.Dot(point, forward)),
-                Is.EqualTo(new[] { 0f, reach, 0f, reach }).Within(0.001f));
-            Assert.That(offsets.Select(point => Vector2.Dot(point, right)),
-                Is.EqualTo(new[] { -armed.HalfWidth, -armed.HalfWidth, armed.HalfWidth, armed.HalfWidth }).Within(0.001f));
-        }
+        var forward = new Vector2(armed.Facing.X, armed.Facing.Y);
+        var right = new Vector2(forward.y, -forward.x);
+        Assert.That(offsets.Select(point => Vector2.Dot(point, forward)),
+            Is.EqualTo(new[] { 0f, reach, 0f, reach }).Within(0.001f));
+        Assert.That(offsets.Select(point => Vector2.Dot(point, right)),
+            Is.EqualTo(new[] { -armed.HalfWidth, -armed.HalfWidth, armed.HalfWidth, armed.HalfWidth }).Within(0.001f));
     }
 
     private void AssertCleared()

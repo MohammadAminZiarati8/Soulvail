@@ -36,14 +36,18 @@ public sealed class HierophantBehaviourTests
         CharacterSpec character = ShardbackBehaviourTests.Character();
         _player = new PlayerCombat(character, _events, _intents, 8);
         var body = new EnemySpec(new ContentId("enemy.hierophant"), new LocKey("enemy.hierophant.name"),
-            500f, 1.8f, 8, 40, 300f, false, 12f, 3.2f, 1f, 0.8f, 40f, EnemyBehaviourKind.Static);
+            2100f, 1.8f, 8, 40, 300f, false, 12f, 3.2f, 1f, 0.8f, 40f, EnemyBehaviourKind.Static);
         var priest = AddSpec(_priest);
         var slinger = AddSpec(_slinger);
-        _enemies = new EnemySystem(new ContentCatalog(new[] { character }, new[] { body, priest, slinger }), _events,
-            new FixedRandom(0.5f), new DepthScaling(Scalings.Design()), 8);
-        _agent = _enemies.Registry.Spawn(body, Vector3.Zero);
+        var spec = new BossSpec(new ContentId("boss.hierophant"), body.Id,
+            new[] { new BossPhaseSpec(1f), new BossPhaseSpec(0.66f) }, 1.5f);
         _stats = new HierophantStats();
-        _boss = new HierophantBehaviour(_agent, _stats);
+        _enemies = new EnemySystem(new ContentCatalog(new[] { character }, new[] { body, priest, slinger },
+                bosses: new[] { spec }), _events, new FixedRandom(0.5f), new DepthScaling(Scalings.Design()), 8,
+            (agent, _) => new HierophantBehaviour(agent, _stats));
+        _agent = _enemies.SpawnBoss(spec.Id, Vector3.Zero);
+        _boss = (HierophantBehaviour)((BossBehaviour)_agent.Behaviour).Inner;
+        _events.Clear();
         _now = 0f;
     }
 
@@ -72,7 +76,7 @@ public sealed class HierophantBehaviourTests
             Is.LessThan(0.0001f));
         Vector3 end = arm.Origin + new Vector3(arm.Facing.X, 0f, arm.Facing.Y) * arm.Reach;
         Assert.That(MathF.Max(MathF.Abs(end.X), MathF.Abs(end.Z)), Is.EqualTo(18f).Within(0.0001f));
-        Assert.That((arm.HalfWidth, arm.HalfAngleDegrees, arm.Seconds), Is.EqualTo((2f, 0f, 1.3f)));
+        Assert.That((arm.HalfWidth, arm.Seconds), Is.EqualTo((2f, 1.3f)));
         Assert.That(_events.Count<HierophantTellProgress>(), Is.Zero);
 
         _stats.SealHalfWidth.Base = 0.5f;
@@ -91,16 +95,16 @@ public sealed class HierophantBehaviourTests
     }
 
     [Test]
-    public void Sweep_PathsThenCommits()
+    public void FireThrow_PathsThenCommits()
     {
         Place(0f, 20f);
         Tick(0f);
         Place(3f, 10f);
         Tick(1.3f);
-        // Keep the sweep out of its arming range on the tick that ends recovery.
-        Place(0f, 6f);
+        // Keep the fire out of its arming range on the tick that ends recovery.
+        Place(0f, 8f);
         Tick(1.5f, Vector3.UnitZ * 2.25f);
-        Place(5f, 0f);
+        Place(8f, 0f);
         _agent.Blackboard.HasLineOfSight = false;
         _agent.Blackboard.PathDirectionToPlayer = -Vector2.UnitY;
         Tick(0.125f, -Vector3.UnitZ * 2.25f);
@@ -108,26 +112,75 @@ public sealed class HierophantBehaviourTests
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(1));
 
         _agent.Blackboard.SelfPosition = new Vector3(2f, 1f, 0f);
-        Place(6f, 0f);
+        Place(9f, 0f);
         Tick(0.15f);
         HierophantArmed arm = LastArm();
         Assert.That((arm.Move, arm.SealSlot, arm.Origin, arm.Facing),
-            Is.EqualTo((HierophantMove.StaffSweep, -1, _agent.Blackboard.SelfPosition, Vector2.UnitX)));
-        Assert.That((arm.Reach, arm.HalfWidth, arm.HalfAngleDegrees, arm.Seconds), Is.EqualTo((4f, 0f, 60f, 1f)));
+            Is.EqualTo((HierophantMove.FireThrow, -1, _agent.Blackboard.SelfPosition, Vector2.UnitX)));
+        Assert.That((arm.Reach, arm.Seconds), Is.EqualTo((7f, 1f)));
+        Assert.That(arm.HalfWidth, Is.EqualTo(4f * MathF.Sin(MathF.PI / 3f)).Within(0.00001f));
 
-        Place(6f, 0f);
+        Place(9f, 0f);
         _agent.Blackboard.SelfPosition = Vector3.UnitZ * 100f;
-        _stats.SweepRange.Base = 1f;
-        _stats.SweepDamage.Base = 1f;
-        _stats.SweepRecoverySeconds.Base = 0.25f;
+        _stats.FireReach.Base = 1f;
+        _stats.FireDamage.Base = 1f;
+        _stats.FireRecoverySeconds.Base = 0.25f;
         Tick(1f);
         Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(arm.Facing));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+        Tick(0.8f);
         Assert.That(_player.Health.Current, Is.EqualTo(84f));
         Assert.That(_events.Of<HierophantImpact>()[1].RecoverySeconds, Is.EqualTo(1.25f));
-        Tick(1f);
-        Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(2));
         Tick(0.25f);
+        Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(2));
+        Tick(0.21f);
         Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.SunSeal));
+    }
+
+    [Test]
+    public void FireWave_HitsOnlyWhenTheStripReachesTheHero_AndOnlyOnce()
+    {
+        Place(0f, 20f);
+        Tick(0f);
+        Place(3f, 10f);
+        Tick(1.3f);
+        Place(0f, 5f);
+        Tick(1.5f);
+        Tick(1f);
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+
+        Tick(0.4f);
+        HierophantFireWave middle = _events.Of<HierophantFireWave>()[^1];
+        Assert.That((middle.Active, middle.Front), Is.EqualTo((true, 3.5f)));
+        Assert.That(middle.Rear, Is.EqualTo(2.6f).Within(0.001f));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+        Tick(0.2f);
+        Assert.That(_events.Of<HierophantFireWave>()[^1].Front, Is.EqualTo(5.25f).Within(0.001f));
+        Assert.That(_player.Health.Current, Is.EqualTo(84f));
+        Place(0f, 7f);
+        Tick(0.2f);
+        Assert.That(_events.Of<HierophantFireWave>()[^1].Front, Is.EqualTo(7f));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
+        Tick(0.1f);
+        Assert.That(_events.Of<HierophantFireWave>()[^1].Active, Is.False);
+    }
+
+    [Test]
+    public void PhaseChange_CancelsFireInFlight()
+    {
+        Place(0f, 20f);
+        Tick(0f);
+        Place(3f, 10f);
+        Tick(1.3f);
+        Place(0f, 7f);
+        Tick(1.5f);
+        Tick(1f);
+        Tick(0.4f);
+        int updates = _events.Count<HierophantFireWave>();
+        _boss.OnPhaseEntered(1);
+        Tick(0.4f);
+        Assert.That(_events.Count<HierophantFireWave>(), Is.EqualTo(updates));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
     }
 
     [TestCase(false, 0f, 0f, true)]
@@ -137,21 +190,21 @@ public sealed class HierophantBehaviourTests
     [TestCase(false, 0f, 18.001f, false)]
     [TestCase(false, float.NaN, 0f, false)]
     [TestCase(true, 0f, 0f, true)]
-    [TestCase(true, 0f, 4f, true)]
-    [TestCase(true, 0f, 4.001f, false)]
-    [TestCase(true, 0.86f, 0.5f, true)]
-    [TestCase(true, 0.87f, 0.5f, false)]
+    [TestCase(true, 0f, 7f, true)]
+    [TestCase(true, 0f, 7.001f, false)]
+    [TestCase(true, 3.464f, 0.5f, true)]
+    [TestCase(true, 3.465f, 0.5f, false)]
     [TestCase(true, 0f, -1f, false)]
     [TestCase(true, float.PositiveInfinity, 0f, false)]
     [TestCase(false, 0f, 0f, false, "decoy")]
     [TestCase(true, 0f, 1f, false, "decoy")]
     [TestCase(false, 0f, 0f, false, "dodge")]
     [TestCase(true, 0f, 1f, false, "dodge")]
-    public void Impact_UsesHeroAndArmedGeometry(bool sweep, float x, float z, bool hit, string defense = "")
+    public void Impact_UsesHeroAndArmedGeometry(bool fire, float x, float z, bool hit, string defense = "")
     {
-        Place(0f, sweep ? 20f : 2f);
+        Place(0f, fire ? 20f : 2f);
         Tick(0f);
-        if (sweep)
+        if (fire)
         {
             Place(3f, 10f);
             Tick(1.3f);
@@ -176,14 +229,16 @@ public sealed class HierophantBehaviourTests
             Assert.That(_player.Charge.IsInvulnerable, Is.True);
         }
         Tick(arm.Seconds * 0.5f);
+        if (fire)
+            Tick(0.8f);
 
-        Assert.That(_player.Health.Current, Is.EqualTo(hit ? sweep ? 84f : 80f : 100f));
+        Assert.That(_player.Health.Current, Is.EqualTo(hit ? fire ? 84f : 80f : 100f));
         object[] timing = _events.All.Where(e => e is HierophantTellProgress or HierophantImpact).ToArray();
         Assert.That(timing.Length, Is.EqualTo(3));
         Assert.That(((HierophantTellProgress)timing[1]).Fraction, Is.EqualTo(1f));
         var impact = (HierophantImpact)timing[2];
         Assert.That((impact.BossId, impact.Move, impact.SealSlot, impact.RecoverySeconds),
-            Is.EqualTo((_agent.Id, arm.Move, arm.SealSlot, sweep ? 1.25f : 1.5f)));
+            Is.EqualTo((_agent.Id, arm.Move, arm.SealSlot, fire ? 1.25f : 1.5f)));
         if (defense == "dodge")
             Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1), "The dodge blocks the damage attempt.");
 
@@ -227,7 +282,7 @@ public sealed class HierophantBehaviourTests
         Tick(1.25f);
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(2));
         Tick(0.25f);
-        Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.StaffSweep));
+        Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.FireThrow));
         Assert.That(_events.Count<HierophantImpact>(), Is.EqualTo(2));
         Tick(100f);
         Tick(100f);
@@ -267,7 +322,7 @@ public sealed class HierophantBehaviourTests
         Tick(1.3f);
         Assert.That(_events.Single<HierophantImpact>().RecoverySeconds, Is.EqualTo(1.5f));
         Tick(2f);
-        Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.StaffSweep));
+        Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.FireThrow));
         Tick(1f);
         Tick(1.25f);
         Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.SunSeal));
@@ -290,12 +345,12 @@ public sealed class HierophantBehaviourTests
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(1));
         Place(0f, 2f);
         Tick(0f);
-        Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.StaffSweep));
+        Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.FireThrow));
     }
 
     [TestCase(0)]
     [TestCase(2)]
-    public void OutOfSweepRange_RecastsAfterChase(int phase)
+    public void OutOfFireReach_RecastsAfterChase(int phase)
     {
         _boss.OnPhaseEntered(phase);
         Place(15f, 0f);
@@ -371,6 +426,70 @@ public sealed class HierophantBehaviourTests
         Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.False);
     }
 
+    [TestCase(400f, 105f)]
+    [TestCase(40f, 40f)]
+    public void Priest_HealsOnceAfterTheWardBreak(float missing, float restored)
+    {
+        EnemyAgent priest = OpenWard();
+        _agent.Health.ApplyDamage(missing, _now);
+        _enemies.ApplyDamage(priest.Id, 1f, _now, _player);
+        Tick(4.9f);
+        Assert.That(_events.Count<HierophantHealChannel>(), Is.Zero);
+        Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.False);
+
+        Tick(0.11f);
+        Assert.That(_events.Single<HierophantHealChannel>().Active, Is.True);
+        Tick(1.49f);
+        Assert.That(_events.Count<EnemyHealed>(), Is.Zero);
+        Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.False);
+        Tick(0.02f);
+        EnemyHealed heal = _events.Single<EnemyHealed>();
+        Assert.That((heal.EnemyId, heal.Amount), Is.EqualTo((_agent.Id, restored)));
+        Assert.That(_events.Of<HierophantHealChannel>()[^1].Active, Is.False);
+        Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.True);
+
+        _agent.Health.ApplyDamage(50f, _now);
+        _enemies.ApplyDamage(priest.Id, 1f, _now, _player);
+        Tick(7f);
+        Assert.That(_events.Count<EnemyHealed>(), Is.EqualTo(1));
+        Assert.That(_events.Of<HierophantWard>()[^1].Active, Is.True);
+    }
+
+    [TestCase("hit")]
+    [TestCase("priest death")]
+    [TestCase("priest despawn")]
+    [TestCase("boss death")]
+    [TestCase("boss despawn")]
+    [TestCase("phase")]
+    public void Priest_ChannelCancellation_DoesNotDeliverOrRetry(string cause)
+    {
+        EnemyAgent priest = OpenWard();
+        var wrapper = (BossBehaviour)_agent.Behaviour;
+        _agent.Health.ApplyDamage(400f, _now);
+        _enemies.ApplyDamage(priest.Id, 1f, _now, _player);
+        Tick(5.1f);
+        Assert.That(_events.Single<HierophantHealChannel>().Active, Is.True);
+
+        if (cause == "phase")
+        {
+            _enemies.ApplyDamage(_agent.Id, 500f, _now, _player);
+            wrapper.Tick(new EnemyTickContext(0.01f, _now, _player, _intents, _events, _projectiles, _enemies));
+            Assert.That(wrapper.IsInBeat, Is.True);
+        }
+        else if (cause.EndsWith("despawn", StringComparison.Ordinal))
+            _enemies.Despawn(cause.StartsWith("boss", StringComparison.Ordinal) ? _agent.Id : priest.Id);
+        else
+            _enemies.ApplyDamage(cause == "boss death" ? _agent.Id : priest.Id,
+                cause == "hit" ? 1f : 9000f, _now, _player);
+
+        Assert.That(_events.Count<HierophantHealChannel>(), Is.EqualTo(2));
+        Assert.That(_events.Of<HierophantHealChannel>()[^1].Active, Is.False);
+        if (cause != "boss death" && cause != "boss despawn")
+            Tick(7f);
+        Assert.That(_events.Count<HierophantHealChannel>(), Is.EqualTo(2));
+        Assert.That(_events.Count<EnemyHealed>(), Is.Zero);
+    }
+
     [Test]
     public void Tick_AllocatesNothing()
     {
@@ -387,7 +506,7 @@ public sealed class HierophantBehaviourTests
             Place(0f, 2f);
             for (int i = 0; i < 9; i++)
             {
-                // Two seal tells and releases, a sweep approach, tell, release and recovery.
+                // Two seal tells and releases, a fire approach, tell, release and recovery.
                 Place(0f, i == 5 ? 12f : 2f);
                 _boss.Tick(new EnemyTickContext(3f, i * 3f, player, _intents, silent, _projectiles, _enemies));
             }
@@ -397,6 +516,19 @@ public sealed class HierophantBehaviourTests
     private static EnemySpec AddSpec(ContentId id) =>
         new(id, new LocKey(id.Value + ".name"), 100f, 2f, 3, 10, 20f, false,
             12f, 3.2f, 1f, 0.8f, 40f, EnemyBehaviourKind.Static);
+
+    private EnemyAgent OpenWard()
+    {
+        Place(0f, 20f);
+        Tick(0f);
+        Tick(1.3f);
+        Place(0f, 2f);
+        Tick(1.5f);
+        Tick(1f);
+        Tick(1.25f);
+        Assert.That(_events.Single<HierophantWard>().Active, Is.True);
+        return _enemies.Registry.Alive[^2];
+    }
 
     private HierophantArmed LastArm() => _events.Of<HierophantArmed>()[^1];
 

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.hierophant
   _nameKey: enemy.hierophant.name
-  _maxHp: 1050
+  _maxHp: 2100
   _moveSpeed: 2.25
   _targetPriority: 8
   _threatCost: 40

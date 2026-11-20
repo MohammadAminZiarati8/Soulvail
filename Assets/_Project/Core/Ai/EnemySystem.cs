@@ -419,7 +419,8 @@ public sealed class EnemySystem
         Spawn(specId, position, isSummon: false);
 
     private EnemyAgent Spawn(ContentId specId, Vector3 position, bool isSummon,
-        HierophantBehaviour escortOwner = null, float hpBonus = 0f, float damageBonus = 0f)
+        HierophantBehaviour escortOwner = null, float hpBonus = 0f, float damageBonus = 0f,
+        bool usesAuthoredMaxHp = false)
     {
         EnemySpec spec = _catalog.Enemy(specId);
 
@@ -431,7 +432,7 @@ public sealed class EnemySystem
         // The registry has just wiped and re-based all three of this agent's stats
         // (EnemyAgent.Initialise, ledger row 2), so this is applying depth to an archetype's
         // authored numbers and never on top of a previous life's.
-        _scaling.Apply(agent, _depth);
+        _scaling.Apply(agent, _depth, usesAuthoredMaxHp);
         if (hpBonus > 0f)
         {
             agent.Health.MaxHp.Add(new Modifier(ModifierKind.PercentMult, hpBonus, escortOwner));
@@ -536,7 +537,8 @@ public sealed class EnemySystem
     {
         BossSpec boss = _catalog.Boss(bossId);
 
-        EnemyAgent agent = Spawn(boss.EnemySpecId, position);
+        EnemyAgent agent = Spawn(boss.EnemySpecId, position, isSummon: false,
+            usesAuthoredMaxHp: boss.UsesAuthoredMaxHp);
 
         // After the spawn, because a behaviour holds the agent it drives and there is no agent to
         // hold until this line has run — see _bossInner. An explicit `inner` wins, so a fixture
@@ -1023,12 +1025,10 @@ public sealed class EnemySystem
             chaser.QueueReflection(now, landing);
         }
 
-        if (result.ToHp > 0f)
-        {
+        if (result.Applied > 0f)
             agent.EscortOwner?.OnEscortHit(enemyId, result.Killed, now, Registry, _events);
-            if (result.Killed && agent.Behaviour is BossBehaviour { Inner: HierophantBehaviour deadHierophant })
-                deadHierophant.SuspendWard(now, _events);
-        }
+        if (result.Killed && agent.Behaviour is BossBehaviour { Inner: HierophantBehaviour deadHierophant })
+            deadHierophant.SuspendWard(now, _events);
 
         _events.Publish(new EnemyDamaged(enemyId, result.Applied, agent.Health.Fraction, result.Killed, result.Blocked));
 
@@ -1490,7 +1490,7 @@ public sealed class EnemySystem
                 continue;
             }
 
-            if (agent.IsWarding)
+            if (agent.IsWarding || agent.IsHealingEscort)
             {
                 ctx.Intents.EnemyMove(new EnemyMoveIntent(agent.Id, Vector3.Zero, Vector2.Zero));
                 continue;

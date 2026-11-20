@@ -50,6 +50,7 @@ public sealed class DepthScaling
     /// </summary>
     /// <param name="agent">The enemy to scale. Freshly spawned in every caller today.</param>
     /// <param name="stage">The depth it is spawning at. Stages are numbered from 1.</param>
+    /// <param name="usesAuthoredMaxHp">Keep the authored HP maximum for this spawn.</param>
     /// <exception cref="ArgumentNullException"><paramref name="agent"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="stage"/> is below 1.</exception>
     /// <remarks>
@@ -71,7 +72,7 @@ public sealed class DepthScaling
     /// about what a legal stage is and it names the number the caller passed.
     /// </para>
     /// </remarks>
-    public void Apply(EnemyAgent agent, int stage)
+    public void Apply(EnemyAgent agent, int stage, bool usesAuthoredMaxHp = false)
     {
         if (agent is null)
         {
@@ -81,7 +82,7 @@ public sealed class DepthScaling
         // Every curve is evaluated before anything is mutated, so a stage the curves refuse leaves
         // the agent exactly as it was rather than wearing one modifier out of three — the same
         // validate-then-assign order RunSession.Start takes with a config.
-        float hp = _scaling.Hp.At(stage);
+        float hp = usesAuthoredMaxHp ? 1f : _scaling.Hp.At(stage);
         float damage = _scaling.Damage.At(stage);
         float speed = _scaling.Speed.At(stage);
 

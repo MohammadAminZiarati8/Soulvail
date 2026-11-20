@@ -23,3 +23,4 @@ MonoBehaviour:
   - _entersBelow: 0.33
     _summons: []
   _spawnsCentral: 1
+  _usesAuthoredMaxHp: 1

@@ -245,6 +245,7 @@ public sealed class EnemyAgent
 
     internal HierophantBehaviour EscortOwner { get; set; }
     internal bool IsWarding => EscortOwner?.IsWardPriest(Id) == true;
+    internal bool IsHealingEscort => EscortOwner?.IsHealingPriest(Id) == true;
 
     /// <summary>
     /// A stalker gone hidden: no auto-aim, skill or focus selects it, though anything that reaches it

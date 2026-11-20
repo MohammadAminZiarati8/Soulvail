@@ -46,8 +46,9 @@ public sealed class HierophantStageTests
         BossSpec boss = catalog.Boss(bossId);
         Assert.That(boss.EnemySpecId, Is.EqualTo(Hierophant));
         Assert.That(boss.SpawnsCentral, Is.True);
+        Assert.That(boss.UsesAuthoredMaxHp, Is.True);
         Assert.That(body.ToSpec().Behaviour, Is.EqualTo(EnemyBehaviourKind.Boss));
-        Assert.That(body.ToSpec().MaxHp, Is.EqualTo(1050f));
+        Assert.That(body.ToSpec().MaxHp, Is.EqualTo(2100f));
         Assert.That(body.ToLook().BodyScale, Is.EqualTo(2.2f));
         Assert.That(body.ToLook().Body.GetComponent<HierophantView>(), Is.Not.Null);
         var name = body.ToSpec().NameKey;
@@ -72,9 +73,12 @@ public sealed class HierophantStageTests
         EnemySpawned priest = fight.Events.Of<EnemySpawned>().Single(e => e.SpecId == Priest);
         EnemySpawned slinger = fight.Events.Of<EnemySpawned>().Single(e => e.SpecId == Slinger);
         float full = fight.LastHit(boss.Id).Amount;
+        EnemyDamaged first = fight.Events.Of<EnemyDamaged>().First(e => e.Id == boss.Id && e.Amount > 0f);
+        Assert.That(first.Amount / (1f - first.HpFraction), Is.EqualTo(2100f).Within(0.1f));
         int before = fight.Events.Count<EnemyDamaged>();
         fight.Until(() => fight.HitAfter(boss.Id, before), 5f);
         Assert.That(fight.LastHit(boss.Id).Amount, Is.EqualTo(full * 0.5f).Within(0.01f));
+        fight.Until(() => fight.LastHit(boss.Id).HpFraction <= 0.94f, 30f);
 
         fight.Target = null;
         fight.Until(() => fight.Events.Of<TargetChanged>().Last().Id == priest.Id, 4f);
@@ -89,10 +93,14 @@ public sealed class HierophantStageTests
         fight.Target = NoTarget;
         fight.Until(() => fight.Session.State.Time >= interruptedAt + 4.9f, 5.1f);
         Assert.That(fight.Events.Of<HierophantWard>().Last().Active, Is.False);
-        fight.Until(() => fight.Events.Of<HierophantWard>().Last().Active, 1f);
+        fight.Until(() => fight.Events.Count<HierophantHealChannel>() > 0, 1f);
+        Assert.That(fight.Events.Of<HierophantWard>().Last().Active, Is.False);
+        fight.Until(() => fight.Events.Of<HierophantWard>().Last().Active, 2f);
+        Assert.That(fight.Events.Of<EnemyHealed>().Single(e => e.EnemyId == boss.Id).Amount,
+            Is.EqualTo(105f).Within(0.01f));
 
         fight.Target = Hierophant;
-        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 1, 110f);
+        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 1, 230f);
         AssertThreshold(fight, boss.Id, 0.66f);
         Assert.That(fight.Events.Of<HierophantWard>().Last().Active, Is.False);
         Assert.That(fight.Session.State.IsEnemyAlive(priest.Id), Is.True);
@@ -130,7 +138,7 @@ public sealed class HierophantStageTests
         Assert.That(fight.Events.Count<SpawnTelegraphed>(), Is.Zero);
         Assert.That(fight.ArrivalPoints, Is.EqualTo(fight.ArrivalLevel - 1));
 
-        fight.Until(() => fight.Events.Of<EnemyDied>().Any(e => e.Id == boss.Id), 245f);
+        fight.Until(() => fight.Events.Of<EnemyDied>().Any(e => e.Id == boss.Id), 520f);
         float elapsed = fight.Session.State.Time - fight.SpawnedAt;
         float firstHit = fight.Events.Of<EnemyDamaged>().First(e => e.Id == boss.Id && e.Amount > 0f).Amount;
         TestContext.WriteLine($"DT-01 Stage 15 Ranger level {fight.ArrivalLevel}, first bow hit {firstHit:F2}, " +
@@ -159,10 +167,10 @@ public sealed class HierophantStageTests
         fight.Session.TakeNode(new ContentId("skill.ranger.quick-draw"));
         fight.Session.TakeNode(new ContentId("skill.ranger.quick-draw-2"));
         fight.Session.TakeNode(new ContentId("skill.ranger.quick-draw-3"));
-        fight.Until(() => fight.Events.Count<BossBeatEnded>() == 2, 150f);
+        fight.Until(() => fight.Events.Count<BossBeatEnded>() == 2, 330f);
         int impacts = fight.Events.Count<HierophantImpact>();
 
-        fight.Until(() => fight.Events.Count<StageCleared>() == 1, 60f);
+        fight.Until(() => fight.Events.Count<StageCleared>() == 1, 145f);
         HierophantImpact[] final = fight.Events.Of<HierophantImpact>().Skip(impacts).Take(2).ToArray();
         Assert.That(final.Select(hit => (hit.Move, hit.RecoverySeconds)),
             Is.EqualTo(new[] { (HierophantMove.SunSeal, 0f), (HierophantMove.SunSeal, 1.5f) }));
@@ -190,7 +198,7 @@ public sealed class HierophantStageTests
     public void FinalPair_AllowsTwoWalkingEscapes()
     {
         using var fight = new Fight { FollowWard = true };
-        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 2, 150f);
+        fight.Until(() => fight.Events.Count<BossBeatStarted>() == 2, 345f);
         fight.FollowWard = false;
         fight.Target = NoTarget;
         fight.ReturnToLane = false;
@@ -407,7 +415,8 @@ public sealed class HierophantStageTests
                     case HierophantArmed armed:
                         _warning = armed;
                         break;
-                    case HierophantImpact:
+                    case HierophantImpact { Move: HierophantMove.SunSeal }:
+                    case HierophantFireWave { Active: false }:
                     case BossBeatStarted:
                         _warning = null;
                         break;
@@ -430,7 +439,7 @@ public sealed class HierophantStageTests
 
             if (_warning is not HierophantArmed armed)
             {
-                // Return between tells so successive sweep retreats cannot pin the probe against the arena boundary.
+                // Return between attacks so successive retreats cannot pin the probe against the arena boundary.
                 var towardLane = new Direction(2.5f - player.X, -5f - player.Z);
                 return ReturnToLane && SpawnedAt > 0f && Session.State.StageIndex == 15
                     && Events.Count<StageCleared>() == 0 && towardLane.LengthSquared() > 0.09f
@@ -438,21 +447,28 @@ public sealed class HierophantStageTests
             }
 
             var offset = new Direction(player.X - armed.Origin.X, player.Z - armed.Origin.Z);
-            if (armed.Move == HierophantMove.SunSeal)
-            {
-                var right = new Direction(armed.Facing.Y, -armed.Facing.X);
-                float across = Direction.Dot(offset, right);
-                float edge = armed.HalfWidth + PlayerRadius;
-                if (MathF.Abs(across) >= edge)
-                    return Direction.Zero;
+            var right = new Direction(armed.Facing.Y, -armed.Facing.X);
+            float across = Direction.Dot(offset, right);
+            float edge = armed.HalfWidth + PlayerRadius;
+            if (MathF.Abs(across) >= edge)
+                return Direction.Zero;
 
-                float sign = across < 0f ? -1f : 1f;
-                Direction step = right * (sign * edge - across);
-                var end = new Vector3(player.X + step.X, player.Y, player.Z + step.Y);
-                return NavMesh.Raycast(player.ToUnity(), end, out _, NavMesh.AllAreas) ? -sign * right : sign * right;
+            if (armed.Move == HierophantMove.FireThrow)
+            {
+                float along = Direction.Dot(offset, armed.Facing);
+                float retreat = armed.Reach + PlayerRadius - along;
+                var exit = new Vector3(armed.Facing.X, 0f, armed.Facing.Y) * retreat;
+                if (retreat <= 0f || along <= -PlayerRadius)
+                    return Direction.Zero;
+                if (retreat < edge - MathF.Abs(across) &&
+                    !NavMesh.Raycast(player.ToUnity(), player.ToUnity() + exit, out _, NavMesh.AllAreas))
+                    return armed.Facing;
             }
 
-            return offset.Length() < armed.Reach + 0.15f ? Direction.Normalize(offset) : Direction.Zero;
+            float sign = across < 0f ? -1f : 1f;
+            Direction step = right * (sign * edge - across);
+            var end = new Vector3(player.X + step.X, player.Y, player.Z + step.Y);
+            return NavMesh.Raycast(player.ToUnity(), end, out _, NavMesh.AllAreas) ? -sign * right : sign * right;
         }
 
         public void Dispose()

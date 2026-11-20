@@ -3,7 +3,42 @@ using System.Numerics;
 
 namespace Soulvail.Core.Events;
 
-public enum HierophantMove { StaffSweep, SunSeal }
+public enum HierophantMove { FireThrow, SunSeal }
+
+/// <summary>The live fire strip, measured forward from the locked warning origin.</summary>
+public readonly struct HierophantFireWave
+{
+    public readonly int BossId;
+    public readonly float Rear;
+    public readonly float Front;
+    public readonly float Fraction;
+    public readonly bool Active;
+
+    public HierophantFireWave(int bossId, float rear, float front, float fraction, bool active)
+    {
+        BossId = bossId;
+        Rear = rear;
+        Front = front;
+        Fraction = fraction;
+        Active = active;
+    }
+}
+
+public readonly struct HierophantHealChannel
+{
+    public readonly int BossId;
+    public readonly Vector3 PriestPosition;
+    public readonly float Fraction;
+    public readonly bool Active;
+
+    public HierophantHealChannel(int bossId, Vector3 priestPosition, float fraction, bool active)
+    {
+        BossId = bossId;
+        PriestPosition = priestPosition;
+        Fraction = fraction;
+        Active = active;
+    }
+}
 
 public readonly struct HierophantSealsPlaced
 {
@@ -37,11 +72,10 @@ public readonly struct HierophantArmed
     public readonly Vector2 Facing;
     public readonly float Reach;
     public readonly float HalfWidth;
-    public readonly float HalfAngleDegrees;
     public readonly float Seconds;
 
     public HierophantArmed(int bossId, HierophantMove move, int sealSlot, Vector3 origin,
-        Vector2 facing, float reach, float halfWidth, float halfAngleDegrees, float seconds)
+        Vector2 facing, float reach, float halfWidth, float seconds)
     {
         if (!float.IsFinite(origin.X) || !float.IsFinite(origin.Y) || !float.IsFinite(origin.Z))
             throw new ArgumentOutOfRangeException(nameof(origin));
@@ -51,8 +85,6 @@ public readonly struct HierophantArmed
             throw new ArgumentOutOfRangeException(nameof(reach));
         if (!(halfWidth >= 0f) || !float.IsFinite(halfWidth))
             throw new ArgumentOutOfRangeException(nameof(halfWidth));
-        if (!(halfAngleDegrees >= 0f && halfAngleDegrees <= 180f))
-            throw new ArgumentOutOfRangeException(nameof(halfAngleDegrees));
         if (!(seconds > 0f) || !float.IsFinite(seconds))
             throw new ArgumentOutOfRangeException(nameof(seconds));
 
@@ -63,7 +95,6 @@ public readonly struct HierophantArmed
         Facing = facing;
         Reach = reach;
         HalfWidth = halfWidth;
-        HalfAngleDegrees = halfAngleDegrees;
         Seconds = seconds;
     }
 }

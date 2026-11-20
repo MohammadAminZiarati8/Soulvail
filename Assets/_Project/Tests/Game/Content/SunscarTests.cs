@@ -71,10 +71,10 @@ public sealed class SunscarTests
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
                 (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Vulture, 22, 0),
             }));
-        Assert.That(mode.BossRoster, Has.Count.EqualTo(2));
+        Assert.That(mode.BossRoster, Has.Count.EqualTo(3));
         for (int stage = 1; stage <= mode.FinalStage; stage++)
         {
-            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage is 5 or 10));
+            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage is 5 or 10 or 15));
             if (stage == 5)
             {
                 Assert.That(boss.Value, Is.EqualTo("boss.duneclaw"));
@@ -82,6 +82,10 @@ public sealed class SunscarTests
             else if (stage == 10)
             {
                 Assert.That(boss.Value, Is.EqualTo("boss.shardback"));
+            }
+            else if (stage == 15)
+            {
+                Assert.That(boss.Value, Is.EqualTo("boss.hierophant"));
             }
         }
         Assert.That(mode.ScriptedStages.Select(script => script.Stage),
@@ -1169,7 +1173,7 @@ public sealed class SunscarTests
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 11);
 
     [Test]
-    public void Sunscar_Stage14_WavesClear() =>
+    public void Sunscar_Stage14_WavesClearAndLeadToHierophant() =>
         AssertStageWavesClear(14, new[] { Scorpion, Beetle, Viper, Jackal, Glassback, Antlion, Priest },
             maxSeconds: 240, sidestepTells: true, dodgeLandings: true, seed: 1);
 
@@ -1264,6 +1268,7 @@ public sealed class SunscarTests
             var positions = new Dictionary<int, NumericsVector3>();
             NumericsVector3 player = NumericsVector3.Zero;
             var movementExtents = new NumericsVector3(12f, 0f, 12f);
+            NumericsVector3? gatePosition = stage == 14 ? Arena(DunesPath).GatePosition.ToNum() : null;
             int tellsRead = 0;
             int divesRead = 0;
             int shotsRead = 0;
@@ -1283,6 +1288,8 @@ public sealed class SunscarTests
                 world.Clear();
                 world.Dt = frameTime;
                 world.SpawnPoints = points;
+                world.HasGate = gatePosition.HasValue;
+                world.GatePosition = gatePosition.GetValueOrDefault();
                 // Step out of the tell, then stand still to let the Ranger fire.
                 NumericsVector3 dodgeOrigin = player;
                 IReadOnlyList<EnemyTelegraph> tells = events.Of<EnemyTelegraph>();
@@ -1379,6 +1386,26 @@ public sealed class SunscarTests
                 .Select(spawn => $"{spawn.SpecId} at {positions.GetValueOrDefault(spawn.Id, spawn.Position)}");
             Assert.That(events.Count<StageCleared>(), Is.EqualTo(1),
                 $"Stage {stage} after {maxSeconds}s, player at {player}, survivors: {string.Join(", ", survivors)}");
+            if (stage == 14)
+            {
+                // Take the progression path from Stage 14, without a Stage 15 restore.
+                NumericsVector3 gate = events.Single<StageCleared>().GatePosition;
+                int before = events.Count<EnemySpawned>();
+                for (int frame = 0; frame < 15f / frameTime && events.Count<EnemySpawned>() == before; frame++)
+                {
+                    world.Clear();
+                    world.Dt = frameTime;
+                    world.PlayerPosition = session.State.StageIndex == 14 ? gate : player;
+                    world.HasGate = true;
+                    world.GatePosition = gate;
+                    world.SpawnPoints = points;
+                    session.Tick(world);
+                }
+                Assert.That(events.Of<StageArrived>().Select(e => (e.Stage, e.ArenaId)),
+                    Is.EqualTo(new[] { (14, Dunes), (15, Dunes) }));
+                Assert.That(events.Of<EnemySpawned>().Skip(before).Select(e => e.SpecId),
+                    Is.EqualTo(new[] { new ContentId("enemy.hierophant") }));
+            }
             return events;
         }
         finally
@@ -1584,7 +1611,7 @@ public sealed class SunscarTests
     private static ContentCatalog Catalog(params ModeSpec[] modes) =>
         new(new[] { AssetDatabase.LoadAssetAtPath<CharacterDefinition>(Root + "Data/Characters/Ranger.asset").ToSpec() },
             BootEnemies().Select(enemy => enemy.ToSpec()).ToArray(), modes: modes,
-            bosses: new[] { "DuneclawBoss", "ShardbackBoss" }
+            bosses: new[] { "DuneclawBoss", "ShardbackBoss", "HierophantBoss" }
                 .Select(name => AssetDatabase.LoadAssetAtPath<BossDefinition>(Root + $"Data/Enemies/{name}.asset").ToSpec())
                 .ToArray());
 

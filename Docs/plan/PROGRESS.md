@@ -9,17 +9,17 @@ _2026-11-20._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-17b** — Hierophant prototype tells, seals and cues. |
-| **Next task** | [SS-17c](tasks/SS-17c-hierophant-stage.md), on owner's go. |
-| **Verified** | EditMode 7099/7191, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-17c** — Hierophant at Sunscar 15. |
+| **Next task** | [SS-17d](tasks/SS-17d-hierophant-models.md), when the two TRELLIS models are ready. |
+| **Verified** | EditMode 7104/7196, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
-Jungle clear → Sunscar. DT-01: any place.
+Jungle clear unlocks Sunscar. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
-Waves → cyan portal; Warden/Croaker, Mother 10/Warlord 15/Thornheart 20.
-Scripted 1–29 except bosses; adds die with boss, 0 XP.
-Sunscar: 24 regular stages, 2–5 waves, 5–35 authored enemies. XP curve and boss reward tuning pending for level 30 after stage 24.
+Cyan portals. Jungle: Warden/Croaker, Mother 10/Warlord 15/Thornheart 20.
+Scripted 1–29. Boss adds die with boss, 0 XP.
+Sunscar: 24 regular stages, 2–5 waves, 5–35 enemies. Tune XP/rewards for L30 after 24.
 Thornheart: spokes/pods/slam/heart ×2. Mother: shields/lobs/spray/pod.
 Stalker 22+ lurks. Thornweaver 24+: 10 m, ≤2 walls past you; die with it.
 Gravemaw 25: burrow past cover/rise open; ring, bite/throw, tremor/rocks. 50%: 2 rings/crack Frogs. 986 HP/4 pillars.
@@ -34,9 +34,10 @@ Killshot: 3 m/4x arrow; pierces guards, not phases.
 Wind-up blocks hits/debuffs.
 Cobra fan. Callers: 2 s channel. Vultures circle/dive/land exposed 2 s.
 Hero Poison: violet drop/stacks/timer/quiet HP ticks; Space/death clears.
-Duneclaw Sunscar 5: 1000 HP, DT-01 L8 Ranger 81.60 s. 3 scorplings at 66%, clear at 33%; portal 6. Slabs: 3 s pin.
-Duneclaw turns 360 degrees/s in casts/recovery; tells locked.
-Shardback Sunscar 10: 1025 HP, DT-01 L16 Ranger 92.37 s. Smooth turns, 5.5 m burst. 3 pillars, 2 zero-XP beetles at 66%, clear at 33%, portal 11.
+Duneclaw 5: 1000 HP, DT-01 L8 81.60 s. 3 scorplings 66–33%, portal 6. Slabs pin 3 s.
+Duneclaw turns 360°/s. Tells stay locked.
+Shardback 10: 1025 HP, DT-01 L16 92.37 s. 5.5 m burst, smooth turns, 3 pillars, 2 beetles 66–33%, portal 11.
+Hierophant 15: 780 HP, DT-01 L23, first bow hit 18.72, 91.20 s. Priest/slinger 66–33%, paired seals, portal 16.
 Skirmisher runs/fires: Ricochet 11/Second Wind 14 (roll guard/pips)/Whirlwind 17/Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

@@ -1035,3 +1035,5 @@ MonoBehaviour:
     _text: The Duneclaw
   - _key: enemy.shardback.name
     _text: Shardback
+  - _key: enemy.hierophant.name
+    _text: Sunscar Hierophant

@@ -107,6 +107,9 @@ MonoBehaviour:
   - _bossId: boss.shardback
     _everyNStages: 0
     _atStage: 10
+  - _bossId: boss.hierophant
+    _everyNStages: 0
+    _atStage: 15
   _scriptedStages:
   - _stage: 1
     _spawns:

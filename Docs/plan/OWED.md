@@ -888,3 +888,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [Editor] In SS-17c's live Dunes fight, listen for the sweep scrape and seal warning cue. The preview verified the clips selected by each arm event and the footprint-to-impact swap.
 - [Device] In SS-17c's live fight, check that the safe edge stays visible at portrait scale through the active sandstorm.
+
+
+## SS-17c — Sunscar Hierophant
+
+- **[Editor]** Start Sunscar Stage 15 via DT-01. Walk sideways out of the seals near cover, wound the slinger and interrupt the priest's beam, then dodge both seals in the final pair and take the north portal to Stage 16.
+- **[device]** Repeat on a portrait phone. Check that the attack cues and both long escape edges stay legible through the Dunes weather.

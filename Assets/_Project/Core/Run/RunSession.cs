@@ -287,6 +287,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 agent => new DuneclawBehaviour(agent, new DuneclawStats()),
             [new ContentId("boss.shardback")] =
                 agent => new ShardbackBehaviour(agent, new ShardbackStats()),
+            [new ContentId("boss.hierophant")] =
+                agent => new HierophantBehaviour(agent, new HierophantStats()),
             [new ContentId("boss.warden")] =
                 agent => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
             [new ContentId("boss.croaker")] =

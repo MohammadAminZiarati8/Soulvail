@@ -590,6 +590,29 @@ Stage 14's priest introduces the target-priority problem that returns when the e
   test a spent tree to check how much of the final phase a stronger build sees. Victory opens
   the usual north portal to Stage 16.
 
+### 9.6 The Sunscar — stage 20, the Sundial Colossus
+
+A walking sandstone monument with a recessed chest dial and an oversized right forearm shaped
+like a sundial hand. It advances between attacks, plants its feet to cast, and lets the Ranger
+stop and shoot after the arm lodges in the floor.
+
+- **Sundial Sweep.** Three red-orange sectors form a dial across the floor. The boss aims the
+  middle sector at the player and locks all three at the start of the warning. A scrape and a
+  start marker show which side goes first. The arm hits each sector in order. Walk past the
+  marked arc, wait for the arm to lodge, then fire during recovery.
+- **Stone Stomp.** After a sweep, if the player is still close, the boss lifts a foot and marks
+  a short circle around itself. Step outside the marked disc before the stomp. A rising stone
+  knock distinguishes its warning from the sweep.
+- **Phases.** At 66% two Jackal Slingers arrive once and the sweep crosses the sectors faster,
+  with the same warning duration. At 33% the beat clears any survivors. The arm now sweeps back
+  across the same sectors after a fresh warning. The longest firing window follows the return.
+  Standard 1.5 s beats cancel the current attack. The boss stays damageable outside beats.
+- **Arena and pacing.** Spawn centrally in the existing Dunes. The markings stay in world space
+  through each attack. Cover still blocks ordinary shots, and weather stays cosmetic. Tune for
+  75–120 s from boss spawn to death with the Stage 20 Ranger. Validate walk-speed escapes near
+  walls and cover, and check both sweep directions at portrait scale. Victory opens the north
+  gate to Stage 21.
+
 ---
 
 ## 10. Veilrot — the signature system

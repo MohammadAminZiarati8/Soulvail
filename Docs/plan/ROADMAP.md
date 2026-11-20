@@ -302,7 +302,14 @@ SS-16d verified locked tells and broke and restored authored cover with the real
 - [x] **SS-17h** — Hierophant fire throw and Jackal heal (M)
 - [x] **SS-17i** — Remove Hierophant warning borders (S)
 
-Sunscar's later bosses are stages 20, 25 and 30, one at a time on the owner's go. Balance target: level 30 after stage 24, with at most one level earned per boss. The regular waves set the full-clear XP budgets. The XP curve and boss rewards need a separate tuning pass to reach that target.
+**The Sundial Colossus, Sunscar's stage-20 boss** ([GD §9.6](../GameDesign.md#96-the-sunscar--stage-20-the-sundial-colossus)). A sandstone giant with a three-sector arm sweep, a close stomp, two Jackal Slingers at 66% and a separately warned backswing at 33%. Build one spec at a time on the owner's go. Stage 20 is playable after SS-18c. SS-18d requires the owner's TRELLIS mesh.
+
+- [ ] [SS-18a](tasks/SS-18a-colossus-core.md) — Sweep sectors, Stone Stomp and reverse pass (M)
+- [ ] [SS-18b](tasks/SS-18b-colossus-presentation.md) — Prototype body, floor warnings and cues (M)
+- [ ] [SS-18c](tasks/SS-18c-colossus-stage.md) — Stage 20, phase adds, pacing and portal (S)
+- [ ] [SS-18d](tasks/SS-18d-colossus-model.md) — TRELLIS body on the KayKit rig (M)
+
+Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go. Balance target: level 30 after stage 24, with at most one level earned per boss. The regular waves set the full-clear XP budgets. The XP curve and boss rewards need a separate tuning pass to reach that target.
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

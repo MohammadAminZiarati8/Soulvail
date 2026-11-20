@@ -10,7 +10,7 @@ _2026-11-20._
 |---|---|
 | **Milestone** | M0–M6 tagged. |
 | **Last merged** | Run scene teardown fix. |
-| **Next task** | Awaiting owner's go for Sunscar. |
+| **Next task** | Awaiting owner's go for SS-18a, Sundial Colossus combat. |
 | **Verified** | EditMode 7128/7220, 0 failed, 1 inconclusive, 91 skipped. Boot smoke 3/3. Format OK. |
 
 ## What works

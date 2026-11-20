@@ -29,6 +29,8 @@ Croaker, Panther, health bars, Mother Pitcher, cover, Mossguard) · RS-07–09a 
 rate, volley and flinch · DT-01 test start at any stage. Finished specs are deleted; their *As built*
 footers are in `git log` (last sweep 2026-10-31). Tags `m0`–`m5`.
 
+- [x] Run scene teardown — stop run ticks before disposal and handle already-destroyed VFX.
+
 ## Next
 
 _No milestone. The owner is setting the next direction._

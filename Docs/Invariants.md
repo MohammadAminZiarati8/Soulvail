@@ -30,6 +30,8 @@ knockbacks (`FrameOrderTests`).
   `SnapshotBuilder` copies minions after enemies and before `WriteSenses`, which never covers minion
   slots.
 - A view answering core with a fact takes `Step(dt)` from `RunTicker`, never its own `Update`.
+- `RunScope` stops its player-loop callbacks before disposing run services. Run-end callbacks
+  can run after Unity has destroyed their scene objects.
 
 **`RunSession.Tick`:** time → lure expiry → ingest (enemies + minions) → Veilrot → combat → take
 the shot → shades → skills → timed effects → zones → enemy behaviours → minions → projectiles → death drain +

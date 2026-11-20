@@ -330,6 +330,14 @@ namespace Soulvail.Game.Composition
                  "root without it, which is untidy rather than wrong.")]
         [SerializeField] private Transform _arenaRoot;
 
+        protected override void OnDestroy()
+        {
+            // Stop this run's player-loop callbacks before disposing any service that uses scene
+            // objects. VContainer otherwise reaches the dispatcher after those services.
+            Container?.Resolve<EntryPointDispatcher>().Dispose();
+            base.OnDestroy();
+        }
+
         protected override void Configure(IContainerBuilder builder)
 
         {

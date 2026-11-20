@@ -206,14 +206,25 @@ namespace Soulvail.Game.Views
             for (int i = 0; i < ArrowCount; i++)
             {
                 _flying[i] = false;
-                _trails[i]?.Clear();
+                if (_trails[i] != null)
+                {
+                    _trails[i].Clear();
+                }
+
                 if (_arrows[i] != null)
                 {
                     _arrows[i].gameObject.SetActive(false);
                 }
             }
-            _dust?.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            gameObject.SetActive(false);
+            if (_dust != null)
+            {
+                _dust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
+            if (this != null)
+            {
+                gameObject.SetActive(false);
+            }
         }
 
         private void OnCast(RainOfArrowsCast evt)

@@ -111,7 +111,7 @@ public sealed class BootSmokeTests
     /// </para>
     /// </remarks>
     [UnityTest]
-    public IEnumerator Descend_StartsARun_AndRefusesASecondTap()
+    public IEnumerator Descend_StartsARun_RefusesASecondTap_AndUnloadsCleanly()
     {
         yield return LoadBootAndWaitFor(SceneLoader.Menu);
 
@@ -175,7 +175,16 @@ public sealed class BootSmokeTests
             Is.EqualTo(SceneLoader.Run),
             $"The card's tap did not reach the Run scene within {TimeoutSeconds} seconds.");
 
-        LogAssert.NoUnexpectedReceived();
+        LifetimeScope runScope = LifetimeScope.Find<RunScope>();
+        Assert.That(runScope, Is.Not.Null, "The Run scene did not build its scope.");
+        Assert.That(runScope.Container, Is.Not.Null);
+
+        yield return LoadBootAndWaitFor(SceneLoader.Menu);
+        yield return null;
+
+        Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(SceneLoader.Menu));
+        Assert.That(runScope.Container, Is.Null, "The Run scope did not finish disposing.");
+        // The runner fails on unexpected errors and exceptions. Run startup also emits warnings.
     }
 
     /// <summary>

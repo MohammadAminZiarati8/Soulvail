@@ -113,6 +113,11 @@ namespace Soulvail.Game.Views
 
         private void Leave()
         {
+            if (_camera == null || _animator == null || !_animator.isActiveAndEnabled)
+            {
+                return;
+            }
+
             _leaving = true;
             _travel = 0f;
             _departureStart = _animator.transform.position;

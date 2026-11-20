@@ -27,10 +27,9 @@ namespace Soulvail.Game.Views
         [SerializeField] private AudioClip _sealCue;
 
         private readonly MeshRenderer[] _sealLights = new MeshRenderer[3];
-        private readonly Vector3[] _vertices = new Vector3[32];
-        private readonly Color[] _colors = new Color[32];
+        private readonly Vector3[] _vertices = new Vector3[4];
+        private readonly Color[] _colors = new Color[4];
         private readonly int[] _rectangle = { 0, 1, 2, 2, 1, 3 };
-        private readonly int[] _outlineTriangles = new int[48];
 
         private IDisposable[] _subscriptions;
         private EnemyView _body;
@@ -38,11 +37,9 @@ namespace Soulvail.Game.Views
         private Transform _footprint;
         private MeshRenderer _warning;
         private MeshRenderer _fill;
-        private MeshRenderer _outline;
         private MeshRenderer _release;
         private Mesh _warningMesh;
         private Mesh _fillMesh;
-        private Mesh _outlineMesh;
         private Mesh _releaseMesh;
         private SunSealEruption _eruption;
         private HierophantCastEffects _castEffects;
@@ -98,7 +95,6 @@ namespace Soulvail.Game.Views
             _warning = CreateLayer("Warning", 0, out _warningMesh);
             _fill = CreateLayer("Progress", 1, out _fillMesh);
             _release = CreateLayer("Release", 2, out _releaseMesh);
-            _outline = CreateLayer("Warning outline", 6, out _outlineMesh);
             _eruption = new SunSealEruption(_floor, _footprintMaterial);
             _castEffects = new HierophantCastEffects(_floor, _footprint, _footprintMaterial);
             var tether = new GameObject("Priest ward");
@@ -177,8 +173,6 @@ namespace Soulvail.Game.Views
             _footprint.SetPositionAndRotation(evt.Origin.ToUnity(), heading);
             DrawStrip(_warningMesh, 0f, evt.Reach, Palette.Danger, 0.56f);
             _warning.enabled = true;
-            DrawOutline();
-            _outline.enabled = true;
             SetSealLight(true);
 
             if (fire)
@@ -214,45 +208,6 @@ namespace Soulvail.Game.Views
             mesh.SetTriangles(_rectangle, 0, calculateBounds: false);
             mesh.RecalculateBounds();
             Tint(mesh, color, opacity);
-        }
-
-        private void DrawOutline()
-        {
-            float width = _cast.HalfWidth;
-            float reach = _cast.Reach;
-            float edge = Mathf.Min(0.24f, width * 0.5f, reach * 0.25f);
-            var shadow = Palette.Vertex(new Color(0.20f, 0.036f, 0.018f));
-            Color orange = Palette.Vertex(Color.Lerp(Palette.Danger, Color.white, 0.26f));
-            Frame(0, width, reach, 0f, edge, shadow);
-            Frame(4, width, reach, edge * 0.30f, edge * 0.47f, orange);
-            _outlineMesh.SetVertices(_vertices, 0, 32);
-            _outlineMesh.SetColors(_colors, 0, 32);
-            _outlineMesh.SetTriangles(_outlineTriangles, 0, calculateBounds: false);
-            _outlineMesh.RecalculateBounds();
-        }
-
-        private void Frame(int firstQuad, float width, float reach, float inset, float thickness, Color color)
-        {
-            float left = -width + inset;
-            float right = width - inset;
-            float far = reach - inset;
-            OutlineQuad(firstQuad, left, left + thickness, inset, far, color);
-            OutlineQuad(firstQuad + 1, right - thickness, right, inset, far, color);
-            OutlineQuad(firstQuad + 2, left + thickness, right - thickness, inset, inset + thickness, color);
-            OutlineQuad(firstQuad + 3, left + thickness, right - thickness, far - thickness, far, color);
-        }
-
-        private void OutlineQuad(int quad, float left, float right, float near, float far, Color color)
-        {
-            int vertex = quad * 4;
-            float y = quad < 4 ? 0f : 0.008f;
-            _vertices[vertex] = new Vector3(left, y, near);
-            _vertices[vertex + 1] = new Vector3(left, y, far);
-            _vertices[vertex + 2] = new Vector3(right, y, near);
-            _vertices[vertex + 3] = new Vector3(right, y, far);
-            Array.Fill(_colors, color, vertex, 4);
-            for (int i = 0; i < _rectangle.Length; i++)
-                _outlineTriangles[quad * _rectangle.Length + i] = vertex + _rectangle[i];
         }
 
         private void Tint(Mesh mesh, Color color, float opacity)
@@ -432,7 +387,6 @@ namespace Soulvail.Game.Views
         {
             _warning.enabled = false;
             _fill.enabled = false;
-            _outline.enabled = false;
             _audio.Stop();
             _audio.clip = null;
         }
@@ -486,7 +440,6 @@ namespace Soulvail.Game.Views
                     Destroy(_floor.gameObject);
                 Destroy(_warningMesh);
                 Destroy(_fillMesh);
-                Destroy(_outlineMesh);
                 Destroy(_releaseMesh);
             }
             else
@@ -495,7 +448,6 @@ namespace Soulvail.Game.Views
                     DestroyImmediate(_floor.gameObject);
                 DestroyImmediate(_warningMesh);
                 DestroyImmediate(_fillMesh);
-                DestroyImmediate(_outlineMesh);
                 DestroyImmediate(_releaseMesh);
             }
         }

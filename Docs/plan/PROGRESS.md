@@ -9,7 +9,7 @@ _2026-11-20._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-17h** — Hierophant fire throw and Jackal heal. |
+| **Last merged** | **SS-17i** — Borderless Hierophant warnings. |
 | **Next task** | Awaiting owner's go for Sunscar. |
 | **Verified** | EditMode 7128/7220, 0 failed, 1 inconclusive, 91 skipped. Portrait and format OK. |
 

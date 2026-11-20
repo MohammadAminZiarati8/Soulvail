@@ -232,6 +232,7 @@ public sealed class HierophantViewTests
         MeshFilter release = Layer("Release");
         bool fire = move == HierophantMove.FireThrow;
         AssertPose(fire ? "ThrowTell" : "SealTell");
+        Assert.That(warning.transform.parent.Find("Warning outline"), Is.Null);
         Assert.That(Visible(warning), Is.True);
         Assert.That(Visible(progress), Is.False);
         Assert.That(Visible(release), Is.False);
@@ -345,12 +346,9 @@ public sealed class HierophantViewTests
         Place(Boss);
         HierophantArmed first = Arm(Boss, HierophantMove.SunSeal);
         _events.Publish(first);
-        MeshFilter outline = Layer("Warning outline");
-        Assert.That(Visible(outline), Is.True);
-        Assert.That(outline.sharedMesh.bounds.min.x, Is.EqualTo(-first.HalfWidth));
-        Assert.That(outline.sharedMesh.bounds.max.x, Is.EqualTo(first.HalfWidth));
-        Assert.That(outline.sharedMesh.bounds.min.z, Is.Zero);
-        Assert.That(outline.sharedMesh.bounds.max.z, Is.EqualTo(first.Reach));
+        MeshFilter warning = Layer("Warning");
+        Assert.That(Visible(warning), Is.True);
+        AssertFootprint(warning, first, 1f);
 
         Transform eruption = _floor.Find("Sandstone eruption");
         Mesh crack = eruption.Find("Ground crack").GetComponent<MeshFilter>().sharedMesh;
@@ -360,7 +358,7 @@ public sealed class HierophantViewTests
         _events.Publish(new HierophantTellProgress(Boss, 1f));
         Assert.That(eruption.gameObject.activeSelf, Is.False);
         _events.Publish(new HierophantImpact(Boss, first.Move, first.SealSlot, 0f));
-        Assert.That(Visible(outline), Is.False);
+        Assert.That(Visible(warning), Is.False);
         Assert.That(eruption.gameObject.activeSelf, Is.True);
         Assert.That(eruption.position, Is.EqualTo(first.Origin.ToUnity()));
         Assert.That(Vector3.Dot(eruption.forward, new Vector3(first.Facing.X, 0f, first.Facing.Y)),
@@ -377,19 +375,19 @@ public sealed class HierophantViewTests
         var second = new HierophantArmed(Boss, first.Move, 1, first.Origin, -Num.Vector2.UnitY,
             12f, first.HalfWidth, 1.3f);
         _events.Publish(second);
-        Assert.That(Visible(outline), Is.True);
-        Assert.That(outline.sharedMesh.bounds.max.z, Is.EqualTo(second.Reach));
+        Assert.That(Visible(warning), Is.True);
+        AssertFootprint(warning, second, 1f);
         Assert.That(eruption.rotation, Is.EqualTo(firstHeading));
         Assert.That(eruption.gameObject.activeSelf, Is.True);
         _view.Step(0.49f);
         Assert.That(eruption.gameObject.activeSelf, Is.False);
-        Assert.That(Visible(outline), Is.True);
+        Assert.That(Visible(warning), Is.True);
         _events.Publish(new HierophantImpact(Boss, second.Move, second.SealSlot, 1.5f));
         Assert.That(eruption.gameObject.activeSelf, Is.True);
         Assert.That(crack.bounds.max.z, Is.EqualTo(second.Reach));
         _events.Publish(new BossPhaseChanged(Boss, 2, 3));
         Assert.That(eruption.gameObject.activeSelf, Is.False);
-        Assert.That(Visible(outline), Is.False);
+        Assert.That(Visible(warning), Is.False);
     }
 
     [Test]

@@ -26,6 +26,9 @@ namespace Soulvail.Tests.Game.Views;
 public sealed class HierophantViewTests
 {
     private const string Project = "Assets/_Project/";
+    private const string BodyModel = Project + "Art/Enemies/Hierophant.fbx";
+    private const string SealModel = Project + "Art/Environment/HierophantSeal.fbx";
+    private const string SealPrefab = Project + "Prefabs/Arenas/Sunscar/HierophantSeal.prefab";
     private const int Boss = 7;
     private readonly ContentId _spec = new("enemy.hierophant");
     private GameObject _prefab;
@@ -78,33 +81,130 @@ public sealed class HierophantViewTests
     }
 
     [Test]
-    public void Prefab_BindsPrototypeAssets()
+    public void Body_BindsRigAndSeparateStaff()
     {
+        var importer = (ModelImporter)AssetImporter.GetAtPath(BodyModel);
+        Assert.That(importer.animationType, Is.EqualTo(ModelImporterAnimationType.Generic));
+        Assert.That(importer.motionNodeName, Is.Null.Or.Empty);
+        Assert.That(importer.importAnimation, Is.False);
         Assert.That(_animator.avatar.isValid, Is.True);
         Assert.That(_animator.applyRootMotion, Is.False);
-        Assert.That(_audio.playOnAwake, Is.False);
         var mesh = _animator.GetComponentInChildren<SkinnedMeshRenderer>();
-        Assert.That(AssetDatabase.GetAssetPath(mesh.sharedMesh), Is.EqualTo(Project + "Art/Enemies/JackalPriest.fbx"));
+        Assert.That(AssetDatabase.GetAssetPath(mesh.sharedMesh), Is.EqualTo(BodyModel));
+        Assert.That(mesh.sharedMesh.GetIndexCount(0) / 3, Is.InRange(1500, 3900));
+        var atlas = AssetDatabase.LoadAssetAtPath<Material>(Project + "Materials/Enemies/M_Enemy.mat");
+        Assert.That(mesh.sharedMaterials, Is.EqualTo(new[] { atlas }));
+        var priest = AssetDatabase.LoadAssetAtPath<GameObject>(Project + "Art/Enemies/JackalPriest.fbx");
+        Transform[] prototypeBones = priest.transform.Find("Rig_Medium/root").GetComponentsInChildren<Transform>();
+        Assert.That(prototypeBones, Has.Length.EqualTo(23));
+        foreach (Transform prototype in prototypeBones)
+        {
+            string path = AnimationUtility.CalculateTransformPath(prototype, priest.transform);
+            Transform bone = _animator.transform.Find(path);
+            Assert.That(bone, Is.Not.Null, path);
+            Assert.That(Vector3.Distance(bone.localPosition, prototype.localPosition), Is.LessThan(.001f), path);
+            Assert.That(Quaternion.Angle(bone.localRotation, prototype.localRotation), Is.LessThan(.1f), path);
+        }
+
         Transform staff = _animator.GetComponentInChildren<MeshFilter>().transform;
         Assert.That(staff.parent.name, Is.EqualTo("handslot.r"));
         Assert.That(AssetDatabase.GetAssetPath(staff.GetComponent<MeshFilter>().sharedMesh),
             Is.EqualTo(Project + "Art/Enemies/PriestStaff.fbx"));
-        Assert.That(_prefab.GetComponent<PriestMendView>(), Is.Null);
-        Assert.That(_animator.GetComponent<EnemyAnimatorView>(), Is.Null);
+        Assert.That(staff.localPosition, Is.EqualTo(Vector3.zero));
+        Assert.That(staff.localRotation, Is.EqualTo(Quaternion.identity));
+        Assert.That(staff.localScale, Is.EqualTo(Vector3.one));
+        Assert.That(staff.Find("Glow"), Is.Not.Null);
 
         var controller = (AnimatorController)_animator.runtimeAnimatorController;
-        Assert.That(controller.layers[0].stateMachine.states.Select(state => state.state.name),
+        ChildAnimatorState[] states = controller.layers[0].stateMachine.states;
+        Assert.That(states.Select(state => state.state.name),
             Is.EquivalentTo(new[] { "Idle", "Walk", "SweepTell", "SweepRelease", "SealTell", "SealRelease", "Recovery", "Death" }));
         Assert.That(controller.animationClips.All(clip => clip.events.Length == 0), Is.True);
+        var baked = new Mesh();
+        try
+        {
+            mesh.BakeMesh(baked);
+            float ground = baked.vertices.Min(vertex => mesh.transform.TransformPoint(vertex).y) - _body.transform.position.y;
+            Assert.That(ground, Is.Zero.Within(.02f));
+            Vector3 restGrip = staff.position;
+            Vector3 modelAnchor = _animator.transform.position;
+            foreach (AnimationClip clip in states.Select(state => (AnimationClip)state.state.motion).Distinct())
+            {
+                clip.SampleAnimation(_animator.gameObject, .57f * clip.length);
+                Assert.That(Vector3.Distance(staff.position, restGrip), Is.GreaterThan(.01f), clip.name);
+                Assert.That(staff.localPosition, Is.EqualTo(Vector3.zero), clip.name);
+                Assert.That(_animator.transform.position, Is.EqualTo(modelAnchor), clip.name);
+                mesh.BakeMesh(baked);
+                Assert.That(baked.bounds.size.sqrMagnitude, Is.GreaterThan(.5f), clip.name);
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(baked);
+        }
+    }
 
-        var seal = AssetDatabase.LoadAssetAtPath<GameObject>(Project + "Prefabs/Arenas/Sunscar/HierophantSeal.prefab");
+    [Test]
+    public void Seal_BindsFinalMeshAndIndependentLight()
+    {
+        var seal = AssetDatabase.LoadAssetAtPath<GameObject>(SealPrefab);
         Assert.That(seal.GetComponentsInChildren<Collider>(true), Is.Empty);
         Assert.That(seal.GetComponentsInChildren<NavMeshObstacle>(true), Is.Empty);
         Assert.That(seal.GetComponentsInChildren<Rigidbody>(true), Is.Empty);
         Assert.That(seal.GetComponentsInChildren<MeshRenderer>(true), Has.Length.EqualTo(3));
-        Assert.That(seal.transform.Find("Light").GetComponent<Renderer>().enabled, Is.False);
+        var stone = seal.transform.Find("Sandstone plaque").GetComponent<MeshFilter>();
+        var carving = seal.transform.Find("Sun carving").GetComponent<MeshFilter>();
+        var light = seal.transform.Find("Light").GetComponent<MeshFilter>();
+        Assert.That(AssetDatabase.GetAssetPath(stone.sharedMesh), Is.EqualTo(SealModel));
+        Assert.That(AssetDatabase.GetAssetPath(carving.sharedMesh), Is.EqualTo(SealModel));
+        Assert.That(carving.sharedMesh, Is.Not.SameAs(stone.sharedMesh));
+        Assert.That(light.sharedMesh, Is.SameAs(carving.sharedMesh));
+        Bounds bounds = stone.GetComponent<MeshRenderer>().bounds;
+        Assert.That(bounds.center.x, Is.Zero.Within(.005f));
+        Assert.That(bounds.center.z, Is.Zero.Within(.005f));
+        Assert.That(bounds.max.y, Is.InRange(.005f, .02f));
+        Assert.That(bounds.min.y, Is.LessThan(0f));
+        Assert.That(carving.GetComponent<MeshRenderer>().sharedMaterial.GetColor("_EmissionColor").maxColorComponent,
+            Is.Zero);
+        Assert.That(light.GetComponent<MeshRenderer>().enabled, Is.False);
 
         Place(Boss);
+        MeshRenderer[] lights = SealLights();
+        Assert.That(lights, Has.Length.EqualTo(3));
+        foreach (MeshRenderer instance in lights)
+        {
+            Assert.That(instance.transform.parent.Find("Sandstone plaque").GetComponent<MeshFilter>().sharedMesh,
+                Is.SameAs(stone.sharedMesh));
+            Assert.That(instance.GetComponent<MeshFilter>().sharedMesh, Is.SameAs(carving.sharedMesh));
+        }
+
+        _events.Publish(Arm(Boss, HierophantMove.SunSeal));
+        Assert.That(Lights(), Is.EqualTo(new[] { false, false, true }));
+    }
+
+    [Test]
+    public void ModelSwap_PreservesFightBindings()
+    {
+        var capsule = _prefab.GetComponent<CapsuleCollider>();
+        var controller = _prefab.GetComponent<CharacterController>();
+        Assert.That(capsule.isTrigger, Is.True);
+        Assert.That(capsule.center, Is.EqualTo(Vector3.up * .8f));
+        Assert.That(capsule.height, Is.EqualTo(1.6f));
+        Assert.That(capsule.radius, Is.EqualTo(.4f));
+        Assert.That(controller.center, Is.EqualTo(capsule.center));
+        Assert.That(controller.height, Is.EqualTo(capsule.height));
+        Assert.That(controller.radius, Is.EqualTo(capsule.radius));
+        Assert.That(_animator.transform.localPosition, Is.EqualTo(Vector3.zero));
+        Assert.That(_animator.transform.localRotation, Is.EqualTo(Quaternion.identity));
+        Assert.That(_animator.transform.localScale, Is.EqualTo(Vector3.one));
+        Assert.That(_audio.playOnAwake, Is.False);
+        Assert.That(_prefab.GetComponent<PriestMendView>(), Is.Null);
+        Assert.That(_animator.GetComponent<EnemyAnimatorView>(), Is.Null);
+        var feedback = new SerializedObject(_prefab.GetComponent<EnemyHitFeedback>());
+        Assert.That(feedback.FindProperty("_renderer").objectReferenceValue,
+            Is.SameAs(_prefab.GetComponentInChildren<SkinnedMeshRenderer>()));
+        Place(Boss);
+        Assert.That(SealPositions(), Is.EqualTo(new[] { Vector3.left * 4f, Vector3.zero, Vector3.right * 4f }));
         _events.Publish(Arm(Boss, HierophantMove.StaffSweep));
         Assert.That(_audio.clip.name, Is.EqualTo("DuneclawSweep"));
         AudioClip sweep = _audio.clip;

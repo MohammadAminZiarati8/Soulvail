@@ -894,3 +894,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - **[Editor]** Start Sunscar Stage 15 via DT-01. Walk sideways out of the seals near cover, wound the slinger and interrupt the priest's beam, then dodge both seals in the final pair and take the north portal to Stage 16.
 - **[device]** Repeat on a portrait phone. Check that the attack cues and both long escape edges stay legible through the Dunes weather.
+
+### SS-17d — Hierophant models
+
+- [ ] **Editor** — Start Sunscar 15 with DT-01. Watch the walk, staff sweep, raise and recovery for clipping. Check the seal sits flush and only its carving lights during a cast.
+- [ ] **Device** — Check the Hierophant reads distinctly beside the Jackal Priest and the seal stays identifiable while the hero moves.

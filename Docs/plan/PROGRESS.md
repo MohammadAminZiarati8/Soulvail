@@ -9,9 +9,9 @@ _2026-11-20._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-17c** — Hierophant at Sunscar 15. |
-| **Next task** | [SS-17d](tasks/SS-17d-hierophant-models.md), when the two TRELLIS models are ready. |
-| **Verified** | EditMode 7104/7196, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Last merged** | **SS-17d** — Hierophant body and carved seals. |
+| **Next task** | Awaiting owner's go for Sunscar's next task. |
+| **Verified** | EditMode 7106/7198, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 

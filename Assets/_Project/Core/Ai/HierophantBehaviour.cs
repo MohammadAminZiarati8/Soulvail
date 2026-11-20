@@ -22,6 +22,7 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
     private float _damage;
     private float _recovery;
     private float _pairGap;
+    private float _chaseSeconds;
 
     public HierophantBehaviour(EnemyAgent agent, HierophantStats stats)
     {
@@ -36,6 +37,7 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
 
         Vector3 velocity = Vector3.Zero;
         float dt = MathF.Max(0f, ctx.Dt);
+        float available = MathF.Max(0f, dt - _remaining);
         _remaining = MathF.Max(0f, _remaining - dt);
         if (_telling)
         {
@@ -47,7 +49,7 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
         }
         else if (_remaining == 0f)
         {
-            velocity = Prepare(ctx, dt);
+            velocity = Prepare(ctx, dt, available);
         }
 
         ctx.Intents.EnemyMove(new EnemyMoveIntent(_agent.Id, velocity, _facing));
@@ -64,37 +66,31 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
         ctx.Events.Publish(new HierophantSealsPlaced(_agent.Id, -east, Vector2.Zero, east));
     }
 
-    private Vector3 Prepare(in EnemyTickContext ctx, float dt)
+    private Vector3 Prepare(in EnemyTickContext ctx, float dt, float available)
     {
         EnemyBlackboard board = _agent.Blackboard;
         Vector3 hero = board.PlayerPosition;
-        if (!float.IsFinite(hero.X) || !float.IsFinite(hero.Z))
-            return Vector3.Zero;
-
-        if (_next == HierophantMove.SunSeal)
-        {
-            int slot = SelectSeal(hero.X);
-            var centre = new Vector3((slot - 1) * (2f * _sealHalfWidth), 0f, 0f);
-            Arm(ctx, new HierophantArmed(_agent.Id, _next, slot, centre, Vector2.UnitY,
-                _stats.SealHalfLength.Value, _sealHalfWidth, 0f, _stats.SealTellSeconds.Value),
-                _stats.SealDamage.Value, _stats.SealRecoverySeconds.Value);
-            return Vector3.Zero;
-        }
-
         Vector3 origin = board.SelfPosition;
         var towardHero = new Vector2(hero.X - origin.X, hero.Z - origin.Z);
         float distance = towardHero.Length();
         if (!float.IsFinite(distance) || !float.IsFinite(origin.Y))
             return Vector3.Zero;
 
+        Vector2 direction = distance > 0f ? towardHero / distance : _facing;
+        if (_next == HierophantMove.SunSeal)
+        {
+            ArmSeal(ctx, origin, direction, distance, hero.X);
+            return Vector3.Zero;
+        }
+
         float range = _stats.SweepRange.Value;
         if (!(range > 0f) || !float.IsFinite(range))
             throw new ArgumentOutOfRangeException(nameof(_stats.SweepRange));
 
-        bool aligned = distance == 0f || TurnTowards(towardHero / distance, dt);
         if (distance <= range)
         {
-            if (aligned)
+            _chaseSeconds = 0f;
+            if (distance == 0f || TurnTowards(direction, dt))
             {
                 Arm(ctx, new HierophantArmed(_agent.Id, _next, -1, origin, _facing,
                     range, 0f, _stats.SweepHalfAngleDegrees.Value, _stats.SweepTellSeconds.Value),
@@ -103,16 +99,51 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
             return Vector3.Zero;
         }
 
+        float chaseLimit = _stats.SweepChaseSeconds.Value;
+        if (!(chaseLimit > 0f) || !float.IsFinite(chaseLimit))
+            throw new ArgumentOutOfRangeException(nameof(_stats.SweepChaseSeconds));
+        _chaseSeconds += available;
+        if (_chaseSeconds >= chaseLimit)
+        {
+            ArmSeal(ctx, origin, direction, distance, hero.X);
+            return Vector3.Zero;
+        }
+
+        TurnTowards(direction, dt);
         // The path steers movement around cover while the body turns toward the hero.
         Vector2 path = board.PathDirectionToPlayer;
         if (path == Vector2.Zero)
-            path = towardHero / distance;
+            path = direction;
         float pathLength = path.Length();
         float speed = _stats.MoveSpeed.Value;
         return pathLength > 0f && float.IsFinite(pathLength) && speed > 0f && float.IsFinite(speed)
             ? Ground(path / pathLength * speed)
             : Vector3.Zero;
     }
+
+    private void ArmSeal(in EnemyTickContext ctx, Vector3 origin, Vector2 facing, float distance, float targetX)
+    {
+        float edge = _stats.DunesHalfExtent.Value;
+        if (!(edge > 0f) || !float.IsFinite(edge))
+            throw new ArgumentOutOfRangeException(nameof(_stats.DunesHalfExtent));
+
+        // The Dunes' playable square is centred at world zero. End at the first boundary
+        // in the cast direction, including the target if its sample is just outside the edge.
+        float eastWest = DistanceToEdge(origin.X, facing.X, edge);
+        float northSouth = DistanceToEdge(origin.Z, facing.Y, edge);
+        float reach = MathF.Max(distance, MathF.Min(eastWest, northSouth));
+        if (!(reach > 0f))
+            return;
+
+        _facing = facing;
+        _chaseSeconds = 0f;
+        Arm(ctx, new HierophantArmed(_agent.Id, HierophantMove.SunSeal, SelectSeal(targetX),
+            new Vector3(origin.X, 0f, origin.Z), facing, reach, _sealHalfWidth, 0f, _stats.SealTellSeconds.Value),
+            _stats.SealDamage.Value, _stats.SealRecoverySeconds.Value);
+    }
+
+    private static float DistanceToEdge(float origin, float direction, float edge) =>
+        direction == 0f ? float.PositiveInfinity : ((direction > 0f ? edge : -edge) - origin) / direction;
 
     private bool TurnTowards(Vector2 target, float dt)
     {
@@ -175,6 +206,7 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
         if (firstOfPair)
         {
             _firstSealSlot = _armed.SealSlot;
+            _next = HierophantMove.SunSeal;
             _remaining = _pairGap;
         }
         else
@@ -191,7 +223,11 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
     private bool Contains(Vector2 offset, bool seal)
     {
         if (seal)
-            return MathF.Abs(offset.X) <= _armed.HalfWidth && MathF.Abs(offset.Y) <= _armed.Reach;
+        {
+            float along = Vector2.Dot(_armed.Facing, offset);
+            float across = _armed.Facing.Y * offset.X - _armed.Facing.X * offset.Y;
+            return along >= 0f && along <= _armed.Reach && MathF.Abs(across) <= _armed.HalfWidth;
+        }
 
         float distance = offset.Length();
         if (!(distance <= _armed.Reach) || !float.IsFinite(distance))
@@ -213,6 +249,7 @@ public sealed class HierophantBehaviour : IEnemyBehaviour, IBossPhaseListener
         _next = HierophantMove.SunSeal;
         _firstSealSlot = -1;
         _remaining = 0f;
+        _chaseSeconds = 0f;
         _armed = default;
     }
 

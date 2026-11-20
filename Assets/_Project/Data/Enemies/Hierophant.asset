@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.hierophant
   _nameKey: enemy.hierophant.name
-  _maxHp: 780
+  _maxHp: 1050
   _moveSpeed: 2.25
   _targetPriority: 8
   _threatCost: 40
@@ -22,7 +22,7 @@ MonoBehaviour:
   _isElite: 0
   _isLight: 0
   _contactDamage: 0
-  _reach: 3.25
+  _reach: 4
   _windupTime: 1
   _recoverTime: 1.25
   _aggroRange: 40
@@ -173,7 +173,7 @@ MonoBehaviour:
   _diveGroundedSeconds: 0
   _diveClimbSeconds: 0
   _tint: {r: 1, g: 1, b: 1, a: 1}
-  _bodyScale: 1
+  _bodyScale: 2.2
   _body: {fileID: 3466569563815920711, guid: 91ad6576183a90047ba5229c5f2528f0, type: 3}
   _projectile: {fileID: 0}
   _marksLanding: 0

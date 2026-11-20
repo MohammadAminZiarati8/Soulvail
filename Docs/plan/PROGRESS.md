@@ -9,9 +9,9 @@ _2026-11-20._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | **SS-17d** — Hierophant body and carved seals. |
+| **Last merged** | **SS-17e** — Larger Hierophant and aimed Sun Seals. |
 | **Next task** | Awaiting owner's go for Sunscar's next task. |
-| **Verified** | EditMode 7106/7198, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
+| **Verified** | EditMode 7113/7205, 0 failed, 1 inconclusive, 91 skipped. Format clean. |
 
 ## What works
 
@@ -37,7 +37,7 @@ Hero Poison: violet drop/stacks/timer/quiet HP ticks; Space/death clears.
 Duneclaw 5: 1000 HP, DT-01 L8 81.60 s. 3 scorplings 66–33%, portal 6. Slabs pin 3 s.
 Duneclaw turns 360°/s. Tells stay locked.
 Shardback 10: 1025 HP, DT-01 L16 92.37 s. 5.5 m burst, smooth turns, 3 pillars, 2 beetles 66–33%, portal 11.
-Hierophant 15: 780 HP, DT-01 L23, first bow hit 18.72, 91.20 s. Priest/slinger 66–33%, paired seals, portal 16.
+Hierophant 15: 1050 HP, 2.2×, 4 m sweep. Aimed seals reach the wall, pair below 33%. DT-01 143.17 s, Quick Draw 135.30 s.
 Skirmisher runs/fires: Ricochet 11/Second Wind 14 (roll guard/pips)/Whirlwind 17/Storm Run 20.
 
 Beastmaster: axes/1.2 s, stationary, cover blocks; Swift Hands.

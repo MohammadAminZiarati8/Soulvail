@@ -899,3 +899,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [ ] **Editor** — Start Sunscar 15 with DT-01. Watch the walk, staff sweep, raise and recovery for clipping. Check the seal sits flush and only its carving lights during a cast.
 - [ ] **Device** — Check the Hierophant reads distinctly beside the Jackal Priest and the seal stays identifiable while the hero moves.
+
+### SS-17e — Hierophant difficulty
+
+- [device] Start Sunscar stage 15 in portrait. Confirm the Hierophant towers over the Ranger, the staff swing reads inside the 120-degree warning, and the health bar clears the headdress.
+- [device] Kite along a wall and around cover through the final phase. Check that the locked Sun Seal is visible in the sandstorm and that each cast has a readable escape edge.

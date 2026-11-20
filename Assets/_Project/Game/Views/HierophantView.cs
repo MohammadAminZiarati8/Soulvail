@@ -149,8 +149,7 @@ namespace Soulvail.Game.Views
             _cast = evt;
             bool sweep = evt.Move == HierophantMove.StaffSweep;
             var facing = new Vector3(evt.Facing.X, 0f, evt.Facing.Y);
-            // The seal hit test uses world X/Z. Only the sweep follows the armed facing.
-            Quaternion heading = sweep && facing != Vector3.zero
+            Quaternion heading = facing != Vector3.zero
                 ? Quaternion.LookRotation(facing)
                 : Quaternion.identity;
             _footprint.SetPositionAndRotation(evt.Origin.ToUnity(), heading);
@@ -198,9 +197,9 @@ namespace Soulvail.Game.Views
             else
             {
                 float width = _cast.HalfWidth;
-                _vertices[0] = new Vector3(-width, 0f, -reach);
+                _vertices[0] = new Vector3(-width, 0f, 0f);
                 _vertices[1] = new Vector3(-width, 0f, reach);
-                _vertices[2] = new Vector3(width, 0f, -reach);
+                _vertices[2] = new Vector3(width, 0f, 0f);
                 _vertices[3] = new Vector3(width, 0f, reach);
                 vertexCount = 4;
                 triangles = _rectangle;

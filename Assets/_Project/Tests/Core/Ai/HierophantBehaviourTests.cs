@@ -43,7 +43,7 @@ public sealed class HierophantBehaviourTests
         _now = 0f;
     }
 
-    [TestCase(-100f, 0)]
+    [TestCase(-17.5f, 0)]
     [TestCase(-4f, 0)]
     [TestCase(-2f, 0)]
     [TestCase(-1.99f, 1)]
@@ -51,26 +51,29 @@ public sealed class HierophantBehaviourTests
     [TestCase(2f, 1)]
     [TestCase(2.01f, 2)]
     [TestCase(4f, 2)]
-    [TestCase(float.MaxValue, 2)]
+    [TestCase(17.5f, 2)]
     public void Seal_ChoosesNearestAndLocks(float x, int slot)
     {
-        _agent.Blackboard.SelfPosition = new Vector3(30f, 4f, -20f);
-        Place(x, 20f);
+        var origin = new Vector3(1f, 4f, -2f);
+        _agent.Blackboard.SelfPosition = origin;
+        Place(x, 12f);
         Tick(10f);
         var layout = (HierophantSealsPlaced)_events.All[0];
         Assert.That((layout.BossId, layout.West, layout.Centre, layout.East),
             Is.EqualTo((_agent.Id, -Vector2.UnitX * 4f, Vector2.Zero, Vector2.UnitX * 4f)));
         HierophantArmed arm = LastArm();
-        float centre = (slot - 1) * 4f;
-        Assert.That((arm.BossId, arm.Move, arm.SealSlot, arm.Origin, arm.Facing),
-            Is.EqualTo((_agent.Id, HierophantMove.SunSeal, slot, Vector3.UnitX * centre, Vector2.UnitY)));
-        Assert.That((arm.Reach, arm.HalfWidth, arm.HalfAngleDegrees, arm.Seconds), Is.EqualTo((9f, 2f, 0f, 1.3f)));
+        Assert.That((arm.BossId, arm.Move, arm.SealSlot, arm.Origin),
+            Is.EqualTo((_agent.Id, HierophantMove.SunSeal, slot, new Vector3(origin.X, 0f, origin.Z))));
+        Assert.That(Vector2.Distance(arm.Facing, Vector2.Normalize(new Vector2(x - origin.X, 12f - origin.Z))),
+            Is.LessThan(0.0001f));
+        Vector3 end = arm.Origin + new Vector3(arm.Facing.X, 0f, arm.Facing.Y) * arm.Reach;
+        Assert.That(MathF.Max(MathF.Abs(end.X), MathF.Abs(end.Z)), Is.EqualTo(18f).Within(0.0001f));
+        Assert.That((arm.HalfWidth, arm.HalfAngleDegrees, arm.Seconds), Is.EqualTo((2f, 0f, 1.3f)));
         Assert.That(_events.Count<HierophantTellProgress>(), Is.Zero);
 
         _stats.SealHalfWidth.Base = 0.5f;
-        _stats.SealHalfLength.Base = 1f;
+        _stats.DunesHalfExtent.Base = 1f;
         _agent.Blackboard.SelfPosition = Vector3.UnitZ * 100f;
-        Place(centre + 2f, 9f);
         Tick(1.3f);
         Assert.That(_player.Health.Current, Is.EqualTo(80f));
         Assert.That(_events.Single<HierophantImpact>().SealSlot, Is.EqualTo(slot));
@@ -88,9 +91,12 @@ public sealed class HierophantBehaviourTests
     {
         Place(0f, 20f);
         Tick(0f);
+        Place(3f, 10f);
         Tick(1.3f);
-        Tick(1.875f);
-        Place(4f, 0f);
+        // Keep the sweep out of its arming range on the tick that ends recovery.
+        Place(0f, 6f);
+        Tick(1.5f, Vector3.UnitZ * 2.25f);
+        Place(5f, 0f);
         _agent.Blackboard.HasLineOfSight = false;
         _agent.Blackboard.PathDirectionToPlayer = -Vector2.UnitY;
         Tick(0.125f, -Vector3.UnitZ * 2.25f);
@@ -98,14 +104,14 @@ public sealed class HierophantBehaviourTests
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(1));
 
         _agent.Blackboard.SelfPosition = new Vector3(2f, 1f, 0f);
-        Place(5.25f, 0f);
+        Place(6f, 0f);
         Tick(0.15f);
         HierophantArmed arm = LastArm();
         Assert.That((arm.Move, arm.SealSlot, arm.Origin, arm.Facing),
             Is.EqualTo((HierophantMove.StaffSweep, -1, _agent.Blackboard.SelfPosition, Vector2.UnitX)));
-        Assert.That((arm.Reach, arm.HalfWidth, arm.HalfAngleDegrees, arm.Seconds), Is.EqualTo((3.25f, 0f, 50f, 1f)));
+        Assert.That((arm.Reach, arm.HalfWidth, arm.HalfAngleDegrees, arm.Seconds), Is.EqualTo((4f, 0f, 60f, 1f)));
 
-        Place(5.25f, 0f);
+        Place(6f, 0f);
         _agent.Blackboard.SelfPosition = Vector3.UnitZ * 100f;
         _stats.SweepRange.Base = 1f;
         _stats.SweepDamage.Base = 1f;
@@ -121,15 +127,16 @@ public sealed class HierophantBehaviourTests
     }
 
     [TestCase(false, 0f, 0f, true)]
-    [TestCase(false, 2f, -9f, true)]
+    [TestCase(false, 2f, 18f, true)]
+    [TestCase(false, 0f, -0.001f, false)]
     [TestCase(false, 2.001f, 0f, false)]
-    [TestCase(false, 0f, 9.001f, false)]
+    [TestCase(false, 0f, 18.001f, false)]
     [TestCase(false, float.NaN, 0f, false)]
     [TestCase(true, 0f, 0f, true)]
-    [TestCase(true, 0f, 3.25f, true)]
-    [TestCase(true, 0f, 3.251f, false)]
-    [TestCase(true, 0.76604444f, 0.64278764f, true)] // 50 degrees.
-    [TestCase(true, 0.77f, 0.64f, false)]
+    [TestCase(true, 0f, 4f, true)]
+    [TestCase(true, 0f, 4.001f, false)]
+    [TestCase(true, 0.86f, 0.5f, true)]
+    [TestCase(true, 0.87f, 0.5f, false)]
     [TestCase(true, 0f, -1f, false)]
     [TestCase(true, float.PositiveInfinity, 0f, false)]
     [TestCase(false, 0f, 0f, false, "decoy")]
@@ -142,6 +149,7 @@ public sealed class HierophantBehaviourTests
         Tick(0f);
         if (sweep)
         {
+            Place(3f, 10f);
             Tick(1.3f);
             Place(0f, 2f);
             Tick(2f);
@@ -171,7 +179,7 @@ public sealed class HierophantBehaviourTests
         Assert.That(((HierophantTellProgress)timing[1]).Fraction, Is.EqualTo(1f));
         var impact = (HierophantImpact)timing[2];
         Assert.That((impact.BossId, impact.Move, impact.SealSlot, impact.RecoverySeconds),
-            Is.EqualTo((_agent.Id, arm.Move, arm.SealSlot, sweep ? 1.25f : 2f)));
+            Is.EqualTo((_agent.Id, arm.Move, arm.SealSlot, sweep ? 1.25f : 1.5f)));
         if (defense == "dodge")
             Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1), "The dodge blocks the damage attempt.");
 
@@ -186,7 +194,7 @@ public sealed class HierophantBehaviourTests
     public void FinalPair_ReaimsWithFullTiming(float firstX, float secondX, int first, int second)
     {
         _boss.OnPhaseEntered(2);
-        Place(firstX, 20f);
+        Place(firstX, 12f);
         Tick(100f);
         Assert.That(LastArm().SealSlot, Is.EqualTo(first));
         Tick(100f);
@@ -195,10 +203,12 @@ public sealed class HierophantBehaviourTests
 
         Tick(0.15f);
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(1));
-        Place(secondX, 20f);
+        Place(secondX, 12f);
         Tick(0.15f);
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(2));
         Assert.That(LastArm().SealSlot, Is.EqualTo(second));
+        Assert.That(Vector2.Distance(LastArm().Facing, Vector2.Normalize(new Vector2(secondX, 12f))),
+            Is.LessThan(0.0001f));
         Assert.That(LastArm().Seconds, Is.EqualTo(1.3f));
         Assert.That(_events.Count<HierophantTellProgress>(), Is.EqualTo(1));
 
@@ -206,11 +216,11 @@ public sealed class HierophantBehaviourTests
         Assert.That(_events.Count<HierophantImpact>(), Is.EqualTo(1));
         Tick(100f);
         HierophantImpact impact = _events.Of<HierophantImpact>()[1];
-        Assert.That((impact.SealSlot, impact.RecoverySeconds), Is.EqualTo((second, 2f)));
+        Assert.That((impact.SealSlot, impact.RecoverySeconds), Is.EqualTo((second, 1.5f)));
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(2));
 
         Place(0f, 2f);
-        Tick(1.75f);
+        Tick(1.25f);
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(2));
         Tick(0.25f);
         Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.StaffSweep));
@@ -251,7 +261,7 @@ public sealed class HierophantBehaviourTests
         Assert.That((LastArm().Move, LastArm().SealSlot, LastArm().HalfWidth),
             Is.EqualTo((HierophantMove.SunSeal, 1, reset ? 3f : 2f)));
         Tick(1.3f);
-        Assert.That(_events.Single<HierophantImpact>().RecoverySeconds, Is.EqualTo(2f));
+        Assert.That(_events.Single<HierophantImpact>().RecoverySeconds, Is.EqualTo(1.5f));
         Tick(2f);
         Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.StaffSweep));
         Tick(1f);
@@ -272,11 +282,44 @@ public sealed class HierophantBehaviourTests
         Tick(1f);
         Tick(1.3f);
         _agent.Blackboard.PathDirectionToPlayer = new Vector2(float.NaN, 0f);
-        Tick(2f);
+        Tick(1.5f);
         Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(1));
         Place(0f, 2f);
         Tick(0f);
         Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.StaffSweep));
+    }
+
+    [TestCase(0)]
+    [TestCase(2)]
+    public void OutOfSweepRange_RecastsAfterChase(int phase)
+    {
+        _boss.OnPhaseEntered(phase);
+        Place(15f, 0f);
+        Tick(0f);
+        Tick(1.3f);
+        if (phase == 2)
+        {
+            Tick(0.3f);
+            Tick(1.3f);
+        }
+
+        int before = _events.Count<HierophantArmed>();
+        Tick(1.5f, Vector3.UnitX * 2.25f);
+        Tick(1.75f, Vector3.UnitX * 2.25f);
+        Assert.That(_events.Count<HierophantArmed>(), Is.EqualTo(before));
+        Place(0f, 15f);
+        Tick(0.25f);
+        Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.SunSeal));
+        Assert.That(LastArm().Facing, Is.EqualTo(Vector2.UnitY));
+
+        if (phase == 2)
+        {
+            Tick(1.3f);
+            Place(-15f, 0f);
+            Tick(0.3f);
+            Assert.That(LastArm().Move, Is.EqualTo(HierophantMove.SunSeal));
+            Assert.That(LastArm().Facing, Is.EqualTo(-Vector2.UnitX));
+        }
     }
 
     [Test]

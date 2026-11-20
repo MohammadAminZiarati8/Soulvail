@@ -343,7 +343,8 @@ public sealed class HierophantViewTests
 
     private static HierophantArmed Arm(int boss, HierophantMove move) => move == HierophantMove.StaffSweep
         ? new HierophantArmed(boss, move, -1, new Num.Vector3(3f, 0f, -2f), Num.Vector2.UnitX, 3.25f, 0f, 50f, 1f)
-        : new HierophantArmed(boss, move, 2, new Num.Vector3(4f, 0f, 0f), Num.Vector2.UnitY, 9f, 2f, 0f, 1.3f);
+        : new HierophantArmed(boss, move, 2, new Num.Vector3(4f, 0f, 0f),
+            Num.Vector2.Normalize(Num.Vector2.One), 18f, 2f, 0f, 1.3f);
 
     private MeshFilter Layer(string label) => _floor.Find("Footprint/" + label).GetComponent<MeshFilter>();
     private static bool Visible(MeshFilter layer) => layer.GetComponent<MeshRenderer>().enabled;
@@ -375,11 +376,12 @@ public sealed class HierophantViewTests
         }
         else
         {
-            Assert.That(offsets, Is.EquivalentTo(new[]
-            {
-                new Vector2(-armed.HalfWidth, -reach), new Vector2(-armed.HalfWidth, reach),
-                new Vector2(armed.HalfWidth, -reach), new Vector2(armed.HalfWidth, reach),
-            }));
+            var forward = new Vector2(armed.Facing.X, armed.Facing.Y);
+            var right = new Vector2(forward.y, -forward.x);
+            Assert.That(offsets.Select(point => Vector2.Dot(point, forward)),
+                Is.EqualTo(new[] { 0f, reach, 0f, reach }).Within(0.001f));
+            Assert.That(offsets.Select(point => Vector2.Dot(point, right)),
+                Is.EqualTo(new[] { -armed.HalfWidth, -armed.HalfWidth, armed.HalfWidth, armed.HalfWidth }).Within(0.001f));
         }
     }
 

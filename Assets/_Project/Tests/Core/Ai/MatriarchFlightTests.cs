@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Reflection;
 using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
@@ -15,6 +16,8 @@ namespace Soulvail.Tests.Core.Ai;
 [TestFixture]
 public sealed class MatriarchFlightTests
 {
+    private delegate void ResolveRain(in EnemyTickContext context, Vector3 hero);
+
     private static readonly ContentId BroodId = new("enemy.vulture");
     private static readonly ContentId BossId = new("boss.carrion_matriarch");
     private static readonly Vector3 Landing = new(1f, 0f, 8f);
@@ -25,6 +28,7 @@ public sealed class MatriarchFlightTests
     private EnemySystem _enemies;
     private EnemyAgent _boss;
     private BossBehaviour _wrapper;
+    private ResolveRain _resolveRain;
     private ProjectileSystem _projectiles;
     private LaneSystem _lanes;
     private WorldSnapshot _world;
@@ -67,16 +71,14 @@ public sealed class MatriarchFlightTests
         }
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public void Flight_StaysUntargetableAndThrowsLockedFeathers(bool cover)
+    [TestCase(0f, false, false, 84f)]
+    [TestCase(3f, true, false, 84f)]
+    [TestCase(3.01f, true, true, 100f)]
+    public void Flight_LocksRainOnRealHeroAndHitsOnce(float offset, bool cover, bool petQuarry, float hp)
     {
-        float coverZ = 0f;
         if (cover)
         {
-            _events.Clear();
-            Start(_events, (from, to) =>
-                from.Z < coverZ && to.Z >= coverZ ? new Vector3(from.X, 0f, coverZ) : null);
+            Start(_events, (from, to) => Vector3.Lerp(from, to, 0.5f));
         }
 
         Vector3 second = new(-4f, 0f, 0f);
@@ -85,40 +87,52 @@ public sealed class MatriarchFlightTests
         KillAdd(_enemies.Registry.Alive[1]);
         AssertAloft();
 
-        for (int i = 0; i < 4; i++)
-        {
-            Vector3 origin = _boss.Position;
-            _hero = origin + Vector3.UnitZ * 8f;
-            coverZ = origin.Z + 3f;
-            Tick(20f);
-            MatriarchArmed feather = LastArm();
-            Assert.That(feather.Move, Is.EqualTo(MatriarchMove.FeatherSpear));
-            Assert.That(feather.Origin, Is.EqualTo(origin));
-            Assert.That(feather.Target, Is.EqualTo(origin + Vector3.UnitZ * 16f));
-            Assert.That(feather.Width, Is.EqualTo(1.2f));
-            Assert.That(LastProgress(), Is.Zero);
-            Assert.That(_events.Count<MatriarchArmed>(), Is.EqualTo(i + 1));
+        _boss.Blackboard.IsBehindCover = cover;
+        _boss.Blackboard.QuarryIsAPet = petQuarry;
+        _boss.Blackboard.QuarryIsADecoy = !petQuarry;
+        Vector3 centre = _hero;
+        Tick(3.2f, quarry: new Vector3(-10f, 0f, -10f));
+        MatriarchArmed rain = LastArm();
+        Assert.That(rain.Move, Is.EqualTo(MatriarchMove.FeatherRain));
+        Assert.That(rain.Target, Is.EqualTo(centre));
+        Assert.That(rain.Width, Is.Zero);
+        Assert.That(rain.Radius, Is.EqualTo(3f));
+        Assert.That(rain.Seconds, Is.EqualTo(1.2f));
+        Assert.That(LastProgress(), Is.Zero);
 
-            _hero = origin + Vector3.UnitX * 8f;
-            Tick(0.1f);
-            Assert.That(_events.Count<ProjectileFired>(), Is.EqualTo(i));
-            Tick(1f);
-            ProjectileFired fired = _events.Of<ProjectileFired>()[^1];
-            Assert.That(fired.SpecId, Is.EqualTo(_boss.Spec.Id));
-            Assert.That(fired.SourceId, Is.EqualTo(_boss.Id));
-            Assert.That(fired.Target, Is.EqualTo(feather.Target));
-            _hero = origin + new Vector3(0.5f, 0f, 8f);
-            Tick(1f);
-            ProjectileImpacted impact = _events.Of<ProjectileImpacted>()[^1];
-            Assert.That(impact.Hit, Is.EqualTo(!cover));
-            Assert.That(impact.Position.Z - origin.Z, Is.EqualTo(cover ? 3f : 7.67f).Within(0.01f));
-            Assert.That(_player.Health.Current, Is.EqualTo(100f - (cover ? 0f : 16f * (i + 1))));
-        }
-
-        Assert.That(_events.Count<ProjectileImpacted>(), Is.EqualTo(4));
-        Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(3));
+        Vector3 before = _boss.Position;
+        _hero = centre + Vector3.UnitX * 6f;
+        Tick(1.19f);
+        Assert.That(_boss.Position, Is.Not.EqualTo(before));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
         Assert.That(_events.Count<MatriarchImpact>(), Is.Zero);
+
+        _hero = centre + new Vector3(offset, 5f, 0f);
+        Tick(0.02f);
+        Assert.That(_events.Single<MatriarchImpact>().Position, Is.EqualTo(centre));
+        Assert.That(_events.Single<MatriarchImpact>().Move, Is.EqualTo(MatriarchMove.FeatherRain));
+        Assert.That(LastProgress(), Is.EqualTo(1f));
+        Tick(1f);
+        Assert.That(_player.Health.Current, Is.EqualTo(hp));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(hp < 100f ? 1 : 0));
+        Assert.That(_events.Count<ProjectileFired>(), Is.Zero);
+        Assert.That(_events.Count<MatriarchTellCleared>(), Is.EqualTo(1));
         AssertAloft();
+    }
+
+    [Test]
+    public void Flight_KillAfterEnemyTickOnRainDeadlineCancelsImpact()
+    {
+        EnterFlightPhase();
+        Tick(3.2f);
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherRain));
+        Tick(1.2f, beforeRain: () => KillAdd(_enemies.Registry.Alive[1]));
+
+        Assert.That(_events.Count<MatriarchTellCleared>(), Is.EqualTo(1));
+        Assert.That(_events.Count<MatriarchImpact>(), Is.Zero);
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.CarrionDive));
+        Assert.That(LastProgress(), Is.Zero);
     }
 
     [TestCase(false)]
@@ -131,7 +145,7 @@ public sealed class MatriarchFlightTests
         Assert.That(_intents.LastEnemyMove.FacingXZ, Is.EqualTo(Vector2.UnitY));
 
         Tick(3.2f);
-        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherSpear));
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherRain));
         Assert.That(Vector3.Distance(_boss.Position, _hero), Is.EqualTo(7f).Within(0.0001f));
         Vector2 previousHeading = _intents.LastEnemyMove.FacingXZ;
         _boss.Blackboard.QuarryIsAPet = petQuarry;
@@ -163,11 +177,11 @@ public sealed class MatriarchFlightTests
         Tick(3.1f);
         Assert.That(_events.Count<MatriarchArmed>(), Is.Zero);
         Tick(0.2f);
-        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherSpear));
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherRain));
         Vector3 diveOrigin = _boss.Position;
         KillAdd(_enemies.Registry.Alive[1]);
         Assert.That(_enemies.PendingXp, Is.Zero);
-        Tick(4f);
+        Tick(1.2f);
         MatriarchArmed dive = LastArm();
         Assert.That(dive.Move, Is.EqualTo(MatriarchMove.CarrionDive));
         Assert.That(dive.Origin, Is.EqualTo(diveOrigin));
@@ -259,7 +273,7 @@ public sealed class MatriarchFlightTests
         int addId = _enemies.Registry.Alive[1].Id;
         int unrelated = _enemies.SpawnSummon(BroodId, new Vector3(-4f, 0f, -4f)).Id;
         Tick(4f);
-        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherSpear));
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherRain));
         if (cleanup == "death")
         {
             // Model a forced death while a tell is pending.
@@ -345,6 +359,9 @@ public sealed class MatriarchFlightTests
             (agent, _) => new MatriarchBehaviour(agent, new MatriarchStats(), BroodId));
         _boss = _enemies.SpawnBoss(BossId, Vector3.Zero);
         _wrapper = (BossBehaviour)_boss.Behaviour;
+        _resolveRain = (ResolveRain)typeof(MatriarchBehaviour)
+            .GetMethod(nameof(ResolveRain), BindingFlags.Instance | BindingFlags.NonPublic)
+            .CreateDelegate(typeof(ResolveRain), _wrapper.Inner);
     }
 
     private void EnterFlightPhase(float damage = 34f, int phase = 1, IDomainEvents events = null)
@@ -373,13 +390,17 @@ public sealed class MatriarchFlightTests
         Assert.That(_enemies.ApplyDamage(add.Id, 1000f, _now, _player).Killed, Is.True);
     }
 
-    private void Tick(float dt, IDomainEvents events = null, Vector3? quarry = null)
+    private void Tick(float dt, IDomainEvents events = null, Vector3? quarry = null, Action beforeRain = null)
     {
         _now += dt;
-        _projectiles.Tick(_now, _hero, _player, _enemies);
         _intents.Clear();
+        _player.Blackboard.PlayerPosition = _hero;
         _boss.Blackboard.PlayerPosition = quarry ?? _hero;
-        _wrapper.Tick(Context(dt, events ?? _events));
+        EnemyTickContext context = Context(dt, events ?? _events);
+        _wrapper.Tick(context);
+        _projectiles.Tick(_now, _hero, _player, _enemies);
+        beforeRain?.Invoke();
+        _resolveRain(context, _hero);
         EnemyMoveIntent move = _intents.LastEnemyMove;
         _world.Clear();
         _world.PlayerPosition = _hero;

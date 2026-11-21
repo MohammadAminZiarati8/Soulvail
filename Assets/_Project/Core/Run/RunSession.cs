@@ -1503,6 +1503,14 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // asks the body for a fact, to be consumed during the next projectile step.
         State.Projectiles.Tick(State.Time, State.PlayerPosition, State.Combat, State.Enemies);
 
+        foreach (EnemyAgent agent in State.Enemies.Registry.Alive)
+        {
+            if (agent.IsAlive && agent.Behaviour is BossBehaviour { Inner: MatriarchBehaviour matriarch })
+            {
+                matriarch.ResolveRain(enemies, State.PlayerPosition);
+            }
+        }
+
         // **After every pass that can kill an enemy, and above the death check** (M5-04b rule 4,
         // AR §18.1).
         //

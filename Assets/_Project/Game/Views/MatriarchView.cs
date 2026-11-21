@@ -15,6 +15,8 @@ namespace Soulvail.Game.Views
         private const float PounceHeight = 1.8f;
         private const float GroundOffset = 0.06f;
         private const float SlabTravelSeconds = 0.25f;
+        private const float RainFallSeconds = 0.25f;
+        private const int RainFeatherCount = 11;
 
         [SerializeField] private Transform _model;
         [SerializeField] private Animator _animator;
@@ -23,10 +25,11 @@ namespace Soulvail.Game.Views
         [SerializeField] private MeshFilter _warning;
         [SerializeField] private MeshFilter _fill;
         [SerializeField] private Transform _slab;
+        [SerializeField] private Transform _feather;
         [SerializeField] private AudioSource _audio;
         [SerializeField] private AudioClip _shoveCue;
         [SerializeField] private AudioClip _pounceCue;
-        [SerializeField] private AudioClip _spearCue;
+        [SerializeField] private AudioClip _rainCue;
         [SerializeField] private AudioClip _diveCue;
 
         private readonly int _phaseId = Animator.StringToHash("VulturePhase");
@@ -43,6 +46,7 @@ namespace Soulvail.Game.Views
         private Mesh _laneMesh;
         private Mesh _ringMesh;
         private Mesh _discMesh;
+        private Transform _rain;
         private int _id;
         private bool _airborne;
         private bool _warningActive;
@@ -52,6 +56,7 @@ namespace Soulvail.Game.Views
         private float _width;
         private float _radius;
         private float _progress;
+        private float _tellSeconds;
         private Vector3 _slabOrigin;
         private Vector3 _slabTarget;
         private float _slabAge;
@@ -67,6 +72,7 @@ namespace Soulvail.Game.Views
             _bodyRenderers ??= _model.GetComponentsInChildren<Renderer>(true);
             Unbind();
             EnsureMeshes();
+            EnsureRain();
             _id = id;
             _shake = shake;
             _subscriptions[0] = _events.Subscribe<MatriarchArmed>(OnArmed);
@@ -111,9 +117,9 @@ namespace Soulvail.Game.Views
             _target = evt.Target.ToUnity();
             _width = evt.Width;
             _radius = evt.Radius;
+            _tellSeconds = evt.Seconds;
             _progress = 0f;
-            _warning.sharedMesh = evt.Move is MatriarchMove.RuinShove or MatriarchMove.FeatherSpear
-                ? _laneMesh : _ringMesh;
+            _warning.sharedMesh = evt.Move == MatriarchMove.RuinShove ? _laneMesh : _ringMesh;
             _warning.gameObject.SetActive(true);
             _fill.gameObject.SetActive(false);
             DrawWarning();
@@ -123,7 +129,7 @@ namespace Soulvail.Game.Views
             {
                 MatriarchMove.RuinShove => _shoveCue,
                 MatriarchMove.CarrionPounce => _pounceCue,
-                MatriarchMove.FeatherSpear => _spearCue,
+                MatriarchMove.FeatherRain => _rainCue,
                 _ => _diveCue,
             };
             if (Application.isPlaying && _audio.clip != null)
@@ -174,6 +180,11 @@ namespace Soulvail.Game.Views
             _warningActive = false;
             _warning.gameObject.SetActive(false);
             _fill.gameObject.SetActive(false);
+            if (_rain != null)
+            {
+                _rain.gameObject.SetActive(false);
+            }
+
             _audio.Stop();
             _audio.clip = null;
         }
@@ -318,8 +329,7 @@ namespace Soulvail.Game.Views
         {
             Vector3 lane = _target - _origin;
             lane.y = 0f;
-            bool isLane = _move is MatriarchMove.RuinShove or MatriarchMove.FeatherSpear;
-            if (isLane)
+            if (_move == MatriarchMove.RuinShove)
             {
                 Place(_warning.transform, _origin, Heading(lane), new Vector3(_width, 1f, lane.magnitude));
             }
@@ -328,12 +338,53 @@ namespace Soulvail.Game.Views
                 Place(_warning.transform, _target, Quaternion.identity, new Vector3(_radius, 1f, _radius));
             }
 
-            bool showFill = _move == MatriarchMove.CarrionDive && _progress > 0f;
+            bool showFill = (_move is MatriarchMove.CarrionDive or MatriarchMove.FeatherRain) && _progress > 0f;
             _fill.gameObject.SetActive(showFill);
             if (showFill)
             {
                 float radius = _radius * _progress;
                 Place(_fill.transform, _target - Vector3.up * 0.005f, Quaternion.identity, new Vector3(radius, 1f, radius));
+            }
+
+            DrawRain();
+        }
+
+        private void DrawRain()
+        {
+            float remaining = (1f - _progress) * _tellSeconds;
+            bool falling = _move == MatriarchMove.FeatherRain && remaining <= RainFallSeconds;
+            if (falling)
+            {
+                float heightFraction = Mathf.Clamp01(remaining / RainFallSeconds);
+                for (int i = 0; i < RainFeatherCount; i++)
+                {
+                    float yaw = i * 137.508f;
+                    float distance = 0.88f * _radius * Mathf.Sqrt((float)i / (RainFeatherCount - 1));
+                    Vector3 floor = _target + Quaternion.Euler(0f, yaw, 0f) * Vector3.forward * distance;
+                    // The feather prop points down its local Z. Keep its tip at ground height on impact.
+                    float height = 0.27f + (3.6f + 0.1f * i) * heightFraction;
+                    Place(_rain.GetChild(i), floor + Vector3.up * height,
+                        Quaternion.Euler(80f, yaw, 0f), Vector3.one * 0.55f);
+                }
+            }
+
+            _rain.gameObject.SetActive(falling);
+        }
+
+        private void EnsureRain()
+        {
+            if (_rain != null)
+            {
+                return;
+            }
+
+            _rain = new GameObject("Feather Rain").transform;
+            _rain.gameObject.SetActive(false);
+            _rain.SetParent(transform, false);
+            for (int i = 0; i < RainFeatherCount; i++)
+            {
+                Transform feather = Instantiate(_feather, _rain);
+                feather.GetComponent<ProjectileView>().enabled = false;
             }
         }
 

@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Soulvail.Core.Events;
 
-public enum MatriarchMove { RuinShove, CarrionPounce, FeatherSpear, CarrionDive }
+public enum MatriarchMove { RuinShove, CarrionPounce, FeatherRain, CarrionDive }
 
 public readonly struct MatriarchFlightChanged
 {

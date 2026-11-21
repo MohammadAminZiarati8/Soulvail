@@ -22,9 +22,8 @@ public sealed class MatriarchStats
     public Stat OrbitSpeed { get; } = new(4f);
     public Stat OrbitApproachSpeed { get; } = new(6f);
     public Stat FeatherInterval { get; } = new(3.2f);
-    public Stat FeatherTell { get; } = new(0.9f);
-    public Stat FeatherWidth { get; } = new(1.2f);
-    public Stat FeatherLength { get; } = new(16f);
+    public Stat FeatherTell { get; } = new(1.2f);
+    public Stat FeatherRadius { get; } = new(3f);
     public Stat FeatherDamage { get; } = new(16f);
     public Stat DiveTell { get; } = new(1.5f);
     public Stat DiveRadius { get; } = new(3.2f);
@@ -32,5 +31,4 @@ public sealed class MatriarchStats
     public Stat DiveRecovery { get; } = new(2.4f);
 
     internal Stat FeatherStagger { get; } = new(1f);
-    internal Stat FeatherSpeed { get; } = new(24f);
 }

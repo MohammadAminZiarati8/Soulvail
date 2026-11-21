@@ -931,3 +931,6 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - SS-19f [Editor] Start Sunscar 25 through DT-01. Check the 2,080 HP and larger silhouette, then watch the shadow orbit during a feather tell and lead into the marked landing.
 - SS-19f [device] Check ground pounce and dive warnings at normal camera scale.
+
+- [ ] **SS-19g [Editor]** Start Sunscar Stage 25 through DT-01. Step clear of Feather Rain, then finish the last brood during another warning. Check the locked rim, falling feathers and immediate Carrion Dive warning.
+- [ ] **SS-19g [device]** Check that the Feather Rain circle and brood dive lane are both readable when their warnings overlap.

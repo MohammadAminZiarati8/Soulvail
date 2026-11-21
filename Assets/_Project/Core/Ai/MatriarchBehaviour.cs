@@ -86,7 +86,7 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
         Vector3? landingPosition = null;
         if (IsAirborne)
         {
-            velocity = TickFlight(ctx, origin, hero, heading, canAim, dt, out landingPosition);
+            velocity = TickFlight(ctx, origin, hero, canAim, dt, out landingPosition);
         }
         else
         {
@@ -244,7 +244,7 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
         return true;
     }
 
-    private Vector3 TickFlight(in EnemyTickContext ctx, Vector3 origin, Vector3 hero, Vector3 heading, bool canAim,
+    private Vector3 TickFlight(in EnemyTickContext ctx, Vector3 origin, Vector3 hero, bool canAim,
         float dt, out Vector3? landingPosition)
     {
         landingPosition = null;
@@ -260,39 +260,23 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
 
         if (!HasLivingBrood())
         {
-            ClearTell();
-            _broodOwner = null;
-            Array.Clear(_broodIds, 0, _broodCount);
-            _broodCount = 0;
-            Vector3 landing = canAim && ctx.OpenGround.Count > 0
-                ? GravemawBehaviour.FindOpenSpot(ctx.OpenGround, hero, origin, float.PositiveInfinity)
-                : origin;
-            Vector3 travel = GroundDelta(landing, origin);
-            if (travel.LengthSquared() > 0f)
-            {
-                _facing = Vector3.Normalize(travel);
-            }
-
-            Arm(ctx, new MatriarchArmed(_agent.Id, MatriarchMove.CarrionDive, origin, landing,
-                0f, _stats.DiveRadius.Value, _stats.DiveTell.Value));
+            ArmDive(ctx, origin, hero, canAim);
             return Vector3.Zero;
         }
 
         if (_state == State.Tell)
         {
-            if (AdvanceTell(ctx))
+            if (_remaining == 0f)
             {
-                ctx.Projectiles.Fire(new Projectile(_agent.Spec.Id, _agent.Id, _armed.Origin, _armed.Target,
-                    _stats.FeatherSpeed.Value, _armed.Width * 0.5f, _stats.FeatherDamage.Value,
-                    shotOrigin: ShotOrigin.FeatherSpear), ctx.Now);
-                _state = State.Flight;
-                ClearTell();
+                return Vector3.Zero;
             }
+
+            AdvanceTell(ctx);
         }
         else if (ctx.Now >= _featherReadyAt && canAim)
         {
-            Arm(ctx, new MatriarchArmed(_agent.Id, MatriarchMove.FeatherSpear, origin,
-                origin + heading * _stats.FeatherLength.Value, _stats.FeatherWidth.Value, 0f, _stats.FeatherTell.Value));
+            Arm(ctx, new MatriarchArmed(_agent.Id, MatriarchMove.FeatherRain, origin, hero,
+                0f, _stats.FeatherRadius.Value, _stats.FeatherTell.Value));
             _featherCount++;
             ScheduleFeather(ctx.Now);
         }
@@ -303,6 +287,59 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
             ? VultureBehaviour.Orbit(origin, hero, _agent.Id, dt, radius, approachSpeed, _stats.OrbitSpeed.Value,
                 ref _facing)
             : Vector3.Zero;
+    }
+
+    internal void ResolveRain(in EnemyTickContext ctx, Vector3 hero)
+    {
+        if (!IsAirborne || _state != State.Tell || _armed.Move != MatriarchMove.FeatherRain)
+        {
+            return;
+        }
+
+        // Hero projectiles and pets can kill the last vulture after enemy movement was decided.
+        if (!HasLivingBrood())
+        {
+            Vector3 origin = _agent.Position;
+            bool canAim = float.IsFinite(GroundDelta(hero, origin).LengthSquared())
+                && float.IsFinite(hero.Y) && float.IsFinite(origin.Y);
+            ArmDive(ctx, origin, hero, canAim);
+            return;
+        }
+
+        if (_remaining > 0f)
+        {
+            return;
+        }
+
+        AdvanceTell(ctx);
+        Vector3 target = _armed.Target;
+        _state = State.Flight;
+        if (GroundDelta(hero, target).LengthSquared() <= _armed.Radius * _armed.Radius)
+        {
+            ctx.Player.ApplyDamage(_stats.FeatherDamage.Value, ctx.Now);
+        }
+
+        ctx.Events.Publish(new MatriarchImpact(_agent.Id, MatriarchMove.FeatherRain, target));
+        ClearTell();
+    }
+
+    private void ArmDive(in EnemyTickContext ctx, Vector3 origin, Vector3 hero, bool canAim)
+    {
+        ClearTell();
+        _broodOwner = null;
+        Array.Clear(_broodIds, 0, _broodCount);
+        _broodCount = 0;
+        Vector3 landing = canAim && ctx.OpenGround.Count > 0
+            ? GravemawBehaviour.FindOpenSpot(ctx.OpenGround, hero, origin, float.PositiveInfinity)
+            : origin;
+        Vector3 travel = GroundDelta(landing, origin);
+        if (travel.LengthSquared() > 0f)
+        {
+            _facing = Vector3.Normalize(travel);
+        }
+
+        Arm(ctx, new MatriarchArmed(_agent.Id, MatriarchMove.CarrionDive, origin, landing,
+            0f, _stats.DiveRadius.Value, _stats.DiveTell.Value));
     }
 
     private bool HasLivingBrood()
@@ -320,7 +357,7 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
 
     private void ScheduleFeather(float now)
     {
-        // The vultures cycle through three ID-offset intervals. Centre the spear's cycle on its base interval.
+        // The vultures cycle through three ID-offset intervals. Centre the rain's cycle on its base interval.
         int offset = (int)(((long)_featherCount + _agent.Id) % 3) - 1;
         _featherReadyAt = now + _stats.FeatherInterval.Value + offset * _stats.FeatherStagger.Value;
     }

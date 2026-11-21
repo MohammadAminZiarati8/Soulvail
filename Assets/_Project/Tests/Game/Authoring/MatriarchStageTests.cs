@@ -45,8 +45,7 @@ public sealed class MatriarchStageTests
         Assert.That((boss.EnemySpecId, boss.SpawnsCentral, boss.UsesAuthoredMaxHp),
             Is.EqualTo((Matriarch, true, true)));
         Assert.That(fight.Look.Body.GetComponent<MatriarchView>(), Is.Not.Null);
-        Assert.That(AssetDatabase.GetAssetPath(fight.Look.Projectile),
-            Is.EqualTo(Root + "Prefabs/Projectiles/MatriarchFeather.prefab"));
+        Assert.That(fight.Look.Projectile, Is.Null);
         var name = fight.Catalog.Enemy(Matriarch).NameKey;
         Assert.That(name.Key, Is.EqualTo("enemy.carrion_matriarch.name"));
         Assert.That(Load<LocalizationTable>("Data/Localisation/English.asset").ToDictionary()[name],
@@ -114,12 +113,13 @@ public sealed class MatriarchStageTests
     [Test]
     public void Arena_TellsAndBroodHaveWalkableAnswers()
     {
-        float speed = new[] { "Ranger", "Oathbound", "Beastmaster" }.Min(name =>
-            Load<CharacterDefinition>($"Data/Characters/{name}.asset").ToSpec().Movement.Speed);
+        CharacterSpec slowest = new[] { "Ranger", "Oathbound", "Beastmaster" }
+            .Select(name => Load<CharacterDefinition>($"Data/Characters/{name}.asset").ToSpec())
+            .OrderBy(spec => spec.Movement.Speed).First();
         using (var fight = new Fight("Ranger"))
         {
             fight.Win();
-            fight.ReplayWarnings(speed);
+            fight.ReplayWarnings(slowest.Movement);
         }
 
         foreach (string name in new[] { "Oathbound", "Beastmaster" })
@@ -234,8 +234,6 @@ public sealed class MatriarchStageTests
         private readonly List<(Vector3 Player, float Time, Footprint[] Warnings)> _overlaps = new();
         private readonly Dictionary<MatriarchMove, MatriarchArmed> _tells = new();
         private readonly List<string> _damage = new();
-        private int _featherId;
-        private Footprint? _flyingFeather;
         private Vector3? _escape;
         private Vector3? _waypoint;
         private bool _walkingToGate;
@@ -344,7 +342,7 @@ public sealed class MatriarchStageTests
             _waypoint = null;
         }
 
-        public void ReplayWarnings(float speed)
+        public void ReplayWarnings(MovementSpec movement)
         {
             Assert.That(_tells.Keys, Is.EquivalentTo(Enum.GetValues(typeof(MatriarchMove))));
             Vector3[] spots = _openGround.Spots.Select(p => p.ToUnity()).ToArray();
@@ -363,23 +361,51 @@ public sealed class MatriarchStageTests
                     Vector3 end = tell.Radius > 0f ? sample : launch + Vector3.forward * Ground(tell.Target.ToUnity() - tell.Origin.ToUnity()).magnitude;
                     var replay = new Footprint(launch, end, tell.Width, tell.Radius, tell.Seconds);
                     Assert.That(replay.Covers(sample, 0f), Is.True);
-                    float budget = WalkBudget(speed, tell.Seconds);
-                    Assert.That(FindExit(sample, budget, new[] { replay }), Is.Not.Null, $"{place}: {move}");
+                    ReplayEscape(sample, movement, 0f, new[] { replay }, $"{place}: {move}");
                 }
             }
 
-            Assert.That(_overlaps, Is.Not.Empty, "Record a spear while at least one brood dive lane is armed.");
+            Assert.That(_overlaps, Is.Not.Empty, "Record rain while at least one brood dive lane is armed.");
+            int replayed = 0;
             foreach (var (player, time, warnings) in _overlaps)
             {
-                float deadline = warnings.Where(warning => warning.Covers(player, 0.25f))
-                    .Select(warning => warning.Deadline).DefaultIfEmpty(float.PositiveInfinity).Min();
-                if (float.IsFinite(deadline))
+                if (warnings.Any(warning => warning.Covers(player, 0f)))
                 {
-                    Assert.That(FindExit(player, WalkBudget(speed, deadline - time), warnings), Is.Not.Null,
-                        $"Spear and brood at {time:F2} s, player {player}");
+                    ReplayEscape(player, movement, time, warnings, $"Rain and brood at {time:F2} s");
+                    replayed++;
                 }
             }
+            Assert.That(replayed, Is.GreaterThan(0));
             Assert.That(Events.Of<VultureDiveLocked>().Select(e => e.Id).Distinct(), Is.EquivalentTo(Brood));
+            TestContext.WriteLine($"Replayed {replayed} rain/dive overlaps at {movement.Speed:F1} m/s.");
+        }
+
+        private void ReplayEscape(Vector3 start, MovementSpec movement, float issuedAt, Footprint[] warnings, string label)
+        {
+            Footprint[] impacts = warnings.OrderBy(warning => warning.Deadline).ToArray();
+            float seconds = impacts[^1].Deadline - issuedAt;
+            Vector3? exit = FindExit(start, WalkBudget(movement.Speed, seconds), (from, to) =>
+                impacts.All(warning => !warning.Covers(Vector3.MoveTowards(from, to,
+                    WalkBudget(movement.Speed, warning.Deadline - issuedAt)), 0.08f)));
+            string deadlines = string.Join(", ", impacts.Select(warning => $"{warning.Deadline - issuedAt:F2} s"));
+            Assert.That(exit, Is.Not.Null, $"{label}, {start}, deadlines [{deadlines}]");
+            _player.Teleport(start);
+            Physics.SyncTransforms();
+            var motor = new PlayerMotor(movement, System.Numerics.Vector3.UnitZ);
+            // The impact sees the previous movement step's position.
+            int impact = 0;
+            for (int frame = 1; impact < impacts.Length; frame++)
+            {
+                while (impact < impacts.Length && frame * Frame >= impacts[impact].Deadline - issuedAt)
+                {
+                    Assert.That(impacts[impact].Covers(_player.Position, 0f), Is.False,
+                        $"{label}, {start} to {_player.Position}, impact at {frame * Frame:F2} s");
+                    impact++;
+                }
+
+                motor.Tick(Frame, Toward(_player.Position, exit.Value).ToNumXZ(), null);
+                _player.Apply(new PlayerMoveIntent(motor.Velocity, motor.Facing), Frame);
+            }
         }
 
         private void Step()
@@ -452,7 +478,7 @@ public sealed class MatriarchStageTests
                     _bossMove = tell.Move;
                     _tells[tell.Move] = tell;
                     _warnings[_boss] = footprint;
-                    if (tell.Move == MatriarchMove.FeatherSpear)
+                    if (tell.Move == MatriarchMove.FeatherRain)
                     {
                         RecordOverlap(now);
                     }
@@ -460,15 +486,6 @@ public sealed class MatriarchStageTests
                     break;
                 case MatriarchTellCleared:
                     _warnings.Remove(_boss);
-                    break;
-                case ProjectileFired shot when shot.ShotOrigin == ShotOrigin.FeatherSpear:
-                    _featherId = shot.Id;
-                    _flyingFeather = new Footprint(shot.Origin.ToUnity(), shot.Target.ToUnity(),
-                        shot.Radius * 2f, 0f, now + shot.FlightTime);
-                    _escape = null;
-                    break;
-                case ProjectileImpacted impact when impact.Id == _featherId:
-                    _flyingFeather = null;
                     break;
                 case PlayerDamaged damage when damage.ToHp > 0f || damage.ToShield > 0f:
                     _damage.Add($"{now:F2}: {damage.ToHp + damage.ToShield:F1}");
@@ -479,7 +496,7 @@ public sealed class MatriarchStageTests
                     _landings[dive.Id] = dive.Landing.ToUnity();
                     _warnings[dive.Id] = new Footprint(origin, origin + toward * _vulture.Dive.LineLength,
                         _vulture.Dive.LineHalfWidth * 2f, 0f, now + dive.Seconds);
-                    if (_bossMove == MatriarchMove.FeatherSpear && _warnings.ContainsKey(_boss))
+                    if (_bossMove == MatriarchMove.FeatherRain && _warnings.ContainsKey(_boss))
                     {
                         RecordOverlap(now);
                     }
@@ -514,13 +531,7 @@ public sealed class MatriarchStageTests
             }
 
             float now = Session.State.Time;
-            IEnumerable<Footprint> hazards = _warnings.Values;
-            if (_flyingFeather is Footprint feather)
-            {
-                hazards = hazards.Append(feather);
-            }
-
-            Footprint[] active = hazards.Where(warning => warning.Deadline >= now - Frame).ToArray();
+            Footprint[] active = _warnings.Values.Where(warning => warning.Deadline >= now - Frame).ToArray();
             float deadline = active.Where(warning => warning.Covers(at, 0.32f))
                 .Select(warning => warning.Deadline).DefaultIfEmpty(float.PositiveInfinity).Min();
             if (float.IsFinite(deadline))
@@ -583,7 +594,11 @@ public sealed class MatriarchStageTests
             return Vector3.zero;
         }
 
-        private static Vector3? FindExit(Vector3 from, float budget, IReadOnlyList<Footprint> warnings)
+        private static Vector3? FindExit(Vector3 from, float budget, IReadOnlyList<Footprint> warnings) =>
+            FindExit(from, budget, (_, end) =>
+                warnings.All(warning => !warning.Covers(end, warning.Radius > 0f ? 0.2f : 0.4f)));
+
+        private static Vector3? FindExit(Vector3 from, float budget, Func<Vector3, Vector3, bool> clearsWarnings)
         {
             if (!NavMesh.SamplePosition(from, out NavMeshHit start, 1.5f, NavMesh.AllAreas))
             {
@@ -595,7 +610,7 @@ public sealed class MatriarchStageTests
                 for (int i = 0; i < 32; i++)
                 {
                     Vector3 end = start.position + Quaternion.Euler(0f, i * (360f / 32f), 0f) * Vector3.forward * distance;
-                    if (warnings.All(warning => !warning.Covers(end, 0.4f))
+                    if (clearsWarnings(start.position, end)
                         && NavMesh.SamplePosition(end, out _, 0.12f, NavMesh.AllAreas)
                         && !NavMesh.Raycast(start.position, end, out _, NavMesh.AllAreas))
                     {

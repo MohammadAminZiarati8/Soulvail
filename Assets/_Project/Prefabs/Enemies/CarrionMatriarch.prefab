@@ -811,10 +811,11 @@ MonoBehaviour:
   _warning: {fileID: 7590647348430842719}
   _fill: {fileID: 7150967897196504343}
   _slab: {fileID: 3777127982969409126}
+  _feather: {fileID: 5625544432061062263, guid: 28b6b9d1e91e53e4088486f1ecfbc81c, type: 3}
   _audio: {fileID: 961069855223780127}
   _shoveCue: {fileID: 8300000, guid: 970f26fe1d70f4f4289dbbb8f619ae90, type: 3}
   _pounceCue: {fileID: 8300000, guid: 0e6cff4b53fa1354590a3bc6b824b8c5, type: 3}
-  _spearCue: {fileID: 8300000, guid: 8bfd578f5083d4146a97750a27c89c73, type: 3}
+  _rainCue: {fileID: 8300000, guid: 8bfd578f5083d4146a97750a27c89c73, type: 3}
   _diveCue: {fileID: 8300000, guid: 94faf720a7f9272469aba6910ee0843d, type: 3}
 --- !u!1001 &161506752309424793
 PrefabInstance:

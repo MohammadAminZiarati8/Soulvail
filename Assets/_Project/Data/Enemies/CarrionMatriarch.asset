@@ -175,6 +175,6 @@ MonoBehaviour:
   _tint: {r: 1, g: 1, b: 1, a: 1}
   _bodyScale: 1
   _body: {fileID: 696688732263315952, guid: 67353d5f572542944883e132b0b22e3b, type: 3}
-  _projectile: {fileID: 7505177777863529563, guid: 28b6b9d1e91e53e4088486f1ecfbc81c, type: 3}
+  _projectile: {fileID: 0}
   _marksLanding: 0
   _cover: {fileID: 0}

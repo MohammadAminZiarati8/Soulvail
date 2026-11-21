@@ -65,22 +65,19 @@ public sealed class MatriarchViewTests
     public void Warnings_MatchLockedFootprintsAndDiveFill()
     {
         var cues = new HashSet<AudioClip>();
-        foreach (MatriarchMove move in new[] { MatriarchMove.RuinShove, MatriarchMove.FeatherSpear })
-        {
-            Arm(move);
-            Assert.That(cues.Add(_audio.clip), Is.True);
-            Assert.That(_warning.gameObject.activeSelf, Is.True);
-            Vector3 start = _warning.transform.TransformPoint(new Vector3(0f, 0f, 0f));
-            Vector3 end = _warning.transform.TransformPoint(new Vector3(0f, 0f, 1f));
-            Assert.That(start.x, Is.EqualTo(Origin.X).Within(0.001f));
-            Assert.That(end.x, Is.EqualTo(Target.X).Within(0.001f));
-            Assert.That(end.z, Is.EqualTo(Target.Z).Within(0.001f));
-            Assert.That(_warning.transform.lossyScale.x, Is.EqualTo(2f).Within(0.001f));
-            _instance.transform.SetPositionAndRotation(new Vector3(2f, 0f, -5f), Quaternion.Euler(0f, 40f, 0f));
-            _view.Step(0.1f);
-            Assert.That(Vector3.Distance(_warning.transform.position, start), Is.LessThan(0.001f));
-            Assert.That(Vector3.Angle(_warning.transform.forward, Vector3.right), Is.LessThan(0.01f));
-        }
+        Arm(MatriarchMove.RuinShove);
+        Assert.That(cues.Add(_audio.clip), Is.True);
+        Assert.That(_warning.gameObject.activeSelf, Is.True);
+        Vector3 start = _warning.transform.TransformPoint(Vector3.zero);
+        Vector3 end = _warning.transform.TransformPoint(Vector3.forward);
+        Assert.That(start.x, Is.EqualTo(Origin.X).Within(0.001f));
+        Assert.That(end.x, Is.EqualTo(Target.X).Within(0.001f));
+        Assert.That(end.z, Is.EqualTo(Target.Z).Within(0.001f));
+        Assert.That(_warning.transform.lossyScale.x, Is.EqualTo(2f).Within(0.001f));
+        _instance.transform.SetPositionAndRotation(new Vector3(2f, 0f, -5f), Quaternion.Euler(0f, 40f, 0f));
+        _view.Step(0.1f);
+        Assert.That(Vector3.Distance(_warning.transform.position, start), Is.LessThan(0.001f));
+        Assert.That(Vector3.Angle(_warning.transform.forward, Vector3.right), Is.LessThan(0.01f));
 
         Arm(MatriarchMove.CarrionPounce);
         Assert.That(cues.Add(_audio.clip), Is.True);
@@ -90,6 +87,8 @@ public sealed class MatriarchViewTests
         Assert.That(_warning.transform.lossyScale.x, Is.EqualTo(3f).Within(0.001f));
         Assert.That(_fill.gameObject.activeSelf, Is.False);
 
+        Arm(MatriarchMove.FeatherRain);
+        Assert.That(cues.Add(_audio.clip), Is.True);
         Arm(MatriarchMove.CarrionDive);
         Assert.That(cues.Add(_audio.clip), Is.True);
         Assert.That(cues, Does.Not.Contain(null));
@@ -131,7 +130,7 @@ public sealed class MatriarchViewTests
         _events.Publish(new MatriarchFlightChanged(Id, true));
         AssertBodyVisible(false);
         Assert.That(_shadow.enabled, Is.True);
-        Arm(MatriarchMove.FeatherSpear);
+        Arm(MatriarchMove.FeatherRain);
         var flightPosition = new Point(2f, 0f, 4f);
         ApplyFacing(60f, flightPosition);
         AssertShadowAt(flightPosition);
@@ -166,7 +165,7 @@ public sealed class MatriarchViewTests
         Impact(MatriarchMove.CarrionPounce, Id + 1);
         _events.Publish(new MatriarchTellCleared(Id));
         Impact(MatriarchMove.RuinShove);
-        Impact(MatriarchMove.FeatherSpear);
+        Impact(MatriarchMove.FeatherRain);
         Assert.That(_shake.IsShaking, Is.False);
 
         // Core emits the same impact on a hit and on a dodge. No damage event is needed.
@@ -181,6 +180,61 @@ public sealed class MatriarchViewTests
             Assert.That(_shake.Offset, Is.EqualTo(offset));
             _shake.Step(CameraShake.Seconds);
         }
+    }
+
+    [Test]
+    public void Rain_StaysLockedAndReusesFeathersThroughImpactAndCancellation()
+    {
+        Transform rain = _instance.transform.Find("Feather Rain");
+        Assert.That(rain.GetComponentsInChildren<Collider>(true), Is.Empty);
+        Assert.That(rain.childCount, Is.GreaterThan(1));
+        Transform feather = rain.GetChild(1);
+        Vector3 centre = Target.ToUnity();
+        Arm(MatriarchMove.FeatherRain);
+        Progress(0.5f);
+        Assert.That(rain.gameObject.activeSelf, Is.False);
+        Assert.That(_warning.sharedMesh.bounds.size.x, Is.EqualTo(2f).Within(0.001f));
+        Assert.That(_warning.transform.lossyScale.x, Is.EqualTo(3f).Within(0.001f));
+        Assert.That(_fill.transform.lossyScale.x, Is.EqualTo(1.5f).Within(0.001f));
+
+        Progress(0.79f);
+        Assert.That(rain.gameObject.activeSelf, Is.False);
+        Progress(0.8f);
+        Assert.That(rain.gameObject.activeSelf, Is.True);
+        Vector3 airborne = feather.position;
+        ApplyFacing(65f, new Point(3f, 0f, -6f));
+        Assert.That(Vector3.Distance(feather.position, airborne), Is.LessThan(0.001f));
+        Assert.That(Vector3.Distance(_warning.transform.position, centre + Vector3.up * 0.06f), Is.LessThan(0.001f));
+        Assert.That(Vector3.Distance(_fill.transform.position, centre + Vector3.up * 0.055f), Is.LessThan(0.001f));
+
+        Progress(1f);
+        foreach (Transform drop in rain)
+        {
+            Vector3 offset = drop.position - centre;
+            Assert.That(offset.y, Is.EqualTo(0.33f).Within(0.001f));
+            offset.y = 0f;
+            Assert.That(offset.magnitude, Is.LessThan(3f));
+        }
+        Assert.That(feather.position.y, Is.LessThan(airborne.y));
+        Impact(MatriarchMove.FeatherRain);
+        Assert.That(rain.gameObject.activeSelf, Is.False);
+        Assert.That(_warning.gameObject.activeSelf, Is.False);
+        Assert.That(_fill.gameObject.activeSelf, Is.False);
+
+        Arm(MatriarchMove.FeatherRain);
+        Progress(0.9f);
+        Assert.That(rain.GetChild(1), Is.SameAs(feather));
+        _events.Publish(new MatriarchTellCleared(Id));
+        Arm(MatriarchMove.CarrionDive);
+        Assert.That(rain.gameObject.activeSelf, Is.False);
+
+        Arm(MatriarchMove.FeatherRain);
+        Progress(0.9f);
+        _events.Publish(new EnemyDied(Id, default, Target));
+        _view.Bind(Id + 1, _shake);
+        AssertGrounded();
+        Assert.That(rain.gameObject.activeSelf, Is.False);
+        Assert.That(rain.GetChild(1), Is.SameAs(feather));
     }
 
     [Test]
@@ -252,7 +306,8 @@ public sealed class MatriarchViewTests
     }
 
     private void Arm(MatriarchMove move, Point? origin = null) =>
-        _events.Publish(new MatriarchArmed(Id, move, origin ?? Origin, Target, 2f, 3f, 1.5f));
+        _events.Publish(new MatriarchArmed(Id, move, origin ?? Origin, Target,
+            move == MatriarchMove.RuinShove ? 2f : 0f, 3f, move == MatriarchMove.FeatherRain ? 1.2f : 1.5f));
 
     private void Progress(float fraction) => _events.Publish(new MatriarchTellProgress(Id, fraction));
 

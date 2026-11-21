@@ -916,3 +916,10 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] SS-19a (after SS-19d) — Play Sunscar stage 25. Dodge the fixed Shove lane and Pounce disc, bait two separately warned landings below 33%, and cross behind her during recovery to check smooth turning.
 
 - **SS-19b, after SS-19d [Editor]** — Kill one member of a two-vulture brood, then the other. Check that the first death leaves her aloft, cover stops a spear, and the last death opens the full dive warning. Roll through one landing and dodge another. Check that the next Brood Call waits 18 s from landing and an idle opening.
+
+### SS-19c — Matriarch presentation
+
+- **[Editor]** When the prototype is registered in SS-19d, trigger each tell and confirm the visual
+  matches the locked footprint, the four cues are distinct, and both landings shake on a dodge.
+- **[device, deferred]** Check the Dive rim and centre fill near the arena edge at phone size.
+  Confirm the silhouettes, airborne shadow and full tells remain readable.

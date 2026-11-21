@@ -293,6 +293,14 @@ public sealed class EnemyViews : IDisposable
         _spawnedSubscription.Dispose();
         _despawnedSubscription.Dispose();
 
+        foreach (Rental rental in _byId.Values)
+        {
+            if (rental.View != null && rental.View.TryGetComponent(out MatriarchView matriarch))
+            {
+                matriarch.Unbind();
+            }
+        }
+
         foreach (ViewPool<EnemyView> pool in _pools.Values)
         {
             pool.Dispose();
@@ -341,6 +349,11 @@ public sealed class EnemyViews : IDisposable
 
         view.Bind(evt.Id, position);
         view.GetComponent<EnemyStatusView>()?.Bind(evt.Id);
+        if (view.TryGetComponent(out MatriarchView matriarch))
+        {
+            Camera camera = Camera.main;
+            matriarch.Bind(evt.Id, camera != null ? camera.GetComponent<CameraShake>() : null);
+        }
 
         // Handed over here and not injected: the body is prewarmed inside this constructor, where
         // the container cannot yet resolve this object.
@@ -381,6 +394,11 @@ public sealed class EnemyViews : IDisposable
         if (view != null && view.Body != null)
         {
             _idByColliderInstance.Remove(view.Body.GetInstanceID());
+        }
+
+        if (view != null)
+        {
+            view.GetComponent<MatriarchView>()?.Unbind();
         }
 
         // The collider index is dropped *before* the return, and it goes back in on the next rental

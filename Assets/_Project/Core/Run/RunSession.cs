@@ -1738,6 +1738,49 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+    public bool DebugSpawnBuriedKing(IReadOnlyList<Vector3> openGround)
+    {
+        if (!IsRunning || openGround is null || State.EnemiesLeft > 0)
+        {
+            return false;
+        }
+
+        EnemySystem enemies = State.Enemies;
+        foreach (EnemyAgent agent in enemies.Registry.Alive)
+        {
+            if (agent.IsAlive)
+            {
+                return false;
+            }
+        }
+
+        if (enemies.Registry.AliveCount == enemies.Registry.Capacity)
+        {
+            return false;
+        }
+
+        Vector3 spawn = default;
+        float best = float.PositiveInfinity;
+        for (int i = 0; i < openGround.Count; i++)
+        {
+            Vector3 delta = openGround[i] - State.PlayerPosition;
+            float distance = new Vector2(delta.X, delta.Z).Length();
+            if (distance >= 4f && MathF.Abs(distance - 7f) < best)
+            {
+                spawn = openGround[i];
+                best = MathF.Abs(distance - 7f);
+            }
+        }
+
+        if (!float.IsFinite(best))
+        {
+            return false;
+        }
+
+        enemies.SpawnBuriedKingPrototype(spawn);
+        return true;
+    }
+
     /// <summary>Development overlay command; uses the same core rules as future skills.</summary>
     public bool DebugEnemyStatus(int enemyId, ContentId status)
     {

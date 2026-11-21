@@ -420,10 +420,13 @@ public sealed class EnemySystem
 
     private EnemyAgent Spawn(ContentId specId, Vector3 position, bool isSummon,
         HierophantBehaviour escortOwner = null, float hpBonus = 0f, float damageBonus = 0f,
+        bool usesAuthoredMaxHp = false) =>
+        Spawn(_catalog.Enemy(specId), position, isSummon, escortOwner, hpBonus, damageBonus, usesAuthoredMaxHp);
+
+    private EnemyAgent Spawn(EnemySpec spec, Vector3 position, bool isSummon,
+        HierophantBehaviour escortOwner = null, float hpBonus = 0f, float damageBonus = 0f,
         bool usesAuthoredMaxHp = false)
     {
-        EnemySpec spec = _catalog.Enemy(specId);
-
         EnemyAgent agent = Registry.Spawn(spec, position);
         agent.PaysXp = !isSummon;
         agent.IsSummon = isSummon;
@@ -554,6 +557,28 @@ public sealed class EnemySystem
         return agent;
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    public EnemyAgent SpawnBuriedKingPrototype(Vector3 position)
+    {
+        if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(position.Z))
+        {
+            throw new ArgumentOutOfRangeException(nameof(position));
+        }
+
+        var id = BuriedKingBehaviour.PrototypeBodyId;
+        var body = new EnemySpec(id, new LocKey("enemy.husk.name"),
+            maxHp: 650f, moveSpeed: 2.5f, targetPriority: 8, threatCost: 1, xpValue: 1f,
+            isElite: false, contactDamage: 0f, reach: 4f, windupTime: 0.85f, recoverTime: 1.4f,
+            aggroRange: 30f, behaviour: EnemyBehaviourKind.Boss);
+        var boss = new BossSpec(new ContentId("boss.buried_king_prototype"), id,
+            new[] { new BossPhaseSpec(1f) }, beatSeconds: 1f);
+        EnemyAgent agent = Spawn(body, position, isSummon: false, usesAuthoredMaxHp: true);
+        agent.PaysXp = false;
+        agent.Behaviour = new BossBehaviour(agent, boss, new BuriedKingBehaviour(agent));
+        return agent;
+    }
+#endif
+
     /// <summary>
     /// Queues <paramref name="id"/> to be retired at the end of this tick, rather than now.
     /// </summary>
@@ -641,6 +666,8 @@ public sealed class EnemySystem
                 hierophant.SuspendWard(hierophant.LastTickTime, _events);
             if (agent.Behaviour is BossBehaviour { Inner: MatriarchBehaviour matriarch })
                 matriarch.ClearEncounter();
+            if (agent.Behaviour is BossBehaviour { Inner: BuriedKingBehaviour king })
+                king.ClearEncounter(_events);
             agent.EscortOwner?.OnEscortDespawn(id, Registry, _events);
 
             if (agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
@@ -1109,6 +1136,8 @@ public sealed class EnemySystem
 
             MatriarchBehaviour matriarch = (agent.Behaviour as BossBehaviour)?.Inner as MatriarchBehaviour;
             matriarch?.ClearEncounter();
+            BuriedKingBehaviour king = (agent.Behaviour as BossBehaviour)?.Inner as BuriedKingBehaviour;
+            king?.ClearEncounter(_events);
 
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
@@ -1138,7 +1167,7 @@ public sealed class EnemySystem
             }
 
             // JG-26d rule 2: last, so the boss's own EnemyDied comes first.
-            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss && matriarch is null)
+            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss && matriarch is null && king is null)
             {
                 KillSummons(now, player);
             }

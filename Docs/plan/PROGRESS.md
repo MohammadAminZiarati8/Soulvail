@@ -9,9 +9,9 @@ _2026-11-21._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-19g, Matriarch polish. |
+| **Last built** | SS-20a, Buried King. |
 | **Next task** | SS-19e on owner go. |
-| **Verified** | EditMode 7248/7340, 0 fail, 1 inconcl., 91 skip. Format OK. |
+| **Verified** | EditMode 7268/7360, 0 fail, 1 inconcl., 91 skip. Format OK. |
 
 ## What works
 

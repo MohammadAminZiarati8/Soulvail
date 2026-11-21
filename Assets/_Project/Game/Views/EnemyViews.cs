@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
@@ -81,6 +82,7 @@ public sealed class EnemyViews : IDisposable
 
     private readonly IDisposable _spawnedSubscription;
     private readonly IDisposable _despawnedSubscription;
+    private readonly DomainEventHub _hub;
 
     private bool _warnedAboutCapacity;
     private bool _disposed;
@@ -133,6 +135,7 @@ public sealed class EnemyViews : IDisposable
         }
 
         _looks = looks ?? throw new ArgumentNullException(nameof(looks));
+        _hub = hub;
 
         // The pool makes the same three checks this constructor used to, and in the same way — a
         // destroyed prefab is a live reference that only compares equal to null through Unity's
@@ -295,6 +298,7 @@ public sealed class EnemyViews : IDisposable
 
         foreach (Rental rental in _byId.Values)
         {
+            rental.BuriedKing?.Dispose();
             if (rental.View != null && rental.View.TryGetComponent(out MatriarchView matriarch))
             {
                 matriarch.Unbind();
@@ -359,7 +363,9 @@ public sealed class EnemyViews : IDisposable
         // the container cannot yet resolve this object.
         view.GetComponent<PriestMendView>()?.Follow(this);
 
-        _byId[evt.Id] = new Rental(view, pool);
+        BuriedKingView king = evt.SpecId == BuriedKingBehaviour.PrototypeBodyId
+            ? new BuriedKingView(view.transform, evt.Id, _hub) : null;
+        _byId[evt.Id] = new Rental(view, pool, king);
 
         // Body resolves itself when Awake has not run, which outside play mode it never does
         // (M1-12), so this index is filled in an EditMode test as well as in a run. Still guarded:
@@ -388,6 +394,7 @@ public sealed class EnemyViews : IDisposable
         }
 
         _byId.Remove(evt.Id);
+        rental.BuriedKing?.Dispose();
 
         EnemyView view = rental.View;
 
@@ -453,14 +460,17 @@ public sealed class EnemyViews : IDisposable
     /// </remarks>
     private readonly struct Rental
     {
-        public Rental(EnemyView view, ViewPool<EnemyView> pool)
+        public Rental(EnemyView view, ViewPool<EnemyView> pool, BuriedKingView buriedKing)
         {
             View = view;
             Pool = pool;
+            BuriedKing = buriedKing;
         }
 
         public EnemyView View { get; }
 
         public ViewPool<EnemyView> Pool { get; }
+
+        public BuriedKingView BuriedKing { get; }
     }
 }

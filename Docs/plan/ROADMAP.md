@@ -320,6 +320,8 @@ Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go
 - [x] **SS-19f** — 2,080 HP, double-size body and shadow, moving shadow-only flight (M)
 - [x] **SS-19g** — Replace airborne spear lanes with circular Feather Rain (M)
 
+- [x] **SS-20a** — Buried King Sweep, Cast Scepter and Recall prototype (M)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

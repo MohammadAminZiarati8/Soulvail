@@ -936,3 +936,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] **SS-19g [device]** Check that the Feather Rain circle and brood dive lane are both readable when their warnings overlap.
 
 - [ ] **SS-19g follow-up [Editor/device]** In Sunscar Stage 25, check that landed feathers hold and fade across later warnings, Ruin Shove and Carrion Pounce raise dust, and Beastmaster companions and archer shades drop airborne vultures and regain them on landing.
+
+- SS-20a [Editor] In a development run on open ground, clear the stage and select **Buried King** in the debug overlay. Dodge both locked lanes at walking speed near the arena edge and fire during the 2.1 s catch recovery. Check readability at phone scale.

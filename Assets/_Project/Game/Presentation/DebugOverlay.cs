@@ -488,6 +488,11 @@ namespace Soulvail.Game.Presentation
             {
                 ApplyNearestStatus(new ContentId(EnemyStatuses.PoisonedKey));
             }
+            if (_session is RunSession session && session.State.EnemiesLeft == 0
+                && GUI.Button(new Rect(8f, top + 144f, 120f, 32f), "Buried King"))
+            {
+                session.DebugSpawnBuriedKing(_snapshot.OpenGround);
+            }
         }
 
         public bool ApplyNearestStatus(ContentId status)

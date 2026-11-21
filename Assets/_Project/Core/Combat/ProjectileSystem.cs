@@ -900,7 +900,7 @@ public sealed class ProjectileSystem
             Vector3 delta = agent.Position - origin;
             float distance = delta.X * delta.X + delta.Z * delta.Z;
             bool preferred = agent.Id == preferredId;
-            if (!agent.IsAlive || chain.HasHit(agent.Id) || !(distance <= range * range)
+            if (!agent.IsAlive || (fromShade && agent.IsHidden) || chain.HasHit(agent.Id) || !(distance <= range * range)
                 || (usePlayerCover && agent.Blackboard.IsBehindCover)
                 || (!preferred && nearest != null && (distance > best || (distance == best && agent.Id > nearest.Id)))
                 || TraceCoverBetween(origin, agent.Position).HasValue)

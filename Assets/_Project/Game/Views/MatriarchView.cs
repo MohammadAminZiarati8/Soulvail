@@ -14,9 +14,21 @@ namespace Soulvail.Game.Views
         private const int Segments = 64;
         private const float PounceHeight = 1.8f;
         private const float GroundOffset = 0.06f;
-        private const float SlabTravelSeconds = 0.25f;
+        private const float RockTravelSeconds = 0.3f;
         private const float RainFallSeconds = 0.25f;
+        private const float FeatherHoldSeconds = 2.5f;
+        private const float FeatherFadeSeconds = 0.75f;
         private const int RainFeatherCount = 11;
+
+        private struct RainVisual
+        {
+            public Transform Root;
+            public Renderer[] Renderers;
+            public Material[] Materials;
+            public Color[] Colours;
+            public Vector3 Centre;
+            public float Age;
+        }
 
         [SerializeField] private Transform _model;
         [SerializeField] private Animator _animator;
@@ -24,8 +36,10 @@ namespace Soulvail.Game.Views
         [SerializeField] private Canvas _healthBar;
         [SerializeField] private MeshFilter _warning;
         [SerializeField] private MeshFilter _fill;
-        [SerializeField] private Transform _slab;
+        [SerializeField] private Transform _rockPrefab;
+        [SerializeField] private SlamDustView _dustPrefab;
         [SerializeField] private Transform _feather;
+        [SerializeField] private Material _featherFade;
         [SerializeField] private AudioSource _audio;
         [SerializeField] private AudioClip _shoveCue;
         [SerializeField] private AudioClip _pounceCue;
@@ -39,14 +53,20 @@ namespace Soulvail.Game.Views
         private readonly int _divePose = Animator.StringToHash("Dive");
         private readonly int _castPose = Animator.StringToHash("Strike");
         private readonly int _landPose = Animator.StringToHash("Land");
+        private readonly int _baseColourId = Shader.PropertyToID("_BaseColor");
         private readonly IDisposable[] _subscriptions = new IDisposable[6];
+        private readonly RainVisual[] _rain = new RainVisual[2];
+        private readonly SlamDustView[] _dust = new SlamDustView[2];
+        private readonly Vector3[] _dustCentres = new Vector3[2];
         private DomainEventHub _events;
         private CameraShake _shake;
         private Renderer[] _bodyRenderers;
         private Mesh _laneMesh;
         private Mesh _ringMesh;
         private Mesh _discMesh;
-        private Transform _rain;
+        private Transform _rock;
+        private MaterialPropertyBlock _featherBlock;
+        private int _fallingRain = -1;
         private int _id;
         private bool _airborne;
         private bool _warningActive;
@@ -57,9 +77,6 @@ namespace Soulvail.Game.Views
         private float _radius;
         private float _progress;
         private float _tellSeconds;
-        private Vector3 _slabOrigin;
-        private Vector3 _slabTarget;
-        private float _slabAge;
         private int _pose;
         private int _playedPose;
         private VulturePhase _phase;
@@ -70,9 +87,9 @@ namespace Soulvail.Game.Views
         public void Bind(int id, CameraShake shake)
         {
             _bodyRenderers ??= _model.GetComponentsInChildren<Renderer>(true);
+            EnsureEffects();
             Unbind();
             EnsureMeshes();
-            EnsureRain();
             _id = id;
             _shake = shake;
             _subscriptions[0] = _events.Subscribe<MatriarchArmed>(OnArmed);
@@ -99,7 +116,20 @@ namespace Soulvail.Game.Views
             _model.localPosition = Vector3.zero;
             _shadow.enabled = false;
             _shadow.transform.localPosition = Vector3.up * (GroundOffset * 0.5f);
-            _slab.gameObject.SetActive(false);
+            if (_rock != null)
+            {
+                for (int i = 0; i < _rain.Length; i++)
+                {
+                    _rain[i].Root.gameObject.SetActive(false);
+                }
+
+                foreach (SlamDustView dust in _dust)
+                {
+                    dust.OnDespawn();
+                    dust.gameObject.SetActive(false);
+                }
+            }
+
             SetPose(_groundPose, VulturePhase.Grounded);
             _playedPose = 0;
         }
@@ -111,6 +141,7 @@ namespace Soulvail.Game.Views
                 return;
             }
 
+            ClearTell();
             _warningActive = true;
             _move = evt.Move;
             _origin = evt.Origin.ToUnity();
@@ -180,9 +211,15 @@ namespace Soulvail.Game.Views
             _warningActive = false;
             _warning.gameObject.SetActive(false);
             _fill.gameObject.SetActive(false);
-            if (_rain != null)
+            if (_rock != null)
             {
-                _rain.gameObject.SetActive(false);
+                _rock.gameObject.SetActive(false);
+            }
+
+            if (_fallingRain >= 0)
+            {
+                _rain[_fallingRain].Root.gameObject.SetActive(false);
+                _fallingRain = -1;
             }
 
             _audio.Stop();
@@ -221,18 +258,21 @@ namespace Soulvail.Game.Views
 
             if (evt.Move == MatriarchMove.RuinShove && _warningActive && _move == evt.Move)
             {
-                _slabOrigin = _origin;
-                _slabTarget = evt.Position.ToUnity();
-                _slabAge = 0f;
-                DrawSlab();
-                _slab.gameObject.SetActive(true);
+                PlayDust(0, evt.Position.ToUnity());
                 RestorePose();
             }
 
             if (evt.Move is MatriarchMove.CarrionPounce or MatriarchMove.CarrionDive)
             {
+                PlayDust(1, evt.Position.ToUnity());
                 _shake?.Kick(CameraShake.SlamStrength);
                 SetPose(_landPose, VulturePhase.Grounded);
+            }
+
+            if (evt.Move == MatriarchMove.FeatherRain && _warningActive && _move == evt.Move)
+            {
+                DrawRain(0f);
+                _fallingRain = -1;
             }
 
             ClearTell();
@@ -284,11 +324,9 @@ namespace Soulvail.Game.Views
                 DrawWarning();
             }
 
-            if (_slab.gameObject.activeSelf && dt > 0f && float.IsFinite(dt))
+            if (dt > 0f && float.IsFinite(dt))
             {
-                _slabAge += dt;
-                DrawSlab();
-                _slab.gameObject.SetActive(_slabAge < SlabTravelSeconds);
+                StepEffects(dt);
             }
         }
 
@@ -338,7 +376,7 @@ namespace Soulvail.Game.Views
                 Place(_warning.transform, _target, Quaternion.identity, new Vector3(_radius, 1f, _radius));
             }
 
-            bool showFill = (_move is MatriarchMove.CarrionDive or MatriarchMove.FeatherRain) && _progress > 0f;
+            bool showFill = _move != MatriarchMove.RuinShove && _progress > 0f;
             _fill.gameObject.SetActive(showFill);
             if (showFill)
             {
@@ -346,52 +384,155 @@ namespace Soulvail.Game.Views
                 Place(_fill.transform, _target - Vector3.up * 0.005f, Quaternion.identity, new Vector3(radius, 1f, radius));
             }
 
-            DrawRain();
+            float remaining = (1f - _progress) * _tellSeconds;
+            if (_move == MatriarchMove.FeatherRain && remaining <= RainFallSeconds)
+            {
+                DrawRain(remaining);
+            }
+            else if (_move == MatriarchMove.RuinShove && remaining <= RockTravelSeconds)
+            {
+                DrawRock(1f - remaining / RockTravelSeconds, lane);
+            }
         }
 
-        private void DrawRain()
+        private void DrawRain(float remaining)
         {
-            float remaining = (1f - _progress) * _tellSeconds;
-            bool falling = _move == MatriarchMove.FeatherRain && remaining <= RainFallSeconds;
-            if (falling)
+            if (_fallingRain < 0)
             {
-                float heightFraction = Mathf.Clamp01(remaining / RainFallSeconds);
-                for (int i = 0; i < RainFeatherCount; i++)
+                // Keep an earlier impact on the ground while the next cast falls.
+                _fallingRain = !_rain[0].Root.gameObject.activeSelf ||
+                    (_rain[1].Root.gameObject.activeSelf && _rain[0].Age >= _rain[1].Age) ? 0 : 1;
+
+                ref RainVisual next = ref _rain[_fallingRain];
+                next.Centre = _target;
+                next.Age = 0f;
+                for (int i = 0; i < next.Renderers.Length; i++)
                 {
-                    float yaw = i * 137.508f;
-                    float distance = 0.88f * _radius * Mathf.Sqrt((float)i / (RainFeatherCount - 1));
-                    Vector3 floor = _target + Quaternion.Euler(0f, yaw, 0f) * Vector3.forward * distance;
-                    // The feather prop points down its local Z. Keep its tip at ground height on impact.
-                    float height = 0.27f + (3.6f + 0.1f * i) * heightFraction;
-                    Place(_rain.GetChild(i), floor + Vector3.up * height,
-                        Quaternion.Euler(80f, yaw, 0f), Vector3.one * 0.55f);
+                    next.Renderers[i].sharedMaterial = next.Materials[i];
+                    next.Renderers[i].SetPropertyBlock(null);
+                }
+
+                next.Root.gameObject.SetActive(true);
+            }
+
+            Transform root = _rain[_fallingRain].Root;
+            Place(root, _target, Quaternion.identity, Vector3.one);
+            float heightFraction = Mathf.Clamp01(remaining / RainFallSeconds);
+            for (int i = 0; i < RainFeatherCount; i++)
+            {
+                float yaw = i * 137.508f;
+                float distance = 0.88f * _radius * Mathf.Sqrt((float)i / (RainFeatherCount - 1));
+                Quaternion heading = Quaternion.Euler(0f, yaw, 0f);
+                float height = 0.27f + (3.6f + 0.1f * i) * heightFraction;
+                root.GetChild(i).SetLocalPositionAndRotation(heading * Vector3.forward * distance + Vector3.up * height,
+                    heading * Quaternion.Euler(80f, 0f, 0f));
+            }
+        }
+
+        private void StepEffects(float dt)
+        {
+            for (int i = 0; i < _rain.Length; i++)
+            {
+                ref RainVisual rain = ref _rain[i];
+                if (i == _fallingRain || !rain.Root.gameObject.activeSelf)
+                {
+                    continue;
+                }
+
+                Place(rain.Root, rain.Centre, Quaternion.identity, Vector3.one);
+                rain.Age += dt;
+                float fade = (rain.Age - FeatherHoldSeconds) / FeatherFadeSeconds;
+                if (fade >= 1f)
+                {
+                    rain.Root.gameObject.SetActive(false);
+                }
+                else if (fade > 0f)
+                {
+                    for (int j = 0; j < rain.Renderers.Length; j++)
+                    {
+                        Renderer renderer = rain.Renderers[j];
+                        renderer.sharedMaterial = _featherFade;
+                        Color colour = rain.Colours[j];
+                        colour.a *= 1f - fade;
+                        _featherBlock.SetColor(_baseColourId, colour);
+                        renderer.SetPropertyBlock(_featherBlock);
+                    }
                 }
             }
 
-            _rain.gameObject.SetActive(falling);
+            for (int i = 0; i < _dust.Length; i++)
+            {
+                SlamDustView dust = _dust[i];
+                if (dust.IsLive)
+                {
+                    dust.transform.SetPositionAndRotation(_dustCentres[i], Quaternion.identity);
+                    dust.gameObject.SetActive(dust.Step(dt));
+                }
+            }
         }
 
-        private void EnsureRain()
+        private void EnsureEffects()
         {
-            if (_rain != null)
+            if (_rock != null)
             {
                 return;
             }
 
-            _rain = new GameObject("Feather Rain").transform;
-            _rain.gameObject.SetActive(false);
-            _rain.SetParent(transform, false);
-            for (int i = 0; i < RainFeatherCount; i++)
+            _featherBlock = new MaterialPropertyBlock();
+            for (int i = 0; i < _rain.Length; i++)
             {
-                Transform feather = Instantiate(_feather, _rain);
-                feather.GetComponent<ProjectileView>().enabled = false;
+                Transform root = new GameObject(i == 0 ? "Feather Rain" : "Feather Rain (2)").transform;
+                root.gameObject.SetActive(false);
+                root.SetParent(transform, false);
+                for (int j = 0; j < RainFeatherCount; j++)
+                {
+                    Transform feather = Instantiate(_feather, root);
+                    feather.localScale = Vector3.one * 0.55f;
+                    feather.GetComponent<ProjectileView>().enabled = false;
+                }
+
+                Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+                var materials = new Material[renderers.Length];
+                var colours = new Color[renderers.Length];
+                for (int j = 0; j < renderers.Length; j++)
+                {
+                    materials[j] = renderers[j].sharedMaterial;
+                    colours[j] = materials[j].GetColor(_baseColourId);
+                }
+
+                _rain[i] = new RainVisual { Root = root, Renderers = renderers, Materials = materials, Colours = colours };
             }
+
+            Transform impacts = new GameObject("Impact Effects").transform;
+            impacts.gameObject.SetActive(false);
+            impacts.SetParent(transform, false);
+            _rock = Instantiate(_rockPrefab, impacts);
+            _rock.name = "Thrown Rock";
+            _rock.GetComponent<ProjectileView>().enabled = false;
+            _rock.gameObject.SetActive(false);
+            for (int i = 0; i < _dust.Length; i++)
+            {
+                _dust[i] = Instantiate(_dustPrefab, impacts);
+                _dust[i].gameObject.SetActive(false);
+            }
+
+            impacts.gameObject.SetActive(true);
         }
 
-        private void DrawSlab()
+        private void PlayDust(int index, Vector3 position)
         {
-            Place(_slab, Vector3.Lerp(_slabOrigin, _slabTarget, Mathf.Clamp01(_slabAge / SlabTravelSeconds)),
-                Heading(_slabTarget - _slabOrigin), Vector3.one);
+            _dustCentres[index] = position;
+            _dust[index].Play(position, _id);
+            _dust[index].gameObject.SetActive(true);
+        }
+
+        private void DrawRock(float progress, Vector3 lane)
+        {
+            Vector3 position = Vector3.Lerp(_origin, _target, progress);
+            position.y += Mathf.Lerp(1.3f, 0.4f, progress) + 8f * progress * (1f - progress);
+            Place(_rock, position, Heading(lane) * Quaternion.Euler(160f * progress, 0f, 0f),
+                Vector3.one * 2.4f);
+            _rock.gameObject.SetActive(true);
         }
 
         private static Quaternion Heading(Vector3 delta)

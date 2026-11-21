@@ -139,7 +139,7 @@ public sealed class HawkSystem
         _climbFrom = now;
         _climbStart = _to;
         Position = _to;
-        if (!enemies.Registry.TryGet(targetId, out EnemyAgent target) || !target.IsAlive)
+        if (!enemies.Registry.TryGet(targetId, out EnemyAgent target) || !target.IsAlive || target.IsHidden)
         {
             return;
         }
@@ -159,7 +159,7 @@ public sealed class HawkSystem
     // anywhere in the arena.
     private EnemyAgent FindDiveTarget(EnemySystem enemies, int throwTargetId)
     {
-        if (enemies.Registry.TryGet(throwTargetId, out EnemyAgent thrown) && thrown.IsAlive
+        if (enemies.Registry.TryGet(throwTargetId, out EnemyAgent thrown) && thrown.IsAlive && !thrown.IsHidden
             && thrown.CrowdControl.IsMarked)
         {
             return thrown;
@@ -169,7 +169,7 @@ public sealed class HawkSystem
         float nearestSquared = float.PositiveInfinity;
         foreach (EnemyAgent enemy in enemies.Registry.Alive)
         {
-            if (!enemy.IsAlive || !enemy.CrowdControl.IsMarked)
+            if (!enemy.IsAlive || enemy.IsHidden || !enemy.CrowdControl.IsMarked)
             {
                 continue;
             }
@@ -196,7 +196,7 @@ public sealed class HawkSystem
 
         foreach (EnemyAgent enemy in enemies.Registry.Alive)
         {
-            if (!enemy.IsAlive || !enemy.CrowdControl.IsMarked)
+            if (!enemy.IsAlive || enemy.IsHidden || !enemy.CrowdControl.IsMarked)
             {
                 continue;
             }

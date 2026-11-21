@@ -70,7 +70,7 @@ public sealed class PetSpit
         while (index < _count)
         {
             ref PetGlob glob = ref _globs[index];
-            if (!enemies.Registry.TryGet(glob.TargetId, out EnemyAgent target) || !target.IsAlive)
+            if (!enemies.Registry.TryGet(glob.TargetId, out EnemyAgent target) || !target.IsAlive || target.IsHidden)
             {
                 Land(index, glob.Position, false);
                 continue;

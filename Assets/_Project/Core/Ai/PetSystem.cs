@@ -301,7 +301,7 @@ public sealed class PetSystem
         _enemies = enemies?.Registry;
         int throwTargetId = combat?.LastThrowTargetId ?? 0;
         // BT-03 rule 3: a new throw at a marked enemy pulls every hunter onto it this tick.
-        bool switchToThrow = throwTargetId != _lastThrowTargetId && IsMarkedAlive(throwTargetId);
+        bool switchToThrow = throwTargetId != _lastThrowTargetId && IsVisibleAndMarked(throwTargetId);
         _lastThrowTargetId = throwTargetId;
         int ready = 0;
         for (int index = 0; index < Capacity; index++)
@@ -428,7 +428,7 @@ public sealed class PetSystem
             PetAgent pet = _pets[index];
             float bite = pet.ContactDamage.Value * FrenzyMultiplier(index, now);
             if ((ready & (1 << index)) == 0 || !(bite > 0f) || !BiteReady(pet, index, now)
-                || !_enemies.TryGet(pet.QuarryId, out EnemyAgent quarry) || !quarry.IsAlive)
+                || !_enemies.TryGet(pet.QuarryId, out EnemyAgent quarry) || !quarry.IsAlive || quarry.IsHidden)
             {
                 continue;
             }
@@ -791,7 +791,7 @@ public sealed class PetSystem
         float best = maxSquared;
         foreach (EnemyAgent enemy in enemies.Alive)
         {
-            if (!enemy.IsAlive || !enemy.CrowdControl.IsMarked)
+            if (!enemy.IsAlive || enemy.IsHidden || !enemy.CrowdControl.IsMarked)
             {
                 continue;
             }
@@ -824,7 +824,7 @@ public sealed class PetSystem
         }
 
         pet.Position = _pounceLanding;
-        if (enemies.Registry.TryGet(targetId, out EnemyAgent target) && target.IsAlive)
+        if (enemies.Registry.TryGet(targetId, out EnemyAgent target) && target.IsAlive && !target.IsHidden)
         {
             float bite = pet.ContactDamage.Value * FrenzyMultiplier(IndexOf(pet.Id), now);
             if (bite > 0f)
@@ -1063,14 +1063,15 @@ public sealed class PetSystem
             enemies.Registry.TryGet(throwTargetId, out quarry);
             pet.NextRetargetAt = now + RetargetInterval;
         }
-        else if (pet.QuarryId == 0 || now >= pet.NextRetargetAt)
+        else if (now < pet.NextRetargetAt && enemies.Registry.TryGet(pet.QuarryId, out EnemyAgent current)
+            && current.IsAlive && !current.IsHidden)
+        {
+            quarry = current;
+        }
+        else
         {
             quarry = FindQuarry(pet, player, throwTargetId, enemies.Registry);
             pet.NextRetargetAt = now + RetargetInterval;
-        }
-        else if (enemies.Registry.TryGet(pet.QuarryId, out EnemyAgent current) && current.IsAlive)
-        {
-            quarry = current;
         }
 
         int id = quarry?.Id ?? 0;
@@ -1079,8 +1080,8 @@ public sealed class PetSystem
         return quarry;
     }
 
-    private bool IsMarkedAlive(int enemyId) => enemyId > 0 && _enemies is not null
-        && _enemies.TryGet(enemyId, out EnemyAgent enemy) && enemy.IsAlive && enemy.CrowdControl.IsMarked;
+    private bool IsVisibleAndMarked(int enemyId) => enemyId > 0 && _enemies is not null
+        && _enemies.TryGet(enemyId, out EnemyAgent enemy) && enemy.IsAlive && !enemy.IsHidden && enemy.CrowdControl.IsMarked;
 
     private void SetQuarry(PetAgent pet, int id)
     {
@@ -1095,7 +1096,7 @@ public sealed class PetSystem
     // animal, then the enemy nearest the player — anywhere in the arena.
     private static EnemyAgent FindQuarry(PetAgent pet, Vector3 player, int throwTargetId, EnemyRegistry enemies)
     {
-        if (enemies.TryGet(throwTargetId, out EnemyAgent thrown) && thrown.IsAlive && thrown.CrowdControl.IsMarked)
+        if (enemies.TryGet(throwTargetId, out EnemyAgent thrown) && thrown.IsAlive && !thrown.IsHidden && thrown.CrowdControl.IsMarked)
         {
             return thrown;
         }
@@ -1106,7 +1107,7 @@ public sealed class PetSystem
         float markedDistance = float.PositiveInfinity;
         foreach (EnemyAgent enemy in enemies.Alive)
         {
-            if (!enemy.IsAlive)
+            if (!enemy.IsAlive || enemy.IsHidden)
             {
                 continue;
             }

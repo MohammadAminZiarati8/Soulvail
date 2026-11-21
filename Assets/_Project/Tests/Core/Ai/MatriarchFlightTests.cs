@@ -5,9 +5,12 @@ using NUnit.Framework;
 using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
+using Soulvail.Core.Effects;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 using Soulvail.Core.Run;
+using Soulvail.Tests.Core.Combat;
 using Soulvail.Tests.Core.Fakes;
 using Soulvail.Tests.Core.Support;
 
@@ -133,6 +136,48 @@ public sealed class MatriarchFlightTests
         Assert.That(_player.Health.Current, Is.EqualTo(100f));
         Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.CarrionDive));
         Assert.That(LastProgress(), Is.Zero);
+    }
+
+    [Test]
+    public void CompanionTargets_DropBothFlightShadowsAndResumeOnLanding()
+    {
+        var pets = new PetSystem(new PetSpec(new ContentId("pet.hound"), 70f, 4f, 7f, 1f, 1.4f, 1.5f),
+            _events, _intents);
+        pets.SpawnBeside(_hero, 0f);
+        var shots = new ProjectileSystem(_events, 8);
+        CharacterSpec archer = ShadeSystemTests.Character();
+        var combat = new PlayerCombat(archer, _events, _intents, 8);
+        var stats = new PlayerStats(combat, new PlayerMotor(archer.Movement, Vector3.UnitZ),
+            new LevelTracker(Scalings.Xp(), _events));
+        var shades = new ShadeSystem(shots, new LureSystem(_events), stats, archer, _events);
+        shades.Spawn(ShadeKind.Image, _hero, 0f, 30f, 12f);
+
+        EnterFlightPhase();
+        EnemyAgent brood = _enemies.Registry.Alive[1];
+        var vulture = (VultureBehaviour)brood.Behaviour;
+        vulture.Reset();
+        pets.Tick(0f, 1f, _hero, _enemies, combat);
+        shades.Tick(1f, _enemies, combat);
+        Assert.That(pets.Pets[0].QuarryId, Is.Zero);
+        Assert.That(shots.InFlightCount, Is.Zero);
+        Assert.That(shades.LooseAll(_boss, 12f, 1f), Is.Zero);
+
+        for (int now = 1; now <= 4; now++)
+        {
+            vulture.Tick(new EnemyTickContext(1f, now * 10f, _player, _intents, _events,
+                _projectiles, _enemies, _lanes, _open));
+        }
+        Assert.That(vulture.State, Is.EqualTo(VulturePhase.Grounded));
+        pets.Tick(0f, 2f, _hero, _enemies, combat);
+        shades.Tick(2f, _enemies, combat);
+        Assert.That(pets.Pets[0].QuarryId, Is.EqualTo(brood.Id));
+        Assert.That(_events.Single<ProjectileFired>().Target, Is.EqualTo(brood.Position));
+
+        vulture.Reset();
+        pets.Tick(0f, 2.01f, _hero, _enemies, combat);
+        shades.Tick(10f, _enemies, combat);
+        Assert.That(pets.Pets[0].QuarryId, Is.Zero);
+        Assert.That(shots.InFlightCount, Is.EqualTo(1));
     }
 
     [TestCase(false)]

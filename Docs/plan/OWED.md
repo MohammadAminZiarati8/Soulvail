@@ -934,3 +934,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [ ] **SS-19g [Editor]** Start Sunscar Stage 25 through DT-01. Step clear of Feather Rain, then finish the last brood during another warning. Check the locked rim, falling feathers and immediate Carrion Dive warning.
 - [ ] **SS-19g [device]** Check that the Feather Rain circle and brood dive lane are both readable when their warnings overlap.
+
+- [ ] **SS-19g follow-up [Editor/device]** In Sunscar Stage 25, check that landed feathers hold and fade across later warnings, Ruin Shove and Carrion Pounce raise dust, and Beastmaster companions and archer shades drop airborne vultures and regain them on landing.

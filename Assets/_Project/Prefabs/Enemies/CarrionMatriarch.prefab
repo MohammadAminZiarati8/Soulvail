@@ -555,7 +555,6 @@ Transform:
   - {fileID: 3675598191793603934}
   - {fileID: 3968329561653060746}
   - {fileID: 2480841507951038196}
-  - {fileID: 3777127982969409126}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!136 &2111137402096117743
@@ -810,8 +809,10 @@ MonoBehaviour:
   _healthBar: {fileID: 7918734963103836123}
   _warning: {fileID: 7590647348430842719}
   _fill: {fileID: 7150967897196504343}
-  _slab: {fileID: 3777127982969409126}
+  _rockPrefab: {fileID: 1946360802859628896, guid: 66b76293340d61f4ea9aeaa8a261f0ac, type: 3}
+  _dustPrefab: {fileID: 2373594765693874534, guid: cf6d52cf806aab14eb0d05ecd110cdcb, type: 3}
   _feather: {fileID: 5625544432061062263, guid: 28b6b9d1e91e53e4088486f1ecfbc81c, type: 3}
+  _featherFade: {fileID: 2100000, guid: 853019743a7800548bff5d9b71521be8, type: 2}
   _audio: {fileID: 961069855223780127}
   _shoveCue: {fileID: 8300000, guid: 970f26fe1d70f4f4289dbbb8f619ae90, type: 3}
   _pounceCue: {fileID: 8300000, guid: 0e6cff4b53fa1354590a3bc6b824b8c5, type: 3}
@@ -896,68 +897,6 @@ Animator:
 SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
   m_PrefabInstance: {fileID: 161506752309424793}
-  m_PrefabAsset: {fileID: 0}
---- !u!1001 &2816421228396703854
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 1864406487770970919}
-    m_Modifications:
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7598384612066496960, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-      propertyPath: m_Name
-      value: FX_DuneclawSlab
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
---- !u!4 &3777127982969409126 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1404839186810289672, guid: 0f2a1b1fbd3a0974891d4d261aa9e00f, type: 3}
-  m_PrefabInstance: {fileID: 2816421228396703854}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &3743279531919153478
 PrefabInstance:

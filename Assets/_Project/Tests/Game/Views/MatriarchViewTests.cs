@@ -86,6 +86,9 @@ public sealed class MatriarchViewTests
         Assert.That(_warning.transform.position.z, Is.EqualTo(Target.Z).Within(0.001f));
         Assert.That(_warning.transform.lossyScale.x, Is.EqualTo(3f).Within(0.001f));
         Assert.That(_fill.gameObject.activeSelf, Is.False);
+        Progress(0.5f);
+        Assert.That(_fill.gameObject.activeSelf, Is.True);
+        Assert.That(_fill.transform.lossyScale.x, Is.EqualTo(1.5f).Within(0.001f));
 
         Arm(MatriarchMove.FeatherRain);
         Assert.That(cues.Add(_audio.clip), Is.True);
@@ -114,7 +117,6 @@ public sealed class MatriarchViewTests
         AssertFacing(15f);
         Impact(MatriarchMove.RuinShove);
         AssertFacing(15f);
-        Assert.That(_instance.transform.Find("FX_DuneclawSlab").gameObject.activeSelf, Is.True);
 
         Arm(MatriarchMove.CarrionPounce);
         Progress(0.5f);
@@ -174,12 +176,38 @@ public sealed class MatriarchViewTests
             Arm(move);
             Impact(move);
             Assert.That(_shake.Offset.y, Is.EqualTo(-CameraShake.SlamStrength));
+            SlamDustView dust = _instance.transform.Find("Impact Effects").GetChild(2).GetComponent<SlamDustView>();
+            Assert.That(dust.IsLive, Is.True);
+            ApplyFacing(45f, new Point(3f, 0f, -6f));
+            Assert.That(Vector3.Distance(dust.transform.position, Target.ToUnity()), Is.LessThan(0.001f));
             _shake.Step(CameraShake.Seconds * 0.25f);
             Vector3 offset = _shake.Offset;
             _events.Publish(new MatriarchTellCleared(Id));
             Assert.That(_shake.Offset, Is.EqualTo(offset));
             _shake.Step(CameraShake.Seconds);
         }
+    }
+
+    [Test]
+    public void RuinShove_ThrowsLargeRockAndRaisesDustAtTheLockedImpact()
+    {
+        Transform effects = _instance.transform.Find("Impact Effects");
+        Transform rock = effects.Find("Thrown Rock");
+        SlamDustView dust = effects.GetChild(1).GetComponent<SlamDustView>();
+        Arm(MatriarchMove.RuinShove);
+        Progress(0.89f);
+        Assert.That(rock.gameObject.activeSelf, Is.True);
+        Assert.That(rock.lossyScale.x, Is.EqualTo(2.4f).Within(0.001f));
+        Assert.That(rock.position.y, Is.GreaterThan(1f));
+        Assert.That(dust.IsLive, Is.False);
+        Progress(1f);
+        Assert.That(rock.position.x, Is.EqualTo(Target.X).Within(0.001f));
+        Impact(MatriarchMove.RuinShove);
+        Assert.That(rock.gameObject.activeSelf, Is.False);
+        Assert.That(dust.IsLive, Is.True);
+        Assert.That(dust.transform.position, Is.EqualTo(Target.ToUnity()));
+        _view.Step(SlamDustView.Lifetime);
+        Assert.That(dust.IsLive, Is.False);
     }
 
     [Test]
@@ -216,20 +244,40 @@ public sealed class MatriarchViewTests
             Assert.That(offset.magnitude, Is.LessThan(3f));
         }
         Assert.That(feather.position.y, Is.LessThan(airborne.y));
+        Vector3 landed = feather.position;
         Impact(MatriarchMove.FeatherRain);
-        Assert.That(rain.gameObject.activeSelf, Is.False);
+        Assert.That(rain.gameObject.activeSelf, Is.True);
         Assert.That(_warning.gameObject.activeSelf, Is.False);
         Assert.That(_fill.gameObject.activeSelf, Is.False);
+        _events.Publish(new MatriarchTellCleared(Id));
+        ApplyFacing(90f, new Point(-2f, 0f, -3f));
+        Assert.That(Vector3.Distance(feather.position, landed), Is.LessThan(0.001f));
 
+        Transform followUp = _instance.transform.Find("Feather Rain (2)");
         Arm(MatriarchMove.FeatherRain);
         Progress(0.9f);
-        Assert.That(rain.GetChild(1), Is.SameAs(feather));
+        Assert.That(rain.gameObject.activeSelf, Is.True);
+        Assert.That(followUp.gameObject.activeSelf, Is.True);
         _events.Publish(new MatriarchTellCleared(Id));
         Arm(MatriarchMove.CarrionDive);
+        Assert.That(rain.gameObject.activeSelf, Is.True);
+        Assert.That(followUp.gameObject.activeSelf, Is.False);
+
+        Renderer vane = feather.GetComponentInChildren<Renderer>();
+        Material original = vane.sharedMaterial;
+        _view.Step(2.4f);
+        Assert.That(vane.sharedMaterial, Is.SameAs(original));
+        _view.Step(0.4f);
+        var block = new MaterialPropertyBlock();
+        vane.GetPropertyBlock(block);
+        Assert.That(block.GetColor("_BaseColor").a, Is.InRange(0.5f, 0.9f));
+        Assert.That(vane.sharedMaterial, Is.Not.SameAs(original));
+        _view.Step(0.6f);
         Assert.That(rain.gameObject.activeSelf, Is.False);
 
         Arm(MatriarchMove.FeatherRain);
         Progress(0.9f);
+        Assert.That(vane.sharedMaterial, Is.SameAs(original));
         _events.Publish(new EnemyDied(Id, default, Target));
         _view.Bind(Id + 1, _shake);
         AssertGrounded();

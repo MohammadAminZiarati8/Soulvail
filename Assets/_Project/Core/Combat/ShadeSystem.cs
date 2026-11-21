@@ -156,7 +156,7 @@ public sealed class ShadeSystem
         }
 
         WeaponSpec weapon = _character.Weapon;
-        if (weapon.Kind != WeaponKind.Projectile || !target.IsAlive)
+        if (weapon.Kind != WeaponKind.Projectile || !target.IsAlive || target.IsHidden)
         {
             return 0;
         }

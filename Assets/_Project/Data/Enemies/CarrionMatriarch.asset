@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.carrion_matriarch
   _nameKey: enemy.carrion_matriarch.name
-  _maxHp: 520
+  _maxHp: 2080
   _moveSpeed: 2.5
   _targetPriority: 8
   _threatCost: 40

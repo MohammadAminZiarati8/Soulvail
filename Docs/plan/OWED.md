@@ -928,3 +928,6 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - **[Editor]** Play a brood cycle in Sunscar Stage 25. Dodge Carrion Dive, use its landing recovery, clear the fight and walk through the north gate into Stage 26.
 - **[Device]** Check the final-phase double Pounce and overlapping brood warnings at normal speed. Both Pounce and Dive landings should produce Gravemaw's shake.
+
+- SS-19f [Editor] Start Sunscar 25 through DT-01. Check the 2,080 HP and larger silhouette, then watch the shadow orbit during a feather tell and lead into the marked landing.
+- SS-19f [device] Check ground pounce and dive warnings at normal camera scale.

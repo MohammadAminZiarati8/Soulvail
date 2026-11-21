@@ -27,6 +27,8 @@ public sealed class MatriarchViewTests
     private MeshFilter _fill;
     private AudioSource _audio;
     private Renderer _shadow;
+    private Renderer[] _bodyRenderers;
+    private Canvas _healthBar;
 
     [SetUp]
     public void SetUp()
@@ -40,6 +42,8 @@ public sealed class MatriarchViewTests
         _view = _instance.GetComponent<MatriarchView>();
         _body = _instance.GetComponent<EnemyView>();
         _model = _instance.transform.Find("Model");
+        _bodyRenderers = _model.GetComponentsInChildren<Renderer>(true);
+        _healthBar = _instance.transform.Find("HealthBar").GetComponent<Canvas>();
         _warning = _instance.transform.Find("Locked Footprint").GetComponent<MeshFilter>();
         _fill = _instance.transform.Find("Dive Fill").GetComponent<MeshFilter>();
         _shadow = _instance.transform.Find("FX_Vulture_Shadow").GetComponent<Renderer>();
@@ -104,7 +108,7 @@ public sealed class MatriarchViewTests
     }
 
     [Test]
-    public void Body_UsesCoreFacingAndKeepsAirShadow()
+    public void Flight_ShadowTracksHeadingAndLockedDiveUntilBodyReturns()
     {
         ApplyFacing(15f);
         Arm(MatriarchMove.RuinShove);
@@ -116,6 +120,7 @@ public sealed class MatriarchViewTests
         Arm(MatriarchMove.CarrionPounce);
         Progress(0.5f);
         Assert.That(_model.position.y, Is.GreaterThan(0f));
+        AssertBodyVisible(true);
         Assert.That(_shadow.enabled, Is.True);
         AssertFacing(15f);
         Impact(MatriarchMove.CarrionPounce);
@@ -124,25 +129,32 @@ public sealed class MatriarchViewTests
         AssertFacing(25f);
 
         _events.Publish(new MatriarchFlightChanged(Id, true));
-        _view.Step(0.35f);
-        float flightHeight = _model.position.y;
-        Assert.That(flightHeight, Is.GreaterThan(0f));
+        AssertBodyVisible(false);
         Assert.That(_shadow.enabled, Is.True);
         Arm(MatriarchMove.FeatherSpear);
-        AssertFacing(25f);
+        var flightPosition = new Point(2f, 0f, 4f);
+        ApplyFacing(60f, flightPosition);
+        AssertShadowAt(flightPosition);
+        Assert.That(Quaternion.Angle(_shadow.transform.rotation, Quaternion.Euler(0f, 60f, 0f)), Is.LessThan(0.05f));
+        AssertBodyVisible(false);
         _events.Publish(new MatriarchTellCleared(Id));
         Assert.That(_shadow.enabled, Is.True);
 
-        Arm(MatriarchMove.CarrionDive);
+        Arm(MatriarchMove.CarrionDive, flightPosition);
         Progress(0.5f);
-        Assert.That(_model.position.y, Is.EqualTo(flightHeight * 0.5f).Within(0.001f));
+        AssertShadowAt(Point.Lerp(flightPosition, Target, 0.5f));
+        Progress(1f);
+        AssertShadowAt(Target);
         Assert.That(_shadow.enabled, Is.True);
-        AssertFacing(25f);
+        AssertBodyVisible(false);
         _events.Publish(new MatriarchFlightChanged(Id, false));
         Impact(MatriarchMove.CarrionDive);
+        Assert.That(Vector3.Distance(_model.position, Target.ToUnity()), Is.LessThan(0.001f));
+        ApplyFacing(60f, Target);
+        AssertBodyVisible(true);
         Assert.That(_model.localPosition, Is.EqualTo(Vector3.zero));
         Assert.That(_shadow.enabled, Is.False);
-        AssertFacing(25f);
+        AssertFacing(60f);
         ApplyFacing(30f);
         AssertFacing(30f);
     }
@@ -203,6 +215,7 @@ public sealed class MatriarchViewTests
 
     private void AssertGrounded()
     {
+        AssertBodyVisible(true);
         Assert.That(_model.localPosition, Is.EqualTo(Vector3.zero));
         Assert.That(_shadow.enabled, Is.False);
         Assert.That(_warning.gameObject.activeSelf, Is.False);
@@ -210,10 +223,26 @@ public sealed class MatriarchViewTests
         Assert.That(_audio.clip, Is.Null);
     }
 
-    private void ApplyFacing(float yaw)
+    private void AssertBodyVisible(bool visible)
+    {
+        Assert.That(_healthBar.enabled, Is.EqualTo(visible));
+        Assert.That(_bodyRenderers, Is.Not.Empty);
+        foreach (Renderer renderer in _bodyRenderers)
+        {
+            Assert.That(renderer.forceRenderingOff, Is.EqualTo(!visible), renderer.name);
+        }
+    }
+
+    private void AssertShadowAt(Point ground)
+    {
+        Assert.That(Vector3.Distance(_shadow.transform.position, ground.ToUnity() + Vector3.up * 0.03f),
+            Is.LessThan(0.001f));
+    }
+
+    private void ApplyFacing(float yaw, Point? position = null)
     {
         Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
-        _body.Apply(new EnemyMoveIntent(Id, Point.Zero, new Heading(forward.x, forward.z), Origin), 0.02f);
+        _body.Apply(new EnemyMoveIntent(Id, Point.Zero, new Heading(forward.x, forward.z), position ?? Origin), 0.02f);
         _view.Step(0.02f);
     }
 
@@ -222,7 +251,8 @@ public sealed class MatriarchViewTests
         Assert.That(Quaternion.Angle(_model.rotation, Quaternion.Euler(0f, yaw, 0f)), Is.LessThan(0.05f));
     }
 
-    private void Arm(MatriarchMove move) => _events.Publish(new MatriarchArmed(Id, move, Origin, Target, 2f, 3f, 1.5f));
+    private void Arm(MatriarchMove move, Point? origin = null) =>
+        _events.Publish(new MatriarchArmed(Id, move, origin ?? Origin, Target, 2f, 3f, 1.5f));
 
     private void Progress(float fraction) => _events.Publish(new MatriarchTellProgress(Id, fraction));
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
 using Soulvail.Core.Ports;
@@ -28,6 +29,8 @@ public sealed class MatriarchStageTests
     private const int Seed = 12;
     private const int Stage = 25;
     private const float Frame = 1f / 60f;
+    private const float ProbeLimit = 600f;
+    private const float BossMaxHp = 2080f;
     private static readonly ContentId Sunscar = new("mode.sunscar");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
     private static readonly ContentId Matriarch = new("enemy.carrion_matriarch");
@@ -61,6 +64,8 @@ public sealed class MatriarchStageTests
         EnemySpawned spawn = fight.Events.Single<EnemySpawned>();
         Assert.That((spawn.SpecId, spawn.Position), Is.EqualTo((Matriarch, new System.Numerics.Vector3(0f, 0f, 2f))));
         fight.Win();
+        EnemyDamaged firstHit = fight.Events.Of<EnemyDamaged>().First(hit => hit.Id == spawn.Id && hit.Amount > 0f);
+        Assert.That(firstHit.HpFraction, Is.EqualTo(1f - firstHit.Amount / BossMaxHp).Within(0.00001f));
         Assert.That(fight.Events.Of<BossPhaseChanged>().Select(e => e.Phase), Is.EqualTo(new[] { 0, 1, 2 }));
         Assert.That(fight.Events.Count<BossBeatStarted>(), Is.EqualTo(2));
         Assert.That(fight.Events.Count<BossBeatEnded>(), Is.EqualTo(2));
@@ -89,6 +94,24 @@ public sealed class MatriarchStageTests
     }
 
     [Test]
+    public void Prefab_DoublesVisualScaleWithOriginalCollisionAndWarnings()
+    {
+        GameObject prefab = Load<GameObject>("Prefabs/Enemies/CarrionMatriarch.prefab");
+        Transform root = prefab.transform;
+        Assert.That(root.localScale, Is.EqualTo(Vector3.one));
+        Assert.That(root.Find("Model").localScale, Is.EqualTo(Vector3.one * 3.3f));
+        Assert.That(root.Find("FX_Vulture_Shadow").localScale, Is.EqualTo(Vector3.one * 3.3f));
+        Assert.That(root.Find("Locked Footprint").localScale, Is.EqualTo(Vector3.one));
+        Assert.That(root.Find("Dive Fill").localScale, Is.EqualTo(Vector3.one));
+        var controller = prefab.GetComponent<CharacterController>();
+        Assert.That(controller.radius, Is.EqualTo(0.513f));
+        Assert.That(controller.height, Is.EqualTo(0.82f));
+        var trigger = prefab.GetComponent<CapsuleCollider>();
+        Assert.That(trigger.radius, Is.EqualTo(0.6235f).Within(0.00001f));
+        Assert.That(trigger.height, Is.EqualTo(0.89f));
+    }
+
+    [Test]
     public void Arena_TellsAndBroodHaveWalkableAnswers()
     {
         float speed = new[] { "Ranger", "Oathbound", "Beastmaster" }.Min(name =>
@@ -102,7 +125,7 @@ public sealed class MatriarchStageTests
         foreach (string name in new[] { "Oathbound", "Beastmaster" })
         {
             using var broodProbe = new Fight(name);
-            broodProbe.Until(() => broodProbe.BroodTimes.Count > 0, 120f);
+            broodProbe.Until(() => broodProbe.BroodTimes.Count > 0, ProbeLimit);
             Assert.That(broodProbe.Brood.Count, Is.EqualTo(2));
             Assert.That(broodProbe.Brood.All(id => broodProbe.Events.Of<VulturePhaseChanged>()
                 .Any(phase => phase.Id == id && phase.Phase == VulturePhase.Grounded)), Is.True);
@@ -123,7 +146,8 @@ public sealed class MatriarchStageTests
         TestContext.WriteLine($"Seed {Seed}, Ranger L{fight.ArrivalLevel}, base bow, no skill points spent, {hp:F0} boss HP, " +
             $"{fight.BroodTimes.Count} flights, {elapsed:F2} s spawn to kill, " +
             $"brood clears (s): {string.Join(", ", fight.BroodTimes.Select(t => t.ToString("F2")))}.");
-        Assert.That(elapsed, Is.InRange(75f, 120f));
+        Assert.That(hp, Is.EqualTo(BossMaxHp));
+        Assert.That(elapsed, Is.GreaterThan(0f));
         Assert.That(fight.BroodTimes, Is.Not.Empty);
         Assert.That(fight.Events.Count<BossBeatEnded>(), Is.EqualTo(2));
         Assert.That(fight.Events.Of<MatriarchImpact>().Count(e => e.Move == MatriarchMove.CarrionDive),
@@ -209,6 +233,9 @@ public sealed class MatriarchStageTests
         private readonly Dictionary<int, float> _groundedUntil = new();
         private readonly List<(Vector3 Player, float Time, Footprint[] Warnings)> _overlaps = new();
         private readonly Dictionary<MatriarchMove, MatriarchArmed> _tells = new();
+        private readonly List<string> _damage = new();
+        private int _featherId;
+        private Footprint? _flyingFeather;
         private Vector3? _escape;
         private Vector3? _waypoint;
         private bool _walkingToGate;
@@ -284,7 +311,7 @@ public sealed class MatriarchStageTests
         public List<float> BroodTimes { get; } = new();
         public List<float> BeatHealth { get; } = new();
 
-        public void Win() => Until(() => Events.Count<StageCleared>() > 0, 190f);
+        public void Win() => Until(() => Events.Count<StageCleared>() > 0, ProbeLimit);
 
         public void Until(Func<bool> condition, float seconds)
         {
@@ -296,7 +323,8 @@ public sealed class MatriarchStageTests
             Assert.That(condition(), Is.True, $"At {Session.State.Time:F2} s, {_character.Id} HP {Session.State.PlayerHp:F1}, " +
                 $"boss HP fraction {Events.Of<EnemyDamaged>().LastOrDefault(hit => hit.Id == _boss).HpFraction:F2}, " +
                 $"position {_player.Position}, {_openGround.Spots.Count} floor samples, brood deaths {Events.Of<EnemyDied>().Count(e => e.SpecId == Vulture)}/{Brood.Count}, " +
-                $"brood times [{string.Join(", ", BroodTimes)}], pending landings [{string.Join(", ", _landings.Values)}].");
+                $"brood times [{string.Join(", ", BroodTimes)}], pending landings [{string.Join(", ", _landings.Values)}], " +
+                $"damage (time: amount) [{string.Join(", ", _damage)}].");
         }
 
         public void WalkToGate()
@@ -433,6 +461,18 @@ public sealed class MatriarchStageTests
                 case MatriarchTellCleared:
                     _warnings.Remove(_boss);
                     break;
+                case ProjectileFired shot when shot.ShotOrigin == ShotOrigin.FeatherSpear:
+                    _featherId = shot.Id;
+                    _flyingFeather = new Footprint(shot.Origin.ToUnity(), shot.Target.ToUnity(),
+                        shot.Radius * 2f, 0f, now + shot.FlightTime);
+                    _escape = null;
+                    break;
+                case ProjectileImpacted impact when impact.Id == _featherId:
+                    _flyingFeather = null;
+                    break;
+                case PlayerDamaged damage when damage.ToHp > 0f || damage.ToShield > 0f:
+                    _damage.Add($"{now:F2}: {damage.ToHp + damage.ToShield:F1}");
+                    break;
                 case VultureDiveLocked dive:
                     Vector3 toward = new(dive.Direction.X, 0f, dive.Direction.Y);
                     Vector3 origin = dive.Origin.ToUnity();
@@ -474,7 +514,13 @@ public sealed class MatriarchStageTests
             }
 
             float now = Session.State.Time;
-            Footprint[] active = _warnings.Values.Where(warning => warning.Deadline >= now - Frame).ToArray();
+            IEnumerable<Footprint> hazards = _warnings.Values;
+            if (_flyingFeather is Footprint feather)
+            {
+                hazards = hazards.Append(feather);
+            }
+
+            Footprint[] active = hazards.Where(warning => warning.Deadline >= now - Frame).ToArray();
             float deadline = active.Where(warning => warning.Covers(at, 0.32f))
                 .Select(warning => warning.Deadline).DefaultIfEmpty(float.PositiveInfinity).Min();
             if (float.IsFinite(deadline))

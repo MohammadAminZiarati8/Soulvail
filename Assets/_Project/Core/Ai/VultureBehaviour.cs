@@ -55,7 +55,8 @@ public sealed class VultureBehaviour : IEnemyBehaviour
             case VulturePhase.Circle:
                 if (ctx.Now < _phaseEndsAt || !TryLock(ctx, hero))
                 {
-                    velocity = Orbit(hero, step);
+                    velocity = Orbit(_agent.Position, hero, _agent.Id, step, Spec.CircleRadius, Spec.ApproachSpeed,
+                        Spec.CircleSpeed, ref _facing);
                 }
 
                 break;
@@ -119,29 +120,29 @@ public sealed class VultureBehaviour : IEnemyBehaviour
         SetAloft(true);
     }
 
-    private Vector3 Orbit(Vector3 hero, float step)
+    internal static Vector3 Orbit(Vector3 position, Vector3 hero, int id, float step, float radius,
+        float approachSpeed, float orbitSpeed, ref Vector3 facing)
     {
         if (!(step > 0f))
         {
             return Vector3.Zero;
         }
 
-        Vector3 offset = FlatDelta(_agent.Position, hero);
+        Vector3 offset = FlatDelta(position, hero);
         float distance = offset.Length();
         Vector3 radial = distance > 0f ? offset / distance : Vector3.UnitZ;
-        float radius = Spec.CircleRadius;
-        float approachTime = MathF.Abs(radius - distance) / Spec.ApproachSpeed;
+        float approachTime = MathF.Abs(radius - distance) / approachSpeed;
         Vector3 movement;
 
         if (step < approachTime)
         {
-            float radialSpeed = distance < radius ? Spec.ApproachSpeed : -Spec.ApproachSpeed;
+            float radialSpeed = distance < radius ? approachSpeed : -approachSpeed;
             movement = radial * (radialSpeed * step);
         }
         else
         {
-            float arc = (step - approachTime) * (Spec.CircleSpeed / radius);
-            if ((_agent.Id & 1) != 0)
+            float arc = (step - approachTime) * (orbitSpeed / radius);
+            if ((id & 1) != 0)
             {
                 arc = -arc;
             }
@@ -155,7 +156,7 @@ public sealed class VultureBehaviour : IEnemyBehaviour
 
         if (movement.LengthSquared() > 0f)
         {
-            _facing = Vector3.Normalize(movement);
+            facing = Vector3.Normalize(movement);
         }
 
         return movement / step;

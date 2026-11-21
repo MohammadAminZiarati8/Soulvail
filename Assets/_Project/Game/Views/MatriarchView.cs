@@ -12,7 +12,6 @@ namespace Soulvail.Game.Views
     public sealed class MatriarchView : MonoBehaviour
     {
         private const int Segments = 64;
-        private const float FlightHeight = 3.2f;
         private const float PounceHeight = 1.8f;
         private const float GroundOffset = 0.06f;
         private const float SlabTravelSeconds = 0.25f;
@@ -20,6 +19,7 @@ namespace Soulvail.Game.Views
         [SerializeField] private Transform _model;
         [SerializeField] private Animator _animator;
         [SerializeField] private Renderer _shadow;
+        [SerializeField] private Canvas _healthBar;
         [SerializeField] private MeshFilter _warning;
         [SerializeField] private MeshFilter _fill;
         [SerializeField] private Transform _slab;
@@ -39,6 +39,7 @@ namespace Soulvail.Game.Views
         private readonly IDisposable[] _subscriptions = new IDisposable[6];
         private DomainEventHub _events;
         private CameraShake _shake;
+        private Renderer[] _bodyRenderers;
         private Mesh _laneMesh;
         private Mesh _ringMesh;
         private Mesh _discMesh;
@@ -51,7 +52,6 @@ namespace Soulvail.Game.Views
         private float _width;
         private float _radius;
         private float _progress;
-        private float _height;
         private Vector3 _slabOrigin;
         private Vector3 _slabTarget;
         private float _slabAge;
@@ -64,6 +64,7 @@ namespace Soulvail.Game.Views
 
         public void Bind(int id, CameraShake shake)
         {
+            _bodyRenderers ??= _model.GetComponentsInChildren<Renderer>(true);
             Unbind();
             EnsureMeshes();
             _id = id;
@@ -88,9 +89,10 @@ namespace Soulvail.Game.Views
 
             ClearTell();
             _airborne = false;
-            _height = 0f;
+            SetBodyVisible(true);
             _model.localPosition = Vector3.zero;
             _shadow.enabled = false;
+            _shadow.transform.localPosition = Vector3.up * (GroundOffset * 0.5f);
             _slab.gameObject.SetActive(false);
             SetPose(_groundPose, VulturePhase.Grounded);
             _playedPose = 0;
@@ -184,10 +186,10 @@ namespace Soulvail.Game.Views
             }
 
             _airborne = evt.Airborne;
+            SetBodyVisible(!_airborne);
             if (!_airborne)
             {
                 ClearTell();
-                _height = 0f;
             }
 
             RestorePose();
@@ -224,6 +226,10 @@ namespace Soulvail.Game.Views
 
             ClearTell();
             DrawBody();
+            if (evt.Move == MatriarchMove.CarrionDive)
+            {
+                _model.position = evt.Position.ToUnity();
+            }
         }
 
         private void OnDied(EnemyDied evt)
@@ -261,11 +267,6 @@ namespace Soulvail.Game.Views
                 _playedPose = _pose;
             }
 
-            if (_airborne && dt > 0f && float.IsFinite(dt))
-            {
-                _height = Mathf.MoveTowards(_height, FlightHeight, FlightHeight * dt / 0.35f);
-            }
-
             DrawBody();
             if (_warningActive)
             {
@@ -283,19 +284,34 @@ namespace Soulvail.Game.Views
         private void DrawBody()
         {
             Vector3 ground = transform.position;
-            float height = _height;
             bool pounce = _warningActive && _move == MatriarchMove.CarrionPounce;
             bool dive = _warningActive && _move == MatriarchMove.CarrionDive;
             if (pounce || dive)
             {
                 ground = Vector3.Lerp(_origin, _target, _progress);
-                height = pounce ? PounceHeight * 4f * _progress * (1f - _progress) : _height * (1f - _progress);
             }
 
-            // The rig inherits the root's Core-authored yaw throughout. Only its position moves here.
-            _model.position = ground + Vector3.up * height;
+            // Both visuals inherit the root's Core-authored heading.
+            _model.position = pounce
+                ? ground + Vector3.up * (PounceHeight * 4f * _progress * (1f - _progress))
+                : transform.position;
             _shadow.enabled = _airborne || pounce;
             _shadow.transform.position = ground + Vector3.up * (GroundOffset * 0.5f);
+        }
+
+        private void SetBodyVisible(bool visible)
+        {
+            if (_bodyRenderers == null)
+            {
+                return;
+            }
+
+            foreach (Renderer renderer in _bodyRenderers)
+            {
+                renderer.forceRenderingOff = !visible;
+            }
+
+            _healthBar.enabled = visible;
         }
 
         private void DrawWarning()

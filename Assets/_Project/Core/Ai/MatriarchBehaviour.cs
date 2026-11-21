@@ -72,8 +72,11 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
         if (canAim && distanceSquared > 0f)
         {
             heading = aim / MathF.Sqrt(distanceSquared);
-            float turnRate = Math.Clamp(_stats.TurnDegreesPerSecond.Value, 0f, MatriarchStats.TurnLimit);
-            _facing = PlayerMotor.RotateTowards(_facing, heading, turnRate * dt);
+            if (!IsAirborne)
+            {
+                float turnRate = Math.Clamp(_stats.TurnDegreesPerSecond.Value, 0f, MatriarchStats.TurnLimit);
+                _facing = PlayerMotor.RotateTowards(_facing, heading, turnRate * dt);
+            }
         }
 
         // Finish at most the state that was active at the start of this tick. A late
@@ -83,7 +86,7 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
         Vector3? landingPosition = null;
         if (IsAirborne)
         {
-            landingPosition = TickFlight(ctx, origin, hero, heading, canAim);
+            velocity = TickFlight(ctx, origin, hero, heading, canAim, dt, out landingPosition);
         }
         else
         {
@@ -241,11 +244,18 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
         return true;
     }
 
-    private Vector3? TickFlight(in EnemyTickContext ctx, Vector3 origin, Vector3 hero, Vector3 heading, bool canAim)
+    private Vector3 TickFlight(in EnemyTickContext ctx, Vector3 origin, Vector3 hero, Vector3 heading, bool canAim,
+        float dt, out Vector3? landingPosition)
     {
+        landingPosition = null;
         if (_state == State.Tell && _armed.Move == MatriarchMove.CarrionDive)
         {
-            return AdvanceTell(ctx) ? DiveImpact(ctx, hero) : null;
+            if (AdvanceTell(ctx))
+            {
+                landingPosition = DiveImpact(ctx, hero);
+            }
+
+            return Vector3.Zero;
         }
 
         if (!HasLivingBrood())
@@ -257,10 +267,18 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
             Vector3 landing = canAim && ctx.OpenGround.Count > 0
                 ? GravemawBehaviour.FindOpenSpot(ctx.OpenGround, hero, origin, float.PositiveInfinity)
                 : origin;
+            Vector3 travel = GroundDelta(landing, origin);
+            if (travel.LengthSquared() > 0f)
+            {
+                _facing = Vector3.Normalize(travel);
+            }
+
             Arm(ctx, new MatriarchArmed(_agent.Id, MatriarchMove.CarrionDive, origin, landing,
                 0f, _stats.DiveRadius.Value, _stats.DiveTell.Value));
+            return Vector3.Zero;
         }
-        else if (_state == State.Tell)
+
+        if (_state == State.Tell)
         {
             if (AdvanceTell(ctx))
             {
@@ -279,7 +297,12 @@ public sealed class MatriarchBehaviour : IEnemyBehaviour, IBossPhaseListener, IB
             ScheduleFeather(ctx.Now);
         }
 
-        return null;
+        float radius = _stats.OrbitRadius.Value;
+        float approachSpeed = _stats.OrbitApproachSpeed.Value;
+        return canAim && radius > 0f && approachSpeed > 0f
+            ? VultureBehaviour.Orbit(origin, hero, _agent.Id, dt, radius, approachSpeed, _stats.OrbitSpeed.Value,
+                ref _facing)
+            : Vector3.Zero;
     }
 
     private bool HasLivingBrood()

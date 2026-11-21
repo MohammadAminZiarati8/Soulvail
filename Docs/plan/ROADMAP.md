@@ -317,6 +317,7 @@ Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go
 - [x] **SS-19b** — Brood Call, Feather Spears and Carrion Dive (M)
 - [x] **SS-19c** — Prototype, warnings, cues and landing shake (M)
 - [x] **SS-19d** — Stage 25 registration, arena checks and tuning (M)
+- [x] **SS-19f** — 2,080 HP, double-size body and shadow, moving shadow-only flight (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

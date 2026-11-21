@@ -18,6 +18,9 @@ public sealed class MatriarchStats
     public Stat GroundRecovery { get; } = new(1.4f);
     public Stat BroodCooldown { get; } = new(18f);
     public Stat BroodRetry { get; } = new(1f);
+    public Stat OrbitRadius { get; } = new(7f);
+    public Stat OrbitSpeed { get; } = new(4f);
+    public Stat OrbitApproachSpeed { get; } = new(6f);
     public Stat FeatherInterval { get; } = new(3.2f);
     public Stat FeatherTell { get; } = new(0.9f);
     public Stat FeatherWidth { get; } = new(1.2f);

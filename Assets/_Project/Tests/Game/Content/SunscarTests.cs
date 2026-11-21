@@ -1565,7 +1565,7 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void BuriedKing_UsesTheRegisteredBodyAndOwnsHisPhaseChanges()
+    public void BuriedKing_UsesTheRegisteredRigAndPreservesCollision()
     {
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
         BossSpec boss = catalog.Boss(BuriedKing);
@@ -1583,8 +1583,12 @@ public sealed class SunscarTests
         Assert.That(view.GetComponentsInChildren<Transform>().Any(bone => bone.name == "handslot.r"), Is.True);
         EnemyView placeholder = AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Enemy.prefab")
             .GetComponent<EnemyView>();
-        Assert.That((view.Body.center, view.Body.radius, view.Body.height),
-            Is.EqualTo((placeholder.Body.center, placeholder.Body.radius, placeholder.Body.height)));
+        CapsuleCollider kingCapsule = view.Body as CapsuleCollider;
+        CapsuleCollider placeholderCapsule = placeholder.Body as CapsuleCollider;
+        Assert.That(kingCapsule, Is.Not.Null);
+        Assert.That(placeholderCapsule, Is.Not.Null);
+        Assert.That((kingCapsule.center, kingCapsule.radius, kingCapsule.height),
+            Is.EqualTo((placeholderCapsule.center, placeholderCapsule.radius, placeholderCapsule.height)));
         Assert.That(body.ToSpec().ContactDamage, Is.Zero);
         LocKey name = body.ToSpec().NameKey;
         Assert.That(AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset")

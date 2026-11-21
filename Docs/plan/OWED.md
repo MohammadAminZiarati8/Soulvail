@@ -912,3 +912,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ## SS-17h — Hierophant fire throw and Jackal heal
 
 - [ ] **[device]** Check the staff launch and moving fire in portrait in the Dunes. Break the Priest ward and check that the green channel cue disappears on a hit.
+
+- [ ] SS-19a (after SS-19d) — Play Sunscar stage 25. Dodge the fixed Shove lane and Pounce disc, bait two separately warned landings below 33%, and cross behind her during recovery to check smooth turning.

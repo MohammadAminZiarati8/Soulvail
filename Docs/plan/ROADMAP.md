@@ -311,6 +311,10 @@ SS-16d verified locked tells and broke and restored authored cover with the real
 
 Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go. Balance target: level 30 after stage 24, with at most one level earned per boss. The regular waves set the full-clear XP budgets. The XP curve and boss rewards need a separate tuning pass to reach that target.
 
+**The Carrion Matriarch, Sunscar's stage-25 boss** ([GD §9.7](../GameDesign.md#97-the-sunscar--stage-25-the-carrion-matriarch)). Stage 25 is playable with the prototype after SS-19d. SS-19e waits for the owner's Matriarch sculpt.
+
+- [x] **SS-19a** — Ruin Shove, Carrion Pounce and smooth turns (M)
+
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 
 - [x] **JG-15a** — The Warlord in core: front guard, slow turn, glaive sweep (M)

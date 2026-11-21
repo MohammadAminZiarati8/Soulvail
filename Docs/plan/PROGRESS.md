@@ -9,9 +9,9 @@ _2026-11-20._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last merged** | Run scene teardown fix. |
+| **Last built** | SS-19a, Carrion Matriarch ground combat. |
 | **Next task** | Awaiting owner's go for SS-18a, Sundial Colossus combat. |
-| **Verified** | EditMode 7128/7220, 0 failed, 1 inconclusive, 91 skipped. Boot smoke 3/3. Format OK. |
+| **Verified** | EditMode 7220/7312, 0 fail, 1 inconcl., 91 skip. Format OK. |
 
 ## What works
 

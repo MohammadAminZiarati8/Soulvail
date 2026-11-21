@@ -10,7 +10,7 @@ namespace Soulvail.Core.Ai;
 
 public sealed class BuriedKingBehaviour : IEnemyBehaviour
 {
-    private enum State { Ready, SweepTell, CastTell, Outbound, Advance, RecallTell, Returning, Recovery, Dead }
+    private enum State { Ready, SweepTell, CastTell, Outbound, Advance, RecallTell, Returning, SlamTell, Recovery, Dead }
 
     private readonly EnemyAgent _agent;
     private readonly Stat _sweepReach = new(4f);
@@ -22,6 +22,10 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _flightSpeed = new(18f);
     private readonly Stat _advanceTime = new(1.6f);
     private readonly Stat _catchRecovery = new(2.1f);
+    private readonly Stat _reclaimThreshold = new(0.66f);
+    private readonly Stat _slamTell = new(0.9f);
+    private readonly Stat _slamRadius = new(3.5f);
+    private readonly Stat _slamRecovery = new(2.4f);
     private readonly Stat _minimumCastLength = new(4f);
     private readonly Stat _landingSnap = new(1.5f);
     private readonly Stat _weaponClearance = new(2f);
@@ -29,6 +33,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _sweepDamage = new(24f);
     private readonly Stat _outboundDamage = new(16f);
     private readonly Stat _returnDamage = new(20f);
+    private readonly Stat _slamDamage = new(28f);
     private State _state;
     private Vector2 _facing = Vector2.UnitY;
     private Vector3 _start;
@@ -38,6 +43,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private float _backOffElapsed;
     private int _sweeps;
     private bool _hit;
+    private bool _reclaimUnlocked;
+    private bool _slamOnCatch;
 
     public BuriedKingBehaviour(EnemyAgent agent)
     {
@@ -48,6 +55,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
     public void Tick(in EnemyTickContext ctx)
     {
+        _reclaimUnlocked |= _agent.Health.Fraction <= _reclaimThreshold.Value;
         EnemyBlackboard board = _agent.Blackboard;
         Vector3 hero = ctx.Player.Blackboard.PlayerPosition;
         Vector2 velocity = Vector2.Zero;
@@ -76,6 +84,12 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             case State.Advance:
                 velocity = Advance(ctx, board);
                 break;
+            case State.SlamTell:
+                if (Elapsed(ctx.Dt))
+                {
+                    ResolveSlam(ctx, hero);
+                }
+                break;
             case State.Recovery:
                 if (Elapsed(ctx.Dt))
                 {
@@ -96,6 +110,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _remaining = _distanceTravelled = _backOffElapsed = 0f;
         _sweeps = 0;
         _hit = false;
+        _reclaimUnlocked = false;
+        _slamOnCatch = false;
     }
 
     internal void ClearEncounter(IDomainEvents events)
@@ -119,6 +135,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         if (board.HasLineOfSight && !close
             && TryLanding(ctx, board.SelfPosition, hero, out Vector3 landing))
         {
+            _slamOnCatch = _reclaimUnlocked;
             _sweeps = 0;
             _backOffElapsed = 0f;
             Lock(ctx, State.CastTell, BuriedKingPose.CastTell, board.SelfPosition, landing, _laneTell.Value);
@@ -237,7 +254,15 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
         else if (returning)
         {
-            Recover(ctx, _catchRecovery.Value);
+            if (_slamOnCatch)
+            {
+                Vector3 center = _agent.Blackboard.SelfPosition;
+                Lock(ctx, State.SlamTell, BuriedKingPose.SlamTell, center, center, _slamTell.Value);
+            }
+            else
+            {
+                Recover(ctx, _catchRecovery.Value);
+            }
         }
         else
         {
@@ -245,6 +270,17 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             _remaining = _advanceTime.Value;
             Publish(ctx.Events, BuriedKingPose.Embedded, _end);
         }
+    }
+
+    private void ResolveSlam(in EnemyTickContext ctx, Vector3 hero)
+    {
+        float radius = _slamRadius.Value;
+        if (Ground(hero - _start).LengthSquared() <= radius * radius)
+        {
+            ctx.Player.ApplyDamage(_slamDamage.Value, ctx.Now);
+        }
+
+        Recover(ctx, _slamRecovery.Value);
     }
 
     private void Lock(in EnemyTickContext ctx, State state, BuriedKingPose pose, Vector3 start, Vector3 end, float duration)
@@ -285,7 +321,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     }
 
     private void Publish(IDomainEvents events, BuriedKingPose pose, Vector3 weapon = default) =>
-        events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _laneWidth.Value, _sweepDegrees.Value, weapon));
+        events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _laneWidth.Value, _sweepDegrees.Value,
+            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f));
 
     private static Vector2 Ground(Vector3 vector) => new(vector.X, vector.Z);
 }

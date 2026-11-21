@@ -12,13 +12,14 @@ public enum BuriedKingPose
     RecallTell,
     Returning,
     Cleared,
+    SlamTell,
 }
 
 /// <summary>Locked floor geometry and the scepter position for the current pose.</summary>
 public readonly struct BuriedKingStateChanged
 {
     internal BuriedKingStateChanged(int enemyId, BuriedKingPose pose, Vector3 start, Vector3 end,
-        float width, float sweepDegrees, Vector3 weaponPosition)
+        float width, float sweepDegrees, Vector3 weaponPosition, float slamRadius)
     {
         EnemyId = enemyId;
         Pose = pose;
@@ -27,6 +28,7 @@ public readonly struct BuriedKingStateChanged
         Width = width;
         SweepDegrees = sweepDegrees;
         WeaponPosition = weaponPosition;
+        SlamRadius = slamRadius;
     }
 
     public int EnemyId { get; }
@@ -36,4 +38,5 @@ public readonly struct BuriedKingStateChanged
     public float Width { get; }
     public float SweepDegrees { get; }
     public Vector3 WeaponPosition { get; }
+    public float SlamRadius { get; }
 }

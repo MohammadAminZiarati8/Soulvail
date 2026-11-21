@@ -202,6 +202,79 @@ public sealed class BuriedKingBehaviourTests
     }
 
     [Test]
+    public void ThresholdDuringSequence_LatchesForNextCast()
+    {
+        _enemies.ApplyDamage(_king.Id, 220f, _now, _player);
+        Assert.That(_king.Health.Fraction, Is.GreaterThan(0.66f));
+        Tick(0f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
+
+        CrossReclaimThreshold();
+        Tick(1f);
+        _king.Health.Heal(_king.Health.MaxHp.Value);
+        Assert.That(_king.Health.Fraction, Is.EqualTo(1f));
+        FinishCatch();
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+
+        _hero = 8f * Vector3.UnitZ;
+        _ground = new[] { _hero };
+        Tick(2.09f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Tick(0.02f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
+        Tick(1f);
+        FinishCatch();
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+    }
+
+    [TestCase(3.5f, 1)]
+    [TestCase(-3.6f, 0)]
+    public void Slam_LocksCenterAndHitsOnce(float offset, int expectedHits)
+    {
+        StartSlam();
+        BuriedKingStateChanged tell = LastPose();
+        Assert.That(tell.Start, Is.EqualTo(_position));
+        Assert.That(tell.SlamRadius, Is.EqualTo(3.5f));
+
+        // A changed body sense must not move the promised impact.
+        _position -= 5f * Vector3.UnitX;
+        _hero = tell.Start + new Vector3(offset, 1f, 0f);
+        Tick(0.89f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
+        Tick(0.02f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(expectedHits));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f - 28f * expectedHits));
+
+        _hero = tell.Start;
+        Tick(1f);
+        Tick(1f);
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(expectedHits));
+    }
+
+    [Test]
+    public void Slam_LeavesFullStationaryTargetableRecovery()
+    {
+        StartSlam();
+        Vector3 planted = _position;
+        _hero = planted + 3f * Vector3.UnitX;
+        Tick(0.89f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        AssertPlantedAndTargetable(planted);
+
+        Tick(0.02f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        AssertPlantedAndTargetable(planted);
+        Tick(2.39f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        AssertPlantedAndTargetable(planted);
+        Tick(0.02f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SweepTell));
+    }
+
+    [Test]
     public void Prototype_OnlyKingIsRegisteredAndVulnerable()
     {
         Tick(0f);
@@ -258,10 +331,22 @@ public sealed class BuriedKingBehaviourTests
         }
 
         Assert.That(LastPose().Pose, Is.EqualTo(pose));
+        AssertDeathClearsEncounter();
+    }
+
+    [Test]
+    public void DeathDuringSlam_ClearsWarningAndPendingHit()
+    {
+        StartSlam();
+        _hero = _position;
+        AssertDeathClearsEncounter();
+    }
+
+    private void AssertDeathClearsEncounter()
+    {
         int hits = _events.Count<PlayerDamaged>();
         _enemies.ApplyDamage(_king.Id, _king.Health.MaxHp.Value, _now, _player);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Cleared));
-        _hero = Vector3.Zero;
         Tick(8f);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Cleared));
         Assert.That(_events.Count<EnemyDied>(), Is.EqualTo(1));
@@ -307,6 +392,42 @@ public sealed class BuriedKingBehaviourTests
         Tick(1.6f);
         Tick(0f);
         return LastPose();
+    }
+
+    private void CrossReclaimThreshold()
+    {
+        _enemies.ApplyDamage(_king.Id, _king.Health.Current - 429f, _now, _player);
+        Assert.That(_king.Health.Fraction, Is.EqualTo(0.66f));
+    }
+
+    private void StartSlam()
+    {
+        CrossReclaimThreshold();
+        Tick(0f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
+        Tick(1f);
+        FinishCatch();
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+    }
+
+    private void FinishCatch()
+    {
+        _hero = new Vector3(4f, 0f, 8f);
+        Tick(1f);
+        AdvanceAndArmRecall();
+        _hero = new Vector3(-8f, 0f, -8f);
+        Tick(1f);
+        Tick(1f);
+    }
+
+    private void AssertPlantedAndTargetable(Vector3 planted)
+    {
+        Assert.That(_position, Is.EqualTo(planted));
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+        Assert.That(_king.IsVulnerable, Is.True);
+        _player.Tick(0.2f, _now, _world, _enemies.Registry.Alive, Vector3.UnitZ);
+        Assert.That(_player.Targeter.CurrentTargetId, Is.EqualTo(_king.Id));
     }
 
     private BuriedKingStateChanged LastPose() => _events.Of<BuriedKingStateChanged>()[^1];

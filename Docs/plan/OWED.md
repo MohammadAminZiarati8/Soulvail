@@ -938,3 +938,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] **SS-19g follow-up [Editor/device]** In Sunscar Stage 25, check that landed feathers hold and fade across later warnings, Ruin Shove and Carrion Pounce raise dust, and Beastmaster companions and archer shades drop airborne vultures and regain them on landing.
 
 - SS-20a [Editor] In a development run on open ground, clear the stage and select **Buried King** in the debug overlay. Dodge both locked lanes at walking speed near the arena edge and fire during the 2.1 s catch recovery. Check readability at phone scale.
+
+## SS-20b — Buried King Reclaim Slam
+
+- [ ] [Editor] Spawn Buried King from the development overlay. Cross 66% during a throw and verify the next throw is the first to end in a red-orange slam circle.
+- [ ] [Editor] Check the locked circle at the arena edge, melee uptime in the 2.4 s recovery, and that killing the King during the warning clears the circle and scepter.

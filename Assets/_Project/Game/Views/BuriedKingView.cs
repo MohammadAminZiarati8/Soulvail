@@ -66,7 +66,7 @@ internal sealed class BuriedKingView : IDisposable
                 break;
             case BuriedKingPose.CastTell:
                 DrawLane(start, end, state.Width);
-                DrawLanding(end, state.Width * 0.5f);
+                DrawCircle(end, state.Width * 0.5f);
                 break;
             case BuriedKingPose.Outbound:
             case BuriedKingPose.Returning:
@@ -80,6 +80,10 @@ internal sealed class BuriedKingView : IDisposable
             case BuriedKingPose.RecallTell:
                 DrawEmbedded(start);
                 DrawLane(start, end, state.Width);
+                break;
+            case BuriedKingPose.SlamTell:
+                HoldWeapon();
+                DrawCircle(start, state.SlamRadius);
                 break;
             case BuriedKingPose.Held:
                 HoldWeapon();
@@ -119,15 +123,15 @@ internal sealed class BuriedKingView : IDisposable
         _tell.SetPosition(4, start - halfWidth);
     }
 
-    private void DrawLanding(Vector3 end, float radius)
+    private void DrawCircle(Vector3 center, float radius)
     {
-        end += Vector3.up * FloorOffset;
+        center += Vector3.up * FloorOffset;
         _landing.enabled = true;
         _landing.positionCount = ArcSegments + 1;
         for (int i = 0; i <= ArcSegments; i++)
         {
             float angle = 360f * i / ArcSegments;
-            _landing.SetPosition(i, end + Quaternion.AngleAxis(angle, Vector3.up) * Vector3.forward * radius);
+            _landing.SetPosition(i, center + Quaternion.AngleAxis(angle, Vector3.up) * Vector3.forward * radius);
         }
     }
 

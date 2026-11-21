@@ -9,9 +9,9 @@ _2026-11-21._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-20a, Buried King. |
+| **Last built** | SS-20b, Reclaim Slam. |
 | **Next task** | SS-19e on owner go. |
-| **Verified** | EditMode 7268/7360, 0 fail, 1 inconcl., 91 skip. Format OK. |
+| **Verified** | EditMode 7273/7365, 0 fail, 1 inconcl., 91 skip. Format OK. |
 
 ## What works
 

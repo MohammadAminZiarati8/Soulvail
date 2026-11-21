@@ -10,7 +10,8 @@ namespace Soulvail.Core.Ai;
 
 public sealed class BuriedKingBehaviour : IEnemyBehaviour
 {
-    private enum State { Ready, SweepTell, CastTell, Outbound, Advance, RecallTell, Returning, SlamTell, Recovery, Dead }
+    private enum State { Ready, SweepTell, CastTell, Outbound, Advance, RecallTell, Returning, FractureTell, SlamTell, Recovery, Dead }
+    private enum ReturnPhase { Recall, Reclaim, Shattered }
 
     private readonly EnemyAgent _agent;
     private readonly Stat _sweepReach = new(4f);
@@ -23,9 +24,12 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _advanceTime = new(1.6f);
     private readonly Stat _catchRecovery = new(2.1f);
     private readonly Stat _reclaimThreshold = new(0.66f);
+    private readonly Stat _shatteredThreshold = new(0.33f);
+    private readonly Stat _fractureTell = new(1f);
     private readonly Stat _slamTell = new(0.9f);
     private readonly Stat _slamRadius = new(3.5f);
     private readonly Stat _slamRecovery = new(2.4f);
+    private readonly Stat _shatteredRecovery = new(2.7f);
     private readonly Stat _minimumCastLength = new(4f);
     private readonly Stat _landingSnap = new(1.5f);
     private readonly Stat _weaponClearance = new(2f);
@@ -43,8 +47,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private float _backOffElapsed;
     private int _sweeps;
     private bool _hit;
-    private bool _reclaimUnlocked;
-    private bool _slamOnCatch;
+    private ReturnPhase _unlockedPhase;
+    private ReturnPhase _castPhase;
 
     public BuriedKingBehaviour(EnemyAgent agent)
     {
@@ -55,7 +59,16 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
     public void Tick(in EnemyTickContext ctx)
     {
-        _reclaimUnlocked |= _agent.Health.Fraction <= _reclaimThreshold.Value;
+        float hp = _agent.Health.Fraction;
+        if (_unlockedPhase < ReturnPhase.Shattered && hp <= _shatteredThreshold.Value)
+        {
+            _unlockedPhase = ReturnPhase.Shattered;
+        }
+        else if (_unlockedPhase == ReturnPhase.Recall && hp <= _reclaimThreshold.Value)
+        {
+            _unlockedPhase = ReturnPhase.Reclaim;
+        }
+
         EnemyBlackboard board = _agent.Blackboard;
         Vector3 hero = ctx.Player.Blackboard.PlayerPosition;
         Vector2 velocity = Vector2.Zero;
@@ -84,6 +97,16 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             case State.Advance:
                 velocity = Advance(ctx, board);
                 break;
+            case State.FractureTell:
+                if (Elapsed(ctx.Dt))
+                {
+                    ResolveFracture(ctx, hero);
+                }
+                else
+                {
+                    Publish(ctx.Events, BuriedKingPose.FractureTell, fractureProgress: 1f - _remaining / _fractureTell.Value);
+                }
+                break;
             case State.SlamTell:
                 if (Elapsed(ctx.Dt))
                 {
@@ -110,8 +133,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _remaining = _distanceTravelled = _backOffElapsed = 0f;
         _sweeps = 0;
         _hit = false;
-        _reclaimUnlocked = false;
-        _slamOnCatch = false;
+        _unlockedPhase = _castPhase = ReturnPhase.Recall;
     }
 
     internal void ClearEncounter(IDomainEvents events)
@@ -135,7 +157,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         if (board.HasLineOfSight && !close
             && TryLanding(ctx, board.SelfPosition, hero, out Vector3 landing))
         {
-            _slamOnCatch = _reclaimUnlocked;
+            _castPhase = _unlockedPhase;
             _sweeps = 0;
             _backOffElapsed = 0f;
             Lock(ctx, State.CastTell, BuriedKingPose.CastTell, board.SelfPosition, landing, _laneTell.Value);
@@ -233,17 +255,10 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         float length = lane.Length();
         bool returning = _state == State.Returning;
         float next = MathF.Min(length, _distanceTravelled + _flightSpeed.Value * ctx.Dt);
-        if (!_hit && next > _distanceTravelled)
+        if (!_hit && next > _distanceTravelled && IsInLane(hero, lane / length, _distanceTravelled, next))
         {
-            Vector2 axis = lane / length;
-            Vector2 offset = Ground(hero - _start);
-            float along = Vector2.Dot(offset, axis);
-            float across = MathF.Abs(offset.X * axis.Y - offset.Y * axis.X);
-            if (along >= _distanceTravelled && along <= next && across <= _laneWidth.Value * 0.5f)
-            {
-                _hit = true;
-                ctx.Player.ApplyDamage(returning ? _returnDamage.Value : _outboundDamage.Value, ctx.Now);
-            }
+            _hit = true;
+            ctx.Player.ApplyDamage(returning ? _returnDamage.Value : _outboundDamage.Value, ctx.Now);
         }
 
         _distanceTravelled = next;
@@ -254,14 +269,19 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
         else if (returning)
         {
-            if (_slamOnCatch)
+            switch (_castPhase)
             {
-                Vector3 center = _agent.Blackboard.SelfPosition;
-                Lock(ctx, State.SlamTell, BuriedKingPose.SlamTell, center, center, _slamTell.Value);
-            }
-            else
-            {
-                Recover(ctx, _catchRecovery.Value);
+                case ReturnPhase.Shattered:
+                    _state = State.FractureTell;
+                    _remaining = _fractureTell.Value;
+                    Publish(ctx.Events, BuriedKingPose.FractureTell);
+                    break;
+                case ReturnPhase.Reclaim:
+                    StartSlam(ctx, _agent.Blackboard.SelfPosition);
+                    break;
+                default:
+                    Recover(ctx, _catchRecovery.Value);
+                    break;
             }
         }
         else
@@ -272,6 +292,29 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
     }
 
+    private bool IsInLane(Vector3 hero, Vector2 axis, float from, float to)
+    {
+        Vector2 offset = Ground(hero - _start);
+        float along = Vector2.Dot(offset, axis);
+        float across = MathF.Abs(offset.X * axis.Y - offset.Y * axis.X);
+        return along >= from && along <= to && across <= _laneWidth.Value * 0.5f;
+    }
+
+    private void ResolveFracture(in EnemyTickContext ctx, Vector3 hero)
+    {
+        Vector2 lane = Ground(_end - _start);
+        float length = lane.Length();
+        if (length > 0f && IsInLane(hero, lane / length, 0f, length))
+        {
+            ctx.Player.ApplyDamage(_returnDamage.Value, ctx.Now);
+        }
+
+        StartSlam(ctx, _end);
+    }
+
+    private void StartSlam(in EnemyTickContext ctx, Vector3 center) =>
+        Lock(ctx, State.SlamTell, BuriedKingPose.SlamTell, center, center, _slamTell.Value);
+
     private void ResolveSlam(in EnemyTickContext ctx, Vector3 hero)
     {
         float radius = _slamRadius.Value;
@@ -280,7 +323,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             ctx.Player.ApplyDamage(_slamDamage.Value, ctx.Now);
         }
 
-        Recover(ctx, _slamRecovery.Value);
+        Recover(ctx, _castPhase == ReturnPhase.Shattered ? _shatteredRecovery.Value : _slamRecovery.Value);
     }
 
     private void Lock(in EnemyTickContext ctx, State state, BuriedKingPose pose, Vector3 start, Vector3 end, float duration)
@@ -320,9 +363,9 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
     }
 
-    private void Publish(IDomainEvents events, BuriedKingPose pose, Vector3 weapon = default) =>
+    private void Publish(IDomainEvents events, BuriedKingPose pose, Vector3 weapon = default, float fractureProgress = 0f) =>
         events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _laneWidth.Value, _sweepDegrees.Value,
-            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f));
+            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f, fractureProgress));
 
     private static Vector2 Ground(Vector3 vector) => new(vector.X, vector.Z);
 }

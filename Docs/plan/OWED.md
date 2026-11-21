@@ -943,3 +943,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - [ ] [Editor] Spawn Buried King from the development overlay. Cross 66% during a throw and verify the next throw is the first to end in a red-orange slam circle.
 - [ ] [Editor] Check the locked circle at the arena edge, melee uptime in the 2.4 s recovery, and that killing the King during the warning clears the circle and scepter.
+
+
+## SS-20c — Buried King Shattered Return
+
+1. [Editor] Spawn the Buried King from the development overlay. Cross 33% mid-cast. After the next cast, check that the fracture pulses across the whole locked recall lane for 1.0 s and gives way to the slam circle. Try it near the arena edge.
+2. [Editor] Kill the King during each warning. Check that the scepter and all floor markings disappear immediately.

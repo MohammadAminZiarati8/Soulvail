@@ -9,9 +9,9 @@ _2026-11-21._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-20b, Reclaim Slam. |
+| **Last built** | SS-20c, Shattered Return. |
 | **Next task** | SS-19e on owner go. |
-| **Verified** | EditMode 7273/7365, 0 fail, 1 inconcl., 91 skip. Format OK. |
+| **Verified** | EditMode 7286/7378, 0 fail, 1 inconcl., 91 skip. Format OK. |
 
 ## What works
 

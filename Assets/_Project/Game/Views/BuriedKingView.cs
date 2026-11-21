@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Object = UnityEngine.Object;
 
 namespace Soulvail.Game.Views;
@@ -18,6 +19,10 @@ internal sealed class BuriedKingView : IDisposable
     private readonly LineRenderer _weapon;
     private readonly LineRenderer _tell;
     private readonly LineRenderer _landing;
+    private readonly Material _fractureMaterial;
+    private readonly Mesh _fractureMesh;
+    private readonly MeshRenderer _fracture;
+    private readonly Vector3[] _fractureCorners = new Vector3[4];
     private readonly IDisposable _stateSubscription;
 
     public BuriedKingView(Transform body, int id, DomainEventHub hub)
@@ -30,6 +35,22 @@ internal sealed class BuriedKingView : IDisposable
         _weapon = CreateLine("Scepter", _sandstone, 0.13f);
         _tell = CreateLine("Locked warning", _danger, 0.09f);
         _landing = CreateLine("Landing marker", _danger, 0.09f);
+        _fractureMaterial = MakeMaterial(_danger.color);
+        _fractureMaterial.SetFloat("_Surface", 1f);
+        _fractureMaterial.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+        _fractureMaterial.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+        _fractureMaterial.SetFloat("_ZWrite", 0f);
+        _fractureMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        _fractureMaterial.renderQueue = (int)RenderQueue.Transparent;
+        // World-space floor geometry is independent of the body and its scale.
+        var floor = new GameObject("Buried King fracture");
+        _fractureMesh = new Mesh { name = "Buried King fracture", vertices = _fractureCorners };
+        _fractureMesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+        floor.AddComponent<MeshFilter>().sharedMesh = _fractureMesh;
+        _fracture = floor.AddComponent<MeshRenderer>();
+        _fracture.sharedMaterial = _fractureMaterial;
+        _fracture.shadowCastingMode = ShadowCastingMode.Off;
+        _fracture.enabled = false;
         HoldWeapon();
         _stateSubscription = hub.Subscribe<BuriedKingStateChanged>(OnState);
     }
@@ -42,9 +63,17 @@ internal sealed class BuriedKingView : IDisposable
             _root.SetActive(false);
         }
 
+        if (_fracture != null)
+        {
+            _fracture.enabled = false;
+            Destroy(_fracture.gameObject);
+        }
+
         Destroy(_root);
         Destroy(_danger);
         Destroy(_sandstone);
+        Destroy(_fractureMesh);
+        Destroy(_fractureMaterial);
     }
 
     private void OnState(BuriedKingStateChanged state)
@@ -54,8 +83,15 @@ internal sealed class BuriedKingView : IDisposable
             return;
         }
 
+        if (state.Pose == BuriedKingPose.FractureTell && _fracture.enabled)
+        {
+            PulseFracture(state.FractureProgress);
+            return;
+        }
+
         _tell.enabled = false;
         _landing.enabled = false;
+        _fracture.enabled = false;
         Vector3 start = state.Start.ToUnity();
         Vector3 end = state.End.ToUnity();
         Vector3 planar = Vector3.ProjectOnPlane(end - start, Vector3.up);
@@ -80,6 +116,11 @@ internal sealed class BuriedKingView : IDisposable
             case BuriedKingPose.RecallTell:
                 DrawEmbedded(start);
                 DrawLane(start, end, state.Width);
+                break;
+            case BuriedKingPose.FractureTell:
+                HoldWeapon();
+                DrawLane(start, end, state.Width);
+                DrawFracture(start, end, state.Width, state.FractureProgress);
                 break;
             case BuriedKingPose.SlamTell:
                 HoldWeapon();
@@ -133,6 +174,29 @@ internal sealed class BuriedKingView : IDisposable
             float angle = 360f * i / ArcSegments;
             _landing.SetPosition(i, center + Quaternion.AngleAxis(angle, Vector3.up) * Vector3.forward * radius);
         }
+    }
+
+    private void DrawFracture(Vector3 start, Vector3 end, float width, float progress)
+    {
+        Vector3 halfWidth = Vector3.Cross(Vector3.up, end - start).normalized * (width * 0.5f);
+        start += Vector3.up * FloorOffset;
+        end += Vector3.up * FloorOffset;
+        _fractureCorners[0] = start - halfWidth;
+        _fractureCorners[1] = end - halfWidth;
+        _fractureCorners[2] = end + halfWidth;
+        _fractureCorners[3] = start + halfWidth;
+        _fractureMesh.vertices = _fractureCorners;
+        _fractureMesh.RecalculateBounds();
+        PulseFracture(progress);
+        _fracture.enabled = true;
+    }
+
+    private void PulseFracture(float progress)
+    {
+        Color color = _danger.color;
+        float pulse = Mathf.Cos(progress * (4f * Mathf.PI));
+        color.a = Mathf.Lerp(0.25f, 0.75f, (1f - pulse) * 0.5f);
+        _fractureMaterial.color = color;
     }
 
     private void HoldWeapon() =>

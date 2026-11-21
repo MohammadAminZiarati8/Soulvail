@@ -274,6 +274,112 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SweepTell));
     }
 
+    [TestCase(false, 2.09f)]
+    [TestCase(true, 2.39f)]
+    public void ShatteredThreshold_DuringCastPreservesTheSelectedPhase(bool reclaim, float beforeRecoveryEnds)
+    {
+        if (reclaim)
+        {
+            CrossReclaimThreshold();
+        }
+
+        Tick(0f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
+        SetKingHealthFraction(0.33f);
+        Tick(1f);
+        _king.Health.Heal(_king.Health.MaxHp.Value);
+        Assert.That(_king.Health.Fraction, Is.EqualTo(1f));
+        FinishCatch();
+
+        if (reclaim)
+        {
+            Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+            Tick(0.9f);
+        }
+
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        _hero = _position - 8f * Vector3.UnitZ;
+        _ground = new[] { _hero };
+        Tick(beforeRecoveryEnds);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        Tick(0.02f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
+        Tick(1f);
+        FinishCatch();
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.FractureTell));
+    }
+
+    [TestCase(0.331f, BuriedKingPose.SlamTell)]
+    [TestCase(0.33f, BuriedKingPose.FractureTell)]
+    [TestCase(0.32f, BuriedKingPose.FractureTell)]
+    public void ShatteredThreshold_AppliesAtCastSelection(float fraction, BuriedKingPose catchPose)
+    {
+        SetKingHealthFraction(fraction);
+        Tick(0f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
+        Tick(1f);
+        FinishCatch();
+        Assert.That(LastPose().Pose, Is.EqualTo(catchPose));
+    }
+
+    [TestCase(0.5f, 0.79f, 1)]
+    [TestCase(0.5f, -0.81f, 0)]
+    [TestCase(-0.05f, 0f, 0)]
+    [TestCase(1.05f, 0f, 0)]
+    public void Fracture_ReusesLockedRecallRectangleAndHitsOnce(float along, float across, int expectedHits)
+    {
+        BuriedKingStateChanged recall = StartFracture();
+        AssertPath(BuriedKingPose.FractureTell, recall);
+        Assert.That(LastPose().FractureProgress, Is.Zero);
+
+        Vector3 side = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, recall.End - recall.Start));
+        _position -= 5f * Vector3.UnitX;
+        _hero = Vector3.Lerp(recall.Start, recall.End, along) + side * across + Vector3.UnitY;
+        Tick(0.99f);
+        AssertPath(BuriedKingPose.FractureTell, recall);
+        Assert.That(LastPose().FractureProgress, Is.EqualTo(0.99f).Within(0.0001f));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
+        Tick(0.02f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Assert.That(LastPose().Start, Is.EqualTo(recall.End));
+        Assert.That(_player.Health.Current, Is.EqualTo(100f - 20f * expectedHits));
+        Tick(0.4f);
+        Tick(0.4f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(expectedHits));
+    }
+
+    [Test]
+    public void ShatteredReturn_LeavesFullSlamAndRecoveryWindows()
+    {
+        BuriedKingStateChanged recall = StartFracture();
+        Vector3 planted = recall.End;
+        _hero = Vector3.Lerp(recall.Start, planted, 0.9f);
+        Tick(0.99f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.FractureTell));
+        AssertPlantedAndTargetable(planted);
+        Assert.That(_player.Health.Current, Is.EqualTo(100f));
+
+        Tick(0.02f);
+        Assert.That(_player.Health.Current, Is.EqualTo(80f));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Assert.That(LastPose().SlamRadius, Is.EqualTo(3.5f));
+        AssertPlantedAndTargetable(planted);
+        Tick(0.895f);
+        Assert.That(_player.Health.Current, Is.EqualTo(80f));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Tick(0.01f);
+        Assert.That(_player.Health.Current, Is.EqualTo(52f));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        AssertPlantedAndTargetable(planted);
+        Tick(2.697f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        AssertPlantedAndTargetable(planted);
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(2));
+        Tick(0.01f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SweepTell));
+    }
+
     [Test]
     public void Prototype_OnlyKingIsRegisteredAndVulnerable()
     {
@@ -339,6 +445,27 @@ public sealed class BuriedKingBehaviourTests
     {
         StartSlam();
         _hero = _position;
+        AssertDeathClearsEncounter();
+    }
+
+    [TestCase(BuriedKingPose.FractureTell)]
+    [TestCase(BuriedKingPose.SlamTell)]
+    [TestCase(BuriedKingPose.Held)]
+    public void DeathDuringShatteredReturn_ClearsWarningAndPendingHits(BuriedKingPose pose)
+    {
+        BuriedKingStateChanged recall = StartFracture();
+        if (pose is BuriedKingPose.SlamTell or BuriedKingPose.Held)
+        {
+            Tick(1f);
+        }
+
+        if (pose == BuriedKingPose.Held)
+        {
+            Tick(0.9f);
+        }
+
+        Assert.That(LastPose().Pose, Is.EqualTo(pose));
+        _hero = Vector3.Lerp(recall.Start, recall.End, 0.9f);
         AssertDeathClearsEncounter();
     }
 
@@ -411,14 +538,34 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
     }
 
-    private void FinishCatch()
+    private BuriedKingStateChanged StartFracture()
+    {
+        SetKingHealthFraction(0.33f);
+        Tick(0f);
+        Tick(1f);
+        BuriedKingStateChanged recall = FinishCatch();
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.FractureTell));
+        AssertPlantedAndTargetable(recall.End);
+        return recall;
+    }
+
+    private void SetKingHealthFraction(float fraction)
+    {
+        float target = fraction * _king.Health.MaxHp.Value;
+        _enemies.ApplyDamage(_king.Id, _king.Health.Current - target, _now, _player);
+        Assert.That(_king.Health.Fraction, Is.EqualTo(fraction).Within(0.000001f));
+    }
+
+    private BuriedKingStateChanged FinishCatch()
     {
         _hero = new Vector3(4f, 0f, 8f);
         Tick(1f);
-        AdvanceAndArmRecall();
-        _hero = new Vector3(-8f, 0f, -8f);
+        BuriedKingStateChanged recall = AdvanceAndArmRecall();
+        Vector3 side = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, recall.End - recall.Start));
+        _hero = recall.End + 5f * side;
         Tick(1f);
         Tick(1f);
+        return recall;
     }
 
     private void AssertPlantedAndTargetable(Vector3 planted)

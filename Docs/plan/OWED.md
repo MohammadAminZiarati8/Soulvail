@@ -951,3 +951,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 2. [Editor] Kill the King during each warning. Check that the scepter and all floor markings disappear immediately.
 
 - **SS-20d [device]** DT-01 Sunscar 30, Oathbound. Read all five tells at phone scale in the center and near a boundary. Confirm the embedded scepter stays visible and dodge at walking speed.
+
+- SS-20e [device] — Start Sunscar at Stage 30. At phone scale, check that the
+  embedded scepter remains readable against the Dunes floor with the recall lane
+  active. Check the sweep arc, landing marker, fracture pulse and slam circle.

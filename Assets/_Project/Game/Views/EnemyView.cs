@@ -149,6 +149,8 @@ namespace Soulvail.Game.Views
         /// </remarks>
         public Vector3 Velocity => _velocity;
 
+        internal event Action<float> MoveApplied;
+
         /// <summary>
         /// This body's trigger collider, cached once.
         /// </summary>
@@ -332,6 +334,7 @@ namespace Soulvail.Game.Views
             _velocity = MoveBody(intent.Velocity.ToUnity(), dt);
 
             Face(intent.FacingXZ);
+            MoveApplied?.Invoke(dt);
         }
 
         /// <summary>

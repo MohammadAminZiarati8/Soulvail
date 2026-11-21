@@ -172,9 +172,9 @@ MonoBehaviour:
   _diveDamage: 0
   _diveGroundedSeconds: 0
   _diveClimbSeconds: 0
-  _tint: {r: 0.43137255, g: 0.41568628, b: 0.3882353, a: 1}
+  _tint: {r: 1, g: 1, b: 1, a: 1}
   _bodyScale: 1
-  _body: {fileID: 0}
+  _body: {fileID: 355664234729839386, guid: e47dd9970db8c614c9ca85f934b38bb2, type: 3}
   _projectile: {fileID: 0}
   _marksLanding: 0
   _cover: {fileID: 0}

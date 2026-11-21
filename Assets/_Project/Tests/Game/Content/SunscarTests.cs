@@ -1565,7 +1565,7 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void BuriedKing_UsesTheRegisteredPlaceholderAndOwnsHisPhaseChanges()
+    public void BuriedKing_UsesTheRegisteredBodyAndOwnsHisPhaseChanges()
     {
         ContentCatalog catalog = Catalog(Mode("Sunscar"));
         BossSpec boss = catalog.Boss(BuriedKing);
@@ -1573,7 +1573,18 @@ public sealed class SunscarTests
             Is.EqualTo((BuriedKingBehaviour.PrototypeBodyId, true, true)));
         Assert.That(boss.Phases, Has.Count.EqualTo(1));
         EnemyDefinition body = BootEnemies().Single(enemy => enemy.ToSpec().Id == boss.EnemySpecId);
-        Assert.That(body.ToLook().Body, Is.Null);
+        EnemyView view = body.ToLook().Body;
+        Assert.That(view, Is.Not.Null);
+        Assert.That(AssetDatabase.GetAssetPath(view), Is.EqualTo(Root + "Prefabs/Enemies/BuriedKing.prefab"));
+        SkinnedMeshRenderer renderer = view.GetComponentInChildren<SkinnedMeshRenderer>();
+        Assert.That(renderer, Is.Not.Null);
+        Assert.That(renderer.sharedMaterial.mainTexture, Is.Not.Null);
+        Assert.That(renderer.bones.Any(bone => bone.name == "hand.r"), Is.True);
+        Assert.That(view.GetComponentsInChildren<Transform>().Any(bone => bone.name == "handslot.r"), Is.True);
+        EnemyView placeholder = AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Enemies/Enemy.prefab")
+            .GetComponent<EnemyView>();
+        Assert.That((view.Body.center, view.Body.radius, view.Body.height),
+            Is.EqualTo((placeholder.Body.center, placeholder.Body.radius, placeholder.Body.height)));
         Assert.That(body.ToSpec().ContactDamage, Is.Zero);
         LocKey name = body.ToSpec().NameKey;
         Assert.That(AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset")

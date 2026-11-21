@@ -364,7 +364,7 @@ public sealed class EnemyViews : IDisposable
         view.GetComponent<PriestMendView>()?.Follow(this);
 
         BuriedKingView king = evt.SpecId == BuriedKingBehaviour.PrototypeBodyId
-            ? new BuriedKingView(view.transform, evt.Id, _hub) : null;
+            ? new BuriedKingView(view, evt.Id, _hub) : null;
         _byId[evt.Id] = new Rental(view, pool, king);
 
         // Body resolves itself when Awake has not run, which outside play mode it never does

@@ -1039,3 +1039,5 @@ MonoBehaviour:
     _text: Sunscar Hierophant
   - _key: enemy.carrion_matriarch.name
     _text: Carrion Matriarch
+  - _key: enemy.buried_king.name
+    _text: Buried King

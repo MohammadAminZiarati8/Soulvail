@@ -9,9 +9,9 @@ _2026-11-21._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-20c, Shattered Return. |
+| **Last built** | SS-20d, Buried King Stage 30. |
 | **Next task** | SS-19e on owner go. |
-| **Verified** | EditMode 7286/7378, 0 fail, 1 inconcl., 91 skip. Format OK. |
+| **Verified** | EditMode 7293/7385, 0 fail, 1 inconcl., 91 skip. Format OK. |
 
 ## What works
 
@@ -19,7 +19,7 @@ Jungle clear unlocks Sunscar. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Cyan portals. Jungle: Warden/Croaker, Mother 10/Warlord 15/Thornheart 20.
 Scripted 1–29. Boss adds die with boss, 0 XP.
-Sunscar: 24 regular stages, 2–5 waves, 5–35 enemies. Tune XP/rewards for L30 after 24.
+Sunscar: 24 wave stages. King 30 clears the run. DT-01 L30. Tuning open.
 Thornheart: spokes/pods/slam/heart ×2. Mother: shields/lobs/spray/pod.
 Stalker 22+ lurks. Thornweaver 24+: 10 m, ≤2 walls past you; die with it.
 Gravemaw 25: burrow past cover/rise open; ring, bite/throw, tremor/rocks. 50%: 2 rings/crack Frogs. 986 HP/4 pillars.

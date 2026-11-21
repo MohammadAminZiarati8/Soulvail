@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Soulvail.Core.Ai;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Events;
@@ -50,6 +51,7 @@ public sealed class SunscarTests
     private static readonly ContentId Caller = new("enemy.storm-caller");
     private static readonly ContentId Vulture = new("enemy.vulture");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
+    private static readonly ContentId BuriedKing = new("boss.buried_king");
 
     [Test]
     public void Sunscar_Mode_ListedAfterJungle()
@@ -71,10 +73,10 @@ public sealed class SunscarTests
                 (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
                 (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Vulture, 22, 0),
             }));
-        Assert.That(mode.BossRoster, Has.Count.EqualTo(4));
+        Assert.That(mode.BossRoster, Has.Count.EqualTo(5));
         for (int stage = 1; stage <= mode.FinalStage; stage++)
         {
-            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage is 5 or 10 or 15 or 25));
+            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage is 5 or 10 or 15 or 25 or 30));
             if (stage == 5)
             {
                 Assert.That(boss.Value, Is.EqualTo("boss.duneclaw"));
@@ -90,6 +92,10 @@ public sealed class SunscarTests
             else if (stage == 25)
             {
                 Assert.That(boss.Value, Is.EqualTo("boss.carrion_matriarch"));
+            }
+            else if (stage == 30)
+            {
+                Assert.That(boss, Is.EqualTo(BuriedKing));
             }
         }
         Assert.That(mode.ScriptedStages.Select(script => script.Stage),
@@ -1559,6 +1565,213 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void BuriedKing_UsesTheRegisteredPlaceholderAndOwnsHisPhaseChanges()
+    {
+        ContentCatalog catalog = Catalog(Mode("Sunscar"));
+        BossSpec boss = catalog.Boss(BuriedKing);
+        Assert.That((boss.EnemySpecId, boss.SpawnsCentral, boss.UsesAuthoredMaxHp),
+            Is.EqualTo((BuriedKingBehaviour.PrototypeBodyId, true, true)));
+        Assert.That(boss.Phases, Has.Count.EqualTo(1));
+        EnemyDefinition body = BootEnemies().Single(enemy => enemy.ToSpec().Id == boss.EnemySpecId);
+        Assert.That(body.ToLook().Body, Is.Null);
+        Assert.That(body.ToSpec().ContactDamage, Is.Zero);
+        LocKey name = body.ToSpec().NameKey;
+        Assert.That(AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset")
+            .ToDictionary()[name], Is.EqualTo("Buried King"));
+        Assert.That(AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset")
+            .ToDictionary()[name], Is.Not.Empty);
+    }
+
+    [TestCase(29)]
+    [TestCase(30)]
+    public void Stage30_EitherEntrySpawnsOnlyTheBuriedKingAndFinishesSunscarOnce(int startStage)
+    {
+        ModeSpec mode = Mode("Sunscar");
+        ContentCatalog authored = Catalog(mode);
+        CharacterDefinition ranger = Object.Instantiate(
+            AssetDatabase.LoadAssetAtPath<CharacterDefinition>(Root + "Data/Characters/Ranger.asset"));
+        try
+        {
+            // Fast kills keep this a stage-flow test. Damage and health here are fixture values.
+            var settings = new SerializedObject(ranger);
+            settings.FindProperty("_maxHp").floatValue = 100000f;
+            settings.FindProperty("_weaponDamage").floatValue = 10000f;
+            settings.ApplyModifiedPropertiesWithoutUndo();
+            var catalog = new ContentCatalog(new[] { ranger.ToSpec() }, authored.Enemies,
+                new[] { mode }, bosses: authored.Bosses);
+            var random = new SeededRandom(12);
+            var events = new RecordingEvents();
+            var recorder = new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), events);
+            var session = new RunSession(catalog, random, events, new RecordingIntents(), recorder, 64, 28, 64);
+            RunSnapshot restore = new TestStart(catalog).At(Sunscar, Ranger, random.Seed, random.Capture(), startStage);
+            session.Start(new RunConfig(Sunscar, Ranger, random.Seed, startStage, SpawnPlan.Empty, restore));
+            if (startStage == 30)
+            {
+                Assert.That(session.State.Level, Is.EqualTo(30));
+            }
+
+            ArenaView arena = Arena(DunesPath);
+            NumericsVector3 start = arena.PlayerStart.ToNum();
+            NumericsVector3 gate = arena.GatePosition.ToNum();
+            NumericsVector3[] points = arena.SpawnPoints.Select(point => point.ToNum()).ToArray();
+            var world = new WorldSnapshot(64);
+            bool sawLivingKing = false;
+            int waveSpawns = 0;
+            int waveTelegraphs = 0;
+
+            // Walk the Stage 29 gate through normal stage flow. No Stage 30 restore on this path.
+            for (int frame = 0; frame < 32 * 160 && session.IsRunning; frame++)
+            {
+                world.Clear();
+                world.Dt = 1f / 32f;
+                world.SpawnPoints = points;
+                world.HasGate = true;
+                world.GatePosition = gate;
+                world.PlayerPosition = session.State.StageIndex == 29 &&
+                    events.Count<StageCleared>() > 0 ? gate : start;
+
+                foreach (EnemySpawned spawn in events.Of<EnemySpawned>())
+                {
+                    if (session.State.IsEnemyAlive(spawn.Id))
+                    {
+                        world.AddEnemy() = new EnemySense
+                        {
+                            Id = spawn.Id,
+                            Position = start + (3f * NumericsVector3.UnitZ),
+                            HasLineOfSight = true,
+                        };
+                    }
+                }
+
+                if (session.State.StageIndex == 29)
+                {
+                    waveSpawns = events.Count<EnemySpawned>();
+                    waveTelegraphs = events.Count<SpawnTelegraphed>();
+                }
+                else if (!sawLivingKing && world.EnemyCount > 0)
+                {
+                    sawLivingKing = true;
+                    Assert.That(events.Count<ModeFinished>(), Is.Zero);
+                    Assert.That(events.Of<StageCleared>().Any(clear => clear.Stage == 30), Is.False);
+                }
+
+                session.Tick(world);
+            }
+
+            Assert.That(session.IsRunning, Is.False);
+            session.End();
+            Assert.That(sawLivingKing, Is.True);
+            Assert.That(events.Of<StageArrived>().Select(arrival => (arrival.Stage, arrival.ArenaId)),
+                Is.EqualTo(Enumerable.Range(startStage, 31 - startStage).Select(stage => (stage, Dunes))));
+            WaveStarted duel = events.Of<WaveStarted>().Single(wave => wave.Stage == 30);
+            Assert.That((duel.Wave, duel.WaveCount), Is.EqualTo((1, 1)));
+            Assert.That(events.Count<SpawnTelegraphed>(), Is.EqualTo(waveTelegraphs));
+            EnemySpawned king = events.Of<EnemySpawned>().Skip(waveSpawns).Single();
+            Assert.That((king.SpecId, king.Position),
+                Is.EqualTo((BuriedKingBehaviour.PrototypeBodyId, new NumericsVector3(0f, 0f, 2f))));
+            Assert.That(events.Of<EnemyDied>().Count(death => death.Id == king.Id && death.SpecId == king.SpecId),
+                Is.EqualTo(1));
+            StageCleared clear = events.Of<StageCleared>().Single(row => row.Stage == 30);
+            Assert.That(clear.NextArenaId, Is.EqualTo(default(ContentId)));
+            ModeFinished finish = events.Single<ModeFinished>();
+            Assert.That((finish.ModeId, finish.FinalStage), Is.EqualTo((Sunscar, 30)));
+            Assert.That(events.Count<RunEnded>(), Is.EqualTo(1));
+            Assert.That(events.Count<PlayerDied>(), Is.Zero);
+        }
+        finally
+        {
+            Object.DestroyImmediate(ranger);
+        }
+    }
+
+    [TestCase(1, 0)]
+    [TestCase(-1, 0)]
+    [TestCase(0, 1)]
+    [TestCase(0, -1)]
+    public void BuriedKing_CastAndRecallStayOnWalkableGroundNearEachDunesEdge(int x, int z)
+    {
+        var offset = new Vector3(2000f, 0f, 2000f);
+        GameObject room = Object.Instantiate(Arena(DunesPath).gameObject, offset, Quaternion.identity);
+        try
+        {
+            var arena = room.GetComponent<ArenaView>();
+            arena.Surface.AddData();
+            var ground = new OpenGroundSense(LayerMask.GetMask("Cover"), null);
+            ground.Sense(arena);
+            Vector3 rim = offset + (16f * new Vector3(x, 0f, z));
+            Vector3 tangent = new Vector3(-z, 0f, x);
+            Vector3 hero = rim + (4f * tangent);
+            Vector3 boss = rim - (4f * tangent);
+            var path = new NavMeshPath();
+            Assert.That(NavMesh.CalculatePath(offset, boss, NavMesh.AllAreas, path), Is.True);
+            Assert.That(path.status, Is.EqualTo(NavMeshPathStatus.PathComplete));
+            Assert.That(NavMesh.Raycast(boss, hero, out _, NavMesh.AllAreas), Is.False);
+
+            ContentCatalog catalog = Catalog(Mode("Sunscar"));
+            var random = new SeededRandom(12);
+            var events = new RecordingEvents();
+            var intents = new RecordingIntents();
+            var recorder = new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), events);
+            var session = new RunSession(catalog, random, events, intents, recorder, 64, 28, 64);
+            session.Start(new RunConfig(Sunscar, Ranger, random.Seed, 30, SpawnPlan.Empty, restore: null));
+            const float frameTime = 1f / 60f;
+            var world = new WorldSnapshot(64)
+            {
+                Dt = frameTime,
+                PlayerPosition = arena.PlayerStart.ToNum(),
+                SpawnPoints = arena.SpawnPoints.Select(point => point.ToNum()).ToArray(),
+            };
+            for (int frame = 0; frame < 240 && events.Count<EnemySpawned>() == 0; frame++)
+            {
+                session.Tick(world);
+                intents.Clear();
+            }
+
+            EnemySpawned king = events.Single<EnemySpawned>();
+            for (int frame = 0; frame < 360; frame++)
+            {
+                world.EnemyCount = 0;
+                world.PlayerPosition = hero.ToNum();
+                world.OpenGround = ground.Spots;
+                world.AddEnemy() = new EnemySense
+                {
+                    Id = king.Id,
+                    Position = boss.ToNum(),
+                    HasLineOfSight = true,
+                };
+                session.Tick(world);
+                if (events.Of<BuriedKingStateChanged>().Any(state => state.Pose == BuriedKingPose.RecallTell))
+                {
+                    break;
+                }
+
+                foreach (var move in intents.EnemyMoves)
+                {
+                    boss += frameTime * move.Velocity.ToUnity();
+                }
+
+                intents.Clear();
+            }
+
+            BuriedKingStateChanged cast = events.Of<BuriedKingStateChanged>()
+                .Single(state => state.Pose == BuriedKingPose.CastTell);
+            BuriedKingStateChanged recall = events.Of<BuriedKingStateChanged>()
+                .Single(state => state.Pose == BuriedKingPose.RecallTell);
+            Assert.That(NumericsVector3.Distance(cast.End, hero.ToNum()), Is.LessThanOrEqualTo(OpenGroundSense.Step));
+            Assert.That(recall.Start, Is.EqualTo(cast.End));
+            Assert.That(recall.End, Is.EqualTo(boss.ToNum()));
+            Assert.That(ground.Spots, Does.Contain(cast.End));
+            Assert.That(NavMesh.Raycast(cast.Start.ToUnity(), cast.End.ToUnity(), out _, NavMesh.AllAreas), Is.False);
+            Assert.That(NavMesh.Raycast(recall.Start.ToUnity(), recall.End.ToUnity(), out _, NavMesh.AllAreas), Is.False);
+            session.End();
+        }
+        finally
+        {
+            Object.DestroyImmediate(room);
+        }
+    }
+
+    [Test]
     public void Courtyard_Untouched()
     {
         var courtyard = new ContentId("arena.ashen-reach.courtyard");
@@ -1585,7 +1798,7 @@ public sealed class SunscarTests
             var panel = root.AddComponent<TestStartPanel>();
             panel.Construct(pending, loader, catalog, menu);
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            typeof(TestStartPanel).GetField("_stage", flags).SetValue(panel, 1);
+            typeof(TestStartPanel).GetField("_stage", flags).SetValue(panel, 30);
             typeof(TestStartPanel).GetMethod("CyclePlace", flags).Invoke(panel, new object[] { 1 });
             typeof(TestStartPanel).GetMethod("Begin", flags).Invoke(panel, null);
 
@@ -1593,7 +1806,7 @@ public sealed class SunscarTests
             Assert.That(pending.Snapshot.HasValue, Is.True);
             Assert.That(pending.ModeId, Is.EqualTo(Sunscar));
             Assert.That(pending.CharacterId, Is.EqualTo(Ranger));
-            Assert.That(pending.Snapshot.Value.StageIndex, Is.EqualTo(1));
+            Assert.That(pending.Snapshot.Value.StageIndex, Is.EqualTo(30));
             Assert.That(menu.SelectedMode, Is.EqualTo(Jungle));
         }
         finally
@@ -1615,19 +1828,19 @@ public sealed class SunscarTests
     private static ContentCatalog Catalog(params ModeSpec[] modes) =>
         new(new[] { AssetDatabase.LoadAssetAtPath<CharacterDefinition>(Root + "Data/Characters/Ranger.asset").ToSpec() },
             BootEnemies().Select(enemy => enemy.ToSpec()).ToArray(), modes: modes,
-            bosses: new[] { "DuneclawBoss", "ShardbackBoss", "HierophantBoss", "CarrionMatriarchBoss" }
-                .Select(name => AssetDatabase.LoadAssetAtPath<BossDefinition>(Root + $"Data/Enemies/{name}.asset").ToSpec())
-                .ToArray());
+            bosses: BootDefinitions<BossDefinition>("_bosses").Select(boss => boss.ToSpec()).ToArray());
 
-    private static EnemyDefinition[] BootEnemies()
+    private static EnemyDefinition[] BootEnemies() => BootDefinitions<EnemyDefinition>("_enemies");
+
+    private static T[] BootDefinitions<T>(string field) where T : ScriptableObject
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Root + "Prefabs/Composition/BootScope.prefab");
         var serialized = new SerializedObject(prefab.GetComponent<BootScope>());
-        SerializedProperty enemies = serialized.FindProperty("_enemies");
-        var definitions = new EnemyDefinition[enemies.arraySize];
+        SerializedProperty rows = serialized.FindProperty(field);
+        var definitions = new T[rows.arraySize];
         for (int i = 0; i < definitions.Length; i++)
         {
-            definitions[i] = (EnemyDefinition)enemies.GetArrayElementAtIndex(i).objectReferenceValue;
+            definitions[i] = (T)rows.GetArrayElementAtIndex(i).objectReferenceValue;
         }
 
         return definitions;

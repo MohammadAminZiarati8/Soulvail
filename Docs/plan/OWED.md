@@ -949,3 +949,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 1. [Editor] Spawn the Buried King from the development overlay. Cross 33% mid-cast. After the next cast, check that the fracture pulses across the whole locked recall lane for 1.0 s and gives way to the slam circle. Try it near the arena edge.
 2. [Editor] Kill the King during each warning. Check that the scepter and all floor markings disappear immediately.
+
+- **SS-20d [device]** DT-01 Sunscar 30, Oathbound. Read all five tells at phone scale in the center and near a boundary. Confirm the embedded scepter stays visible and dodge at walking speed.

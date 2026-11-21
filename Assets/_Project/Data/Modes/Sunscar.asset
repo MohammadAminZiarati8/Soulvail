@@ -113,6 +113,9 @@ MonoBehaviour:
   - _bossId: boss.carrion_matriarch
     _everyNStages: 0
     _atStage: 25
+  - _bossId: boss.buried_king
+    _everyNStages: 0
+    _atStage: 30
   _scriptedStages:
   - _stage: 1
     _spawns:

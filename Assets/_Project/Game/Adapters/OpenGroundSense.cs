@@ -10,7 +10,8 @@ namespace Soulvail.Game.Adapters;
 public sealed class OpenGroundSense
 {
     public const float Step = 1f, CoverClearance = 1f, FloorProbe = 0.3f;
-    public const int MaxSpots = 1024;
+    // The Dunes source bounds span 39 lattice columns and rows. Keep the far rim in the sample.
+    public const int MaxSpots = 2048;
 
     private readonly LayerMask _cover;
     private readonly CoverViews _covers;

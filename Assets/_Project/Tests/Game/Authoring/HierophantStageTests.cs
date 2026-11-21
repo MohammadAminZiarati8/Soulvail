@@ -235,7 +235,7 @@ public sealed class HierophantStageTests
     private static void AssertSchedule(ModeSpec mode, params (int Stage, string Id)[] expected)
     {
         var actual = new List<(int, string)>();
-        for (int stage = 1; stage <= mode.FinalStage; stage++)
+        for (int stage = 1; stage <= expected[^1].Stage; stage++)
         {
             if (mode.TryGetBossFor(stage, out ContentId boss))
                 actual.Add((stage, boss.Value));

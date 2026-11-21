@@ -1037,3 +1037,5 @@ MonoBehaviour:
     _text: Shardback
   - _key: enemy.hierophant.name
     _text: Sunscar Hierophant
+  - _key: enemy.carrion_matriarch.name
+    _text: Carrion Matriarch

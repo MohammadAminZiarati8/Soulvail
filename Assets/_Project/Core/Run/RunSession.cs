@@ -289,6 +289,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
                 agent => new ShardbackBehaviour(agent, new ShardbackStats()),
             [new ContentId("boss.hierophant")] =
                 agent => new HierophantBehaviour(agent, new HierophantStats()),
+            [new ContentId("boss.carrion_matriarch")] =
+                agent => new MatriarchBehaviour(agent, new MatriarchStats(), new ContentId("enemy.vulture")),
             [new ContentId("boss.warden")] =
                 agent => new WardenBehaviour(agent, _shockwaves, _fissures, _random.Misc),
             [new ContentId("boss.croaker")] =

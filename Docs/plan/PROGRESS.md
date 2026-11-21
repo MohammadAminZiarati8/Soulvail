@@ -9,9 +9,9 @@ _2026-11-21._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-19c, Matriarch view. |
-| **Next task** | SS-19d on owner go. |
-| **Verified** | EditMode 7237/7329, 0 fail, 1 inconcl., 91 skip. Format OK. |
+| **Last built** | SS-19d, Matriarch 25. |
+| **Next task** | SS-19e on owner go. |
+| **Verified** | EditMode 7240/7332, 0 fail, 1 inconcl., 91 skip. Format OK. |
 
 ## What works
 

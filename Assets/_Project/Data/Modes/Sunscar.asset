@@ -110,6 +110,9 @@ MonoBehaviour:
   - _bossId: boss.hierophant
     _everyNStages: 0
     _atStage: 15
+  - _bossId: boss.carrion_matriarch
+    _everyNStages: 0
+    _atStage: 25
   _scriptedStages:
   - _stage: 1
     _spawns:

@@ -923,3 +923,8 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
   matches the locked footprint, the four cues are distinct, and both landings shake on a dodge.
 - **[device, deferred]** Check the Dive rim and centre fill near the arena edge at phone size.
   Confirm the silhouettes, airborne shadow and full tells remain readable.
+
+## SS-19d — Carrion Matriarch Stage 25
+
+- **[Editor]** Play a brood cycle in Sunscar Stage 25. Dodge Carrion Dive, use its landing recovery, clear the fight and walk through the north gate into Stage 26.
+- **[Device]** Check the final-phase double Pounce and overlapping brood warnings at normal speed. Both Pounce and Dive landings should produce Gravemaw's shake.

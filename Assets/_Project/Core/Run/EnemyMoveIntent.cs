@@ -65,10 +65,14 @@ public readonly struct EnemyMoveIntent
     /// </remarks>
     public readonly Vector2 FacingXZ;
 
-    public EnemyMoveIntent(int id, Vector3 velocity, Vector2 facingXZ)
+    /// <summary>The reported open-ground point to place an airborne body on at impact.</summary>
+    public readonly Vector3? LandingPosition;
+
+    public EnemyMoveIntent(int id, Vector3 velocity, Vector2 facingXZ, Vector3? landingPosition = null)
     {
         Id = id;
         Velocity = velocity;
         FacingXZ = facingXZ;
+        LandingPosition = landingPosition;
     }
 }

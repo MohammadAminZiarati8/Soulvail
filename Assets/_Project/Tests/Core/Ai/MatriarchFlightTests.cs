@@ -1,0 +1,370 @@
+using System;
+using System.Numerics;
+using NUnit.Framework;
+using Soulvail.Core.Ai;
+using Soulvail.Core.Combat;
+using Soulvail.Core.Content;
+using Soulvail.Core.Events;
+using Soulvail.Core.Ports;
+using Soulvail.Core.Run;
+using Soulvail.Tests.Core.Fakes;
+using Soulvail.Tests.Core.Support;
+
+namespace Soulvail.Tests.Core.Ai;
+
+[TestFixture]
+public sealed class MatriarchFlightTests
+{
+    private static readonly ContentId BroodId = new("enemy.vulture");
+    private static readonly ContentId BossId = new("boss.carrion_matriarch");
+    private static readonly Vector3 Landing = new(1f, 0f, 8f);
+
+    private RecordingEvents _events;
+    private RecordingIntents _intents;
+    private PlayerCombat _player;
+    private EnemySystem _enemies;
+    private EnemyAgent _boss;
+    private BossBehaviour _wrapper;
+    private ProjectileSystem _projectiles;
+    private LaneSystem _lanes;
+    private WorldSnapshot _world;
+    private Vector3[] _open;
+    private Vector3 _hero;
+    private float _now;
+
+    [SetUp]
+    public void SetUp()
+    {
+        _events = new RecordingEvents();
+        Start(_events);
+    }
+
+    [TestCase(34f, 1)]
+    [TestCase(68f, 2)]
+    public void Brood_UnlocksOnPhaseAndCapsLiveSummons(float damage, int phase)
+    {
+        Tick(0f);
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.RuinShove));
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(1));
+        _open = Array.Empty<Vector3>();
+        EnterFlightPhase(damage, phase);
+        Assert.That(_events.Count<MatriarchTellCleared>(), Is.EqualTo(1));
+        Assert.That(_events.Count<MatriarchFlightChanged>(), Is.Zero);
+
+        _open = new[] { new Vector3(4f, 0f, 0f), new Vector3(-4f, 0f, 0f), new Vector3(0f, 0f, -4f) };
+        Tick(0.75f);
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(1));
+        Tick(0.25f);
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(3));
+        Assert.That(_events.Single<MatriarchFlightChanged>().BossId, Is.EqualTo(_boss.Id));
+        Assert.That(_events.Single<MatriarchFlightChanged>().Airborne, Is.True);
+        foreach (EnemyAgent add in _enemies.Registry.Alive[1..])
+        {
+            Assert.That(add.IsSummon, Is.True);
+            Assert.That(add.PaysXp, Is.False);
+            Assert.That(add.Spec.Id, Is.EqualTo(BroodId));
+            Assert.That(add.Position, Is.EqualTo(_open[add.Id - _boss.Id - 1]));
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Flight_StaysUntargetableAndThrowsLockedFeathers(bool cover)
+    {
+        if (cover)
+        {
+            _events.Clear();
+            Start(_events, (from, to) =>
+                from.Z < 3f && to.Z >= 3f ? new Vector3(0f, 0f, 3f) : null);
+        }
+
+        Vector3 second = new(-4f, 0f, 0f);
+        _open = new[] { _open[0], second };
+        EnterFlightPhase();
+        KillAdd(_enemies.Registry.Alive[1]);
+        AssertAloft();
+
+        for (int i = 0; i < 4; i++)
+        {
+            _hero = new Vector3(0f, 0f, 8f);
+            Tick(20f);
+            MatriarchArmed feather = LastArm();
+            Assert.That(feather.Move, Is.EqualTo(MatriarchMove.FeatherSpear));
+            Assert.That(feather.Origin, Is.EqualTo(Vector3.Zero));
+            Assert.That(feather.Target, Is.EqualTo(Vector3.UnitZ * 16f));
+            Assert.That(feather.Width, Is.EqualTo(1.2f));
+            Assert.That(LastProgress(), Is.Zero);
+            Assert.That(_events.Count<MatriarchArmed>(), Is.EqualTo(i + 1));
+
+            Vector2 beforeTurn = _intents.LastEnemyMove.FacingXZ;
+            _hero = new Vector3(8f, 0f, 0f);
+            Tick(0.1f);
+            float turn = MathF.Acos(Math.Clamp(Vector2.Dot(beforeTurn, _intents.LastEnemyMove.FacingXZ), -1f, 1f));
+            Assert.That(turn, Is.EqualTo(27f * MathF.PI / 180f).Within(0.001f));
+            Assert.That(_events.Count<ProjectileFired>(), Is.EqualTo(i));
+            Tick(1f);
+            ProjectileFired fired = _events.Of<ProjectileFired>()[^1];
+            Assert.That(fired.SpecId, Is.EqualTo(_boss.Spec.Id));
+            Assert.That(fired.SourceId, Is.EqualTo(_boss.Id));
+            Assert.That(fired.Target, Is.EqualTo(feather.Target));
+            _hero = new Vector3(0.5f, 0f, 8f);
+            Tick(1f);
+            ProjectileImpacted impact = _events.Of<ProjectileImpacted>()[^1];
+            Assert.That(impact.Hit, Is.EqualTo(!cover));
+            Assert.That(impact.Position.Z, Is.EqualTo(cover ? 3f : 7.67f).Within(0.01f));
+            Assert.That(_player.Health.Current, Is.EqualTo(100f - (cover ? 0f : 16f * (i + 1))));
+        }
+
+        Assert.That(_events.Count<ProjectileImpacted>(), Is.EqualTo(4));
+        Assert.That(_events.Count<EnemySpawned>(), Is.EqualTo(3));
+        Assert.That(_events.Count<MatriarchImpact>(), Is.Zero);
+        AssertAloft();
+    }
+
+    [TestCase(false, false, 68f, 1)]
+    [TestCase(true, false, 100f, 0)]
+    [TestCase(false, true, 100f, 1)]
+    public void LastSummonDeath_StartsOneFullDive(bool dodge, bool defend, float hp, int hitAttempts)
+    {
+        EnterFlightPhase();
+        Tick(3.1f);
+        Assert.That(_events.Count<MatriarchArmed>(), Is.Zero);
+        Tick(0.2f);
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherSpear));
+        KillAdd(_enemies.Registry.Alive[1]);
+        Assert.That(_enemies.PendingXp, Is.Zero);
+        Tick(4f);
+        MatriarchArmed dive = LastArm();
+        Assert.That(dive.Move, Is.EqualTo(MatriarchMove.CarrionDive));
+        Assert.That(dive.Target, Is.EqualTo(Landing));
+        Assert.That(dive.Radius, Is.EqualTo(3.2f));
+        Assert.That(dive.Seconds, Is.EqualTo(1.5f));
+        Assert.That(LastProgress(), Is.Zero);
+        Assert.That(_events.Count<MatriarchTellCleared>(), Is.EqualTo(1));
+        Assert.That(_events.Count<ProjectileFired>(), Is.Zero);
+        AssertAloft();
+
+        _hero = dodge ? new Vector3(-4f, 0f, 0f) : Landing + Vector3.UnitX * 3f;
+        Tick(0.75f);
+        Assert.That(LastProgress(), Is.EqualTo(0.5f));
+        Assert.That(_events.Count<MatriarchImpact>(), Is.Zero);
+        Assert.That(_intents.LastEnemyMove.LandingPosition, Is.Null);
+        AssertAloft();
+
+        if (defend)
+        {
+            float impactTime = _now + 0.75f;
+            _player.Charge.Request(impactTime);
+            _player.Tick(0f, impactTime, _world, ReadOnlySpan<EnemyAgent>.Empty, Vector3.UnitZ);
+            Assert.That(_player.Charge.IsInvulnerable, Is.True);
+        }
+
+        Tick(0.75f);
+        Assert.That(LastProgress(), Is.EqualTo(1f));
+        Assert.That(_intents.LastEnemyMove.LandingPosition, Is.EqualTo(Landing));
+        Assert.That(_boss.Position, Is.EqualTo(Landing));
+        Assert.That(_events.Single<MatriarchImpact>().Position, Is.EqualTo(Landing));
+        Assert.That(_events.Of<MatriarchFlightChanged>()[^1].Airborne, Is.False);
+        Assert.That(_boss.IsHidden, Is.False);
+        Assert.That(_boss.IsVulnerable, Is.True);
+        Assert.That(_enemies.ApplyDamage(_boss.Id, 1f, _now, _player).Applied, Is.EqualTo(1f));
+        Tick(1f);
+        Assert.That(_player.Health.Current, Is.EqualTo(hp));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(hitAttempts));
+        Assert.That(_events.Count<MatriarchImpact>(), Is.EqualTo(1));
+        Assert.That(_events.Count<MatriarchArmed>(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void DiveImpact_StartsFullCooldown()
+    {
+        EnterFlightPhase();
+        Tick(30f);
+        AssertAloft();
+        KillAdd(_enemies.Registry.Alive[1]);
+        Tick(30f);
+        Tick(30f);
+        _hero = new Vector3(0f, 0f, -8f);
+        Tick(2.25f);
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.CarrionDive));
+        Tick(0.25f);
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.RuinShove));
+
+        _enemies.ApplyDamage(_boss.Id, 34f, _now, _player);
+        Tick(0f);
+        Assert.That(_wrapper.IsInBeat, Is.True);
+        Assert.That(_events.Count<MatriarchTellCleared>(), Is.EqualTo(3));
+        Tick(15.25f);
+        Assert.That(_wrapper.Phase, Is.EqualTo(2));
+        Assert.That(_events.Count<MatriarchFlightChanged>(), Is.EqualTo(2));
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.RuinShove));
+
+        Tick(0.25f);
+        Assert.That(_events.Count<MatriarchFlightChanged>(), Is.EqualTo(2));
+        Tick(0.75f);
+        Tick(0.5f);
+        Tick(1.1f);
+        Tick(0.5f);
+        Tick(1.1f);
+        Assert.That(_events.Count<MatriarchFlightChanged>(), Is.EqualTo(2));
+        Tick(1.4f);
+        Assert.That(_events.Count<MatriarchFlightChanged>(), Is.EqualTo(3));
+        AssertAloft();
+    }
+
+    [TestCase("death")]
+    [TestCase("teardown")]
+    [TestCase("reset")]
+    [TestCase("clear")]
+    public void Cleanup_RemovesOwnedAddsAndPendingAttacks(string cleanup)
+    {
+        EnterFlightPhase();
+        int addId = _enemies.Registry.Alive[1].Id;
+        int unrelated = _enemies.SpawnSummon(BroodId, new Vector3(-4f, 0f, -4f)).Id;
+        Tick(4f);
+        Assert.That(LastArm().Move, Is.EqualTo(MatriarchMove.FeatherSpear));
+        if (cleanup == "death")
+        {
+            // Model a forced death while a tell is pending.
+            _boss.Health.SetExternalInvulnerable(false);
+            Assert.That(_enemies.ApplyDamage(_boss.Id, 1000f, _now, _player).Killed, Is.True);
+        }
+        else if (cleanup == "teardown")
+        {
+            _enemies.Clear();
+        }
+        else if (cleanup == "reset")
+        {
+            _wrapper.Reset();
+        }
+        else
+        {
+            ((MatriarchBehaviour)_wrapper.Inner).ClearAdds(Context(0f, _events));
+        }
+
+        Assert.That(_boss.IsHidden, Is.False);
+        Assert.That(_events.Of<MatriarchFlightChanged>()[^1].Airborne, Is.False);
+        Assert.That(_events.Count<MatriarchTellCleared>(), Is.EqualTo(1));
+        if (cleanup != "teardown")
+        {
+            Assert.That(_enemies.Registry.TryGet(addId, out _), Is.True);
+        }
+
+        _open = Array.Empty<Vector3>();
+        _enemies.Tick(Context(0f, _events));
+        Assert.That(_enemies.Registry.TryGet(addId, out _), Is.False);
+        Assert.That(_enemies.Registry.TryGet(unrelated, out _), Is.EqualTo(cleanup != "teardown"));
+        Assert.That(_events.Count<ProjectileFired>(), Is.Zero);
+        Assert.That(_events.Count<MatriarchImpact>(), Is.Zero);
+    }
+
+    [Test]
+    public void FlightTick_AllocatesNothing()
+    {
+        var silent = new SilentEvents();
+        Start(silent);
+        EnterFlightPhase(events: silent);
+        Tick(4f, silent);
+        MatriarchBehaviour behaviour = (MatriarchBehaviour)_wrapper.Inner;
+        EnemyTickContext feather = Context(0.01f, silent);
+        AllocationAssert.None(() =>
+        {
+            _intents.Clear();
+            behaviour.Tick(feather);
+        }, 100);
+
+        KillAdd(_enemies.Registry.Alive[1]);
+        Tick(0f, silent);
+        Assert.That(_boss.IsVulnerable, Is.False);
+        EnemyTickContext dive = Context(0.001f, silent);
+        AllocationAssert.None(() =>
+        {
+            _intents.Clear();
+            behaviour.Tick(dive);
+        }, 100);
+    }
+
+    private void Start(IDomainEvents events, Func<Vector3, Vector3, Vector3?> traceCover = null)
+    {
+        _now = 0f;
+        _hero = new Vector3(0f, 0f, 8f);
+        _open = new[] { new Vector3(4f, 0f, 0f), Landing };
+        _intents = new RecordingIntents();
+        CharacterSpec hero = Character();
+        _player = new PlayerCombat(hero, events, _intents, 8);
+        _projectiles = new ProjectileSystem(events, 8, traceCover: traceCover);
+        _lanes = new LaneSystem(events);
+        _world = new WorldSnapshot(8);
+        var body = new EnemySpec(new ContentId("enemy.carrion_matriarch"), new LocKey("enemy.carrion_matriarch.name"),
+            100f, 2.2f, 8, 40, 300f, false, 20f, 9.5f, 1.35f, 1.8f, 40f, EnemyBehaviourKind.Boss);
+        var vulture = new EnemySpec(BroodId, new LocKey("enemy.vulture.name"),
+            50f, 0f, 6, 14, 31f, false, 0f, 1f, 0f, 0f, 40f, EnemyBehaviourKind.Vulture,
+            dive: new DiveSpec(7f, 4f, 6f, 4f, 6f, 1f, 10f, 0.6f, 0.4f, 14f, 2f, 0.6f));
+        var boss = new BossSpec(BossId, body.Id,
+            new[] { new BossPhaseSpec(1f), new BossPhaseSpec(0.66f), new BossPhaseSpec(0.33f) },
+            1f, usesAuthoredMaxHp: true);
+        var catalog = new ContentCatalog(new[] { hero }, new[] { body, vulture }, bosses: new[] { boss });
+        _enemies = new EnemySystem(catalog, events, new FixedRandom(0.5f), new DepthScaling(Scalings.Design()), 8,
+            (agent, _) => new MatriarchBehaviour(agent, new MatriarchStats(), BroodId));
+        _boss = _enemies.SpawnBoss(BossId, Vector3.Zero);
+        _wrapper = (BossBehaviour)_boss.Behaviour;
+    }
+
+    private void EnterFlightPhase(float damage = 34f, int phase = 1, IDomainEvents events = null)
+    {
+        _enemies.ApplyDamage(_boss.Id, damage, _now, _player);
+        Tick(0f, events);
+        Assert.That(_wrapper.Phase, Is.EqualTo(phase));
+        Assert.That(_wrapper.IsInBeat, Is.True);
+        Tick(0.75f, events);
+        Assert.That(_boss.IsHidden, Is.False);
+        Assert.That(_enemies.Registry.AliveCount, Is.EqualTo(1));
+        Tick(0.25f, events);
+        Assert.That(_wrapper.IsInBeat, Is.False);
+    }
+
+    private void AssertAloft()
+    {
+        Assert.That(_boss.IsVulnerable, Is.False);
+        Assert.That(_boss.IsHidden, Is.True);
+        Assert.That(_enemies.ApplyDamage(_boss.Id, 1f, _now, _player).Blocked, Is.True);
+    }
+
+    private void KillAdd(EnemyAgent add)
+    {
+        add.Health.SetExternalInvulnerable(false); // The add has reached its exposed window.
+        Assert.That(_enemies.ApplyDamage(add.Id, 1000f, _now, _player).Killed, Is.True);
+    }
+
+    private void Tick(float dt, IDomainEvents events = null)
+    {
+        _now += dt;
+        _projectiles.Tick(_now, _hero, _player, _enemies);
+        _intents.Clear();
+        _boss.Blackboard.PlayerPosition = _hero;
+        _wrapper.Tick(Context(dt, events ?? _events));
+        EnemyMoveIntent move = _intents.LastEnemyMove;
+        _world.Clear();
+        _world.PlayerPosition = _hero;
+        _world.AddEnemy() = new EnemySense
+        {
+            Id = _boss.Id,
+            Position = move.LandingPosition ?? _boss.Position + move.Velocity * dt
+        };
+        _enemies.Ingest(_world);
+    }
+
+    private EnemyTickContext Context(float dt, IDomainEvents events) =>
+        new(dt, _now, _player, _intents, events, _projectiles, _enemies, _lanes, _open);
+
+    private MatriarchArmed LastArm() => _events.Of<MatriarchArmed>()[^1];
+    private float LastProgress() => _events.Of<MatriarchTellProgress>()[^1].Fraction;
+
+    private static CharacterSpec Character() => new(new ContentId("character.test"), new LocKey("character.test.name"),
+        new LocKey("character.test.description"), 100f, new MovementSpec(3f, 0.06f, 0.08f, 720f),
+        new TargetingSpec(12f, 3f, 2f, 1f, 1.5f, 0.1f),
+        new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
+        new FocusSpec(0.4f, 1f, 1f),
+        new MovementSkillSpec(MovementSkillKind.Charge, 10f, 0.22f, 2.5f, 0.15f, 20f, 5f, 0.05f),
+        hitIFrames: 0.5f);
+}

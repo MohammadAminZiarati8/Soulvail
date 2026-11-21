@@ -33,7 +33,7 @@ public enum ShotSide
 }
 
 /// <summary>Attribution of a friendly projectile.</summary>
-public enum ShotOrigin { Ranger, Shade, Echo, Crossfire }
+public enum ShotOrigin { Ranger, Shade, Echo, Crossfire, FeatherSpear }
 
 /// <summary>
 /// One shot in flight: a point and a moment, not a body.
@@ -326,6 +326,7 @@ public sealed class ProjectileSystem
     /// <summary>A landing that touched no body on the way. Enemy ids are issued from 1.</summary>
     private const int NoContact = 0;
     private const int CoverContact = -1;
+    private const int PlayerContact = -2;
     internal const int MaxRicochetHits = 5;
 
     internal Func<Vector3, Vector3, Vector3?> TraceCover { get; set; }
@@ -536,10 +537,13 @@ public sealed class ProjectileSystem
         {
             InFlight flight = _shots[read];
 
-            // A player's shot that touched a body on this tick's stretch of its path stops there.
-            // It only reads the registry, so the bookkeeping-first rule above still holds.
-            if (flight.Shot.Side == ShotSide.AtEnemies
-                && TryStop(flight, now, enemies, out Vector3 contact, out int contactId))
+            // Sweeps only read the frame's positions, so bookkeeping still precedes damage.
+            Vector3 contact;
+            int contactId;
+            bool stopped = flight.Shot.Side == ShotSide.AtEnemies
+                ? TryStop(flight, now, enemies, out contact, out contactId)
+                : TryStopFeather(flight, now, playerPosition, out contact, out contactId);
+            if (stopped)
             {
                 _landing[landingCount] = flight.LandingAt(contact, contactId);
                 landingCount++;
@@ -651,7 +655,9 @@ public sealed class ProjectileSystem
         int damagedId = NoContact;
         bool hit = shot.Side == ShotSide.AtEnemies
             ? LandOnEnemies(flight, now, playerPosition, player, enemies, out damagedId)
-            : LandOnPlayer(shot, now, playerPosition, player);
+            : shot.ShotOrigin == ShotOrigin.FeatherSpear
+                ? LandFeather(flight, now, player)
+                : LandOnPlayer(shot, now, playerPosition, player);
 
         // **One orb is one Kindling stack however many it caught, and a miss is nothing** (M6-07a
         // rule 5). `hit` is already "reached a living agent", which is the question CH §3.3 asks, and
@@ -925,6 +931,46 @@ public sealed class ProjectileSystem
         TraceCover == null ? !target.Blackboard.IsBehindCover : !TraceCoverBetween(origin, target.Position).HasValue;
 
     private Vector3? TraceCoverBetween(Vector3 from, Vector3 to) => TraceCover?.Invoke(from, to);
+
+    private bool TryStopFeather(in InFlight flight, float now, Vector3 playerPosition,
+        out Vector3 contact, out int contactId)
+    {
+        contact = default;
+        contactId = NoContact;
+        if (flight.Shot.ShotOrigin != ShotOrigin.FeatherSpear)
+        {
+            return false;
+        }
+
+        Vector3 start = flight.PositionAt(flight.SweptTo);
+        Vector3 end = flight.PositionAt(MathF.Min(now, flight.ArrivesAt));
+        if (FirstTouch(start - playerPosition, end - playerPosition, flight.Shot.Radius, out float along))
+        {
+            end = Vector3.Lerp(start, end, along);
+            contactId = PlayerContact;
+        }
+
+        if (TraceCoverBetween(start, end) is Vector3 cover)
+        {
+            contact = cover;
+            contactId = CoverContact;
+            return true;
+        }
+
+        contact = end;
+        return contactId == PlayerContact;
+    }
+
+    private static bool LandFeather(in InFlight flight, float now, PlayerCombat player)
+    {
+        if (flight.ContactId != PlayerContact)
+        {
+            return false;
+        }
+
+        player.ApplyDamage(flight.Shot.Damage, now);
+        return true;
+    }
 
     private bool TryStop(in InFlight flight, float now, EnemySystem enemies, out Vector3 contact, out int contactId)
     {

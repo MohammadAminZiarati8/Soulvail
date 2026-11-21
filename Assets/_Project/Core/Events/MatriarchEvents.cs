@@ -2,7 +2,19 @@ using System.Numerics;
 
 namespace Soulvail.Core.Events;
 
-public enum MatriarchMove { RuinShove, CarrionPounce }
+public enum MatriarchMove { RuinShove, CarrionPounce, FeatherSpear, CarrionDive }
+
+public readonly struct MatriarchFlightChanged
+{
+    public readonly int BossId;
+    public readonly bool Airborne;
+
+    public MatriarchFlightChanged(int bossId, bool airborne)
+    {
+        BossId = bossId;
+        Airborne = airborne;
+    }
+}
 
 /// <summary>The fixed lane from origin to target, or the disc centred on target.</summary>
 public readonly struct MatriarchArmed

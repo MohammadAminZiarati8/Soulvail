@@ -2,16 +2,16 @@
 
 [OWED](OWED.md).
 
-_2026-11-20._
+_2026-11-21._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-19a, Carrion Matriarch ground combat. |
-| **Next task** | Awaiting owner's go for SS-18a, Sundial Colossus combat. |
-| **Verified** | EditMode 7220/7312, 0 fail, 1 inconcl., 91 skip. Format OK. |
+| **Last built** | SS-19b, Matriarch flight combat. |
+| **Next task** | SS-19c on owner go. |
+| **Verified** | EditMode 7233/7325, 0 fail, 1 inconcl., 91 skip. Format OK. |
 
 ## What works
 

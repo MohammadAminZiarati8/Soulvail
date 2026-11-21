@@ -314,6 +314,16 @@ namespace Soulvail.Game.Views
         /// </remarks>
         public void Apply(in EnemyMoveIntent intent, float dt)
         {
+            if (intent.LandingPosition is System.Numerics.Vector3 landing)
+            {
+                CancelKnockback();
+                transform.position = landing.ToUnity();
+                _velocity = Vector3.zero;
+                _fallSpeed = 0f;
+                Face(intent.FacingXZ);
+                return;
+            }
+
             if (_isKnockedBack)
             {
                 return;

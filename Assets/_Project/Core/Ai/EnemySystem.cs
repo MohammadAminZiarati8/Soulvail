@@ -639,6 +639,8 @@ public sealed class EnemySystem
         {
             if (agent.Behaviour is BossBehaviour { Inner: HierophantBehaviour hierophant })
                 hierophant.SuspendWard(hierophant.LastTickTime, _events);
+            if (agent.Behaviour is BossBehaviour { Inner: MatriarchBehaviour matriarch })
+                matriarch.ClearEncounter();
             agent.EscortOwner?.OnEscortDespawn(id, Registry, _events);
 
             if (agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
@@ -1105,6 +1107,9 @@ public sealed class EnemySystem
                 glassback.EndShineOnDeath(_events);
             }
 
+            MatriarchBehaviour matriarch = (agent.Behaviour as BossBehaviour)?.Inner as MatriarchBehaviour;
+            matriarch?.ClearEncounter();
+
             _events.Publish(new EnemyDied(enemyId, agent.Spec.Id, agent.Position));
 
             if (explode && agent.Spec.Brood is BroodSpec brood)
@@ -1133,7 +1138,7 @@ public sealed class EnemySystem
             }
 
             // JG-26d rule 2: last, so the boss's own EnemyDied comes first.
-            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss)
+            if (agent.Spec.Behaviour == EnemyBehaviourKind.Boss && matriarch is null)
             {
                 KillSummons(now, player);
             }
@@ -1570,6 +1575,11 @@ public sealed class EnemySystem
         Tornadoes.Clear();
         foreach (EnemyAgent agent in Registry.Alive)
         {
+            if (agent.Behaviour is BossBehaviour { Inner: MatriarchBehaviour matriarch })
+            {
+                matriarch.Reset();
+            }
+
             if (agent.Spec.Mend is not null && agent.Behaviour is ShamanBehaviour priest)
             {
                 priest.LoseMend();
@@ -1779,7 +1789,8 @@ public sealed class EnemySystem
         IsOutOfReach(agent) || (agent.Behaviour is BossBehaviour && !(rule.BossScale > 0f));
 
     private static bool IsOutOfReach(EnemyAgent agent) =>
-        agent.Behaviour is (AntlionBehaviour or VultureBehaviour) && !agent.IsVulnerable;
+        !agent.IsVulnerable && agent.Behaviour is
+            (AntlionBehaviour or VultureBehaviour or BossBehaviour { Inner: MatriarchBehaviour { IsAirborne: true } });
 
     /// <summary>Rule 1: an agent driven by a <see cref="BossSpec"/> takes the rule's share; an Elite takes full.</summary>
     private static float Scaled(EnemyAgent agent, StatusRule rule, float seconds) =>

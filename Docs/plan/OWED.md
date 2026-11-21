@@ -914,3 +914,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] **[device]** Check the staff launch and moving fire in portrait in the Dunes. Break the Priest ward and check that the green channel cue disappears on a hit.
 
 - [ ] SS-19a (after SS-19d) — Play Sunscar stage 25. Dodge the fixed Shove lane and Pounce disc, bait two separately warned landings below 33%, and cross behind her during recovery to check smooth turning.
+
+- **SS-19b, after SS-19d [Editor]** — Kill one member of a two-vulture brood, then the other. Check that the first death leaves her aloft, cover stops a spear, and the last death opens the full dive warning. Roll through one landing and dodge another. Check that the next Brood Call waits 18 s from landing and an idle opening.

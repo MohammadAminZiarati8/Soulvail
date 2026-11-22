@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
   _id: enemy.buried_king_prototype
   _nameKey: enemy.buried_king.name
-  _maxHp: 9000
+  _maxHp: 27000
   _moveSpeed: 2.5
   _targetPriority: 8
   _threatCost: 1

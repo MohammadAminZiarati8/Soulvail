@@ -24,6 +24,10 @@ internal sealed class BuriedKingView : IDisposable
     private const float RunCycleDistance = 1.8f;
     private const float ImpactRingSeconds = 0.34f;
     private const float SupportGripSpacing = 0.24f;
+    private const float CutFlashSeconds = 0.12f;
+    private const float CutBrakeSeconds = 0.18f;
+    private const float SlamShoulderAngle = 65f;
+    private const int RibbonSegments = 10;
 
     private static readonly LungeStance LungeGuard = new(
         new(0.10f, 0.81f, 0.28f), new(0.20f, 0.84f, 0.48f),
@@ -43,10 +47,6 @@ internal sealed class BuriedKingView : IDisposable
 
     private static readonly Stance Rest = new(
         new(0.29f, -0.94f, -0.18f), new(0.02f, -0.29f, 0.96f), new(0.25f, 0.90f, 0.35f), 3f, 2f);
-    private static readonly Stance SweepReady = new(
-        new(0.76f, -0.46f, -0.45f), new(0.33f, 0.36f, 0.86f), new(0.96f, 0.23f, 0.16f), 32f, -3f);
-    private static readonly Stance SweepStrike = new(
-        new(0.03f, -0.31f, 0.95f), new(-0.24f, 0.04f, 0.97f), new(-0.97f, 0.10f, 0.22f), -37f, 8f);
     private static readonly Stance CastReady = new(
         new(0.66f, 0.36f, -0.65f), new(-0.07f, 0.97f, 0.24f), new(0.30f, 0.30f, -0.90f), 34f, -8f);
     private static readonly Stance Release = new(
@@ -57,10 +57,6 @@ internal sealed class BuriedKingView : IDisposable
         new(0.28f, -0.31f, 0.91f), new(0.06f, 0.12f, 0.99f), new(0.04f, 0.98f, 0.18f), -12f, 7f);
     private static readonly Stance Catch = new(
         new(0.42f, -0.87f, -0.25f), new(-0.25f, 0.42f, 0.87f), new(0.06f, 0.98f, 0.18f), 11f, -5f);
-    private static readonly Stance SlamReady = new(
-        new(0.53f, 0.79f, 0.28f), new(0.25f, 0.91f, -0.32f), new(0.10f, 0.20f, -0.97f), 11f, -12f);
-    private static readonly Stance SlamStrike = new(
-        new(0.43f, -0.68f, 0.60f), new(0.25f, -0.42f, 0.88f), new(0.10f, -0.96f, 0.25f), -8f, 32f);
 
     private readonly int _id;
     private readonly EnemyView _body;
@@ -73,6 +69,8 @@ internal sealed class BuriedKingView : IDisposable
     private readonly Material _danger;
     private readonly WarningShape _footprint;
     private readonly WarningShape _landing;
+    private readonly CutStrip _bladeRibbon;
+    private readonly CutStrip _groundStreak;
     private readonly SlamDustView _dust;
     private readonly LineRenderer _impactRing;
     private readonly LineRenderer _lungeArrow;
@@ -91,6 +89,7 @@ internal sealed class BuriedKingView : IDisposable
     private readonly ArmGrip _swordArm;
     private readonly ArmGrip _supportArm;
     private readonly Transform _hips;
+    private readonly Joint _hipJoint;
     private readonly Leg _leftLeg;
     private readonly Leg _rightLeg;
     private Quaternion _visualFacing;
@@ -118,6 +117,13 @@ internal sealed class BuriedKingView : IDisposable
     private Vector3 _windupGrip;
     private Vector3 _windupBlade;
     private float _guardRelease;
+    private Quaternion _cutFacing;
+    private Vector3 _cutEdge;
+    private float _cutArc;
+    private int _cutSample;
+    private bool _cutTurning;
+    private Vector3 _cutStartGrip;
+    private Vector3 _cutStartBlade;
 
     public BuriedKingView(EnemyView body, int id, DomainEventHub hub)
     {
@@ -146,6 +152,7 @@ internal sealed class BuriedKingView : IDisposable
                     break;
                 case "hips":
                     _hips = bone;
+                    _hipJoint = joint;
                     break;
                 case "upperarm.r":
                     _rightUpperArm = joint;
@@ -193,6 +200,8 @@ internal sealed class BuriedKingView : IDisposable
         _danger.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         _footprint = new WarningShape(_floor.transform, _danger, "Attack warning");
         _landing = new WarningShape(_floor.transform, _danger, "Landing warning");
+        _bladeRibbon = new CutStrip(_floor.transform, _danger, "Sword cut ribbon", new Color(1f, 0.77f, 0.44f, 0.75f), 3);
+        _groundStreak = new CutStrip(_floor.transform, _danger, "Sword cut ground streak", new Color(1f, 0.48f, 0.17f, 0.62f), 2);
         _dust = Object.Instantiate(rig.LandingDust, _floor.transform);
         _dust.transform.localScale = Vector3.one * 0.38f;
         _impactRing = CreateImpactRing();
@@ -223,6 +232,8 @@ internal sealed class BuriedKingView : IDisposable
         _floor.SetActive(false);
         _footprint.Dispose();
         _landing.Dispose();
+        _bladeRibbon.Dispose();
+        _groundStreak.Dispose();
         Destroy(_sword.gameObject);
         Destroy(_floor);
         Destroy(_danger);
@@ -244,6 +255,12 @@ internal sealed class BuriedKingView : IDisposable
         _catchAge += dt;
         StepImpact(dt);
         float progress = _warningSeconds > 0f ? Mathf.Clamp01(_poseTime / _warningSeconds) : 0f;
+        if (_pose is BuriedKingPose.SweepTell or BuriedKingPose.SlamTell or BuriedKingPose.SweepImpact or BuriedKingPose.SlamImpact)
+        {
+            StepSwordCut(progress);
+            return;
+        }
+
         UpdateStance(dt, progress);
         if (_pose == BuriedKingPose.LungeRecovery)
         {
@@ -295,11 +312,18 @@ internal sealed class BuriedKingView : IDisposable
             return;
         }
 
-        if (_pose != BuriedKingPose.LungeTravel)
+        bool swordImpact = _pose is BuriedKingPose.SweepImpact or BuriedKingPose.SlamImpact;
+        if (_pose != BuriedKingPose.LungeTravel && !swordImpact)
         {
             _footprint.Clear();
             _landing.Clear();
             _lungeArrow.enabled = false;
+        }
+
+        if (!swordImpact)
+        {
+            _bladeRibbon.Clear();
+            _groundStreak.Clear();
         }
 
         _warningSeconds = state.WarningSeconds;
@@ -342,8 +366,14 @@ internal sealed class BuriedKingView : IDisposable
 
                 break;
             case BuriedKingPose.SweepTell:
-                PoseToward(SweepReady, _warningSeconds * 0.65f);
-                _footprint.Arc(start, Vector3.ProjectOnPlane(end - start, Vector3.up), state.SweepDegrees);
+            case BuriedKingPose.SlamTell:
+                BeginSwordCut(state, start, end);
+                break;
+            case BuriedKingPose.SweepImpact:
+            case BuriedKingPose.SlamImpact:
+                _poseTime = 0f;
+                _newWarning = true;
+                _footprint.Flash(new Color(1f, 0.93f, 0.77f, 0.92f));
                 break;
             case BuriedKingPose.CastTell:
                 PoseToward(CastReady, _warningSeconds * 0.77f);
@@ -369,10 +399,6 @@ internal sealed class BuriedKingView : IDisposable
                 PoseToward(Rest, 0.28f);
                 _footprint.Lane(start, end, state.Width);
                 break;
-            case BuriedKingPose.SlamTell:
-                PoseToward(SlamReady, _warningSeconds * 0.65f);
-                _footprint.Arc(start, Vector3.forward * state.SlamRadius, 360f);
-                break;
             case BuriedKingPose.Held:
             case BuriedKingPose.LungeApproach:
                 PoseToward(Rest, 0.38f);
@@ -393,6 +419,136 @@ internal sealed class BuriedKingView : IDisposable
         _poseTime = 0f;
     }
 
+    private void BeginSwordCut(BuriedKingStateChanged state, Vector3 start, Vector3 end)
+    {
+        _poseTime = 0f;
+        _cutSeconds = state.CutSeconds;
+        _cutTurning = _pose == BuriedKingPose.SlamTell;
+        Vector3 reach = _cutTurning
+            ? Quaternion.AngleAxis(SlamShoulderAngle + 180f, Vector3.up) * _body.transform.forward * state.SlamRadius
+            : Vector3.ProjectOnPlane(end - start, Vector3.up);
+        _cutArc = _cutTurning ? 360f : state.SweepDegrees;
+        _cutEdge = Quaternion.AngleAxis(-_cutArc * 0.5f, Vector3.up) * reach.normalized;
+        _cutFacing = _cutTurning ? _body.transform.rotation * _modelRest : Quaternion.LookRotation(reach) * _modelRest;
+        _cutStartGrip = _model.InverseTransformPoint(_grip.position);
+        _cutStartBlade = _model.InverseTransformDirection(_grip.up);
+        _cutSample = -1;
+        _guardRelease = 0f;
+        _footprint.Arc(start, reach, _cutArc);
+    }
+
+    private void StepSwordCut(float warningProgress)
+    {
+        bool impact = _pose is BuriedKingPose.SweepImpact or BuriedKingPose.SlamImpact;
+        float loadEnd = _warningSeconds - _cutSeconds;
+        if (!impact && (!(_cutSeconds > 0f) || _poseTime < loadEnd))
+        {
+            float load = Mathf.SmoothStep(0f, 1f, loadEnd > 0f ? _poseTime / loadEnd : warningProgress);
+            PoseSwordCut(load, 0f, 0f);
+        }
+        else if (!impact || _poseTime == 0f)
+        {
+            float cut = impact ? 1f : Mathf.SmoothStep(0f, 1f, (_poseTime - loadEnd) / _cutSeconds);
+            DrawSwordCut(cut);
+        }
+        else
+        {
+            float brake = Mathf.SmoothStep(0f, 1f, _poseTime / CutBrakeSeconds);
+            PoseSwordCut(1f, 1f, brake);
+            if (_poseTime >= CutFlashSeconds)
+            {
+                _footprint.Clear();
+                _bladeRibbon.Clear();
+                _groundStreak.Clear();
+            }
+        }
+
+        if (!impact)
+        {
+            _footprint.Fill(warningProgress);
+        }
+
+        HoldSword();
+    }
+
+    private void DrawSwordCut(float cut)
+    {
+        int sample = Mathf.FloorToInt(cut * ArcSegments);
+        int tail = Mathf.Max(0, sample - RibbonSegments);
+        // Complete every crossed ground segment and the visible part of the blade ribbon,
+        // including when an entire cut happens between two rendered frames.
+        for (int i = _cutSample + 1; i <= sample; i++)
+        {
+            Vector3 edge = _footprint.Edge(i);
+            Vector3 inner = Vector3.Lerp(edge, _footprint.Center, 0.16f);
+            _groundStreak.SetPair(i, inner, edge);
+            if (i >= tail)
+            {
+                PoseSwordCut(1f, (float)i / ArcSegments, 0f);
+                SampleBlade(i);
+            }
+        }
+
+        _cutSample = sample;
+        PoseSwordCut(1f, cut, 0f);
+        bool betweenSamples = cut * ArcSegments > sample;
+        if (betweenSamples)
+        {
+            SampleBlade(sample + 1);
+        }
+
+        _bladeRibbon.Show(tail, sample - tail + (betweenSamples ? 1 : 0));
+        _groundStreak.Show(0, sample);
+    }
+
+    private void SampleBlade(int sample) =>
+        _bladeRibbon.SetPair(sample, _grip.position + _grip.up * (0.28f * SwordScale),
+            _grip.position + _grip.up * GripToTip);
+
+    private void PoseSwordCut(float load, float cut, float brake)
+    {
+        _gait = 0f;
+        foreach (Joint joint in _joints)
+        {
+            joint.BlendWalk(0f);
+        }
+
+        _model.rotation = _cutFacing;
+        Vector3 pivot = _rightLeg.Target(_model, 1f);
+        _visualFacing = Quaternion.AngleAxis(_cutTurning ? _cutArc * cut : 0f, Vector3.up) * _cutFacing;
+        _model.rotation = _visualFacing;
+        Vector3 pivotOffset = pivot - _rightLeg.Target(_model, 1f);
+        Vector3 leftFoot = _leftLeg.Target(_model, 1f) + pivotOffset;
+        float drive = load * (1f - brake);
+        float shift = _cutTurning ? 0.07f : Mathf.Lerp(-0.14f, 0.14f, cut);
+        _hips.position += pivotOffset + _model.TransformVector(new Vector3(shift * drive,
+            -0.058f - 0.15f * drive, 0.07f * cut * drive));
+        float hipTurn = _cutTurning ? 0f : Mathf.Lerp(-24f, 33f, cut);
+        _hipJoint.Turn(_model, 0f, hipTurn * drive);
+        _leftLeg.Plant(_model, leftFoot, 1f);
+        _rightLeg.Plant(_model, pivot, 1f);
+
+        // The hips open first. The chest starts wound back and catches up during the cut.
+        float shoulderTurn = _cutTurning ? Mathf.Lerp(-29f, 17f, cut) : Mathf.Lerp(-15f, 14f, cut * cut);
+        _chest.Turn(_model, Mathf.Lerp(-9f, 16f, cut) * drive, shoulderTurn * drive);
+        _leftUpperArm.Aim(_model, -1f, new Vector3(-0.56f, -0.66f, -0.46f));
+        _leftForearm.Aim(_model, -1f, new Vector3(-0.28f, -0.38f, 0.88f));
+
+        Vector3 direction = _model.InverseTransformDirection(Quaternion.AngleAxis(_cutArc * cut, Vector3.up) * _cutEdge);
+        float extend = Mathf.SmoothStep(0f, 1f, cut / 0.28f);
+        Vector3 loadedGrip = _cutTurning ? new Vector3(0.34f, 1.12f, -0.04f) : new Vector3(-0.22f, 0.91f, 0.24f);
+        Vector3 strikeGrip = direction * 0.43f + new Vector3(0.06f, 0.79f, 0f);
+        Vector3 grip = Vector3.Lerp(_cutStartGrip, Vector3.Lerp(loadedGrip, strikeGrip, extend), load);
+        Vector3 blade = Vector3.Slerp(_cutStartBlade, direction + Vector3.up * Mathf.Lerp(0.68f, -0.23f, extend), load);
+        grip = Vector3.Lerp(grip, LungeGuard.Grip, brake);
+        blade = Vector3.Slerp(blade, LungeGuard.Blade, brake);
+        Vector3 bladeAxis = _model.TransformDirection(blade).normalized;
+        Vector3 bladeFace = Vector3.Cross(bladeAxis, _model.up);
+        Quaternion rotation = Quaternion.LookRotation(bladeFace.sqrMagnitude > 0.0001f ? bladeFace : _model.right, bladeAxis);
+        _swordArm.Place(_model, _model.TransformPoint(grip), rotation, 1f);
+        _stance = Rest;
+    }
+
     private void UpdateStance(float dt, float progress)
     {
         if (_pose is BuriedKingPose.LungeTell or BuriedKingPose.LungeTravel or BuriedKingPose.LungeRecovery)
@@ -402,15 +558,10 @@ internal sealed class BuriedKingView : IDisposable
         }
 
         _stance = Stance.Blend(_from, _target, Mathf.SmoothStep(0f, 1f, _poseTime / _poseDuration));
-        // Ease through the weight transfer and finish the swing on the core's impact frame.
         _stance = _pose switch
         {
-            BuriedKingPose.SweepTell when progress > 0.70f =>
-                Stance.Blend(SweepReady, SweepStrike, StrikeProgress(progress, 0.70f)),
             BuriedKingPose.CastTell when progress > 0.80f =>
                 Stance.Blend(CastReady, Release, StrikeProgress(progress, 0.80f)),
-            BuriedKingPose.SlamTell when progress > 0.70f =>
-                Stance.Blend(SlamReady, SlamStrike, StrikeProgress(progress, 0.70f)),
             _ => _stance,
         };
         if (_catchAge < 0.25f)
@@ -861,6 +1012,58 @@ internal sealed class BuriedKingView : IDisposable
         }
     }
 
+    private sealed class CutStrip : IDisposable
+    {
+        private readonly MeshRenderer _renderer;
+        private readonly Mesh _mesh;
+        private readonly Vector3[] _vertices = new Vector3[(ArcSegments + 1) * 2];
+        private readonly int[] _indices = new int[ArcSegments * 6];
+
+        public CutStrip(Transform parent, Material material, string name, Color color, int order)
+        {
+            _renderer = WarningShape.Layer(parent, material, name, out _mesh);
+            _renderer.sortingOrder = order;
+            var properties = new MaterialPropertyBlock();
+            properties.SetColor("_BaseColor", color);
+            _renderer.SetPropertyBlock(properties);
+            for (int i = 0; i < ArcSegments; i++)
+            {
+                int vertex = i * 2;
+                int index = i * 6;
+                _indices[index] = vertex;
+                _indices[index + 1] = vertex + 1;
+                _indices[index + 2] = vertex + 2;
+                _indices[index + 3] = vertex + 2;
+                _indices[index + 4] = vertex + 1;
+                _indices[index + 5] = vertex + 3;
+            }
+        }
+
+        public void SetPair(int sample, Vector3 inner, Vector3 outer)
+        {
+            _vertices[sample * 2] = inner;
+            _vertices[sample * 2 + 1] = outer;
+        }
+
+        public void Show(int start, int segments)
+        {
+            if (segments == 0)
+            {
+                Clear();
+                return;
+            }
+
+            _mesh.Clear();
+            _mesh.SetVertices(_vertices, start * 2, (segments + 1) * 2);
+            _mesh.SetIndices(_indices, 0, segments * 6, MeshTopology.Triangles, 0);
+            _renderer.enabled = true;
+        }
+
+        public void Clear() => _renderer.enabled = false;
+
+        public void Dispose() => Destroy(_mesh);
+    }
+
     private sealed class WarningShape : IDisposable
     {
         private static readonly Color Red = new(1f, 0.10f, 0.07f);
@@ -874,6 +1077,10 @@ internal sealed class BuriedKingView : IDisposable
         private readonly MaterialPropertyBlock _color = new();
         private int _count;
         private bool _isLane;
+
+        public Vector3 Center => _outline[0];
+
+        public Vector3 Edge(int index) => _outline[index + 1];
 
         public WarningShape(Transform parent, Material material, string name)
         {
@@ -942,8 +1149,13 @@ internal sealed class BuriedKingView : IDisposable
         public void FlashLane(Vector3 start, Vector3 end, float width)
         {
             Lane(start, end, width);
+            Flash(new Color(1f, 0.72f, 0.39f, 0.92f));
+        }
+
+        public void Flash(Color color)
+        {
             Fill(1f);
-            _color.SetColor("_BaseColor", new Color(1f, 0.72f, 0.39f, 0.92f));
+            _color.SetColor("_BaseColor", color);
             _fill.SetPropertyBlock(_color);
         }
 
@@ -981,7 +1193,7 @@ internal sealed class BuriedKingView : IDisposable
             renderer.SetPropertyBlock(_color);
         }
 
-        private static MeshRenderer Layer(Transform parent, Material material, string name, out Mesh mesh)
+        public static MeshRenderer Layer(Transform parent, Material material, string name, out Mesh mesh)
         {
             var layer = new GameObject(name);
             layer.transform.SetParent(parent, false);

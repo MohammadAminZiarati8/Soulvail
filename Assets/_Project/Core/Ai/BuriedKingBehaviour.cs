@@ -13,7 +13,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private enum State
     {
         Ready, SweepTell, CastTell, Outbound, Embedded, RecallTell, Returning, FractureTell, SlamTell,
-        LungeApproach, LungeTell, Lunging, LungeRecovery, Recovery, Dead
+        LungeApproach, LungeTell, Lunging, LungeRecovery, CutRecovery, Recovery, Dead
     }
     private enum ReturnPhase { Recall, Reclaim, Shattered }
 
@@ -21,6 +21,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _sweepReach = new(4f);
     private readonly Stat _sweepDegrees = new(120f);
     private readonly Stat _sweepTell = new(0.85f);
+    private readonly Stat _sweepCut = new(0.16f);
     private readonly Stat _sweepRecovery = new(1.4f);
     private readonly Stat _laneWidth = new(1.6f);
     private readonly Stat _landingRadius = new(2f);
@@ -32,6 +33,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _shatteredThreshold = new(0.33f);
     private readonly Stat _fractureTell = new(1f);
     private readonly Stat _slamTell = new(0.9f);
+    private readonly Stat _slamCut = new(0.22f);
     private readonly Stat _slamRadius = new(3.5f);
     private readonly Stat _slamRecovery = new(2.4f);
     private readonly Stat _shatteredRecovery = new(2.7f);
@@ -153,10 +155,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
                 velocity = AdvanceLunge(ctx, board.SelfPosition, hero);
                 break;
             case State.LungeRecovery:
+            case State.CutRecovery:
             case State.Recovery:
                 if (Elapsed(ctx.Dt))
                 {
-                    if (_state == State.LungeRecovery)
+                    if (_state != State.Recovery)
                     {
                         Publish(ctx.Events, BuriedKingPose.Held);
                     }
@@ -367,7 +370,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             ctx.Player.ApplyDamage(_sweepDamage.Value, ctx.Now);
         }
 
-        Recover(ctx, _sweepRecovery.Value);
+        Recover(ctx, _sweepRecovery.Value, BuriedKingPose.SweepImpact);
     }
 
     private void StartFlight(in EnemyTickContext ctx, bool returning)
@@ -461,7 +464,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             ctx.Player.ApplyDamage(_slamDamage.Value, ctx.Now);
         }
 
-        Recover(ctx, _castPhase == ReturnPhase.Shattered ? _shatteredRecovery.Value : _slamRecovery.Value);
+        Recover(ctx, _castPhase == ReturnPhase.Shattered ? _shatteredRecovery.Value : _slamRecovery.Value,
+            BuriedKingPose.SlamImpact);
     }
 
     private void Lock(in EnemyTickContext ctx, State state, BuriedKingPose pose, Vector3 start, Vector3 end, float duration)
@@ -473,11 +477,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         Publish(ctx.Events, pose, start, warningSeconds: duration);
     }
 
-    private void Recover(in EnemyTickContext ctx, float duration)
+    private void Recover(in EnemyTickContext ctx, float duration, BuriedKingPose pose = BuriedKingPose.Held)
     {
-        _state = State.Recovery;
+        _state = pose == BuriedKingPose.Held ? State.Recovery : State.CutRecovery;
         _remaining = duration;
-        Publish(ctx.Events, BuriedKingPose.Held);
+        Publish(ctx.Events, pose);
     }
 
     private bool Elapsed(float dt)
@@ -504,8 +508,15 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private void Publish(IDomainEvents events, BuriedKingPose pose, Vector3 weapon = default,
         float fractureProgress = 0f, float warningSeconds = 0f) =>
         events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _laneWidth.Value, _sweepDegrees.Value,
-            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f, fractureProgress, warningSeconds,
-            pose is BuriedKingPose.CastTell or BuriedKingPose.Embedded ? _landingRadius.Value : 0f));
+            weapon, pose is BuriedKingPose.SlamTell or BuriedKingPose.SlamImpact ? _slamRadius.Value : 0f,
+            fractureProgress, warningSeconds,
+            pose is BuriedKingPose.CastTell or BuriedKingPose.Embedded ? _landingRadius.Value : 0f,
+            pose switch
+            {
+                BuriedKingPose.SweepTell or BuriedKingPose.SweepImpact => _sweepCut.Value,
+                BuriedKingPose.SlamTell or BuriedKingPose.SlamImpact => _slamCut.Value,
+                _ => 0f,
+            }));
 
     private static Vector2 Ground(Vector3 vector) => new(vector.X, vector.Z);
 }

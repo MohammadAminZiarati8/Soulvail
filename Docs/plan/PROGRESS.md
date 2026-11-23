@@ -9,9 +9,9 @@ _2026-11-23._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-21a, King leap lane. |
-| **Next task** | SS-21b on owner go. |
-| **Verified** | EditMode 7331/7423, 0 fail, 1 inconcl., 91 skip. Format OK. |
+| **Last built** | SS-21b, King cuts. |
+| **Next task** | SS-21c on owner go. |
+| **Verified** | EditMode 7340/7432, 0 fail, 1 inconcl., 91 skip. DT-01 3/3. |
 
 ## What works
 

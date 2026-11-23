@@ -18,6 +18,8 @@ public enum BuriedKingPose
     LungeTravel,
     LungeRecovery,
     LungeApproach,
+    SweepImpact,
+    SlamImpact,
 }
 
 /// <summary>Locked floor geometry and the scepter position for the current pose.</summary>

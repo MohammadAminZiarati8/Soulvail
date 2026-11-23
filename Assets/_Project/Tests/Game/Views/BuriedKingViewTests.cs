@@ -93,45 +93,13 @@ public sealed class BuriedKingViewTests
     [TestCase("blocked after warning")]
     public void Stage30_TestStartChecksTheLeapInDunes(string scenario)
     {
-        _hub.Publish(new EnemyDespawned(KingId));
-        const string root = "Assets/_Project/";
-        var room = AssetDatabase.LoadAssetAtPath<GameObject>(root + "Prefabs/Arenas/Sunscar/Arena_Dunes.prefab");
-        var arena = Object.Instantiate(room, _origin, Quaternion.identity).GetComponent<ArenaView>();
-        _objects.Add(arena.gameObject);
-        var mode = AssetDatabase.LoadAssetAtPath<ModeDefinition>(root + "Data/Modes/Sunscar.asset").ToSpec();
-        var rangerAsset = Object.Instantiate(
-            AssetDatabase.LoadAssetAtPath<CharacterDefinition>(root + "Data/Characters/Ranger.asset"));
-        var rangerSettings = new SerializedObject(rangerAsset);
-        // The fixture baits the leap at full King health. The Ranger cannot shoot from bait range.
-        rangerSettings.FindProperty("_weaponRange").floatValue = 0.01f;
-        rangerSettings.ApplyModifiedPropertiesWithoutUndo();
-        var ranger = rangerAsset.ToSpec();
-        Object.DestroyImmediate(rangerAsset);
-        var boot = AssetDatabase.LoadAssetAtPath<GameObject>(root + "Prefabs/Composition/BootScope.prefab");
-        var source = new SerializedObject(boot.GetComponent<BootScope>());
-        var catalog = new ContentCatalog(new[] { ranger },
-            Definitions<EnemyDefinition>(source, "_enemies").Select(asset => asset.ToSpec()).ToArray(),
-            new[] { mode }, bosses: Definitions<BossDefinition>(source, "_bosses").Select(asset => asset.ToSpec()).ToArray());
-        var random = new SeededRandom(12);
-        var intents = new RecordingIntents();
-        var recorder = new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), _hub);
-        var session = new RunSession(catalog, random, _hub, intents, recorder, 64, 28, 64);
-        var restore = new TestStart(catalog).At(mode.Id, ranger.Id, random.Seed, random.Capture(), 30);
+        var (session, intents, arena, world) = StartStage30();
         var poses = new List<BuriedKingStateChanged>();
         using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
-        int id = 0;
-        using var spawn = _hub.Subscribe<EnemySpawned>(evt => id = evt.Id);
         int damageEvents = 0;
         using var damage = _hub.Subscribe<EnemyDamaged>(_ => damageEvents++);
-        session.Start(new RunConfig(mode.Id, ranger.Id, random.Seed, 30, SpawnPlan.Empty, restore));
-
-        const float dt = 1f / 60f;
-        var world = new WorldSnapshot(64)
-        {
-            Dt = dt,
-            PlayerPosition = arena.PlayerStart.ToNum(),
-            SpawnPoints = arena.SpawnPoints.Select(point => point.ToNum()).ToArray(),
-        };
+        int id = _body.Id;
+        float dt = world.Dt;
         Vector3 kingStart = _origin;
         Vector3 hero = _origin + 12f * Vector3.forward;
         if (scenario == "diagonal wall")
@@ -145,13 +113,6 @@ public sealed class BuriedKingViewTests
             CoverAt(1.8f, 7.25f);
         }
 
-        for (int frame = 0; frame < 240 && id == 0; frame++)
-        {
-            session.Tick(world);
-            intents.Clear();
-        }
-
-        Assert.That(_views.TryGet(id, out _body), Is.True);
         _body.Bind(id, kingStart);
         world.PlayerPosition = hero.ToNum();
         Physics.SyncTransforms();
@@ -221,6 +182,53 @@ public sealed class BuriedKingViewTests
         session.End();
     }
 
+    private (RunSession, RecordingIntents, ArenaView, WorldSnapshot) StartStage30()
+    {
+        _hub.Publish(new EnemyDespawned(KingId));
+        const string root = "Assets/_Project/";
+        var room = AssetDatabase.LoadAssetAtPath<GameObject>(root + "Prefabs/Arenas/Sunscar/Arena_Dunes.prefab");
+        var arena = Object.Instantiate(room, _origin, Quaternion.identity).GetComponent<ArenaView>();
+        _objects.Add(arena.gameObject);
+        var mode = AssetDatabase.LoadAssetAtPath<ModeDefinition>(root + "Data/Modes/Sunscar.asset").ToSpec();
+        var rangerAsset = Object.Instantiate(
+            AssetDatabase.LoadAssetAtPath<CharacterDefinition>(root + "Data/Characters/Ranger.asset"));
+        var rangerSettings = new SerializedObject(rangerAsset);
+        // The fixture baits the leap at full King health. The Ranger cannot shoot from bait range.
+        rangerSettings.FindProperty("_weaponRange").floatValue = 0.01f;
+        rangerSettings.ApplyModifiedPropertiesWithoutUndo();
+        var ranger = rangerAsset.ToSpec();
+        Object.DestroyImmediate(rangerAsset);
+        var boot = AssetDatabase.LoadAssetAtPath<GameObject>(root + "Prefabs/Composition/BootScope.prefab");
+        var source = new SerializedObject(boot.GetComponent<BootScope>());
+        var catalog = new ContentCatalog(new[] { ranger },
+            Definitions<EnemyDefinition>(source, "_enemies").Select(asset => asset.ToSpec()).ToArray(),
+            new[] { mode }, bosses: Definitions<BossDefinition>(source, "_bosses").Select(asset => asset.ToSpec()).ToArray());
+        var random = new SeededRandom(12);
+        var intents = new RecordingIntents();
+        var recorder = new RunRecorder(random, new FixedClock(DateTimeOffset.UnixEpoch), _hub);
+        var session = new RunSession(catalog, random, _hub, intents, recorder, 64, 28, 64);
+        var restore = new TestStart(catalog).At(mode.Id, ranger.Id, random.Seed, random.Capture(), 30);
+        int id = 0;
+        using var spawn = _hub.Subscribe<EnemySpawned>(evt => id = evt.Id);
+        session.Start(new RunConfig(mode.Id, ranger.Id, random.Seed, 30, SpawnPlan.Empty, restore));
+
+        const float dt = 1f / 60f;
+        var world = new WorldSnapshot(64)
+        {
+            Dt = dt,
+            PlayerPosition = arena.PlayerStart.ToNum(),
+            SpawnPoints = arena.SpawnPoints.Select(point => point.ToNum()).ToArray(),
+        };
+        for (int frame = 0; frame < 240 && id == 0; frame++)
+        {
+            session.Tick(world);
+            intents.Clear();
+        }
+
+        Assert.That(_views.TryGet(id, out _body), Is.True);
+        return (session, intents, arena, world);
+    }
+
     private static IEnumerable<T> Definitions<T>(SerializedObject source, string field) where T : ScriptableObject
     {
         SerializedProperty rows = source.FindProperty(field);
@@ -229,6 +237,192 @@ public sealed class BuriedKingViewTests
             yield return (T)rows.GetArrayElementAtIndex(i).objectReferenceValue;
         }
     }
+
+    [TestCase(1f, BuriedKingPose.SweepTell, BuriedKingPose.SweepImpact)]
+    [TestCase(0.65f, BuriedKingPose.SlamTell, BuriedKingPose.SlamImpact)]
+    [TestCase(0.32f, BuriedKingPose.SlamTell, BuriedKingPose.SlamImpact)]
+    public void Stage30_TestStartChecksTheSwordCutsInDunes(float health, BuriedKingPose tell, BuriedKingPose impact)
+    {
+        var (session, intents, arena, world) = StartStage30();
+        int id = _body.Id;
+        _body.Bind(id, _origin);
+        const BindingFlags statePorts = BindingFlags.Instance | BindingFlags.NonPublic;
+        var enemies = (EnemySystem)typeof(RunState).GetProperty("Enemies", statePorts).GetValue(session.State);
+        Assert.That(enemies.Registry.TryGet(id, out EnemyAgent king), Is.True);
+        if (health < 1f)
+        {
+            king.Health.ApplyDamage(king.Health.MaxHp.Value * (1f - health), 0f);
+        }
+
+        Vector3 bait = _origin + Vector3.forward * (tell == BuriedKingPose.SweepTell ? 3f : 8f);
+        world.PlayerPosition = bait.ToNum();
+        world.OpenGround = new[] { bait.ToNum() };
+        var poses = new List<BuriedKingStateChanged>();
+        using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
+        int hits = 0;
+        using var damage = _hub.Subscribe<PlayerDamaged>(_ => hits++);
+        Transform warnings = GameObject.Find("Buried King warnings").transform;
+        Transform warning = warnings.Find("Attack warning");
+        Transform fill = warnings.Find("Attack warning fill");
+        Transform ribbon = warnings.Find("Sword cut ribbon");
+        Transform model = _body.GetComponentsInChildren<Transform>().Single(bone => bone.name == "Rig_Medium").parent;
+        Transform grip = model.GetComponentsInChildren<Transform>().Single(bone => bone.name == "handslot.r");
+        var rootFacings = new List<Quaternion>();
+        var swordDirections = new List<Vector3>();
+        int impactFrame = -1;
+        for (int frame = 0; frame < 420; frame++)
+        {
+            world.EnemyCount = 0;
+            Physics.SyncTransforms();
+            _views.CopyInto(world, arena.PlayBounds);
+            world.Enemies[0].HasLineOfSight = true;
+            world.Enemies[0].KingLungeClearance = 0f;
+            intents.Clear();
+            session.Tick(world);
+            EnemyMoveIntent move = intents.EnemyMoves.Single();
+            _body.Apply(move, world.Dt);
+            BuriedKingPose pose = poses[^1].Pose;
+            if (pose is BuriedKingPose.SweepTell or BuriedKingPose.CastTell)
+            {
+                // The hero sidesteps the locked shape so all three impact checks exercise a miss.
+                world.PlayerPosition = (_origin + Vector3.right * 5f).ToNum();
+            }
+
+            if (pose == tell || pose == impact)
+            {
+                Assert.That(move.Velocity, Is.EqualTo(System.Numerics.Vector3.Zero));
+                Assert.That(Vector2.Distance(new Vector2(_body.transform.position.x, _body.transform.position.z),
+                    new Vector2(_origin.x, _origin.z)), Is.LessThan(0.001f));
+                Assert.That(grip.childCount, Is.GreaterThan(0));
+                Transform sword = grip.Find("Buried King's sword");
+                Assert.That(sword.localPosition, Is.EqualTo(Vector3.zero));
+                Assert.That(sword.localRotation, Is.EqualTo(Quaternion.identity));
+                if (pose == tell)
+                {
+                    Assert.That(IsVisible(warning), Is.True);
+                    if (IsVisible(ribbon))
+                    {
+                        swordDirections.Add(sword.up);
+                        rootFacings.Add(model.rotation);
+                    }
+                }
+                else if (impactFrame < 0)
+                {
+                    impactFrame = frame;
+                    Assert.That(IsVisible(fill) && IsVisible(ribbon), Is.True);
+                    swordDirections.Add(sword.up);
+                    rootFacings.Add(model.rotation);
+                }
+                else if (frame - impactFrame == 11)
+                {
+                    Assert.That(IsVisible(fill) || IsVisible(ribbon), Is.False);
+                    break;
+                }
+            }
+        }
+
+        Assert.That(impactFrame, Is.GreaterThanOrEqualTo(0));
+        Assert.That(hits, Is.Zero);
+        Assert.That(poses.Count(change => change.Pose == impact), Is.EqualTo(1));
+        Assert.That(poses.Any(change => change.Pose == BuriedKingPose.FractureTell), Is.EqualTo(health < 0.33f));
+        Assert.That(swordDirections.Count, Is.GreaterThan(5));
+        float turned = 0f;
+        for (int i = 1; i < rootFacings.Count; i++)
+        {
+            turned += Quaternion.Angle(rootFacings[i - 1], rootFacings[i]);
+        }
+
+        if (impact == BuriedKingPose.SlamImpact)
+        {
+            Assert.That(turned, Is.InRange(340f, 360.1f));
+        }
+        else
+        {
+            Assert.That(turned, Is.LessThan(0.1f));
+            Assert.That(Vector3.SignedAngle(Vector3.ProjectOnPlane(swordDirections[0], Vector3.up),
+                Vector3.ProjectOnPlane(swordDirections[^1], Vector3.up), Vector3.up), Is.InRange(108f, 120.1f));
+        }
+
+        session.End();
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SwordCut_TrailMatchesWarningAtLowFrameRate(bool circle)
+    {
+        Vector3 end = _origin + (circle ? Vector3.zero : Vector3.forward * 4f);
+        float duration = circle ? 0.9f : 0.85f;
+        float cut = circle ? 0.22f : 0.16f;
+        float radius = circle ? 3.5f : 0f;
+        float arc = circle ? 0f : 120f;
+        Publish(circle ? BuriedKingPose.SlamTell : BuriedKingPose.SweepTell, end, duration, cut, arc, radius);
+        Transform warnings = GameObject.Find("Buried King warnings").transform;
+        Transform warning = warnings.Find("Attack warning");
+        Transform fill = warnings.Find("Attack warning fill");
+        Transform streak = warnings.Find("Sword cut ground streak");
+        Transform ribbon = warnings.Find("Sword cut ribbon");
+        Vector3[] shape = Vertices(warning);
+        StepBody(0f);
+        StepBody(duration - cut);
+        Assert.That(IsVisible(warning), Is.True);
+        Assert.That(IsVisible(ribbon), Is.False);
+
+        Transform sword = _body.GetComponentsInChildren<Transform>().Single(child => child.name == "Buried King's sword");
+        Vector3 firstEdge = Vector3.ProjectOnPlane(shape[1] - shape[0], Vector3.up);
+        Assert.That(Vector3.Angle(Vector3.ProjectOnPlane(sword.up, Vector3.up), firstEdge), Is.LessThan(0.1f));
+        StepBody(cut * 0.5f);
+        Assert.That(IsVisible(warning), Is.True);
+        Assert.That(IsVisible(ribbon), Is.True);
+        Assert.That(Vertices(streak).Length, Is.InRange(46, 52));
+        Vector3 midCut = Quaternion.AngleAxis(circle ? 180f : 60f, Vector3.up) * firstEdge;
+        Assert.That(Vector3.Angle(Vector3.ProjectOnPlane(sword.up, Vector3.up), midCut), Is.LessThan(0.1f));
+
+        // Impact completes the skipped arcs even when the player dodged the cut.
+        Publish(circle ? BuriedKingPose.SlamImpact : BuriedKingPose.SweepImpact, end, 0f, cut, arc, radius);
+        StepBody(0.2f);
+        Assert.That(IsVisible(fill), Is.True);
+        Assert.That(IsVisible(streak), Is.True);
+        Assert.That(IsVisible(ribbon), Is.True);
+        Vector3[] flash = Vertices(fill);
+        Vector3[] track = Vertices(streak);
+        Assert.That(track.Length, Is.EqualTo((shape.Length - 1) * 2));
+        for (int i = 1; i < shape.Length; i++)
+        {
+            Assert.That(track[i * 2 - 1], Is.EqualTo(shape[i]));
+            Assert.That(Vector3.Distance(flash[i], shape[i] + 0.012f * Vector3.up), Is.LessThan(0.0001f));
+        }
+
+        Vector3 finalEdge = Vector3.ProjectOnPlane(shape[^1] - shape[0], Vector3.up);
+        Assert.That(Vector3.Angle(Vector3.ProjectOnPlane(sword.up, Vector3.up), finalEdge), Is.LessThan(0.1f));
+        Vector3[] blade = Vertices(ribbon);
+        Assert.That(Vector3.Distance(blade[^1], sword.position + sword.up * (1.96f * 0.88f)), Is.LessThan(0.001f));
+
+        StepBody(0.119f);
+        Assert.That(IsVisible(fill), Is.True);
+        StepBody(0.002f);
+        Assert.That(IsVisible(fill), Is.False);
+        Assert.That(IsVisible(streak), Is.False);
+        Assert.That(IsVisible(ribbon), Is.False);
+
+        Publish(circle ? BuriedKingPose.SlamTell : BuriedKingPose.SweepTell, end, duration, cut, arc, radius);
+        StepBody(0f);
+        StepBody(duration - cut * 0.5f);
+        Assert.That(IsVisible(ribbon), Is.True);
+        Publish(BuriedKingPose.Cleared, end, 0f, 0f);
+        Assert.That(IsVisible(warning), Is.False);
+        Assert.That(IsVisible(fill), Is.False);
+        Assert.That(IsVisible(streak), Is.False);
+        Assert.That(IsVisible(ribbon), Is.False);
+        _hub.Publish(new EnemyDespawned(KingId));
+        Assert.That(warnings == null, Is.True);
+    }
+
+    private static bool IsVisible(Transform effect) => effect.GetComponent<MeshRenderer>().enabled;
+
+    private static Vector3[] Vertices(Transform effect) => effect.GetComponent<MeshFilter>().sharedMesh.vertices;
+
+    private void StepBody(float dt) =>
+        _body.Apply(new EnemyMoveIntent(_body.Id, System.Numerics.Vector3.Zero, System.Numerics.Vector2.UnitY), dt);
 
     [TestCase(true)]
     [TestCase(false)]
@@ -289,13 +483,13 @@ public sealed class BuriedKingViewTests
         return cover;
     }
 
-    private void Publish(BuriedKingPose pose, Vector3 end, float duration, float cut)
+    private void Publish(BuriedKingPose pose, Vector3 end, float duration, float cut, float arc = 0f, float radius = 0f)
     {
         // Feed the actual view contract without duplicating the core state machine here.
         var change = (BuriedKingStateChanged)System.Activator.CreateInstance(typeof(BuriedKingStateChanged),
             BindingFlags.Instance | BindingFlags.NonPublic, null,
-            new object[] { KingId, pose, _origin.ToNum(), end.ToNum(), 4f, 0f, default(System.Numerics.Vector3),
-                0f, 0f, duration, 0f, cut }, null);
+            new object[] { KingId, pose, _origin.ToNum(), end.ToNum(), 4f, arc, default(System.Numerics.Vector3),
+                radius, 0f, duration, 0f, cut }, null);
         _hub.Publish(change);
     }
 }

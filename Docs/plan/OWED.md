@@ -959,3 +959,6 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ### SS-21a — Buried King leap lane
 
 - [ ] Phone: DT-01 Sunscar 30. Sidestep the leap on foot with roll on cooldown. Check both ends stay readable through travel and that confirmed landing flashes once.
+
+
+- [ ] SS-21b · DT-01 Sunscar 30 on a portrait phone. At default zoom, check Sweep and both Reclaim cuts at normal and low frame rates. Check warning readability through impact, blade ribbon, ground streak, and the flash on a miss.

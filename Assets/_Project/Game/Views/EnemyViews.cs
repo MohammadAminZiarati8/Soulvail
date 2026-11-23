@@ -4,6 +4,7 @@ using Soulvail.Core.Ai;
 using Soulvail.Core.Events;
 using Soulvail.Core.Run;
 using Soulvail.Game.Adapters;
+using Soulvail.Game.Arena;
 using Soulvail.Game.Authoring;
 using Soulvail.Game.Pooling;
 using UnityEngine;
@@ -83,6 +84,7 @@ public sealed class EnemyViews : IDisposable
     private readonly IDisposable _spawnedSubscription;
     private readonly IDisposable _despawnedSubscription;
     private readonly DomainEventHub _hub;
+    private readonly int _coverMask = LayerMask.GetMask(ArenaView.CoverLayerName);
 
     private bool _warnedAboutCapacity;
     private bool _disposed;
@@ -251,7 +253,7 @@ public sealed class EnemyViews : IDisposable
     /// targeter's tie-break — is the registry's and is untouched by this.
     /// </para>
     /// </remarks>
-    public void CopyInto(WorldSnapshot snapshot)
+    public void CopyInto(WorldSnapshot snapshot, Rect playBounds = default)
     {
         // The concrete dictionary's value enumerator is a struct, so this foreach allocates
         // nothing. Iterating through IEnumerable<Rental> would box it, every frame.
@@ -270,8 +272,47 @@ public sealed class EnemyViews : IDisposable
             sense.Id = view.Id;
             sense.Position = view.Position.ToNum();
             sense.Velocity = view.Velocity.ToNum();
+            sense.KingLungeClearance = rental.BuriedKing == null || playBounds.width <= 0f
+                ? 0f
+                : MeasureLungeClearance((CapsuleCollider)view.Body, snapshot.PlayerPosition.ToUnity(), playBounds);
             sense.PathDirectionToPlayer = System.Numerics.Vector2.Zero;
         }
+    }
+
+    private float MeasureLungeClearance(CapsuleCollider body, Vector3 hero, Rect bounds)
+    {
+        Transform origin = body.transform;
+        Vector3 direction = Vector3.ProjectOnPlane(hero - origin.position, Vector3.up).normalized;
+        if (direction == Vector3.zero)
+        {
+            return 0f;
+        }
+
+        Vector3 center = origin.TransformPoint(body.center);
+        Vector3 scale = origin.lossyScale;
+        float radius = body.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+        float minX = bounds.xMin + radius, maxX = bounds.xMax - radius;
+        float minZ = bounds.yMin + radius, maxZ = bounds.yMax - radius;
+        if (center.x < minX || center.x > maxX || center.z < minZ || center.z > maxZ)
+        {
+            return 0f;
+        }
+
+        float x = direction.x > 0f ? (maxX - center.x) / direction.x
+            : direction.x < 0f ? (minX - center.x) / direction.x : float.PositiveInfinity;
+        float z = direction.z > 0f ? (maxZ - center.z) / direction.z
+            : direction.z < 0f ? (minZ - center.z) / direction.z : float.PositiveInfinity;
+        float reach = Mathf.Min(x, z);
+        Vector3 cap = Vector3.up * Mathf.Max(0f, body.height * Mathf.Abs(scale.y) * 0.5f - radius);
+        Vector3 bottom = center - cap;
+        Vector3 top = center + cap;
+        if (Physics.CheckCapsule(bottom, top, radius, _coverMask, QueryTriggerInteraction.Ignore))
+        {
+            return 0f;
+        }
+
+        return Physics.CapsuleCast(bottom, top, radius, direction, out RaycastHit hit, reach,
+            _coverMask, QueryTriggerInteraction.Ignore) ? hit.distance : reach;
     }
 
     /// <summary>

@@ -1343,6 +1343,11 @@ public sealed class EnemySystem
 
             agent.Position = sense.Position;
             agent.Velocity = sense.Velocity;
+            if (agent.Behaviour is BossBehaviour { Inner: BuriedKingBehaviour king })
+            {
+                king.ObserveLungeClearance(sense.KingLungeClearance);
+            }
+
 
             // The two senses core cannot derive: pathfinding is Unity's (AR §3) and so is
             // visibility. Copied as given, zero included — a behaviour reads a zero path direction

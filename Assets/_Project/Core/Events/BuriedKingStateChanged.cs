@@ -14,6 +14,9 @@ public enum BuriedKingPose
     Cleared,
     SlamTell,
     FractureTell,
+    LungeTell,
+    LungeTravel,
+    LungeRecovery,
 }
 
 /// <summary>Locked floor geometry and the scepter position for the current pose.</summary>
@@ -22,6 +25,14 @@ public readonly struct BuriedKingStateChanged
     internal BuriedKingStateChanged(int enemyId, BuriedKingPose pose, Vector3 start, Vector3 end,
         float width, float sweepDegrees, Vector3 weaponPosition, float slamRadius, float fractureProgress,
         float warningSeconds, float landingRadius)
+        : this(enemyId, pose, start, end, width, sweepDegrees, weaponPosition, slamRadius, fractureProgress,
+            warningSeconds, landingRadius, default, default, 0f)
+    {
+    }
+
+    internal BuriedKingStateChanged(int enemyId, BuriedKingPose pose, Vector3 start, Vector3 end,
+        float width, float sweepDegrees, Vector3 weaponPosition, float slamRadius, float fractureProgress,
+        float warningSeconds, float landingRadius, Vector3 slashStart, Vector3 slashEnd, float cutSeconds)
     {
         EnemyId = enemyId;
         Pose = pose;
@@ -34,6 +45,9 @@ public readonly struct BuriedKingStateChanged
         FractureProgress = fractureProgress;
         WarningSeconds = warningSeconds;
         LandingRadius = landingRadius;
+        SlashStart = slashStart;
+        SlashEnd = slashEnd;
+        CutSeconds = cutSeconds;
     }
 
     public int EnemyId { get; }
@@ -47,4 +61,7 @@ public readonly struct BuriedKingStateChanged
     public float FractureProgress { get; }
     public float WarningSeconds { get; }
     public float LandingRadius { get; }
+    public Vector3 SlashStart { get; }
+    public Vector3 SlashEnd { get; }
+    public float CutSeconds { get; }
 }

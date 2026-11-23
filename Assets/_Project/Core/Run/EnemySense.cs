@@ -22,6 +22,9 @@ public struct EnemySense
 
     public Vector3 Velocity;
 
+    /// <summary>Clear straight-line travel towards the player for the King's body, in metres.</summary>
+    public float KingLungeClearance;
+
     /// <summary>
     /// Unit XZ direction along the NavMesh path towards the player, or zero when there is no
     /// path. A sense, not an instruction — core decides what to do about it.

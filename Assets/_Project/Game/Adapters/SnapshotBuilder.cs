@@ -256,7 +256,7 @@ public sealed class SnapshotBuilder
         // Last, and after the Clear above rather than owning one of its own: the enemies are the
         // only variable-length part of the frame, and the count they leave behind is what core
         // reads to know how many of the array's slots are this frame's (AR §4.2).
-        _enemies.CopyInto(snapshot);
+        _enemies.CopyInto(snapshot, arena == null ? default : arena.PlayBounds);
 
         // Between the enemies and the second pass, and both adjacencies are load-bearing (M5-05a
         // rule 4). *After* the enemies, because the enemy count is what LineOfSightSense's

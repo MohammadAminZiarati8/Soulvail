@@ -22,6 +22,23 @@ internal sealed class BuriedKingView : IDisposable
     private const float LandingBlendDistance = 0.85f;
     private const float WalkCycleDistance = 1.15f;
     private const float ImpactRingSeconds = 0.34f;
+    private const float SupportGripSpacing = 0.24f;
+
+    private static readonly LungeStance LungeGuard = new(
+        new(0.10f, 0.81f, 0.28f), new(0.20f, 0.84f, 0.48f),
+        new(0f, -0.06f, 0f), 0.09f, -0.09f, 0f, 5f, 4f);
+    private static readonly LungeStance LungeLoaded = new(
+        new(0.23f, 1.10f, -0.13f), new(0.31f, 0.57f, -0.76f),
+        new(0.035f, -0.12f, -0.095f), 0.17f, -0.18f, 0f, 22f, -6f);
+    private static readonly LungeStance LungeGlide = new(
+        new(0.26f, 1.04f, 0.05f), new(0.24f, 0.78f, -0.58f),
+        new(0f, -0.15f, 0.025f), 0.26f, -0.32f, 0.07f, 14f, 15f);
+    private static readonly LungeStance LungePlant = new(
+        new(-0.13f, 0.72f, 0.37f), new(-0.64f, -0.44f, 0.63f),
+        new(-0.012f, -0.17f, 0.13f), 0.29f, -0.29f, 0f, -25f, 22f);
+    private static readonly LungeStance LungeFollowThrough = new(
+        new(-0.22f, 0.71f, 0.25f), new(-0.81f, -0.42f, 0.39f),
+        new(-0.022f, -0.17f, 0.105f), 0.29f, -0.29f, 0f, -31f, 21f);
 
     private static readonly Stance Rest = new(
         new(0.29f, -0.94f, -0.18f), new(0.02f, -0.29f, 0.96f), new(0.25f, 0.90f, 0.35f), 3f, 2f);
@@ -56,6 +73,7 @@ internal sealed class BuriedKingView : IDisposable
     private readonly WarningShape _landing;
     private readonly SlamDustView _dust;
     private readonly LineRenderer _impactRing;
+    private readonly LineRenderer _lungeArrow;
     private readonly MaterialPropertyBlock _impactColor = new();
     private readonly IDisposable _stateSubscription;
     private readonly Transform _sword;
@@ -67,6 +85,9 @@ internal sealed class BuriedKingView : IDisposable
     private readonly Joint _rightForearm;
     private readonly Joint _leftUpperArm;
     private readonly Joint _leftForearm;
+    private readonly Joint _head;
+    private readonly ArmGrip _swordArm;
+    private readonly ArmGrip _supportArm;
     private readonly Transform _hips;
     private readonly Leg _leftLeg;
     private readonly Leg _rightLeg;
@@ -89,6 +110,12 @@ internal sealed class BuriedKingView : IDisposable
     private float _impactRadius;
     private float _impactAge;
     private float _catchAge = 1f;
+    private float _cutSeconds;
+    private LungeStance _lungePose = LungeGuard;
+    private LungeStance _recoveryStart;
+    private Vector3 _windupGrip;
+    private Vector3 _windupBlade;
+    private float _guardRelease;
 
     public BuriedKingView(EnemyView body, int id, DomainEventHub hub)
     {
@@ -110,6 +137,9 @@ internal sealed class BuriedKingView : IDisposable
             {
                 case "chest":
                     _chest = joint;
+                    break;
+                case "head":
+                    _head = joint;
                     break;
                 case "hips":
                     _hips = bone;
@@ -138,6 +168,9 @@ internal sealed class BuriedKingView : IDisposable
         Transform bonesRoot = _model.Find("Rig_Medium");
         _leftLeg = new Leg(bonesRoot, _model, "l", 0.09f);
         _rightLeg = new Leg(bonesRoot, _model, "r", -0.09f);
+        _swordArm = new ArmGrip(_rightUpperArm.Bone, _rightForearm.Bone, _hand, _grip, 1f);
+        Transform supportHand = Array.Find(bones, bone => bone.name == "hand.l");
+        _supportArm = new ArmGrip(_leftUpperArm.Bone, _leftForearm.Bone, supportHand, supportHand.Find("handslot.l"), -1f);
         _gripFromHand = Quaternion.Inverse(_hand.rotation) * _grip.rotation;
         _sword = Object.Instantiate(rig.Sword, _grip, false).transform;
         _sword.name = "Buried King's sword";
@@ -160,6 +193,14 @@ internal sealed class BuriedKingView : IDisposable
         _dust = Object.Instantiate(rig.LandingDust, _floor.transform);
         _dust.transform.localScale = Vector3.one * 0.38f;
         _impactRing = CreateImpactRing();
+        _lungeArrow = CreateFloorLine("Lunge direction");
+        _lungeArrow.useWorldSpace = true;
+        _lungeArrow.alignment = LineAlignment.TransformZ;
+        _lungeArrow.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        _lungeArrow.positionCount = 5;
+        _lungeArrow.widthMultiplier = 0.12f;
+        _impactColor.SetColor("_BaseColor", new Color(0.89f, 0.83f, 0.70f, 0.7f));
+        _lungeArrow.SetPropertyBlock(_impactColor);
         Step(0f);
         _stateSubscription = hub.Subscribe<BuriedKingStateChanged>(OnState);
         _body.MoveApplied += Step;
@@ -201,7 +242,8 @@ internal sealed class BuriedKingView : IDisposable
         StepImpact(dt);
         float progress = _warningSeconds > 0f ? Mathf.Clamp01(_poseTime / _warningSeconds) : 0f;
         UpdateStance(dt, progress);
-        _footprint.Fill(progress, _pose == BuriedKingPose.FractureTell);
+        _footprint.Fill(_pose == BuriedKingPose.LungeTravel ? 1f : progress,
+            _pose == BuriedKingPose.FractureTell);
         _landing.Fill(progress);
         switch (_pose)
         {
@@ -239,10 +281,20 @@ internal sealed class BuriedKingView : IDisposable
             return;
         }
 
-        _footprint.Clear();
-        _landing.Clear();
+        if (_pose != BuriedKingPose.LungeTravel)
+        {
+            _footprint.Clear();
+            _landing.Clear();
+            _lungeArrow.enabled = false;
+        }
+
         _warningSeconds = state.WarningSeconds;
         _newWarning = _warningSeconds > 0f;
+        if (previous == BuriedKingPose.LungeRecovery)
+        {
+            _guardRelease = 0.18f;
+        }
+
         if (previous == BuriedKingPose.Returning && _pose is BuriedKingPose.Held or BuriedKingPose.FractureTell or BuriedKingPose.SlamTell)
         {
             _catchAge = 0f;
@@ -252,6 +304,23 @@ internal sealed class BuriedKingView : IDisposable
         Vector3 end = state.End.ToUnity();
         switch (_pose)
         {
+            case BuriedKingPose.LungeTell:
+                _windupGrip = _model.InverseTransformPoint(_grip.position);
+                _windupBlade = _model.InverseTransformDirection(_grip.up);
+                _guardRelease = 0f;
+                _poseTime = 0f;
+                _footprint.Lane(state.SlashStart.ToUnity(), state.SlashEnd.ToUnity(), state.Width);
+                ShowLungeArrow(start, end);
+                break;
+            case BuriedKingPose.LungeTravel:
+                _poseTime = 0f;
+                _cutSeconds = state.CutSeconds;
+                break;
+            case BuriedKingPose.LungeRecovery:
+                _poseTime = 0f;
+                _cutSeconds = state.CutSeconds;
+                _recoveryStart = _lungePose;
+                break;
             case BuriedKingPose.SweepTell:
                 PoseToward(SweepReady, _warningSeconds * 0.65f);
                 _footprint.Arc(start, Vector3.ProjectOnPlane(end - start, Vector3.up), state.SweepDegrees);
@@ -305,6 +374,12 @@ internal sealed class BuriedKingView : IDisposable
 
     private void UpdateStance(float dt, float progress)
     {
+        if (_pose is BuriedKingPose.LungeTell or BuriedKingPose.LungeTravel or BuriedKingPose.LungeRecovery)
+        {
+            PoseLunge(dt, progress);
+            return;
+        }
+
         _stance = Stance.Blend(_from, _target, Mathf.SmoothStep(0f, 1f, _poseTime / _poseDuration));
         // Ease through the weight transfer and finish the swing on the core's impact frame.
         _stance = _pose switch
@@ -377,6 +452,99 @@ internal sealed class BuriedKingView : IDisposable
         Vector3 knuckles = _model.TransformDirection(_stance.Forearm);
         Vector3 bladeFace = Vector3.Cross(blade, knuckles).normalized;
         _hand.rotation = Quaternion.LookRotation(bladeFace, blade) * Quaternion.Inverse(_gripFromHand);
+        if (_guardRelease > 0f)
+        {
+            float weight = Mathf.SmoothStep(0f, 1f, _guardRelease / 0.18f);
+            PoseLungeGrip(LungeGuard, weight, weight);
+            _guardRelease -= dt;
+        }
+    }
+
+    private void PoseLunge(float dt, float progress)
+    {
+        Quaternion facing = _body.transform.rotation * _modelRest;
+        _visualFacing = _pose == BuriedKingPose.LungeTell
+            ? Quaternion.RotateTowards(_visualFacing, facing, dt * 540f)
+            : facing;
+        _model.rotation = _visualFacing;
+        _gait = 0f;
+        foreach (Joint joint in _joints)
+        {
+            joint.BlendWalk(0f);
+        }
+
+        float support = 1f;
+        if (_pose == BuriedKingPose.LungeTell)
+        {
+            float load = Mathf.SmoothStep(0f, 1f, progress / 0.62f);
+            var from = new LungeStance(_windupGrip, _windupBlade, LungeGuard.Pelvis,
+                LungeGuard.Front, LungeGuard.Rear, 0f, LungeGuard.Twist, LungeGuard.Lean);
+            _lungePose = LungeStance.Blend(from, LungeLoaded, load);
+            support = Mathf.SmoothStep(0f, 1f, progress / 0.28f);
+        }
+        else if (_pose == BuriedKingPose.LungeTravel)
+        {
+            float cutStart = 1f - _cutSeconds / _warningSeconds;
+            _lungePose = progress < cutStart
+                ? LungeStance.Blend(LungeLoaded, LungeGlide, Mathf.SmoothStep(0f, 1f, progress / 0.36f))
+                : LungeStance.Blend(LungeGlide, LungePlant, StrikeProgress(progress, cutStart));
+        }
+        else
+        {
+            // Keep both boots at their impact positions throughout the settle.
+            var guard = new LungeStance(LungeGuard.Grip, LungeGuard.Blade, LungeGuard.Pelvis,
+                _recoveryStart.Front, _recoveryStart.Rear, 0f, LungeGuard.Twist, LungeGuard.Lean);
+            _lungePose = SettleLunge(guard, progress);
+        }
+
+        LungeStance pose = _lungePose;
+        Vector3 leftFoot = _leftLeg.Target(_model, 1f, pose.Front - 0.09f, pose.Lift);
+        Vector3 rightFoot = _rightLeg.Target(_model, 1f, pose.Rear + 0.09f);
+        _hips.position += _model.TransformVector(pose.Pelvis);
+        _leftLeg.Plant(_model, leftFoot, 1f);
+        _rightLeg.Plant(_model, rightFoot, 1f);
+        _chest.Turn(_model, pose.Lean, pose.Twist);
+        _head.Bone.rotation = Quaternion.AngleAxis(-pose.Lean, _model.right)
+            * Quaternion.AngleAxis(-pose.Twist, _model.up) * _head.Bone.rotation;
+
+        PoseLungeGrip(pose, support, rightWeight: 1f);
+    }
+
+    private LungeStance SettleLunge(LungeStance guard, float progress)
+    {
+        const float followThrough = 0.18f;
+        if (!(_cutSeconds > 0f))
+        {
+            return LungeStance.Blend(_recoveryStart, guard, StrikeProgress(progress, 0f));
+        }
+
+        return progress < followThrough
+            ? LungeStance.Blend(_recoveryStart, LungeFollowThrough, Mathf.SmoothStep(0f, 1f, progress / followThrough))
+            : LungeStance.Blend(LungeFollowThrough, guard, StrikeProgress(progress, followThrough));
+    }
+
+    private void PoseLungeGrip(LungeStance pose, float leftWeight, float rightWeight)
+    {
+        Vector3 blade = _model.TransformDirection(pose.Blade.normalized);
+        Vector3 face = Vector3.Cross(blade, _model.right).normalized;
+        Quaternion gripRotation = Quaternion.LookRotation(face, blade);
+        _swordArm.Place(_model, _model.TransformPoint(pose.Grip), gripRotation, rightWeight);
+        _supportArm.Place(_model, _grip.position - _grip.up * SupportGripSpacing, _grip.rotation, leftWeight);
+    }
+
+    private void ShowLungeArrow(Vector3 start, Vector3 end)
+    {
+        Vector3 forward = Vector3.ProjectOnPlane(end - start, Vector3.up).normalized;
+        Vector3 side = Vector3.Cross(Vector3.up, forward);
+        Vector3 tip = end + Vector3.up * (FloorOffset + 0.024f);
+        Vector3 tail = start + forward * 0.65f + Vector3.up * (FloorOffset + 0.024f);
+        Vector3 shoulder = tip - forward * 0.53f;
+        _lungeArrow.SetPosition(0, tail);
+        _lungeArrow.SetPosition(1, tip);
+        _lungeArrow.SetPosition(2, shoulder + side * 0.30f);
+        _lungeArrow.SetPosition(3, tip);
+        _lungeArrow.SetPosition(4, shoulder - side * 0.30f);
+        _lungeArrow.enabled = true;
     }
 
     private static float StrikeProgress(float progress, float start) =>
@@ -384,11 +552,7 @@ internal sealed class BuriedKingView : IDisposable
 
     private LineRenderer CreateImpactRing()
     {
-        var ring = new GameObject("Sword impact ring");
-        ring.transform.SetParent(_floor.transform, false);
-        var line = ring.AddComponent<LineRenderer>();
-        line.sharedMaterial = _danger;
-        line.useWorldSpace = false;
+        LineRenderer line = CreateFloorLine("Sword impact ring");
         line.loop = true;
         line.positionCount = ArcSegments;
         line.shadowCastingMode = ShadowCastingMode.Off;
@@ -399,6 +563,19 @@ internal sealed class BuriedKingView : IDisposable
             line.SetPosition(i, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)));
         }
 
+        line.enabled = false;
+        return line;
+    }
+
+    private LineRenderer CreateFloorLine(string name)
+    {
+        var root = new GameObject(name);
+        root.transform.SetParent(_floor.transform, false);
+        var line = root.AddComponent<LineRenderer>();
+        line.sharedMaterial = _danger;
+        line.useWorldSpace = false;
+        line.shadowCastingMode = ShadowCastingMode.Off;
+        line.receiveShadows = false;
         line.enabled = false;
         return line;
     }
@@ -512,6 +689,84 @@ internal sealed class BuriedKingView : IDisposable
             Mathf.Lerp(from.Lean, to.Lean, t));
     }
 
+    private readonly struct LungeStance
+    {
+        public readonly Vector3 Grip;
+        public readonly Vector3 Blade;
+        public readonly Vector3 Pelvis;
+        public readonly float Front;
+        public readonly float Rear;
+        public readonly float Lift;
+        public readonly float Twist;
+        public readonly float Lean;
+
+        public LungeStance(Vector3 grip, Vector3 blade, Vector3 pelvis, float front, float rear, float lift,
+            float twist, float lean)
+        {
+            Grip = grip;
+            Blade = blade;
+            Pelvis = pelvis;
+            Front = front;
+            Rear = rear;
+            Lift = lift;
+            Twist = twist;
+            Lean = lean;
+        }
+
+        public static LungeStance Blend(LungeStance from, LungeStance to, float t) => new(
+            Vector3.Lerp(from.Grip, to.Grip, t), Vector3.Slerp(from.Blade, to.Blade, t),
+            Vector3.Lerp(from.Pelvis, to.Pelvis, t), Mathf.Lerp(from.Front, to.Front, t),
+            Mathf.Lerp(from.Rear, to.Rear, t), Mathf.Lerp(from.Lift, to.Lift, t),
+            Mathf.Lerp(from.Twist, to.Twist, t), Mathf.Lerp(from.Lean, to.Lean, t));
+    }
+
+    private readonly struct ArmGrip
+    {
+        private readonly Transform _shoulder;
+        private readonly Transform _elbow;
+        private readonly Transform _hand;
+        private readonly Transform _slot;
+        private readonly float _side;
+
+        public ArmGrip(Transform shoulder, Transform elbow, Transform hand, Transform slot, float side)
+        {
+            _shoulder = shoulder;
+            _elbow = elbow;
+            _hand = hand;
+            _slot = slot;
+            _side = side;
+        }
+
+        public void Place(Transform model, Vector3 grip, Quaternion rotation, float weight)
+        {
+            if (!(weight > 0f))
+            {
+                return;
+            }
+
+            Quaternion handRotation = rotation * Quaternion.Inverse(_slot.localRotation);
+            Vector3 wrist = grip - handRotation * Vector3.Scale(_slot.localPosition, _hand.lossyScale);
+            Quaternion facing = Quaternion.Slerp(_hand.rotation, handRotation, weight);
+            Vector3 bend = model.TransformDirection(new Vector3(_side, -0.6f, -0.2f));
+            AimLimb(_shoulder, _elbow, _hand, Vector3.Lerp(_hand.position, wrist, weight), bend);
+            _hand.rotation = facing;
+        }
+    }
+
+    private static void AimLimb(Transform root, Transform middle, Transform end, Vector3 target, Vector3 pole)
+    {
+        Vector3 start = root.position;
+        float upper = Vector3.Distance(start, middle.position);
+        float lower = Vector3.Distance(middle.position, end.position);
+        Vector3 axis = (target - start).normalized;
+        float length = Mathf.Clamp(Vector3.Distance(start, target), Mathf.Abs(upper - lower) + 0.001f, upper + lower - 0.001f);
+        float along = (upper * upper - lower * lower + length * length) / (2f * length);
+        Vector3 bend = Vector3.ProjectOnPlane(pole, axis).normalized;
+        Vector3 joint = start + axis * along + bend * Mathf.Sqrt(Mathf.Max(0f, upper * upper - along * along));
+        root.rotation = Quaternion.FromToRotation(middle.position - start, joint - start) * root.rotation;
+        middle.rotation = Quaternion.FromToRotation(end.position - middle.position, start + axis * length - joint) * middle.rotation;
+    }
+
     private readonly struct Joint
     {
         private readonly Transform _bone;
@@ -519,6 +774,8 @@ internal sealed class BuriedKingView : IDisposable
         private readonly Quaternion _restRotation;
         private readonly Vector3 _restScale;
         private readonly Vector3 _bindRight;
+
+        public Transform Bone => _bone;
 
         public Joint(Transform bone, Transform model)
         {
@@ -564,8 +821,8 @@ internal sealed class BuriedKingView : IDisposable
             _footFacing = Quaternion.Inverse(model.rotation) * _foot.rotation;
         }
 
-        public Vector3 Target(Transform model, float weight) =>
-            Vector3.Lerp(_foot.position, model.TransformPoint(_stanceFoot), weight);
+        public Vector3 Target(Transform model, float weight, float step = 0f, float lift = 0f) =>
+            Vector3.Lerp(_foot.position, model.TransformPoint(_stanceFoot + new Vector3(0f, lift, step)), weight);
 
         public void Plant(Transform model, Vector3 target, float weight)
         {
@@ -575,16 +832,7 @@ internal sealed class BuriedKingView : IDisposable
             }
 
             Quaternion footRotation = Quaternion.Slerp(_foot.rotation, model.rotation * _footFacing, weight);
-            Vector3 hip = _thigh.position;
-            float upper = Vector3.Distance(hip, _shin.position);
-            float lower = Vector3.Distance(_shin.position, _foot.position);
-            Vector3 axis = (target - hip).normalized;
-            float length = Mathf.Clamp(Vector3.Distance(target, hip), Mathf.Abs(upper - lower) + 0.001f, upper + lower - 0.001f);
-            float along = (upper * upper - lower * lower + length * length) / (2f * length);
-            Vector3 bend = Vector3.ProjectOnPlane(model.forward, axis).normalized;
-            Vector3 knee = hip + axis * along + bend * Mathf.Sqrt(Mathf.Max(0f, upper * upper - along * along));
-            _thigh.rotation = Quaternion.FromToRotation(_shin.position - hip, knee - hip) * _thigh.rotation;
-            _shin.rotation = Quaternion.FromToRotation(_foot.position - _shin.position, hip + axis * length - knee) * _shin.rotation;
+            AimLimb(_thigh, _shin, _foot, target, model.forward);
             _foot.rotation = footRotation;
         }
     }

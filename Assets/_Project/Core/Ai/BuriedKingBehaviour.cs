@@ -274,7 +274,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
                 case ReturnPhase.Shattered:
                     _state = State.FractureTell;
                     _remaining = _fractureTell.Value;
-                    Publish(ctx.Events, BuriedKingPose.FractureTell);
+                    Publish(ctx.Events, BuriedKingPose.FractureTell, warningSeconds: _remaining);
                     break;
                 case ReturnPhase.Reclaim:
                     StartSlam(ctx, _agent.Blackboard.SelfPosition);
@@ -332,7 +332,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _start = start;
         _end = end;
         _remaining = duration;
-        Publish(ctx.Events, pose, start);
+        Publish(ctx.Events, pose, start, warningSeconds: duration);
     }
 
     private void Recover(in EnemyTickContext ctx, float duration)
@@ -363,9 +363,10 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
     }
 
-    private void Publish(IDomainEvents events, BuriedKingPose pose, Vector3 weapon = default, float fractureProgress = 0f) =>
+    private void Publish(IDomainEvents events, BuriedKingPose pose, Vector3 weapon = default,
+        float fractureProgress = 0f, float warningSeconds = 0f) =>
         events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _laneWidth.Value, _sweepDegrees.Value,
-            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f, fractureProgress));
+            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f, fractureProgress, warningSeconds));
 
     private static Vector2 Ground(Vector3 vector) => new(vector.X, vector.Z);
 }

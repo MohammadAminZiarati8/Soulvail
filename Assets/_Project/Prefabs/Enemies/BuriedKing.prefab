@@ -102,7 +102,7 @@ RectTransform:
   m_GameObject: {fileID: 3139235650053293830}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.0125, y: 0.0125, z: 0.0125}
+  m_LocalScale: {x: 0.025, y: 0.025, z: 0.025}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1703424030641636515}
@@ -255,6 +255,7 @@ GameObject:
   - component: {fileID: 6267501769602756206}
   - component: {fileID: 7408392152337057889}
   - component: {fileID: 5166751132222768321}
+  - component: {fileID: 1764006778663457201}
   m_Layer: 8
   m_Name: BuriedKing
   m_TagString: Untagged
@@ -272,7 +273,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 4, y: 4, z: 4}
+  m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1144056373666776644}
@@ -340,6 +341,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 667bad2d798076243a6aa40e92b92a3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.EnemyView
+--- !u!114 &1764006778663457201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3836830908717291402}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9a0c2bc7b114940aeeec87f6015e115, type: 3}
+  m_Name: ""
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.BuriedKingRig
+  _model: {fileID: 820426908698267809}
+  _walk: {fileID: 455867200774271528, guid: 78188bd097779fc4e987712a97ffaa28, type: 3}
+  _sword: {fileID: 919132149155446097, guid: 2fe8d4cf34fc1b249ae3fb5721643044, type: 3}
 --- !u!114 &6267501769602756206
 MonoBehaviour:
   m_ObjectHideFlags: 0

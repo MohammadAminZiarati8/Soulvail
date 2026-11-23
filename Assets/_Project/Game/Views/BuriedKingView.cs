@@ -3,63 +3,68 @@ using Soulvail.Core.Events;
 using Soulvail.Game.Adapters;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace Soulvail.Game.Views;
 
-/// <summary>Poses the Buried King and draws his locked floor geometry and collider-free weapon.</summary>
+/// <summary>Poses the King, presents his locked warnings, and moves the sword through its flight.</summary>
 internal sealed class BuriedKingView : IDisposable
 {
-    private const int ArcSegments = 24;
+    private const int ArcSegments = 48;
     private const float FloorOffset = 0.06f;
-    private const float ShaftLength = 1.15f;
-    private const float GripToBase = 0.45f;
+    // The KayKit sword's origin is in the grip. Its tip is 1.96 m above the origin.
+    private const float SwordScale = 0.88f;
+    private const float GripToTip = 1.96f * SwordScale;
+    private const float GripToPommel = 0.40f * SwordScale;
     private const float FlightHeight = 0.8f;
-    private const float HandBlendDistance = 1.1f;
-    private const float LandingBlendDistance = 0.55f;
+    private const float HandBlendDistance = 1.35f;
+    private const float LandingBlendDistance = 0.85f;
+    private const float WalkCycleDistance = 1.15f;
 
     private static readonly Stance Rest = new(
-        new(0.69f, -0.72f, -0.06f), new(0.48f, -0.12f, 0.87f), new(0.44f, 0.74f, 0.51f), 0f, 0f);
+        new(0.20f, -0.97f, -0.10f), new(0.27f, -0.33f, 0.90f), new(0.10f, 0.65f, 0.75f), 0f, 0f);
     private static readonly Stance SweepReady = new(
-        new(0.85f, -0.30f, -0.35f), new(0.68f, 0.15f, 0.72f), new(0.80f, 0.13f, 0.55f), 24f, 0f);
+        new(0.76f, -0.46f, -0.45f), new(0.33f, 0.36f, 0.86f), new(0.96f, 0.23f, 0.16f), 32f, -3f);
     private static readonly Stance SweepStrike = new(
-        new(0.18f, -0.32f, 0.93f), new(-0.58f, 0.06f, 0.81f), new(-0.89f, 0.13f, 0.46f), -29f, 6f);
+        new(0.03f, -0.31f, 0.95f), new(-0.24f, 0.04f, 0.97f), new(-0.97f, 0.10f, 0.22f), -37f, 8f);
     private static readonly Stance CastReady = new(
-        new(0.89f, 0.18f, -0.40f), new(0.08f, 0.71f, -0.70f), new(0.22f, 0.72f, -0.65f), 22f, -8f);
+        new(0.67f, 0.36f, -0.65f), new(0.10f, 0.91f, -0.40f), new(0.23f, -0.12f, -0.97f), 28f, -9f);
     private static readonly Stance Reach = new(
-        new(0.47f, -0.27f, 0.84f), new(0.05f, 0.06f, 1f), new(0.10f, 0.42f, 0.90f), -8f, 7f);
+        new(0.34f, -0.33f, 0.88f), new(0.12f, 0.08f, 0.99f), new(0.14f, 0.90f, 0.40f), -13f, 8f);
     private static readonly Stance SlamReady = new(
-        new(0.86f, 0.50f, 0.12f), new(0.45f, 0.80f, 0.40f), new(-0.72f, 0.58f, 0.37f), 9f, -7f);
+        new(0.53f, 0.79f, 0.28f), new(0.25f, 0.91f, -0.32f), new(0.10f, 0.20f, -0.97f), 11f, -12f);
     private static readonly Stance SlamStrike = new(
-        new(0.51f, -0.77f, 0.42f), new(0.10f, -0.68f, 0.73f), new(0.09f, -0.90f, 0.44f), -4f, 25f);
+        new(0.43f, -0.68f, 0.60f), new(0.25f, -0.42f, 0.88f), new(0.10f, -0.96f, 0.25f), -8f, 32f);
 
     private readonly int _id;
     private readonly EnemyView _body;
-    private readonly GameObject _root;
+    private readonly Transform _model;
+    private readonly Quaternion _modelRest;
+    private readonly AnimationClip _walk;
+    private readonly Joint[] _joints;
+    private readonly GameObject _floor;
     private readonly Material _danger;
-    private readonly Material _sandstone;
-    private readonly LineRenderer _weapon;
-    private readonly LineRenderer _tell;
-    private readonly LineRenderer _landing;
-    private readonly Material _fractureMaterial;
-    private readonly Mesh _fractureMesh;
-    private readonly MeshRenderer _fracture;
-    private readonly Vector3[] _fractureCorners = new Vector3[4];
+    private readonly WarningShape _footprint;
+    private readonly WarningShape _landing;
     private readonly IDisposable _stateSubscription;
-    private readonly Transform _handSocket;
+    private readonly Transform _sword;
+    private readonly Transform _hand;
+    private readonly Transform _grip;
+    private readonly Quaternion _gripFromHand;
     private readonly Joint _chest;
     private readonly Joint _rightUpperArm;
     private readonly Joint _rightForearm;
-    private readonly Joint _rightHand;
     private readonly Joint _leftUpperArm;
     private readonly Joint _leftForearm;
-    private readonly Joint _rightThigh;
-    private readonly Joint _leftThigh;
+    private Quaternion _visualFacing;
     private Stance _stance = Rest;
     private Stance _from = Rest;
     private Stance _target = Rest;
     private float _poseTime;
     private float _poseDuration = 1f;
+    private float _warningSeconds;
+    private bool _newWarning;
     private float _stride;
     private float _gait;
     private BuriedKingPose _pose = BuriedKingPose.Held;
@@ -67,70 +72,70 @@ internal sealed class BuriedKingView : IDisposable
     private Vector3 _flightEnd;
     private Vector3 _flightPosition;
     private Vector3 _releaseGrip;
-    private Vector3 _releaseAxis;
+    private Quaternion _releaseRotation;
 
     public BuriedKingView(EnemyView body, int id, DomainEventHub hub)
     {
         _body = body;
         _id = id;
-        _root = new GameObject("Buried King presentation");
-        _root.transform.SetParent(body.transform, false);
-        foreach (Transform bone in body.GetComponentsInChildren<Transform>(true))
+        var rig = body.GetComponent<BuriedKingRig>();
+        _model = rig.Model;
+        _modelRest = _model.localRotation;
+        _visualFacing = _model.rotation;
+        _walk = rig.Walk;
+        Transform[] bones = _model.Find("Rig_Medium").GetComponentsInChildren<Transform>(true);
+        _joints = new Joint[bones.Length];
+        for (int i = 0; i < bones.Length; i++)
         {
+            Transform bone = bones[i];
+            var joint = new Joint(bone, _model);
+            _joints[i] = joint;
             switch (bone.name)
             {
                 case "chest":
-                    _chest = new Joint(bone, body.transform);
+                    _chest = joint;
                     break;
                 case "upperarm.r":
-                    _rightUpperArm = new Joint(bone, body.transform);
+                    _rightUpperArm = joint;
                     break;
                 case "lowerarm.r":
-                    _rightForearm = new Joint(bone, body.transform);
+                    _rightForearm = joint;
                     break;
                 case "hand.r":
-                    _rightHand = new Joint(bone, body.transform);
+                    _hand = bone;
                     break;
                 case "handslot.r":
-                    _handSocket = bone;
+                    _grip = bone;
                     break;
                 case "upperarm.l":
-                    _leftUpperArm = new Joint(bone, body.transform);
+                    _leftUpperArm = joint;
                     break;
                 case "lowerarm.l":
-                    _leftForearm = new Joint(bone, body.transform);
-                    break;
-                case "upperleg.r":
-                    _rightThigh = new Joint(bone, body.transform);
-                    break;
-                case "upperleg.l":
-                    _leftThigh = new Joint(bone, body.transform);
+                    _leftForearm = joint;
                     break;
             }
         }
-        _danger = MakeMaterial(new Color(1f, 0.24f, 0.07f));
-        _sandstone = MakeMaterial(new Color(1f, 0.85f, 0.59f));
-        _weapon = CreateLine("Scepter", _sandstone, 0.13f);
-        _tell = CreateLine("Locked warning", _danger, 0.09f);
-        _landing = CreateLine("Landing marker", _danger, 0.09f);
-        _fractureMaterial = MakeMaterial(_danger.color);
-        _fractureMaterial.SetFloat("_Surface", 1f);
-        _fractureMaterial.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-        _fractureMaterial.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-        _fractureMaterial.SetFloat("_ZWrite", 0f);
-        _fractureMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        _fractureMaterial.renderQueue = (int)RenderQueue.Transparent;
-        // World-space floor geometry is independent of the body and its scale.
-        var floor = new GameObject("Buried King fracture");
-        _fractureMesh = new Mesh { name = "Buried King fracture", vertices = _fractureCorners };
-        _fractureMesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
-        floor.AddComponent<MeshFilter>().sharedMesh = _fractureMesh;
-        _fracture = floor.AddComponent<MeshRenderer>();
-        _fracture.sharedMaterial = _fractureMaterial;
-        _fracture.shadowCastingMode = ShadowCastingMode.Off;
-        _fracture.enabled = false;
-        UpdateStance(0f);
-        HoldWeapon();
+
+        _gripFromHand = Quaternion.Inverse(_hand.rotation) * _grip.rotation;
+        _sword = Object.Instantiate(rig.Sword, _grip, false).transform;
+        _sword.name = "Buried King's sword";
+
+        // A world-space root keeps the locked floor shapes clear of model turns and scaling.
+        _floor = new GameObject("Buried King warnings");
+        SceneManager.MoveGameObjectToScene(_floor, body.gameObject.scene);
+        _danger = new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+        {
+            renderQueue = (int)RenderQueue.Transparent,
+        };
+        _danger.SetFloat("_Surface", 1f);
+        _danger.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+        _danger.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+        _danger.SetFloat("_ZWrite", 0f);
+        _danger.SetFloat("_Cull", (float)CullMode.Off);
+        _danger.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        _footprint = new WarningShape(_floor.transform, _danger, "Attack warning");
+        _landing = new WarningShape(_floor.transform, _danger, "Landing warning");
+        Step(0f);
         _stateSubscription = hub.Subscribe<BuriedKingStateChanged>(OnState);
         _body.MoveApplied += Step;
     }
@@ -139,37 +144,19 @@ internal sealed class BuriedKingView : IDisposable
     {
         _stateSubscription.Dispose();
         _body.MoveApplied -= Step;
-        _chest.Reset();
-        _rightUpperArm.Reset();
-        _rightForearm.Reset();
-        _rightHand.Reset();
-        _leftUpperArm.Reset();
-        _leftForearm.Reset();
-        _rightThigh.Reset();
-        _leftThigh.Reset();
-        // The held line lives under a rig bone rather than the presentation root.
-        if (_weapon != null)
+        foreach (Joint joint in _joints)
         {
-            _weapon.enabled = false;
-            Destroy(_weapon.gameObject);
+            joint.BlendWalk(0f);
         }
 
-        if (_root != null)
-        {
-            _root.SetActive(false);
-        }
-
-        if (_fracture != null)
-        {
-            _fracture.enabled = false;
-            Destroy(_fracture.gameObject);
-        }
-
-        Destroy(_root);
+        _model.localRotation = _modelRest;
+        _sword.gameObject.SetActive(false);
+        _floor.SetActive(false);
+        _footprint.Dispose();
+        _landing.Dispose();
+        Destroy(_sword.gameObject);
+        Destroy(_floor);
         Destroy(_danger);
-        Destroy(_sandstone);
-        Destroy(_fractureMesh);
-        Destroy(_fractureMaterial);
     }
 
     public void Step(float dt)
@@ -179,7 +166,16 @@ internal sealed class BuriedKingView : IDisposable
             return;
         }
 
-        UpdateStance(dt);
+        if (!_newWarning)
+        {
+            _poseTime += dt;
+        }
+
+        _newWarning = false;
+        float progress = _warningSeconds > 0f ? Mathf.Clamp01(_poseTime / _warningSeconds) : 0f;
+        UpdateStance(dt, progress);
+        _footprint.Fill(progress, _pose == BuriedKingPose.FractureTell);
+        _landing.Fill(progress);
         switch (_pose)
         {
             case BuriedKingPose.Outbound:
@@ -190,90 +186,76 @@ internal sealed class BuriedKingView : IDisposable
             case BuriedKingPose.RecallTell:
                 break;
             default:
-                HoldWeapon();
+                HoldSword();
                 break;
         }
     }
 
     private void OnState(BuriedKingStateChanged state)
     {
-        if (state.EnemyId != _id || _root == null)
+        if (state.EnemyId != _id)
         {
             return;
         }
 
-        if (state.Pose == BuriedKingPose.FractureTell && _fracture.enabled)
-        {
-            PulseFracture(state.FractureProgress);
-            return;
-        }
-
-        _tell.enabled = false;
-        _landing.enabled = false;
-        _fracture.enabled = false;
         BuriedKingPose previous = _pose;
         _pose = state.Pose;
+        if (_pose == BuriedKingPose.Outbound || _pose == BuriedKingPose.Returning)
+        {
+            _flightStart = state.Start.ToUnity();
+            _flightEnd = state.End.ToUnity();
+            _flightPosition = state.WeaponPosition.ToUnity();
+        }
+
+        if (previous == _pose)
+        {
+            return;
+        }
+
+        _footprint.Clear();
+        _landing.Clear();
+        _warningSeconds = state.WarningSeconds;
+        _newWarning = _warningSeconds > 0f;
         Vector3 start = state.Start.ToUnity();
         Vector3 end = state.End.ToUnity();
-        Vector3 planar = Vector3.ProjectOnPlane(end - start, Vector3.up);
-        switch (state.Pose)
+        switch (_pose)
         {
             case BuriedKingPose.SweepTell:
-                PoseToward(SweepReady, 0.55f);
-                DrawSweep(start, planar, state.SweepDegrees);
+                PoseToward(SweepReady, _warningSeconds * 0.65f);
+                _footprint.Arc(start, Vector3.ProjectOnPlane(end - start, Vector3.up), state.SweepDegrees);
                 break;
             case BuriedKingPose.CastTell:
-                PoseToward(CastReady, 0.72f);
-                DrawLane(start, end, state.Width);
-                DrawCircle(end, state.Width * 0.5f);
+                PoseToward(CastReady, _warningSeconds * 0.69f);
+                _footprint.Lane(start, end, state.Width);
+                _landing.Arc(end, Vector3.forward * (state.Width * 0.5f), 360f);
                 break;
             case BuriedKingPose.Outbound:
-            case BuriedKingPose.Returning:
-                if (_pose == BuriedKingPose.Outbound && previous != _pose)
-                {
-                    _releaseGrip = HandPosition;
-                    _releaseAxis = HandAxis;
-                    PoseToward(Reach, 0.13f);
-                }
-
-                _flightStart = start;
-                _flightEnd = end;
-                _flightPosition = state.WeaponPosition.ToUnity();
-                DrawFlight();
+                _releaseGrip = _grip.position;
+                _releaseRotation = _grip.rotation;
+                PoseToward(Reach, 0.12f);
                 break;
             case BuriedKingPose.Embedded:
-                PoseToward(Rest, 0.24f);
+                PoseToward(Rest, 0.30f);
                 DrawEmbedded(end);
                 break;
             case BuriedKingPose.RecallTell:
-                PoseToward(Reach, 0.58f);
+                PoseToward(Reach, _warningSeconds * 0.76f);
                 DrawEmbedded(start);
-                DrawLane(start, end, state.Width);
+                _footprint.Lane(start, end, state.Width);
                 break;
             case BuriedKingPose.FractureTell:
-                PoseToward(Rest, 0.20f);
-                HoldWeapon();
-                DrawLane(start, end, state.Width);
-                DrawFracture(start, end, state.Width, state.FractureProgress);
+                PoseToward(Rest, 0.28f);
+                _footprint.Lane(start, end, state.Width);
                 break;
             case BuriedKingPose.SlamTell:
-                PoseToward(SlamReady, 0.66f);
-                HoldWeapon();
-                DrawCircle(start, state.SlamRadius);
+                PoseToward(SlamReady, _warningSeconds * 0.65f);
+                _footprint.Arc(start, Vector3.forward * state.SlamRadius, 360f);
                 break;
             case BuriedKingPose.Held:
-                if (previous == BuriedKingPose.SweepTell || previous == BuriedKingPose.SlamTell)
-                {
-                    PoseToward(previous == BuriedKingPose.SweepTell ? SweepStrike : SlamStrike, 0f);
-                    UpdateStance(0f);
-                }
-
-                PoseToward(Rest, 0.26f);
-                HoldWeapon();
+                PoseToward(Rest, 0.38f);
                 break;
             case BuriedKingPose.Cleared:
-                _weapon.enabled = false;
-                _root.SetActive(false);
+                _sword.gameObject.SetActive(false);
                 break;
         }
     }
@@ -286,200 +268,129 @@ internal sealed class BuriedKingView : IDisposable
         _poseTime = 0f;
     }
 
-    private void UpdateStance(float dt)
+    private void UpdateStance(float dt, float progress)
     {
-        _poseTime += dt;
-        float t = _poseDuration > 0f ? Mathf.SmoothStep(0f, 1f, _poseTime / _poseDuration) : 1f;
-        _stance = Stance.Blend(_from, _target, t);
-        // The visual wind-ups reserve their last frames for the swing. The actual
-        // strike and release are still driven by the incoming core state change.
+        _stance = Stance.Blend(_from, _target, Mathf.SmoothStep(0f, 1f, _poseTime / _poseDuration));
+        // Ease through the weight transfer and finish the swing on the core's impact frame.
         _stance = _pose switch
         {
-            BuriedKingPose.SweepTell when _poseTime > 0.68f =>
-                Stance.Blend(SweepReady, SweepStrike, Mathf.SmoothStep(0f, 1f, (_poseTime - 0.68f) / 0.17f)),
-            BuriedKingPose.CastTell when _poseTime > 0.83f =>
-                Stance.Blend(CastReady, Reach, Mathf.SmoothStep(0f, 1f, (_poseTime - 0.83f) / 0.17f)),
-            BuriedKingPose.SlamTell when _poseTime > 0.73f =>
-                Stance.Blend(SlamReady, SlamStrike, Mathf.SmoothStep(0f, 1f, (_poseTime - 0.73f) / 0.17f)),
+            BuriedKingPose.SweepTell when progress > 0.70f =>
+                Stance.Blend(SweepReady, SweepStrike, StrikeProgress(progress, 0.70f)),
+            BuriedKingPose.CastTell when progress > 0.74f =>
+                Stance.Blend(CastReady, Reach, StrikeProgress(progress, 0.74f)),
+            BuriedKingPose.SlamTell when progress > 0.70f =>
+                Stance.Blend(SlamReady, SlamStrike, StrikeProgress(progress, 0.70f)),
             _ => _stance,
         };
 
-        float speed = _body.Velocity.magnitude;
-        _stride += dt * speed * 5f;
-        _gait = Mathf.MoveTowards(_gait, Mathf.Clamp01(speed), 8f * dt);
-        float step = Mathf.Sin(_stride) * _gait;
-        Transform body = _body.transform;
-        _chest.Turn(body, _stance.Lean, _stance.Twist);
-        _rightUpperArm.Aim(body, Vector3.right, _stance.Upper);
-        _rightForearm.Aim(body, Vector3.right, _stance.Forearm);
-        // The palm closes across the shaft. Keep the palm-to-socket offset on the grip
-        // even when the shaft goes from upright to horizontal or points down for the slam.
-        Vector3 knuckles = Vector3.ProjectOnPlane(_stance.Forearm, _stance.Shaft).normalized;
-        _rightHand.Aim(body, Vector3.right, knuckles);
-        _leftUpperArm.Aim(body, Vector3.left, new Vector3(-0.57f, -0.80f, -0.10f));
-        _leftForearm.Aim(body, Vector3.left, new Vector3(-0.15f, -0.63f, 0.80f - 0.24f * step));
-        _rightThigh.Turn(body, step * 18f, 0f);
-        _leftThigh.Turn(body, -step * 18f, 0f);
-    }
+        Vector3 velocity = _body.Velocity;
+        float speed = velocity.magnitude;
+        Quaternion facing = _body.transform.rotation * _modelRest;
+        _visualFacing = Quaternion.RotateTowards(_visualFacing, facing, dt * (_warningSeconds > 0f ? 560f : 320f));
+        _model.rotation = _visualFacing;
 
-    private void DrawSweep(Vector3 start, Vector3 reach, float degrees)
-    {
-        start += Vector3.up * FloorOffset;
-        _tell.enabled = true;
-        _tell.positionCount = ArcSegments + 3;
-        _tell.SetPosition(0, start);
-        for (int i = 0; i <= ArcSegments; i++)
+        // Distance drives the in-place cycle. Playing it backwards keeps the King's eyes on
+        // the player when he backs off, and collisions slow his feet with his actual movement.
+        float direction = Vector3.Dot(velocity, _body.transform.forward) < 0f ? -1f : 1f;
+        _stride = Mathf.Repeat(_stride + direction * dt * speed / (_model.lossyScale.x * WalkCycleDistance), 1f);
+        _gait = Mathf.MoveTowards(_gait, Mathf.Clamp01(speed / 1.4f), 6f * dt);
+        if (_gait > 0f)
         {
-            float angle = Mathf.Lerp(-degrees * 0.5f, degrees * 0.5f, (float)i / ArcSegments);
-            _tell.SetPosition(i + 1, start + Quaternion.AngleAxis(angle, Vector3.up) * reach);
+            _walk.SampleAnimation(_model.gameObject, _stride * _walk.length);
         }
 
-        _tell.SetPosition(ArcSegments + 2, start);
-    }
-
-    private void DrawLane(Vector3 start, Vector3 end, float width)
-    {
-        Vector3 halfWidth = Vector3.Cross(Vector3.up, end - start).normalized * (width * 0.5f);
-        start += Vector3.up * FloorOffset;
-        end += Vector3.up * FloorOffset;
-        _tell.enabled = true;
-        _tell.positionCount = 5;
-        _tell.SetPosition(0, start - halfWidth);
-        _tell.SetPosition(1, start + halfWidth);
-        _tell.SetPosition(2, end + halfWidth);
-        _tell.SetPosition(3, end - halfWidth);
-        _tell.SetPosition(4, start - halfWidth);
-    }
-
-    private void DrawCircle(Vector3 center, float radius)
-    {
-        center += Vector3.up * FloorOffset;
-        _landing.enabled = true;
-        _landing.positionCount = ArcSegments + 1;
-        for (int i = 0; i <= ArcSegments; i++)
+        foreach (Joint joint in _joints)
         {
-            float angle = 360f * i / ArcSegments;
-            _landing.SetPosition(i, center + Quaternion.AngleAxis(angle, Vector3.up) * Vector3.forward * radius);
+            joint.BlendWalk(_gait);
         }
+
+        float counterSwing = Mathf.Sin(_stride * Mathf.PI * 2f) * _gait * direction;
+        _chest.Turn(_model, _stance.Lean + _gait * 4f * direction, _stance.Twist);
+        _rightUpperArm.Aim(_model, 1f, _stance.Upper);
+        _rightForearm.Aim(_model, 1f, _stance.Forearm);
+        _leftUpperArm.Aim(_model, -1f, new Vector3(-0.29f, -0.91f, -0.14f + counterSwing * 0.31f));
+        _leftForearm.Aim(_model, -1f, new Vector3(-0.15f, -0.83f, 0.53f + counterSwing * 0.31f));
+
+        Vector3 blade = _model.TransformDirection(_stance.Blade);
+        // The grip crosses the palm. Orient the hand and sword together so the wrist
+        // carries the blade through the entire wind-up, impact and follow-through.
+        Vector3 knuckles = _model.TransformDirection(_stance.Forearm);
+        Vector3 bladeFace = Vector3.Cross(blade, knuckles).normalized;
+        _hand.rotation = Quaternion.LookRotation(bladeFace, blade) * Quaternion.Inverse(_gripFromHand);
     }
 
-    private void DrawFracture(Vector3 start, Vector3 end, float width, float progress)
+    private static float StrikeProgress(float progress, float start) =>
+        Mathf.SmoothStep(0f, 1f, (progress - start) / (1f - start));
+
+    private void HoldSword()
     {
-        Vector3 halfWidth = Vector3.Cross(Vector3.up, end - start).normalized * (width * 0.5f);
-        start += Vector3.up * FloorOffset;
-        end += Vector3.up * FloorOffset;
-        _fractureCorners[0] = start - halfWidth;
-        _fractureCorners[1] = end - halfWidth;
-        _fractureCorners[2] = end + halfWidth;
-        _fractureCorners[3] = start + halfWidth;
-        _fractureMesh.vertices = _fractureCorners;
-        _fractureMesh.RecalculateBounds();
-        PulseFracture(progress);
-        _fracture.enabled = true;
+        if (_sword.parent != _grip)
+        {
+            _sword.SetParent(_grip, false);
+        }
+
+        _sword.localScale = Vector3.one * (SwordScale / _grip.lossyScale.x);
+        _sword.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
     }
 
-    private void PulseFracture(float progress)
+    private void DrawEmbedded(Vector3 point)
     {
-        Color color = _danger.color;
-        float pulse = Mathf.Cos(progress * (4f * Mathf.PI));
-        color.a = Mathf.Lerp(0.25f, 0.75f, (1f - pulse) * 0.5f);
-        _fractureMaterial.color = color;
-    }
-
-    private Vector3 HandPosition => _handSocket != null
-        ? _handSocket.position
-        : _body.transform.TransformPoint(new Vector3(0.58f, 0.80f, 0.22f));
-
-    private Vector3 HandAxis => _body.transform.TransformDirection(_stance.Shaft).normalized;
-
-    private void HoldWeapon()
-    {
-        MountWeapon(_handSocket != null ? _handSocket : _root.transform);
-        Vector3 axis = HandAxis;
-        Vector3 side = Vector3.Cross(axis, _body.transform.forward).normalized;
-        DrawWeapon(HandPosition - axis * GripToBase, axis, side);
-    }
-
-    private void DrawEmbedded(Vector3 position)
-    {
-        MountWeapon(_root.transform);
-        DrawWeapon(position, Vector3.up, Vector3.right);
+        EmbeddedPose(point, out Vector3 grip, out Quaternion rotation);
+        PlaceSword(grip, rotation);
     }
 
     private void DrawFlight()
     {
-        MountWeapon(_root.transform);
         bool returning = _pose == BuriedKingPose.Returning;
         Vector3 direction = Vector3.ProjectOnPlane(_flightEnd - _flightStart, Vector3.up).normalized;
-        Vector3 end = returning ? _flightEnd : _flightStart;
-        float distance = Vector3.ProjectOnPlane(_flightPosition - end, Vector3.up).magnitude;
-        float flight = Mathf.SmoothStep(0f, 1f, distance / HandBlendDistance);
-        float forwardExtent = returning ? GripToBase : ShaftLength - GripToBase;
-        Vector3 flightGrip = _flightPosition + Vector3.up * FlightHeight - direction * forwardExtent;
-        Vector3 grip = Vector3.Lerp(returning ? HandPosition : _releaseGrip, flightGrip, flight);
-        // Recall carries the grip toward the King first, with the head trailing.
-        Vector3 flightAxis = returning ? -direction : direction;
-        Vector3 axis = Vector3.Slerp(returning ? HandAxis : _releaseAxis, flightAxis, flight);
+        Vector3 king = returning ? _flightEnd : _flightStart;
         Vector3 landing = returning ? _flightStart : _flightEnd;
-        float landingDistance = Vector3.ProjectOnPlane(_flightPosition - landing, Vector3.up).magnitude;
-        float airborne = Mathf.SmoothStep(0f, 1f, landingDistance / LandingBlendDistance);
-        grip = Vector3.Lerp(landing + Vector3.up * GripToBase, grip, airborne);
-        axis = Vector3.Slerp(Vector3.up, axis, airborne);
-        Vector3 side = Vector3.Lerp(Vector3.right, Vector3.ProjectOnPlane(Vector3.up, axis).normalized, airborne);
-        DrawWeapon(grip - axis * GripToBase, axis, side.normalized);
+        float fromKing = Vector3.ProjectOnPlane(_flightPosition - king, Vector3.up).magnitude;
+        float fromLanding = Vector3.ProjectOnPlane(_flightPosition - landing, Vector3.up).magnitude;
+        float flight = Mathf.SmoothStep(0f, 1f, fromKing / HandBlendDistance);
+        float airborne = Mathf.SmoothStep(0f, 1f, fromLanding / LandingBlendDistance);
+
+        // The blade leads on the way out, and the pommel leads back into the King's palm.
+        Vector3 flightGrip = _flightPosition + Vector3.up * FlightHeight -
+            direction * (returning ? GripToPommel : GripToTip);
+        Quaternion flightRotation = Quaternion.LookRotation(Vector3.up, returning ? -direction : direction);
+        Vector3 grip = Vector3.Lerp(returning ? _grip.position : _releaseGrip, flightGrip, flight);
+        Quaternion rotation = Quaternion.Slerp(returning ? _grip.rotation : _releaseRotation, flightRotation, flight);
+        EmbeddedPose(landing, out Vector3 embeddedGrip, out Quaternion embeddedRotation);
+        PlaceSword(Vector3.Lerp(embeddedGrip, grip, airborne), Quaternion.Slerp(embeddedRotation, rotation, airborne));
     }
 
-    private void MountWeapon(Transform parent)
+    private static void EmbeddedPose(Vector3 point, out Vector3 grip, out Quaternion rotation)
     {
-        if (_weapon.transform.parent != parent)
+        Vector3 axis = new Vector3(0.11f, -1f, 0.19f).normalized;
+        grip = point - axis * (GripToTip - 0.17f);
+        rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(Vector3.forward, axis), axis);
+    }
+
+    private void PlaceSword(Vector3 grip, Quaternion rotation)
+    {
+        if (_sword.parent != _floor.transform)
         {
-            _weapon.transform.SetParent(parent, false);
+            _sword.SetParent(_floor.transform, false);
+            _sword.localScale = Vector3.one * SwordScale;
         }
-    }
 
-    private void DrawWeapon(Vector3 basePoint, Vector3 axis, Vector3 side)
-    {
-        Vector3 head = basePoint + axis * ShaftLength;
-        _weapon.enabled = true;
-        _weapon.positionCount = 6;
-        _weapon.SetPosition(0, basePoint);
-        _weapon.SetPosition(1, head - axis * 0.18f);
-        _weapon.SetPosition(2, head - side * 0.23f);
-        _weapon.SetPosition(3, head + axis * 0.18f);
-        _weapon.SetPosition(4, head + side * 0.23f);
-        _weapon.SetPosition(5, head - axis * 0.18f);
+        _sword.SetPositionAndRotation(grip, rotation);
     }
-
-    private LineRenderer CreateLine(string name, Material material, float width)
-    {
-        var child = new GameObject(name);
-        child.transform.SetParent(_root.transform, false);
-        var line = child.AddComponent<LineRenderer>();
-        line.sharedMaterial = material;
-        line.widthMultiplier = width;
-        line.useWorldSpace = true;
-        line.positionCount = 0;
-        line.enabled = false;
-        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        return line;
-    }
-
-    private static Material MakeMaterial(Color color) =>
-        new(Shader.Find("Universal Render Pipeline/Unlit")) { color = color };
 
     private readonly struct Stance
     {
         public Vector3 Upper { get; }
         public Vector3 Forearm { get; }
-        public Vector3 Shaft { get; }
+        public Vector3 Blade { get; }
         public float Twist { get; }
         public float Lean { get; }
 
-        public Stance(Vector3 upper, Vector3 forearm, Vector3 shaft, float twist, float lean)
+        public Stance(Vector3 upper, Vector3 forearm, Vector3 blade, float twist, float lean)
         {
             Upper = upper;
             Forearm = forearm;
-            Shaft = shaft;
+            Blade = blade.normalized;
             Twist = twist;
             Lean = lean;
         }
@@ -487,7 +398,7 @@ internal sealed class BuriedKingView : IDisposable
         public static Stance Blend(Stance from, Stance to, float t) => new(
             Vector3.Slerp(from.Upper, to.Upper, t),
             Vector3.Slerp(from.Forearm, to.Forearm, t),
-            Vector3.Slerp(from.Shaft, to.Shaft, t).normalized,
+            Vector3.Slerp(from.Blade, to.Blade, t),
             Mathf.Lerp(from.Twist, to.Twist, t),
             Mathf.Lerp(from.Lean, to.Lean, t));
     }
@@ -495,43 +406,163 @@ internal sealed class BuriedKingView : IDisposable
     private readonly struct Joint
     {
         private readonly Transform _bone;
-        private readonly Quaternion _rest;
+        private readonly Vector3 _restPosition;
+        private readonly Quaternion _restRotation;
+        private readonly Vector3 _restScale;
         private readonly Vector3 _bindRight;
 
-        public Joint(Transform bone, Transform body)
+        public Joint(Transform bone, Transform model)
         {
             _bone = bone;
-            _rest = bone.localRotation;
-            _bindRight = bone.InverseTransformDirection(body.right);
+            _restPosition = bone.localPosition;
+            _restRotation = bone.localRotation;
+            _restScale = bone.localScale;
+            _bindRight = bone.InverseTransformDirection(model.right);
         }
 
-        public void Reset()
+        public void BlendWalk(float weight)
         {
-            if (_bone != null)
-            {
-                _bone.localRotation = _rest;
-            }
+            _bone.SetLocalPositionAndRotation(Vector3.Lerp(_restPosition, _bone.localPosition, weight),
+                Quaternion.Slerp(_restRotation, _bone.localRotation, weight));
+            _bone.localScale = _restScale;
         }
 
-        public void Aim(Transform body, Vector3 bindDirection, Vector3 aimDirection)
+        public void Aim(Transform model, float side, Vector3 aim)
         {
-            if (_bone != null)
-            {
-                Reset();
-                Vector3 current = _bone.TransformDirection(_bindRight * bindDirection.x);
-                _bone.rotation = Quaternion.FromToRotation(current, body.TransformDirection(aimDirection))
-                    * _bone.rotation;
-            }
+            _bone.localRotation = _restRotation;
+            Vector3 current = _bone.TransformDirection(_bindRight * side);
+            _bone.rotation = Quaternion.FromToRotation(current, model.TransformDirection(aim)) * _bone.rotation;
         }
 
-        public void Turn(Transform body, float pitch, float yaw)
+        public void Turn(Transform model, float pitch, float yaw) =>
+            _bone.rotation = Quaternion.AngleAxis(yaw, model.up) * Quaternion.AngleAxis(pitch, model.right) * _bone.rotation;
+    }
+
+    private sealed class WarningShape : IDisposable
+    {
+        private static readonly Color Red = new(1f, 0.10f, 0.07f);
+        private readonly MeshRenderer _base;
+        private readonly MeshRenderer _fill;
+        private readonly Mesh _baseMesh;
+        private readonly Mesh _fillMesh;
+        private readonly Vector3[] _outline = new Vector3[ArcSegments + 2];
+        private readonly Vector3[] _filled = new Vector3[ArcSegments + 2];
+        private readonly int[] _triangles = new int[ArcSegments * 3];
+        private readonly MaterialPropertyBlock _color = new();
+        private int _count;
+        private bool _isLane;
+
+        public WarningShape(Transform parent, Material material, string name)
         {
-            if (_bone != null)
+            _base = Layer(parent, material, name, out _baseMesh);
+            _fill = Layer(parent, material, name + " fill", out _fillMesh);
+            _fill.sortingOrder = 1;
+            for (int i = 0; i < ArcSegments; i++)
             {
-                Reset();
-                _bone.rotation = Quaternion.AngleAxis(yaw, body.up) * Quaternion.AngleAxis(pitch, body.right)
-                    * _bone.rotation;
+                _triangles[i * 3] = 0;
+                _triangles[i * 3 + 1] = i + 1;
+                _triangles[i * 3 + 2] = i + 2;
             }
+
+            Tint(_base, 0.27f);
+        }
+
+        public void Arc(Vector3 center, Vector3 reach, float degrees)
+        {
+            _isLane = false;
+            _count = _outline.Length;
+            center += Vector3.up * FloorOffset;
+            _outline[0] = center;
+            for (int i = 0; i <= ArcSegments; i++)
+            {
+                float angle = Mathf.Lerp(-degrees * 0.5f, degrees * 0.5f, (float)i / ArcSegments);
+                _outline[i + 1] = center + Quaternion.AngleAxis(angle, Vector3.up) * reach;
+            }
+
+            Show();
+        }
+
+        public void Lane(Vector3 start, Vector3 end, float width)
+        {
+            _isLane = true;
+            _count = 4;
+            Vector3 halfWidth = Vector3.Cross(Vector3.up, end - start).normalized * (width * 0.5f);
+            start += Vector3.up * FloorOffset;
+            end += Vector3.up * FloorOffset;
+            _outline[0] = start - halfWidth;
+            _outline[1] = start + halfWidth;
+            _outline[2] = end + halfWidth;
+            _outline[3] = end - halfWidth;
+            Show();
+        }
+
+        public void Fill(float progress, bool pulse = false)
+        {
+            if (!_base.enabled || !(progress > 0f))
+            {
+                return;
+            }
+
+            Vector3 offset = Vector3.up * 0.012f;
+            for (int i = 0; i < _count; i++)
+            {
+                Vector3 origin = _isLane ? _outline[i < 2 ? i : 3 - i] : _outline[0];
+                _filled[i] = Vector3.Lerp(origin, _outline[i], progress) + offset;
+            }
+
+            _fillMesh.SetVertices(_filled, 0, _count);
+            _fillMesh.RecalculateBounds();
+            Tint(_fill, pulse ? 0.75f + 0.13f * Mathf.Sin(progress * 4f * Mathf.PI) : 0.85f);
+            _fill.enabled = true;
+        }
+
+        public void Clear()
+        {
+            _base.enabled = false;
+            _fill.enabled = false;
+        }
+
+        public void Dispose()
+        {
+            Destroy(_baseMesh);
+            Destroy(_fillMesh);
+        }
+
+        private void Show()
+        {
+            SetGeometry(_baseMesh);
+            SetGeometry(_fillMesh);
+            _base.enabled = true;
+        }
+
+        private void SetGeometry(Mesh mesh)
+        {
+            mesh.Clear();
+            mesh.SetVertices(_outline, 0, _count);
+            mesh.SetIndices(_triangles, 0, (_count - 2) * 3, MeshTopology.Triangles, 0);
+        }
+
+        private void Tint(MeshRenderer renderer, float alpha)
+        {
+            Color color = Red;
+            color.a = alpha;
+            _color.SetColor("_BaseColor", color);
+            renderer.SetPropertyBlock(_color);
+        }
+
+        private static MeshRenderer Layer(Transform parent, Material material, string name, out Mesh mesh)
+        {
+            var layer = new GameObject(name);
+            layer.transform.SetParent(parent, false);
+            mesh = new Mesh { name = name };
+            mesh.MarkDynamic();
+            layer.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = layer.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.enabled = false;
+            return renderer;
         }
     }
 

@@ -59,6 +59,56 @@ public sealed class BossViewTests
     private const string FissurePath = "Assets/_Project/Prefabs/Vfx/VFX_Fissure.prefab";
     private const string BeatPath = "Assets/_Project/Prefabs/Vfx/VFX_BossBeat.prefab";
 
+    [TestCase(BuriedKingPose.SweepTell)]
+    [TestCase(BuriedKingPose.CastTell)]
+    [TestCase(BuriedKingPose.RecallTell)]
+    [TestCase(BuriedKingPose.SlamTell)]
+    [TestCase(BuriedKingPose.FractureTell)]
+    public void BuriedKing_WarningFillsItsLockedFootprintAndClears(BuriedKingPose pose)
+    {
+        const string path = "Assets/_Project/Prefabs/Enemies/BuriedKing.prefab";
+        EnemyView prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponent<EnemyView>();
+        EnemyView body = Object.Instantiate(prefab);
+        try
+        {
+            Type viewType = typeof(EnemyView).Assembly.GetType("Soulvail.Game.Views.BuriedKingView", true);
+            using var view = (IDisposable)Activator.CreateInstance(viewType, body, 1, _hub);
+            var step = (Action<float>)viewType.GetMethod("Step").CreateDelegate(typeof(Action<float>), view);
+            Transform grip = Array.Find(body.GetComponentsInChildren<Transform>(), bone => bone.name == "handslot.r");
+            Transform sword = grip.GetChild(0);
+            Assert.That(sword.localPosition, Is.EqualTo(UnityEngine.Vector3.zero));
+            Assert.That(sword.GetComponentInChildren<MeshRenderer>(), Is.Not.Null);
+
+            Publish(pose);
+            GameObject floor = GameObject.Find("Buried King warnings");
+            var footprint = floor.transform.Find("Attack warning").GetComponent<MeshFilter>();
+            var fill = floor.transform.Find("Attack warning fill").GetComponent<MeshFilter>();
+            Assert.That(footprint.sharedMesh.triangles, Is.Not.Empty);
+            Assert.That(fill.GetComponent<MeshRenderer>().enabled, Is.False);
+            step(0f);
+            step(0.5f);
+            Assert.That(fill.GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(fill.sharedMesh.bounds.size.z, Is.EqualTo(0.5f * footprint.sharedMesh.bounds.size.z).Within(0.001f));
+            step(0.5f);
+            Assert.That(fill.sharedMesh.bounds.size.z, Is.EqualTo(footprint.sharedMesh.bounds.size.z).Within(0.001f));
+            Publish(BuriedKingPose.Cleared);
+            Assert.That(footprint.GetComponent<MeshRenderer>().enabled, Is.False);
+            Assert.That(fill.GetComponent<MeshRenderer>().enabled, Is.False);
+            Assert.That(sword.gameObject.activeSelf, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(body.gameObject);
+        }
+
+        void Publish(BuriedKingPose current)
+        {
+            var state = (BuriedKingStateChanged)Activator.CreateInstance(typeof(BuriedKingStateChanged), Private,
+                null, new object[] { 1, current, Vector3.Zero, 4f * Vector3.UnitZ, 1.6f, 120f, Vector3.Zero, 3.5f, 0f, 1f }, null);
+            _hub.Publish(state);
+        }
+    }
+
     /// <summary>
     /// The Warden's shipped ring, duplicated here rather than read through <c>WardenBehaviour</c>.
     /// </summary>

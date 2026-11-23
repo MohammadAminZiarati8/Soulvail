@@ -20,7 +20,7 @@ public enum BuriedKingPose
 public readonly struct BuriedKingStateChanged
 {
     internal BuriedKingStateChanged(int enemyId, BuriedKingPose pose, Vector3 start, Vector3 end,
-        float width, float sweepDegrees, Vector3 weaponPosition, float slamRadius, float fractureProgress)
+        float width, float sweepDegrees, Vector3 weaponPosition, float slamRadius, float fractureProgress, float warningSeconds)
     {
         EnemyId = enemyId;
         Pose = pose;
@@ -31,6 +31,7 @@ public readonly struct BuriedKingStateChanged
         WeaponPosition = weaponPosition;
         SlamRadius = slamRadius;
         FractureProgress = fractureProgress;
+        WarningSeconds = warningSeconds;
     }
 
     public int EnemyId { get; }
@@ -42,4 +43,5 @@ public readonly struct BuriedKingStateChanged
     public Vector3 WeaponPosition { get; }
     public float SlamRadius { get; }
     public float FractureProgress { get; }
+    public float WarningSeconds { get; }
 }

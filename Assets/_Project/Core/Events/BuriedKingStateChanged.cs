@@ -20,9 +20,13 @@ public enum BuriedKingPose
     LungeApproach,
     SweepImpact,
     SlamImpact,
+    SpinTell,
+    SpinActive,
+    SpinPulse,
+    SpinRecovery,
 }
 
-/// <summary>Locked floor geometry and the scepter position for the current pose.</summary>
+/// <summary>Floor geometry and sword position for the current pose. Spin events report the observed center in Start.</summary>
 public readonly struct BuriedKingStateChanged
 {
     internal BuriedKingStateChanged(int enemyId, BuriedKingPose pose, Vector3 start, Vector3 end,

@@ -13,7 +13,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private enum State
     {
         Ready, SweepTell, CastTell, Outbound, Embedded, RecallTell, Returning, FractureTell, SlamTell,
-        LungeApproach, LungeTell, Lunging, LungeRecovery, CutRecovery, Recovery, Dead
+        LungeApproach, LungeTell, Lunging, LungeRecovery, CutRecovery, Recovery, Dead,
+        SpinTell, SpinActive, SpinRecovery
     }
     private enum ReturnPhase { Recall, Reclaim, Shattered }
 
@@ -56,6 +57,17 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _lungeDamage = new(26f);
     private readonly Stat _lungeDeceleration = new(0.25f);
     private readonly Stat _lungePositionTolerance = new(0.08f);
+    private readonly Stat _spinTell = new(1.25f);
+    private readonly Stat _spinDuration = new(5f);
+    private readonly Stat _spinRecovery = new(1.6f);
+    private readonly Stat _spinSpeed = new(2f);
+    private readonly Stat _spinTurnSpeed = new(180f);
+    private readonly Stat _spinRadius = new(3.5f);
+    private readonly Stat _spinDamage = new(10f);
+    private readonly Stat _spinFirstPulse = new(0.75f);
+    private readonly Stat _spinPulseInterval = new(1f);
+    private readonly Stat _spinRepeatDelay = new(18f);
+    private readonly Stat _spinRepeatRange = new(5f);
     private State _state;
     private Vector2 _facing = Vector2.UnitY;
     private Vector3 _start;
@@ -70,6 +82,10 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private float _lungeClearance;
     private bool _lungeReady = true;
     private Vector3 _lungeExpectedPosition;
+    private bool _spinDebuted;
+    private double _spinElapsed;
+    private float _nextSpinPulse;
+    private float _spinRepeatAt;
 
     public BuriedKingBehaviour(EnemyAgent agent)
     {
@@ -154,8 +170,21 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             case State.Lunging:
                 velocity = AdvanceLunge(ctx, board.SelfPosition, hero);
                 break;
+            case State.SpinTell:
+                if (Elapsed(ctx.Dt))
+                {
+                    _state = State.SpinActive;
+                    _spinElapsed = 0d;
+                    _nextSpinPulse = _spinFirstPulse.Value;
+                    PublishSpin(ctx.Events, BuriedKingPose.SpinActive, board.SelfPosition, _spinDuration.Value);
+                }
+                break;
+            case State.SpinActive:
+                velocity = AdvanceSpin(ctx, board, hero);
+                break;
             case State.LungeRecovery:
             case State.CutRecovery:
+            case State.SpinRecovery:
             case State.Recovery:
                 if (Elapsed(ctx.Dt))
                 {
@@ -184,6 +213,9 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _unlockedPhase = _castPhase = ReturnPhase.Recall;
         _lungeClearance = 0f;
         _lungeReady = true;
+        _spinDebuted = false;
+        _spinElapsed = 0d;
+        _nextSpinPulse = _spinRepeatAt = 0f;
     }
 
     internal void ObserveLungeClearance(float distance) =>
@@ -207,6 +239,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         float distance = toHero.Length();
         Face(toHero);
         bool close = distance <= _sweepReach.Value;
+        if (_state == State.Ready && TryStartSpin(ctx, board, distance))
+        {
+            return Vector2.Zero;
+        }
+
         if (_lungeReady && board.HasLineOfSight && distance >= _minimumLungeRange.Value
             && _lungeClearance >= _minimumLungeLength.Value)
         {
@@ -244,6 +281,10 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         {
             _state = State.Ready;
             Publish(ctx.Events, BuriedKingPose.Held);
+            if (TryStartSpin(ctx, board, distance))
+            {
+                return Vector2.Zero;
+            }
         }
 
         // After a lunge, walk into sweep reach or cast if the player opens more distance.
@@ -282,6 +323,66 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
         return Vector2.Zero;
     }
+
+    private bool TryStartSpin(in EnemyTickContext ctx, EnemyBlackboard board, float distance)
+    {
+        if (_unlockedPhase == ReturnPhase.Recall
+            || (_spinDebuted && (ctx.Now < _spinRepeatAt || !board.HasLineOfSight || distance > _spinRepeatRange.Value)))
+        {
+            return false;
+        }
+
+        _spinDebuted = true;
+        _state = State.SpinTell;
+        _remaining = _spinTell.Value;
+        PublishSpin(ctx.Events, BuriedKingPose.SpinTell, board.SelfPosition, _remaining);
+        return true;
+    }
+
+    private Vector2 AdvanceSpin(in EnemyTickContext ctx, EnemyBlackboard board, Vector3 hero)
+    {
+        _spinElapsed = Math.Min(_spinDuration.Value, _spinElapsed + ctx.Dt);
+        if (_spinElapsed >= _nextSpinPulse && _nextSpinPulse < _spinDuration.Value)
+        {
+            // Skip every elapsed beat and sample once from this frame's observed centers.
+            do
+            {
+                _nextSpinPulse += _spinPulseInterval.Value;
+            }
+            while (_nextSpinPulse <= _spinElapsed);
+
+            float radius = _spinRadius.Value;
+            if (Ground(hero - board.SelfPosition).LengthSquared() <= radius * radius)
+            {
+                ctx.Player.ApplyDamage(_spinDamage.Value, ctx.Now);
+            }
+
+            PublishSpin(ctx.Events, BuriedKingPose.SpinPulse, board.SelfPosition, 0f);
+        }
+
+        if (_spinElapsed >= _spinDuration.Value)
+        {
+            _state = State.SpinRecovery;
+            _remaining = _spinRecovery.Value;
+            _spinRepeatAt = ctx.Now + _spinRepeatDelay.Value;
+            PublishSpin(ctx.Events, BuriedKingPose.SpinRecovery, board.SelfPosition, _remaining);
+            return Vector2.Zero;
+        }
+
+        Vector2 direction = board.PathDirectionToPlayer == Vector2.Zero ? board.DirectionToPlayer : board.PathDirectionToPlayer;
+        if (direction == Vector2.Zero)
+        {
+            return Vector2.Zero;
+        }
+
+        _facing = Ground(PlayerMotor.RotateTowards(new Vector3(_facing.X, 0f, _facing.Y),
+            Vector3.Normalize(new Vector3(direction.X, 0f, direction.Y)), _spinTurnSpeed.Value * ctx.Dt));
+        return _facing * _spinSpeed.Value;
+    }
+
+    private void PublishSpin(IDomainEvents events, BuriedKingPose pose, Vector3 center, float duration) =>
+        events.Publish(new BuriedKingStateChanged(_agent.Id, pose, center, center, 0f, 0f,
+            default, _spinRadius.Value, 0f, duration, 0f));
 
     private Vector2 AdvanceLunge(in EnemyTickContext ctx, Vector3 position, Vector3 hero)
     {

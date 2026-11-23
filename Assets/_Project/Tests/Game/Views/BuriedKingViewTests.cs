@@ -270,7 +270,7 @@ public sealed class BuriedKingViewTests
         var rootFacings = new List<Quaternion>();
         var swordDirections = new List<Vector3>();
         int impactFrame = -1;
-        for (int frame = 0; frame < 420; frame++)
+        for (int frame = 0; frame < 1000; frame++)
         {
             world.EnemyCount = 0;
             Physics.SyncTransforms();
@@ -280,8 +280,14 @@ public sealed class BuriedKingViewTests
             intents.Clear();
             session.Tick(world);
             EnemyMoveIntent move = intents.EnemyMoves.Single();
-            _body.Apply(move, world.Dt);
             BuriedKingPose pose = poses[^1].Pose;
+            if (pose is BuriedKingPose.SpinTell or BuriedKingPose.SpinActive or BuriedKingPose.SpinPulse)
+            {
+                // This fixture isolates the planted cut at the original cast position.
+                continue;
+            }
+
+            _body.Apply(move, world.Dt);
             if (pose is BuriedKingPose.SweepTell or BuriedKingPose.CastTell)
             {
                 // The hero sidesteps the locked shape so all three impact checks exercise a miss.
@@ -344,6 +350,228 @@ public sealed class BuriedKingViewTests
         }
 
         session.End();
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void Stage30_TestStartChecksSpinUnlockDuringLeapAndRecall(bool leap)
+    {
+        var (session, intents, arena, world) = StartStage30();
+        int id = _body.Id;
+        _body.Bind(id, _origin);
+        Vector3 bait = _origin + 7f * Vector3.forward;
+        world.PlayerPosition = bait.ToNum();
+        world.OpenGround = new[] { bait.ToNum() };
+        EnemyAgent king = StageKing(session);
+        var poses = new List<BuriedKingStateChanged>();
+        using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
+        BuriedKingPose committed = leap ? BuriedKingPose.LungeTravel : BuriedKingPose.RecallTell;
+        BuriedKingPose recovering = leap ? BuriedKingPose.LungeRecovery : BuriedKingPose.Held;
+        int crossed = -1;
+        int recovery = -1;
+        int debut = -1;
+        for (int frame = 0; frame < 800; frame++)
+        {
+            int count = poses.Count;
+            StepStage30(session, intents, arena, world, allowLeap: leap);
+            if (poses.Count == count)
+            {
+                continue;
+            }
+
+            if (crossed < 0 && poses[^1].Pose == committed)
+            {
+                crossed = frame;
+                king.Health.ApplyDamage(king.Health.MaxHp.Value * 0.35f, 0f);
+                world.PlayerPosition = (_origin + 7f * Vector3.right).ToNum();
+            }
+
+            if (recovery < 0 && crossed >= 0 && poses[^1].Pose == recovering)
+            {
+                recovery = frame;
+            }
+
+            if (poses[^1].Pose == BuriedKingPose.SpinTell)
+            {
+                debut = frame;
+                break;
+            }
+        }
+
+        Assert.That(crossed, Is.GreaterThanOrEqualTo(0));
+        Assert.That(recovery, Is.GreaterThan(crossed));
+        Assert.That(debut, Is.GreaterThan(recovery));
+        Assert.That((debut - recovery) * world.Dt,
+            Is.EqualTo(leap ? 0.9f : 2.1f).Within(2f * world.Dt));
+        Assert.That(Vector3.Distance(poses[^1].Start.ToUnity(), _body.transform.position), Is.LessThan(0.001f));
+        Assert.That(king.IsVulnerable, Is.True);
+        session.End();
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void Stage30_TestStartChecksSpinPursuitAroundCoverAndAlongWalls(bool cover)
+    {
+        var (session, intents, arena, world) = StartStage30();
+        Vector3 start = _origin + (cover ? new Vector3(4f, 0f, -2.7f) : new Vector3(17.5f, 0f, -11f));
+        Vector3 bait = _origin + (cover ? new Vector3(12.5f, 0f, -2.7f) : new Vector3(17.9f, 0f, 5f));
+        _body.Bind(_body.Id, start);
+        world.PlayerPosition = bait.ToNum();
+        EnemyAgent king = StageKing(session);
+        king.Health.ApplyDamage(king.Health.MaxHp.Value * 0.35f, 0f);
+        var nav = new NavPathSense(8);
+        int coverMask = LayerMask.GetMask(ArenaView.CoverLayerName);
+        Physics.SyncTransforms();
+        Assert.That(Physics.Linecast(start + Vector3.up, bait + Vector3.up, coverMask), Is.EqualTo(cover));
+        var poses = new List<BuriedKingStateChanged>();
+        using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
+        int hits = 0;
+        using var damage = _hub.Subscribe<PlayerDamaged>(_ => hits++);
+        Transform warnings = GameObject.Find("Buried King warnings").transform;
+        Transform floor = warnings.Find("Pursuit spin floor");
+        Transform disc = floor.Find("Pursuit spin disc");
+        Transform ribbon = warnings.Find("Sword cut ribbon");
+        var rim = floor.Find("Pursuit spin rim").GetComponent<LineRenderer>();
+        Transform model = _body.GetComponentsInChildren<Transform>().Single(bone => bone.name == "Rig_Medium").parent;
+        bool routed = false;
+        float sideTravel = 0f;
+        float forwardTravel = 0f;
+        int flashes = 0;
+        int misses = 0;
+        int activeFrames = 0;
+        bool checkedYaw = false;
+        var color = new MaterialPropertyBlock();
+        for (int frame = 0; frame < 450; frame++)
+        {
+            Vector3 before = _body.transform.position;
+            if (cover && (bait - before).sqrMagnitude < 4f)
+            {
+                // Keep the hero out of point-blank auto-fire range once the King rounds the spur.
+                bait += 3f * Vector3.right;
+                world.PlayerPosition = bait.ToNum();
+            }
+
+            Quaternion facing = model.rotation;
+            int poseCount = poses.Count;
+            int hitsBefore = hits;
+            Vector2 path = nav.DirectionFor(_body.Id, before, bait, frame * world.Dt);
+            EnemyMoveIntent move = StepStage30(session, intents, arena, world, path: path);
+            Vector3 observed = _body.transform.position;
+            if (poses[^1].Pose == BuriedKingPose.SpinTell)
+            {
+                Assert.That(move.Velocity.Length(), Is.Zero);
+                continue;
+            }
+
+            if (poses[^1].Pose == BuriedKingPose.SpinRecovery)
+            {
+                Assert.That(move.Velocity.Length(), Is.Zero);
+                Assert.That(IsVisible(disc) || IsVisible(ribbon) || rim.enabled, Is.False);
+                break;
+            }
+
+            activeFrames++;
+            routed |= Mathf.Abs(path.y) > 0.2f;
+            sideTravel = Mathf.Max(sideTravel, Mathf.Abs(observed.z - start.z));
+            forwardTravel = Mathf.Max(forwardTravel, observed.x - start.x);
+            Assert.That(move.Velocity.Length(), Is.LessThanOrEqualTo(2.001f));
+            Assert.That(arena.PlayBounds.Contains(new Vector2(observed.x, observed.z)), Is.True);
+            Assert.That(floor.position, Is.EqualTo(observed));
+            Assert.That(IsVisible(disc) && IsVisible(ribbon) && rim.enabled, Is.True);
+            Assert.That(Vertices(ribbon).All(vertex => (vertex - observed).sqrMagnitude < 12.25f), Is.True);
+            if (activeFrames > 1 && move.Velocity.Length() > 0f)
+            {
+                Assert.That(Quaternion.Angle(facing, model.rotation), Is.EqualTo(15f).Within(0.1f));
+                checkedYaw = true;
+            }
+
+            if (poses.Count > poseCount && poses[^1].Pose == BuriedKingPose.SpinPulse)
+            {
+                flashes++;
+                misses += hits == hitsBefore ? 1 : 0;
+                Assert.That(Vector3.Distance(poses[^1].Start.ToUnity(), before), Is.LessThan(0.001f));
+                Assert.That(rim.widthMultiplier, Is.GreaterThan(0.2f));
+                rim.GetPropertyBlock(color);
+                Assert.That(color.GetColor("_BaseColor").g, Is.GreaterThan(0.9f));
+            }
+            else
+            {
+                Assert.That(hits, Is.EqualTo(hitsBefore));
+            }
+        }
+
+        Assert.That(poses[^1].Pose, Is.EqualTo(BuriedKingPose.SpinRecovery));
+        Assert.That(activeFrames * world.Dt, Is.EqualTo(5f).Within(world.Dt));
+        Assert.That(flashes, Is.EqualTo(5));
+        Assert.That(misses, Is.GreaterThan(0));
+        Assert.That(checkedYaw, Is.True);
+        Assert.That(sideTravel, Is.GreaterThan(cover ? 1f : 7f));
+        if (cover)
+        {
+            Assert.That(routed, Is.True);
+            Assert.That(forwardTravel, Is.GreaterThan(4.5f));
+        }
+        else
+        {
+            Assert.That(forwardTravel, Is.LessThan(0.6f));
+        }
+
+        session.End();
+    }
+
+    [TestCase(BuriedKingPose.Cleared)]
+    [TestCase(BuriedKingPose.SpinRecovery)]
+    public void Spin_EndClearsEffectsAndRecovers(BuriedKingPose ending)
+    {
+        Transform warnings = GameObject.Find("Buried King warnings").transform;
+        Transform floor = warnings.Find("Pursuit spin floor");
+        Transform ribbon = warnings.Find("Sword cut ribbon");
+        var rim = floor.Find("Pursuit spin rim").GetComponent<LineRenderer>();
+        Publish(BuriedKingPose.SpinTell, _origin, 1.25f, 0f, radius: 3.5f);
+        StepBody(0f);
+        StepBody(0.63f);
+        Assert.That(IsVisible(floor.Find("Pursuit spin disc fill")), Is.True);
+        Publish(BuriedKingPose.SpinActive, _origin, 5f, 0f, radius: 3.5f);
+        StepBody(0f);
+        Publish(BuriedKingPose.SpinPulse, _origin, 0f, 0f, radius: 3.5f);
+        StepBody(0.05f);
+        Assert.That(rim.widthMultiplier, Is.GreaterThan(0.2f));
+        Assert.That(IsVisible(ribbon), Is.True);
+        Publish(ending, _origin, 1.6f, 0f, radius: 3.5f);
+        StepBody(0.05f);
+        Assert.That(rim.enabled || IsVisible(ribbon) || IsVisible(floor.Find("Pursuit spin disc")), Is.False);
+        _hub.Publish(new EnemyDespawned(KingId));
+        Assert.That(warnings == null, Is.True);
+    }
+
+    private EnemyAgent StageKing(RunSession session)
+    {
+        const BindingFlags statePorts = BindingFlags.Instance | BindingFlags.NonPublic;
+        var enemies = (EnemySystem)typeof(RunState).GetProperty("Enemies", statePorts).GetValue(session.State);
+        Assert.That(enemies.Registry.TryGet(_body.Id, out EnemyAgent king), Is.True);
+        return king;
+    }
+
+    private EnemyMoveIntent StepStage30(RunSession session, RecordingIntents intents, ArenaView arena,
+        WorldSnapshot world, bool allowLeap = false, Vector2 path = default)
+    {
+        Physics.SyncTransforms();
+        world.EnemyCount = 0;
+        _views.CopyInto(world, arena.PlayBounds);
+        ref EnemySense sense = ref world.Enemies[0];
+        sense.HasLineOfSight = !Physics.Linecast(sense.Position.ToUnity() + Vector3.up,
+            world.PlayerPosition.ToUnity() + Vector3.up, LayerMask.GetMask(ArenaView.CoverLayerName));
+        sense.PathDirectionToPlayer = path.ToNum();
+        if (!allowLeap)
+        {
+            sense.KingLungeClearance = 0f;
+        }
+
+        intents.Clear();
+        session.Tick(world);
+        EnemyMoveIntent move = intents.EnemyMoves.Single();
+        _body.Apply(move, world.Dt);
+        return move;
     }
 
     [TestCase(false)]

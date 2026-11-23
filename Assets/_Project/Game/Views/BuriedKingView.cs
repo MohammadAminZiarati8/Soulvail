@@ -28,6 +28,9 @@ internal sealed class BuriedKingView : IDisposable
     private const float CutBrakeSeconds = 0.18f;
     private const float SlamShoulderAngle = 65f;
     private const int RibbonSegments = 10;
+    private const float SpinDegreesPerSecond = 900f;
+    private const float SpinBrakeSeconds = 0.26f;
+    private const float SpinFlashSeconds = 0.18f;
 
     private static readonly LungeStance LungeGuard = new(
         new(0.10f, 0.81f, 0.28f), new(0.20f, 0.84f, 0.48f),
@@ -69,6 +72,9 @@ internal sealed class BuriedKingView : IDisposable
     private readonly Material _danger;
     private readonly WarningShape _footprint;
     private readonly WarningShape _landing;
+    private readonly WarningShape _spinDisc;
+    private readonly Transform _spinFloor;
+    private readonly LineRenderer _spinRim;
     private readonly CutStrip _bladeRibbon;
     private readonly CutStrip _groundStreak;
     private readonly SlamDustView _dust;
@@ -124,6 +130,8 @@ internal sealed class BuriedKingView : IDisposable
     private bool _cutTurning;
     private Vector3 _cutStartGrip;
     private Vector3 _cutStartBlade;
+    private Quaternion _spinFacing;
+    private float _spinFlash;
 
     public BuriedKingView(EnemyView body, int id, DomainEventHub hub)
     {
@@ -204,7 +212,13 @@ internal sealed class BuriedKingView : IDisposable
         _groundStreak = new CutStrip(_floor.transform, _danger, "Sword cut ground streak", new Color(1f, 0.48f, 0.17f, 0.62f), 2);
         _dust = Object.Instantiate(rig.LandingDust, _floor.transform);
         _dust.transform.localScale = Vector3.one * 0.38f;
-        _impactRing = CreateImpactRing();
+        _impactRing = CreateRing("Sword impact ring");
+        _spinFloor = new GameObject("Pursuit spin floor").transform;
+        _spinFloor.SetParent(_floor.transform, false);
+        _spinDisc = new WarningShape(_spinFloor, _danger, "Pursuit spin disc");
+        _spinRim = CreateRing("Pursuit spin rim");
+        _spinRim.transform.SetParent(_spinFloor, false);
+        _spinRim.transform.localPosition = Vector3.up * (FloorOffset + 0.02f);
         _lungeArrow = CreateFloorLine("Lunge direction");
         _lungeArrow.useWorldSpace = true;
         _lungeArrow.alignment = LineAlignment.TransformZ;
@@ -232,6 +246,7 @@ internal sealed class BuriedKingView : IDisposable
         _floor.SetActive(false);
         _footprint.Dispose();
         _landing.Dispose();
+        _spinDisc.Dispose();
         _bladeRibbon.Dispose();
         _groundStreak.Dispose();
         Destroy(_sword.gameObject);
@@ -255,6 +270,12 @@ internal sealed class BuriedKingView : IDisposable
         _catchAge += dt;
         StepImpact(dt);
         float progress = _warningSeconds > 0f ? Mathf.Clamp01(_poseTime / _warningSeconds) : 0f;
+        if (_pose is BuriedKingPose.SpinTell or BuriedKingPose.SpinActive or BuriedKingPose.SpinRecovery)
+        {
+            StepSpin(dt, progress);
+            return;
+        }
+
         if (_pose is BuriedKingPose.SweepTell or BuriedKingPose.SlamTell or BuriedKingPose.SweepImpact or BuriedKingPose.SlamImpact)
         {
             StepSwordCut(progress);
@@ -298,6 +319,16 @@ internal sealed class BuriedKingView : IDisposable
             return;
         }
 
+        if (state.Pose == BuriedKingPose.SpinPulse)
+        {
+            if (_pose == BuriedKingPose.SpinActive)
+            {
+                _spinFlash = SpinFlashSeconds;
+            }
+
+            return;
+        }
+
         BuriedKingPose previous = _pose;
         _pose = state.Pose;
         if (_pose == BuriedKingPose.Outbound || _pose == BuriedKingPose.Returning)
@@ -326,6 +357,9 @@ internal sealed class BuriedKingView : IDisposable
             _groundStreak.Clear();
         }
 
+        _spinDisc.Clear();
+        _spinRim.enabled = false;
+        _spinFlash = 0f;
         _warningSeconds = state.WarningSeconds;
         _newWarning = _warningSeconds > 0f;
         if (previous == BuriedKingPose.LungeRecovery)
@@ -342,6 +376,21 @@ internal sealed class BuriedKingView : IDisposable
         Vector3 end = state.End.ToUnity();
         switch (_pose)
         {
+            case BuriedKingPose.SpinTell:
+                _windupGrip = _model.InverseTransformPoint(_grip.position);
+                _windupBlade = _model.InverseTransformDirection(_grip.up);
+                _poseTime = 0f;
+                ShowSpinDisc(state.SlamRadius);
+                break;
+            case BuriedKingPose.SpinActive:
+                _spinFacing = _visualFacing;
+                _poseTime = 0f;
+                ShowSpinDisc(state.SlamRadius);
+                break;
+            case BuriedKingPose.SpinRecovery:
+                _spinFacing = _visualFacing;
+                _poseTime = 0f;
+                break;
             case BuriedKingPose.LungeTell:
                 _windupGrip = _model.InverseTransformPoint(_grip.position);
                 _windupBlade = _model.InverseTransformDirection(_grip.up);
@@ -409,6 +458,85 @@ internal sealed class BuriedKingView : IDisposable
                 _dust.OnDespawn();
                 break;
         }
+    }
+
+    private void ShowSpinDisc(float radius)
+    {
+        _spinDisc.Arc(Vector3.zero, Vector3.forward * radius, 360f);
+        _spinRim.transform.localScale = new Vector3(radius, 1f, radius);
+        _spinRim.enabled = true;
+    }
+
+    private void StepSpin(float dt, float progress)
+    {
+        bool telling = _pose == BuriedKingPose.SpinTell;
+        bool active = _pose == BuriedKingPose.SpinActive;
+        float brake = Mathf.Clamp01(_poseTime / SpinBrakeSeconds);
+        float load = telling ? Mathf.SmoothStep(0f, 1f, progress) : active ? 1f : 1f - progress;
+        if (telling)
+        {
+            _visualFacing = Quaternion.RotateTowards(_visualFacing, _body.transform.rotation * _modelRest, 540f * dt);
+        }
+        else
+        {
+            float angle = active ? _poseTime : SpinBrakeSeconds * brake * (1f - brake * 0.5f);
+            _visualFacing = Quaternion.AngleAxis(angle * SpinDegreesPerSecond, Vector3.up) * _spinFacing;
+        }
+
+        _model.rotation = _visualFacing;
+        _gait = 0f;
+        foreach (Joint joint in _joints)
+        {
+            joint.BlendWalk(0f);
+        }
+
+        Vector3 leftFoot = _leftLeg.Target(_model, 1f) - _model.TransformVector(Vector3.right * (0.16f * load));
+        Vector3 rightFoot = _rightLeg.Target(_model, 1f) + _model.TransformVector(Vector3.right * (0.16f * load));
+        _hips.position += _model.TransformVector(Vector3.down * (0.058f + 0.18f * load));
+        _leftLeg.Plant(_model, leftFoot, 1f);
+        _rightLeg.Plant(_model, rightFoot, 1f);
+        _chest.Turn(_model, 12f * load, 15f * load);
+        _leftUpperArm.Aim(_model, -1f, new Vector3(-0.77f, -0.49f, -0.38f));
+        _leftForearm.Aim(_model, -1f, new Vector3(-0.58f, -0.45f, 0.55f));
+        Vector3 grip = Vector3.Lerp(telling ? _windupGrip : LungeGuard.Grip, new Vector3(0.48f, 0.65f, 0.22f), load);
+        Vector3 blade = Vector3.Slerp(telling ? _windupBlade : LungeGuard.Blade, new Vector3(1f, -0.1f, 0.3f), load);
+        Vector3 axis = _model.TransformDirection(blade).normalized;
+        _swordArm.Place(_model, _model.TransformPoint(grip),
+            Quaternion.LookRotation(Vector3.Cross(axis, _model.up), axis), 1f);
+        HoldSword();
+        if (!telling && !active)
+        {
+            return;
+        }
+
+        Vector3 center = _body.transform.position;
+        _spinFloor.position = center;
+        _spinDisc.Fill(telling ? progress : 0.22f);
+        float flash = _spinFlash / SpinFlashSeconds;
+        _spinRim.widthMultiplier = Mathf.Lerp(0.08f, 0.22f, flash);
+        _impactColor.SetColor("_BaseColor", Color.Lerp(new Color(1f, 0.39f, 0.16f, 0.79f),
+            new Color(1f, 0.94f, 0.77f, 1f), flash));
+        _spinRim.SetPropertyBlock(_impactColor);
+        _spinFlash = Mathf.Max(0f, _spinFlash - dt);
+        if (active)
+        {
+            DrawSpinRibbon(center);
+        }
+    }
+
+    private void DrawSpinRibbon(Vector3 center)
+    {
+        // Rebuild the trailing arc in the body's current frame so blocked movement leaves no detached streak.
+        Vector3 inner = _grip.position + _grip.up * (0.28f * SwordScale) - center;
+        Vector3 outer = _grip.position + _grip.up * GripToTip - center;
+        for (int i = 0; i <= RibbonSegments; i++)
+        {
+            float t = (float)i / RibbonSegments;
+            Quaternion tail = Quaternion.AngleAxis(-112f * (1f - t), Vector3.up);
+            _bladeRibbon.SetPair(i, center + tail * Vector3.Lerp(outer, inner, t), center + tail * outer);
+        }
+
+        _bladeRibbon.Show(0, RibbonSegments);
     }
 
     private void PoseToward(Stance target, float duration)
@@ -725,9 +853,9 @@ internal sealed class BuriedKingView : IDisposable
     private static float StrikeProgress(float progress, float start) =>
         Mathf.SmoothStep(0f, 1f, (progress - start) / (1f - start));
 
-    private LineRenderer CreateImpactRing()
+    private LineRenderer CreateRing(string name)
     {
-        LineRenderer line = CreateFloorLine("Sword impact ring");
+        LineRenderer line = CreateFloorLine(name);
         line.loop = true;
         line.positionCount = ArcSegments;
         line.shadowCastingMode = ShadowCastingMode.Off;

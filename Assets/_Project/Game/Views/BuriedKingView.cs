@@ -416,6 +416,11 @@ internal sealed class BuriedKingView : IDisposable
                 break;
             case BuriedKingPose.SweepTell:
             case BuriedKingPose.SlamTell:
+                if (previous == BuriedKingPose.LungeTravel)
+                {
+                    _dust.Play(start, _id);
+                }
+
                 BeginSwordCut(state, start, end);
                 break;
             case BuriedKingPose.SweepImpact:

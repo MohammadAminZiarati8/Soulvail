@@ -16,8 +16,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         LungeApproach, LungeTell, Lunging, LungeRecovery, CutRecovery, Recovery, Dead,
         SpinTell, SpinActive, SpinRecovery
     }
-    private enum ReturnPhase { Recall, Reclaim, Shattered }
-
     private readonly EnemyAgent _agent;
     private readonly Stat _sweepReach = new(4f);
     private readonly Stat _sweepDegrees = new(120f);
@@ -30,7 +28,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _flightSpeed = new(18f);
     private readonly Stat _embeddedTime = new(1.6f);
     private readonly Stat _catchRecovery = new(2.1f);
-    private readonly Stat _reclaimThreshold = new(0.66f);
+    private readonly Stat _spinThreshold = new(0.66f);
     private readonly Stat _shatteredThreshold = new(0.33f);
     private readonly Stat _fractureTell = new(1f);
     private readonly Stat _slamTell = new(0.9f);
@@ -47,7 +45,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _slamDamage = new(28f);
     private readonly Stat _lungeWindup = new(1f);
     private readonly BuriedKingLeapStats _leap = new();
-    private readonly Stat _minimumLungeLength = new(5f);
     private readonly Stat _lungeRunSpeedMultiplier = new(1.6f);
     private readonly Stat _lungeTravel = new(0.55f);
     private readonly Stat _lungeCut = new(0.15f);
@@ -66,8 +63,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _spinDamage = new(10f);
     private readonly Stat _spinFirstPulse = new(0.75f);
     private readonly Stat _spinPulseInterval = new(1f);
-    private readonly Stat _spinRepeatDelay = new(18f);
     private readonly Stat _spinRepeatRange = new(5f);
+    private const int AttacksBetweenSpins = 2;
     private State _state;
     private Vector2 _facing = Vector2.UnitY;
     private Vector3 _start;
@@ -77,15 +74,16 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private float _backOffElapsed;
     private int _sweeps;
     private bool _hit;
-    private ReturnPhase _unlockedPhase;
-    private ReturnPhase _castPhase;
+    private bool _fractureUnlocked;
+    private bool _fractureOnReturn;
     private float _lungeClearance;
     private bool _lungeReady = true;
     private Vector3 _lungeExpectedPosition;
+    private bool _spinUnlocked;
     private bool _spinDebuted;
     private double _spinElapsed;
     private float _nextSpinPulse;
-    private float _spinRepeatAt;
+    private int _attacksSinceSpin;
 
     public BuriedKingBehaviour(EnemyAgent agent)
     {
@@ -97,14 +95,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     public void Tick(in EnemyTickContext ctx)
     {
         float hp = _agent.Health.Fraction;
-        if (_unlockedPhase < ReturnPhase.Shattered && hp <= _shatteredThreshold.Value)
-        {
-            _unlockedPhase = ReturnPhase.Shattered;
-        }
-        else if (_unlockedPhase == ReturnPhase.Recall && hp <= _reclaimThreshold.Value)
-        {
-            _unlockedPhase = ReturnPhase.Reclaim;
-        }
+        _spinUnlocked |= hp <= _spinThreshold.Value;
+        _fractureUnlocked |= hp <= _shatteredThreshold.Value;
 
         EnemyBlackboard board = _agent.Blackboard;
         Vector3 hero = ctx.Player.Blackboard.PlayerPosition;
@@ -157,7 +149,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             case State.LungeTell:
                 if (!AtLungePosition(board.SelfPosition, _start))
                 {
-                    RecoverLunge(ctx, interrupted: true);
+                    RecoverInterruptedLunge(ctx);
                 }
                 else if (Elapsed(ctx.Dt))
                 {
@@ -210,12 +202,13 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _remaining = _distanceTravelled = _backOffElapsed = 0f;
         _sweeps = 0;
         _hit = false;
-        _unlockedPhase = _castPhase = ReturnPhase.Recall;
+        _fractureUnlocked = _fractureOnReturn = false;
         _lungeClearance = 0f;
         _lungeReady = true;
-        _spinDebuted = false;
+        _spinUnlocked = _spinDebuted = false;
         _spinElapsed = 0d;
-        _nextSpinPulse = _spinRepeatAt = 0f;
+        _nextSpinPulse = 0f;
+        _attacksSinceSpin = 0;
     }
 
     internal void ObserveLungeClearance(float distance) =>
@@ -245,9 +238,9 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
 
         if (_lungeReady && board.HasLineOfSight && distance >= _minimumLungeRange.Value
-            && _lungeClearance >= _minimumLungeLength.Value)
+            && _lungeClearance >= _leap.Length)
         {
-            float untilInRange = distance - _lungeClearance;
+            float untilInRange = distance - _leap.Length;
             if (untilInRange > 0.00001f)
             {
                 if (_state != State.LungeApproach)
@@ -270,7 +263,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             _backOffElapsed = 0f;
             _start = board.SelfPosition;
             Vector3 axis = new(_facing.X, 0f, _facing.Y);
-            _end = _start + axis * _lungeClearance;
+            _end = _start + axis * _leap.Length;
             _state = State.LungeTell;
             _remaining = _lungeWindup.Value;
             PublishLunge(ctx.Events, BuriedKingPose.LungeTell, _remaining);
@@ -292,7 +285,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             && TryLanding(ctx, board.SelfPosition, hero, out Vector3 landing))
         {
             _lungeReady = true;
-            _castPhase = _unlockedPhase;
+            _fractureOnReturn = _fractureUnlocked;
             _sweeps = 0;
             _backOffElapsed = 0f;
             Face(Ground(landing - board.SelfPosition));
@@ -326,13 +319,14 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
     private bool TryStartSpin(in EnemyTickContext ctx, EnemyBlackboard board, float distance)
     {
-        if (_unlockedPhase == ReturnPhase.Recall
-            || (_spinDebuted && (ctx.Now < _spinRepeatAt || !board.HasLineOfSight || distance > _spinRepeatRange.Value)))
+        if (!_spinUnlocked || (_spinDebuted && (_attacksSinceSpin < AttacksBetweenSpins
+            || !board.HasLineOfSight || distance > _spinRepeatRange.Value)))
         {
             return false;
         }
 
         _spinDebuted = true;
+        _attacksSinceSpin = 0;
         _state = State.SpinTell;
         _remaining = _spinTell.Value;
         PublishSpin(ctx.Events, BuriedKingPose.SpinTell, board.SelfPosition, _remaining);
@@ -364,7 +358,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         {
             _state = State.SpinRecovery;
             _remaining = _spinRecovery.Value;
-            _spinRepeatAt = ctx.Now + _spinRepeatDelay.Value;
             PublishSpin(ctx.Events, BuriedKingPose.SpinRecovery, board.SelfPosition, _remaining);
             return Vector2.Zero;
         }
@@ -386,15 +379,20 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
     private Vector2 AdvanceLunge(in EnemyTickContext ctx, Vector3 position, Vector3 hero)
     {
-        bool arrived = AtLungePosition(position, _lungeExpectedPosition);
-        if (!arrived || _remaining <= 0f)
+        if (!AtLungePosition(position, _lungeExpectedPosition))
         {
-            if (arrived && IsInLungeLane(hero))
+            RecoverInterruptedLunge(ctx);
+            return Vector2.Zero;
+        }
+
+        if (_remaining <= 0f)
+        {
+            if (IsInLungeLane(hero))
             {
                 ctx.Player.ApplyDamage(_lungeDamage.Value, ctx.Now);
             }
 
-            RecoverLunge(ctx, interrupted: !arrived);
+            StartSlam(ctx, position);
             return Vector2.Zero;
         }
 
@@ -429,16 +427,16 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             && across <= _leap.Width * 0.5f + rounding;
     }
 
-    private void RecoverLunge(in EnemyTickContext ctx, bool interrupted)
+    private void RecoverInterruptedLunge(in EnemyTickContext ctx)
     {
         _state = State.LungeRecovery;
         _remaining = _lungeRecovery.Value;
-        PublishLunge(ctx.Events, BuriedKingPose.LungeRecovery, _remaining, interrupted);
+        PublishLunge(ctx.Events, BuriedKingPose.LungeRecovery, _remaining);
     }
 
-    private void PublishLunge(IDomainEvents events, BuriedKingPose pose, float duration, bool interrupted = false) =>
+    private void PublishLunge(IDomainEvents events, BuriedKingPose pose, float duration) =>
         events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _leap.Width,
-            0f, default, 0f, 0f, duration, 0f, interrupted ? 0f : _lungeCut.Value));
+            0f, default, 0f, 0f, duration, 0f, pose == BuriedKingPose.LungeRecovery ? 0f : _lungeCut.Value));
 
     private bool TryLanding(in EnemyTickContext ctx, Vector3 origin, Vector3 hero, out Vector3 landing)
     {
@@ -502,19 +500,15 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
         else if (returning)
         {
-            switch (_castPhase)
+            if (_fractureOnReturn)
             {
-                case ReturnPhase.Shattered:
-                    _state = State.FractureTell;
-                    _remaining = _fractureTell.Value;
-                    Publish(ctx.Events, BuriedKingPose.FractureTell, warningSeconds: _remaining);
-                    break;
-                case ReturnPhase.Reclaim:
-                    StartSlam(ctx, _agent.Blackboard.SelfPosition);
-                    break;
-                default:
-                    Recover(ctx, _catchRecovery.Value);
-                    break;
+                _state = State.FractureTell;
+                _remaining = _fractureTell.Value;
+                Publish(ctx.Events, BuriedKingPose.FractureTell, warningSeconds: _remaining);
+            }
+            else
+            {
+                Recover(ctx, _catchRecovery.Value);
             }
         }
         else
@@ -551,7 +545,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             ctx.Player.ApplyDamage(_returnDamage.Value, ctx.Now);
         }
 
-        StartSlam(ctx, _end);
+        Recover(ctx, _shatteredRecovery.Value);
     }
 
     private void StartSlam(in EnemyTickContext ctx, Vector3 center) =>
@@ -565,8 +559,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             ctx.Player.ApplyDamage(_slamDamage.Value, ctx.Now);
         }
 
-        Recover(ctx, _castPhase == ReturnPhase.Shattered ? _shatteredRecovery.Value : _slamRecovery.Value,
-            BuriedKingPose.SlamImpact);
+        Recover(ctx, _slamRecovery.Value, BuriedKingPose.SlamImpact);
     }
 
     private void Lock(in EnemyTickContext ctx, State state, BuriedKingPose pose, Vector3 start, Vector3 end, float duration)
@@ -580,6 +573,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
     private void Recover(in EnemyTickContext ctx, float duration, BuriedKingPose pose = BuriedKingPose.Held)
     {
+        if (_spinDebuted && _attacksSinceSpin < AttacksBetweenSpins)
+        {
+            _attacksSinceSpin++;
+        }
+
         _state = pose == BuriedKingPose.Held ? State.Recovery : State.CutRecovery;
         _remaining = duration;
         Publish(ctx.Events, pose);

@@ -269,42 +269,31 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
         Tick(1f);
         FinishCatch();
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
     }
 
-    [TestCase(false, 3.5f, 1)]
-    [TestCase(false, -3.6f, 0)]
-    [TestCase(true, 3.5f, 1)]
-    [TestCase(true, -3.6f, 0)]
-    public void Reclaim_BothReturnChainsResolveOneCircle(bool fractured, float offset, int expectedHits)
+    [TestCase(3.5f, 1)]
+    [TestCase(-3.5f, 1)]
+    [TestCase(-3.6f, 0)]
+    public void Leap_StartsOneFullCircleAtTheObservedLanding(float offset, int expectedHits)
     {
-        if (fractured)
-        {
-            BuriedKingStateChanged recall = StartFracture();
-            Tick(1f);
-            Assert.That(LastPose().Start, Is.EqualTo(recall.End));
-        }
-        else
-        {
-            StartSlam();
-        }
+        BuriedKingStateChanged leap = StartLunge();
+        _hero = leap.End + 5f * Vector3.UnitX;
+        Tick(1f);
+        Tick(0.55f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeTravel));
+        // Model a small controller offset within the confirmed landing tolerance.
+        _position += 0.02f * Vector3.UnitX;
+        Tick(0f);
 
         BuriedKingStateChanged tell = LastPose();
         Assert.That(tell.Pose, Is.EqualTo(BuriedKingPose.SlamTell));
         Assert.That(tell.Start, Is.EqualTo(_position));
+        Assert.That(tell.End, Is.EqualTo(tell.Start));
         Assert.That(tell.SlamRadius, Is.EqualTo(3.5f));
         Assert.That(tell.WarningSeconds, Is.EqualTo(0.90f));
         Assert.That(tell.CutSeconds, Is.EqualTo(0.22f));
-        var flight = new[] { BuriedKingPose.CastTell, BuriedKingPose.Outbound, BuriedKingPose.Embedded,
-            BuriedKingPose.RecallTell, BuriedKingPose.Returning };
-        var chain = fractured
-            ? flight.Concat(new[] { BuriedKingPose.FractureTell, BuriedKingPose.SlamTell })
-            : flight.Append(BuriedKingPose.SlamTell);
-        Assert.That(_events.Of<BuriedKingStateChanged>().Select(change => change.Pose)
-            .SkipWhile(pose => pose != BuriedKingPose.CastTell), Is.EqualTo(chain));
 
-        // A changed body sense must not move the promised impact.
-        _position -= 5f * Vector3.UnitX;
         _hero = tell.Start + new Vector3(offset, 1f, 0f);
         Tick(0.89f);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
@@ -314,12 +303,8 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(LastPose().SlamRadius, Is.EqualTo(tell.SlamRadius));
         Assert.That(LastPose().CutSeconds, Is.EqualTo(tell.CutSeconds));
         Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(expectedHits));
-        Assert.That(_events.Of<BuriedKingStateChanged>().Count(change => change.Pose == BuriedKingPose.SlamImpact), Is.EqualTo(1));
         Assert.That(_player.Health.Current, Is.EqualTo(100f - 28f * expectedHits));
-
-        _hero = tell.Start;
-        Tick(1f);
-        Tick(1f);
+        Tick(2f);
         Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(expectedHits));
     }
 
@@ -343,17 +328,17 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SweepTell));
     }
 
-    [TestCase(false, 2.09f)]
-    [TestCase(true, 2.39f)]
-    public void ShatteredThreshold_DuringCastPreservesTheSelectedPhase(bool reclaim, float beforeRecoveryEnds)
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ShatteredThreshold_DuringCastPreservesTheSelectedPhase(bool spinUnlocked)
     {
-        if (reclaim)
+        if (spinUnlocked)
         {
             CrossReclaimThreshold();
         }
 
         Tick(0f);
-        if (reclaim)
+        if (spinUnlocked)
         {
             FinishSpinDebut();
         }
@@ -362,22 +347,14 @@ public sealed class BuriedKingBehaviourTests
         SetKingHealthFraction(0.33f);
         Tick(1f);
         _king.Health.Heal(_king.Health.MaxHp.Value);
-        Assert.That(_king.Health.Fraction, Is.EqualTo(1f));
         FinishCatch();
-
-        if (reclaim)
-        {
-            Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
-            Tick(0.9f);
-        }
-
-        Assert.That(LastPose().Pose, Is.EqualTo(reclaim ? BuriedKingPose.SlamImpact : BuriedKingPose.Held));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
         _hero = _position - 8f * Vector3.UnitZ;
         _ground = new[] { _hero };
-        Tick(beforeRecoveryEnds);
-        Assert.That(LastPose().Pose, Is.EqualTo(reclaim ? BuriedKingPose.SlamImpact : BuriedKingPose.Held));
+        Tick(2.09f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
         Tick(0.02f);
-        if (!reclaim)
+        if (!spinUnlocked)
         {
             FinishSpinDebut();
         }
@@ -388,7 +365,7 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.FractureTell));
     }
 
-    [TestCase(0.331f, BuriedKingPose.SlamTell)]
+    [TestCase(0.331f, BuriedKingPose.Held)]
     [TestCase(0.33f, BuriedKingPose.FractureTell)]
     [TestCase(0.32f, BuriedKingPose.FractureTell)]
     public void ShatteredThreshold_AppliesAtCastSelection(float fraction, BuriedKingPose catchPose)
@@ -420,17 +397,15 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(LastPose().FractureProgress, Is.EqualTo(0.99f).Within(0.0001f));
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
         Tick(0.02f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
-        Assert.That(LastPose().Start, Is.EqualTo(recall.End));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
         Assert.That(_player.Health.Current, Is.EqualTo(100f - 20f * expectedHits));
-        Tick(0.4f);
-        Tick(0.4f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+        Tick(0.8f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
         Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(expectedHits));
     }
 
     [Test]
-    public void ShatteredReturn_LeavesFullSlamAndRecoveryWindows()
+    public void ShatteredReturn_LeavesFullFractureAndRecoveryWindows()
     {
         BuriedKingStateChanged recall = StartFracture();
         Vector3 planted = recall.End;
@@ -442,20 +417,12 @@ public sealed class BuriedKingBehaviourTests
 
         Tick(0.02f);
         Assert.That(_player.Health.Current, Is.EqualTo(80f));
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
-        Assert.That(LastPose().SlamRadius, Is.EqualTo(3.5f));
-        AssertPlantedAndTargetable(planted);
-        Tick(0.895f);
-        Assert.That(_player.Health.Current, Is.EqualTo(80f));
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
-        Tick(0.01f);
-        Assert.That(_player.Health.Current, Is.EqualTo(52f));
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamImpact));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
         AssertPlantedAndTargetable(planted);
         Tick(2.697f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamImpact));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
         AssertPlantedAndTargetable(planted);
-        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(2));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
         Tick(0.01f);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SweepTell));
     }
@@ -528,23 +495,10 @@ public sealed class BuriedKingBehaviourTests
         AssertDeathClearsEncounter();
     }
 
-    [TestCase(BuriedKingPose.FractureTell)]
-    [TestCase(BuriedKingPose.SlamTell)]
-    [TestCase(BuriedKingPose.SlamImpact)]
-    public void DeathDuringShatteredReturn_ClearsWarningAndPendingHits(BuriedKingPose pose)
+    [Test]
+    public void DeathDuringShatteredReturn_ClearsWarningAndPendingHits()
     {
         BuriedKingStateChanged recall = StartFracture();
-        if (pose is BuriedKingPose.SlamTell or BuriedKingPose.SlamImpact)
-        {
-            Tick(1f);
-        }
-
-        if (pose == BuriedKingPose.SlamImpact)
-        {
-            Tick(0.9f);
-        }
-
-        Assert.That(LastPose().Pose, Is.EqualTo(pose));
         _hero = Vector3.Lerp(recall.Start, recall.End, 0.9f);
         AssertDeathClearsEncounter();
     }
@@ -580,8 +534,8 @@ public sealed class BuriedKingBehaviourTests
     [TestCase(1f, 6f, 12f, BuriedKingPose.LungeTell)]
     [TestCase(0.661f, 3f, 12f, BuriedKingPose.SweepTell)]
     [TestCase(0.661f, 6f, 12f, BuriedKingPose.LungeTell)]
-    [TestCase(0.661f, 4.1f, 5f, BuriedKingPose.LungeTell)]
-    [TestCase(0.661f, 6f, 4.99f, BuriedKingPose.CastTell)]
+    [TestCase(0.661f, 4.1f, 8f, BuriedKingPose.LungeTell)]
+    [TestCase(0.661f, 6f, 7.99f, BuriedKingPose.CastTell)]
     [TestCase(1f, 6f, float.PositiveInfinity, BuriedKingPose.CastTell)]
     [TestCase(1f, 6f, float.NaN, BuriedKingPose.CastTell)]
     public void LungeSelection_RequiresRangeAndValidClearance(float hp, float distance, float clearance,
@@ -595,30 +549,29 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(LastPose().Pose, Is.EqualTo(expected));
         if (expected == BuriedKingPose.LungeTell)
         {
-            Assert.That(LastPose().End.Z, Is.EqualTo(MathF.Min(8f, clearance)));
+            Assert.That(LastPose().End.Z, Is.EqualTo(8f));
         }
     }
 
-    [TestCase(0.5f, 8f, 8f)]
-    [TestCase(3f, 8f, 8f)]
-    [TestCase(3f, 5f, 5f)]
-    public void Lunge_ApproachRunsAndNormalPursuitWalks(float step, float clearance, float range)
+    [TestCase(0.5f)]
+    [TestCase(3f)]
+    public void Lunge_ApproachRunsAndNormalPursuitWalks(float step)
     {
         _hero = 12f * Vector3.UnitZ;
         Tick(0f);
         Assert.That(_intents.LastEnemyMove.Velocity.Z, Is.EqualTo(2.5f));
-        _lungeClearance = clearance;
+        _lungeClearance = 8f;
         Tick(step);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeApproach));
         Assert.That(LastPose().WarningSeconds, Is.Zero);
-        Assert.That(_intents.LastEnemyMove.Velocity.Z, Is.EqualTo(MathF.Min(4f, (12f - range) / step)));
+        Assert.That(_intents.LastEnemyMove.Velocity.Z, Is.EqualTo(MathF.Min(4f, 4f / step)));
         if (step < 1f)
         {
             Tick(step);
         }
 
         Vector3 planted = _position;
-        Assert.That(_hero.Z - planted.Z, Is.EqualTo(range).Within(0.00001f));
+        Assert.That(_hero.Z - planted.Z, Is.EqualTo(8f).Within(0.00001f));
 
         Tick(0.01f);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeTell));
@@ -635,6 +588,8 @@ public sealed class BuriedKingBehaviourTests
         Tick(0.55f);
         _hero = 13.5f * Vector3.UnitZ;
         Tick(0.01f);
+        Tick(0.9f);
+        Tick(1.5f);
         Tick(0.91f);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
         Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(_king.MoveSpeed.Value * Vector3.UnitZ));
@@ -675,7 +630,7 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(_position, Is.EqualTo(warning.End));
         Tick(0.01f);
         Assert.That(_player.Health.Current, Is.EqualTo(100f));
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeRecovery));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
     }
 
     [TestCase(2f, 4f, 74f)]
@@ -701,11 +656,8 @@ public sealed class BuriedKingBehaviourTests
         _hero = 6f * Vector3.UnitZ;
         Tick(0.89f);
         Assert.That(_player.Health.Current, Is.EqualTo(expectedHp));
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeRecovery));
-        Assert.That(LastPose().CutSeconds, Is.EqualTo(0.15f));
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
         AssertPlantedAndTargetable(8f * Vector3.UnitZ);
-        Tick(0.02f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SweepTell));
     }
 
     [TestCase(0.40f)]
@@ -762,37 +714,16 @@ public sealed class BuriedKingBehaviourTests
             Tick(1f);
             Tick(0.55f);
             Tick(0f);
-            Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeRecovery));
-            Tick(0.89f);
-            Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeRecovery));
+            Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
+            Tick(0.9f);
+            Tick(2.39f);
+            Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamImpact));
             Tick(0.02f);
         }
 
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SpinTell));
-        _bodyBlocked = true;
         _hero = _position + 5f * Vector3.UnitZ;
-        _ground = Array.Empty<Vector3>();
-        _hasSight = false;
-        Tick(1.25f);
-        Tick(5f);
-        Tick(1.6f);
-        Tick(16.38f);
-        _hasSight = true;
-        _lungeClearance = 0f;
-        Tick(0.01f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
-        _hasSight = false;
-        Tick(0.02f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
-        _hasSight = true;
-        _hero += Vector3.UnitZ * 0.01f;
-        Tick(0f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
-        _hero = _position + Vector3.UnitZ * 5f;
         _lungeClearance = 8f;
-        Tick(0f);
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SpinTell));
-
         _king.Behaviour.Reset();
         _king.Health.Heal(_king.Health.MaxHp.Value);
         _events.Clear();
@@ -956,12 +887,11 @@ public sealed class BuriedKingBehaviourTests
 
     private void StartSlam()
     {
-        CrossReclaimThreshold();
-        Tick(0f);
-        FinishSpinDebut();
-        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.CastTell));
+        BuriedKingStateChanged leap = StartLunge();
+        _hero = leap.End + 5f * Vector3.UnitX;
         Tick(1f);
-        FinishCatch();
+        Tick(0.55f);
+        Tick(0f);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SlamTell));
         Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
     }

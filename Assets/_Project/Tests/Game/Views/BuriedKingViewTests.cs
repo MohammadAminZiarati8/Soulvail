@@ -96,12 +96,10 @@ public sealed class BuriedKingViewTests
         var (session, intents, arena, world) = StartStage30();
         var poses = new List<BuriedKingStateChanged>();
         using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
-        int damageEvents = 0;
-        using var damage = _hub.Subscribe<EnemyDamaged>(_ => damageEvents++);
-        int id = _body.Id;
-        float dt = world.Dt;
+        int hits = 0;
+        using var damage = _hub.Subscribe<PlayerDamaged>(_ => hits++);
         Vector3 kingStart = _origin;
-        Vector3 hero = _origin + 12f * Vector3.forward;
+        Vector3 hero = _origin + (scenario == "center" ? 6f : 12f) * Vector3.forward;
         if (scenario == "diagonal wall")
         {
             kingStart += 11f * Vector3.back;
@@ -113,72 +111,86 @@ public sealed class BuriedKingViewTests
             CoverAt(1.8f, 7.25f);
         }
 
-        _body.Bind(id, kingStart);
+        _body.Bind(_body.Id, kingStart);
         world.PlayerPosition = hero.ToNum();
-        Physics.SyncTransforms();
-        _views.CopyInto(world, arena.PlayBounds);
-        world.Enemies[0].HasLineOfSight = true;
-        world.Enemies[0].KingLungeClearance = 0f;
-        session.Tick(world);
-        float walkSpeed = intents.EnemyMoves.Single(move => move.Id == id).Velocity.Length();
-        Assert.That(walkSpeed, Is.EqualTo(2.8f).Within(0.001f));
+        if (scenario is "diagonal wall" or "cover")
+        {
+            world.OpenGround = new[] { hero.ToNum() };
+            StepStage30(session, intents, arena, world, allowLeap: true);
+            Assert.That(world.Enemies[0].KingLungeClearance, Is.InRange(5f, 7.99f));
+            Assert.That(poses.Select(state => state.Pose), Is.EqualTo(new[] { BuriedKingPose.CastTell }));
+            Assert.That(_body.transform.position, Is.EqualTo(kingStart));
+            session.End();
+            return;
+        }
 
+        Transform warnings = GameObject.Find("Buried King warnings").transform;
+        Transform warning = warnings.Find("Attack warning");
         float fastestApproach = 0f;
+        int landed = -1;
         for (int frame = 0; frame < 300; frame++)
         {
-            world.EnemyCount = 0;
-            Physics.SyncTransforms();
-            _views.CopyInto(world, arena.PlayBounds);
-            world.Enemies[0].HasLineOfSight = true;
-            intents.Clear();
+            Vector3 before = _body.transform.position;
             int count = poses.Count;
-            session.Tick(world);
+            EnemyMoveIntent move = StepStage30(session, intents, arena, world, allowLeap: true);
             if (poses.Count > count && poses[^1].Pose == BuriedKingPose.LungeTell)
             {
-                Vector3 side = Vector3.Cross(Vector3.up, (poses[^1].End - poses[^1].Start).ToUnity()).normalized;
-                world.PlayerPosition = (hero + 3f * side).ToNum();
+                BuriedKingStateChanged tell = poses[^1];
+                Assert.That(tell.Width, Is.EqualTo(4f));
+                Assert.That((tell.End - tell.Start).Length(), Is.EqualTo(8f).Within(0.001f));
+                Assert.That(tell.End.Z, Is.EqualTo(tell.Start.Z + 8f).Within(0.001f));
+                Vector3 side = Vector3.Cross(Vector3.up, (tell.End - tell.Start).ToUnity()).normalized;
+                world.PlayerPosition = (hero + 5f * side).ToNum();
                 if (scenario == "blocked after warning")
                 {
                     CoverAt(0f, 7f);
                 }
             }
 
-            foreach (EnemyMoveIntent move in intents.EnemyMoves)
+            if (poses[^1].Pose == BuriedKingPose.LungeApproach)
             {
-                if (poses.Count > 0 && poses[^1].Pose == BuriedKingPose.LungeApproach)
-                {
-                    fastestApproach = Mathf.Max(fastestApproach, move.Velocity.Length());
-                }
-
-                if (move.Id == id)
-                {
-                    _body.Apply(move, dt);
-                }
+                fastestApproach = Mathf.Max(fastestApproach, move.Velocity.Length());
             }
 
-            if (poses.Count > 0 && poses[^1].Pose == BuriedKingPose.LungeRecovery)
+            BuriedKingStateChanged locked = poses.FirstOrDefault(state => state.Pose == BuriedKingPose.LungeTell);
+            if (poses[^1].Pose == BuriedKingPose.LungeTravel
+                && Vector3.ProjectOnPlane(_body.transform.position - locked.End.ToUnity(), Vector3.up).magnitude < 0.001f)
             {
+                landed = frame;
+            }
+
+            if (poses[^1].Pose == BuriedKingPose.SlamTell)
+            {
+                Assert.That(frame, Is.EqualTo(landed + 1));
+                Assert.That(poses[^2].Pose, Is.EqualTo(BuriedKingPose.LungeTravel));
+                Assert.That(poses[^1].Start.ToUnity(), Is.EqualTo(before));
+                Assert.That(poses[^1].WarningSeconds, Is.EqualTo(0.9f));
+                Assert.That(IsVisible(warning), Is.True);
+                break;
+            }
+
+            if (poses[^1].Pose == BuriedKingPose.LungeRecovery)
+            {
+                Assert.That(poses[^1].CutSeconds, Is.Zero);
+                Assert.That(_body.transform.position.z, Is.LessThan(_origin.z + 7f));
                 break;
             }
         }
 
-        var tell = poses.Single(state => state.Pose == BuriedKingPose.LungeTell);
-        var recovery = poses.Single(state => state.Pose == BuriedKingPose.LungeRecovery);
-        float length = (tell.End - tell.Start).Length();
-        Assert.That(tell.Width, Is.EqualTo(4f));
-        Assert.That(recovery.End, Is.EqualTo(tell.End));
-        if (scenario == "center" || scenario == "blocked after warning")
+        Assert.That(hits, Is.Zero);
+        if (scenario == "center")
         {
-            Assert.That(fastestApproach, Is.EqualTo(1.6f * walkSpeed).Within(0.001f));
-            Assert.That(length, Is.EqualTo(8f).Within(0.001f));
+            Assert.That(landed, Is.GreaterThanOrEqualTo(0));
+            Assert.That(poses[^1].Pose, Is.EqualTo(BuriedKingPose.SlamTell));
         }
         else
         {
-            Assert.That(length, Is.InRange(5f, 7.99f));
+            Assert.That(fastestApproach, Is.EqualTo(1.6f * 2.8f).Within(0.001f));
+            Assert.That(landed, Is.EqualTo(-1));
+            Assert.That(poses[^1].Pose, Is.EqualTo(BuriedKingPose.LungeRecovery));
+            Assert.That(poses.Any(state => state.Pose == BuriedKingPose.SlamTell), Is.False);
         }
 
-        Assert.That(recovery.CutSeconds, Is.EqualTo(scenario == "blocked after warning" ? 0f : 0.15f));
-        Assert.That(damageEvents, Is.Zero);
         session.End();
     }
 
@@ -238,23 +250,15 @@ public sealed class BuriedKingViewTests
         }
     }
 
-    [TestCase(1f, BuriedKingPose.SweepTell, BuriedKingPose.SweepImpact)]
-    [TestCase(0.65f, BuriedKingPose.SlamTell, BuriedKingPose.SlamImpact)]
-    [TestCase(0.32f, BuriedKingPose.SlamTell, BuriedKingPose.SlamImpact)]
-    public void Stage30_TestStartChecksTheSwordCutsInDunes(float health, BuriedKingPose tell, BuriedKingPose impact)
+    [TestCase(BuriedKingPose.SweepTell, BuriedKingPose.SweepImpact)]
+    [TestCase(BuriedKingPose.SlamTell, BuriedKingPose.SlamImpact)]
+    public void Stage30_TestStartChecksTheSwordCutsInDunes(BuriedKingPose tell, BuriedKingPose impact)
     {
         var (session, intents, arena, world) = StartStage30();
         int id = _body.Id;
         _body.Bind(id, _origin);
-        const BindingFlags statePorts = BindingFlags.Instance | BindingFlags.NonPublic;
-        var enemies = (EnemySystem)typeof(RunState).GetProperty("Enemies", statePorts).GetValue(session.State);
-        Assert.That(enemies.Registry.TryGet(id, out EnemyAgent king), Is.True);
-        if (health < 1f)
-        {
-            king.Health.ApplyDamage(king.Health.MaxHp.Value * (1f - health), 0f);
-        }
-
-        Vector3 bait = _origin + Vector3.forward * (tell == BuriedKingPose.SweepTell ? 3f : 8f);
+        Vector3 cutCenter = tell == BuriedKingPose.SweepTell ? _origin : _origin + 8f * Vector3.forward;
+        Vector3 bait = _origin + Vector3.forward * (tell == BuriedKingPose.SweepTell ? 3f : 6f);
         world.PlayerPosition = bait.ToNum();
         world.OpenGround = new[] { bait.ToNum() };
         var poses = new List<BuriedKingStateChanged>();
@@ -272,33 +276,18 @@ public sealed class BuriedKingViewTests
         int impactFrame = -1;
         for (int frame = 0; frame < 1000; frame++)
         {
-            world.EnemyCount = 0;
-            Physics.SyncTransforms();
-            _views.CopyInto(world, arena.PlayBounds);
-            world.Enemies[0].HasLineOfSight = true;
-            world.Enemies[0].KingLungeClearance = 0f;
-            intents.Clear();
-            session.Tick(world);
-            EnemyMoveIntent move = intents.EnemyMoves.Single();
+            EnemyMoveIntent move = StepStage30(session, intents, arena, world, allowLeap: true);
             BuriedKingPose pose = poses[^1].Pose;
-            if (pose is BuriedKingPose.SpinTell or BuriedKingPose.SpinActive or BuriedKingPose.SpinPulse)
+            if (pose is BuriedKingPose.SweepTell or BuriedKingPose.LungeTell)
             {
-                // This fixture isolates the planted cut at the original cast position.
-                continue;
-            }
-
-            _body.Apply(move, world.Dt);
-            if (pose is BuriedKingPose.SweepTell or BuriedKingPose.CastTell)
-            {
-                // The hero sidesteps the locked shape so all three impact checks exercise a miss.
-                world.PlayerPosition = (_origin + Vector3.right * 5f).ToNum();
+                world.PlayerPosition = (cutCenter + Vector3.right * 5f).ToNum();
             }
 
             if (pose == tell || pose == impact)
             {
                 Assert.That(move.Velocity, Is.EqualTo(System.Numerics.Vector3.Zero));
                 Assert.That(Vector2.Distance(new Vector2(_body.transform.position.x, _body.transform.position.z),
-                    new Vector2(_origin.x, _origin.z)), Is.LessThan(0.001f));
+                    new Vector2(cutCenter.x, cutCenter.z)), Is.LessThan(0.001f));
                 Assert.That(grip.childCount, Is.GreaterThan(0));
                 Transform sword = grip.Find("Buried King's sword");
                 Assert.That(sword.localPosition, Is.EqualTo(Vector3.zero));
@@ -330,7 +319,6 @@ public sealed class BuriedKingViewTests
         Assert.That(impactFrame, Is.GreaterThanOrEqualTo(0));
         Assert.That(hits, Is.Zero);
         Assert.That(poses.Count(change => change.Pose == impact), Is.EqualTo(1));
-        Assert.That(poses.Any(change => change.Pose == BuriedKingPose.FractureTell), Is.EqualTo(health < 0.33f));
         Assert.That(swordDirections.Count, Is.GreaterThan(5));
         float turned = 0f;
         for (int i = 1; i < rootFacings.Count; i++)
@@ -366,7 +354,7 @@ public sealed class BuriedKingViewTests
         var poses = new List<BuriedKingStateChanged>();
         using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
         BuriedKingPose committed = leap ? BuriedKingPose.LungeTravel : BuriedKingPose.RecallTell;
-        BuriedKingPose recovering = leap ? BuriedKingPose.LungeRecovery : BuriedKingPose.Held;
+        BuriedKingPose recovering = leap ? BuriedKingPose.SlamImpact : BuriedKingPose.Held;
         int crossed = -1;
         int recovery = -1;
         int debut = -1;
@@ -402,9 +390,78 @@ public sealed class BuriedKingViewTests
         Assert.That(recovery, Is.GreaterThan(crossed));
         Assert.That(debut, Is.GreaterThan(recovery));
         Assert.That((debut - recovery) * world.Dt,
-            Is.EqualTo(leap ? 0.9f : 2.1f).Within(2f * world.Dt));
+            Is.EqualTo(leap ? 2.4f : 2.1f).Within(2f * world.Dt));
         Assert.That(Vector3.Distance(poses[^1].Start.ToUnity(), _body.transform.position), Is.LessThan(0.001f));
         Assert.That(king.IsVulnerable, Is.True);
+        session.End();
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void Stage30_TestStartRotatesBackToSpinAfterTwoOtherAttacks(bool leap)
+    {
+        var (session, intents, arena, world) = StartStage30();
+        _body.Bind(_body.Id, _origin);
+        world.PlayerPosition = (_origin + 10f * Vector3.forward).ToNum();
+        EnemyAgent king = StageKing(session);
+        king.Health.ApplyDamage(king.Health.MaxHp.Value * 0.35f, 0f);
+        var attacks = new List<BuriedKingPose>();
+        var poses = new List<BuriedKingStateChanged>();
+        using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
+        int recovered = -1;
+        int repeated = -1;
+        for (int frame = 0; frame < 1200; frame++)
+        {
+            int count = poses.Count;
+            StepStage30(session, intents, arena, world, allowLeap: leap);
+            if (poses.Count == count)
+            {
+                continue;
+            }
+
+            BuriedKingStateChanged change = poses[^1];
+            switch (change.Pose)
+            {
+                case BuriedKingPose.SpinTell:
+                    attacks.Add(change.Pose);
+                    if (recovered >= 0)
+                    {
+                        repeated = frame;
+                    }
+                    break;
+                case BuriedKingPose.SpinRecovery:
+                    recovered = frame;
+                    Vector3 offset = leap ? 6f * Vector3.back : 3.8f * Vector3.right;
+                    world.PlayerPosition = (_body.transform.position + offset).ToNum();
+                    Assert.That(king.IsVulnerable, Is.True);
+                    break;
+                case BuriedKingPose.LungeTell:
+                    attacks.Add(change.Pose);
+                    world.PlayerPosition = (change.End.ToUnity() + 3.8f * Vector3.right).ToNum();
+                    break;
+                case BuriedKingPose.SlamTell:
+                    attacks.Add(change.Pose);
+                    break;
+                case BuriedKingPose.SweepTell:
+                    attacks.Add(change.Pose);
+                    world.PlayerPosition = 2f * _body.Position.ToNum() - world.PlayerPosition;
+                    break;
+            }
+
+            if (repeated >= 0)
+            {
+                break;
+            }
+        }
+
+        Assert.That(attacks, Is.EqualTo(leap
+            ? new[] { BuriedKingPose.SpinTell, BuriedKingPose.LungeTell, BuriedKingPose.SlamTell,
+                BuriedKingPose.SweepTell, BuriedKingPose.SpinTell }
+            : new[] { BuriedKingPose.SpinTell, BuriedKingPose.SweepTell, BuriedKingPose.SweepTell,
+                BuriedKingPose.SpinTell }));
+        float repeatSeconds = (repeated - recovered) * world.Dt;
+        Assert.That(repeatSeconds, Is.InRange(1.6f, 17.99f));
+        TestContext.WriteLine($"Second spin warning starts {repeatSeconds:F2}s after the first spin enters recovery.");
         session.End();
     }
 

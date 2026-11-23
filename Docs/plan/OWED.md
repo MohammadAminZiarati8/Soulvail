@@ -964,3 +964,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - [ ] SS-21b · DT-01 Sunscar 30 on a portrait phone. At default zoom, check Sweep and both Reclaim cuts at normal and low frame rates. Check warning readability through impact, blade ribbon, ground streak, and the flash on a miss.
 
 - **SS-21c, portrait phone.** DT-01 Sunscar Stage 30. Escape the King's spin at normal run speed with roll on cooldown, then punish the 1.60 s recovery, including on Oathbound. Check that the moving ring, low blade ribbon and repeated rim flashes read distinctly from Reclaim's single flash.
+
+### Buried King follow-up (2026-11-23)
+
+- Portrait phone. Check the 8 m lane and landing circle for readability at the edge of the portrait view. Dodge the leap, landing swing and pursuit spin without rolling, and confirm the swing and spin leave a usable melee punish window with Oathbound. Check that repeat spins are easy to distinguish from the planted landing swing.

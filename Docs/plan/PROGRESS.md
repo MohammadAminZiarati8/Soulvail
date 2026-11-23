@@ -2,16 +2,16 @@
 
 [OWED](OWED.md).
 
-_2026-11-23._
+_2026-11-24._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-21c follow-up. |
+| **Last built** | Buried King fixed rotation. |
 | **Next task** | Await owner go. |
-| **Verified** | EditMode 7351/7443, 0 fail, 1 inconcl., 91 skip. DT-01 12/12. |
+| **Verified** | EditMode 7352/7444, 0 fail, 1 inconcl., 91 skip. DT-01 12/12. |
 
 ## What works
 
@@ -19,7 +19,7 @@ Jungle clear unlocks Sunscar. DT-01 starts any place.
 Ranger, Oathbound, Beastmaster. Veilrot/Sanctum/disc off.
 Cyan portals. Jungle: Warden/Croaker, Mother 10/Warlord 15/Thornheart 20.
 Scripted 1–29. Boss adds die with boss, 0 XP.
-Sunscar: 24 waves. King clears 30. DT-01 L30. 8 m leap + circle. Spin at 66%.
+Sunscar: 24 waves. DT-01 L30. King clears 30. Four slots, Spin debut 66%.
 Thornheart: spokes/pods/slam/heart ×2. Mother: shields/lobs/spray/pod.
 Stalker 22+ lurks. Thornweaver 24+: 10 m, ≤2 walls past you; die with it.
 Gravemaw 25: burrow past cover/rise open; ring, bite/throw, tremor/rocks. 50%: 2 rings/crack Frogs. 986 HP/4 pillars.

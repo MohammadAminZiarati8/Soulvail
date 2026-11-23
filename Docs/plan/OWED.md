@@ -968,3 +968,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ### Buried King follow-up (2026-11-23)
 
 - Portrait phone. Check the 8 m lane and landing circle for readability at the edge of the portrait view. Dodge the leap, landing swing and pursuit spin without rolling, and confirm the swing and spin leave a usable melee punish window with Oathbound. Check that repeat spins are easy to distinguish from the planted landing swing.
+
+### Buried King fixed rotation (Stage 30)
+- DT-01 on a portrait phone: check tell readability near cover and arena edges, particularly the landing circle, sword return and moving Spin.
+- Dodge the chains at walking speed without rolling. Confirm Oathbound can reach and hit during each recovery.

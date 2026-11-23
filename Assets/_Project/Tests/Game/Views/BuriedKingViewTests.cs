@@ -396,72 +396,72 @@ public sealed class BuriedKingViewTests
         session.End();
     }
 
-    [TestCase(true)]
     [TestCase(false)]
-    public void Stage30_TestStartRotatesBackToSpinAfterTwoOtherAttacks(bool leap)
+    [TestCase(true)]
+    public void Stage30_TestStartChecksFixedRotationAndSpinRange(bool skipFirstSpinSlot)
     {
         var (session, intents, arena, world) = StartStage30();
         _body.Bind(_body.Id, _origin);
         world.PlayerPosition = (_origin + 10f * Vector3.forward).ToNum();
         EnemyAgent king = StageKing(session);
-        king.Health.ApplyDamage(king.Health.MaxHp.Value * 0.35f, 0f);
-        var attacks = new List<BuriedKingPose>();
+        king.Health.ApplyDamage(king.Health.MaxHp.Value * 0.68f, 0f);
+
+        var expected = new List<BuriedKingPose> { BuriedKingPose.SpinTell };
+        var cycle = new[] { BuriedKingPose.LungeTell, BuriedKingPose.SlamTell, BuriedKingPose.SweepTell,
+            BuriedKingPose.CastTell, BuriedKingPose.RecallTell, BuriedKingPose.FractureTell };
+        expected.AddRange(cycle);
+        if (skipFirstSpinSlot)
+        {
+            expected.AddRange(cycle);
+        }
+        expected.Add(BuriedKingPose.SpinTell);
+
         var poses = new List<BuriedKingStateChanged>();
         using var watch = _hub.Subscribe<BuriedKingStateChanged>(poses.Add);
-        int recovered = -1;
-        int repeated = -1;
-        for (int frame = 0; frame < 1200; frame++)
+        int next = 0;
+        int fractures = 0;
+        for (int frame = 0; frame < 3600 && next < expected.Count; frame++)
         {
             int count = poses.Count;
-            StepStage30(session, intents, arena, world, allowLeap: leap);
-            if (poses.Count == count)
+            StepStage30(session, intents, arena, world, allowLeap: true);
+            for (int i = count; i < poses.Count; i++)
             {
-                continue;
-            }
+                BuriedKingStateChanged change = poses[i];
+                switch (change.Pose)
+                {
+                    case BuriedKingPose.SpinRecovery:
+                        Assert.That(king.IsVulnerable, Is.True);
+                        world.PlayerPosition = (_body.Position + 6f * Vector3.back).ToNum();
+                        continue;
+                    case BuriedKingPose.LungeTell:
+                        world.PlayerPosition = (change.End.ToUnity() + 3.8f * Vector3.right).ToNum();
+                        break;
+                    case BuriedKingPose.SweepTell:
+                        Vector3 castBait = _body.Position + 5f * Vector3.forward;
+                        world.PlayerPosition = castBait.ToNum();
+                        world.OpenGround = new[] { castBait.ToNum() };
+                        break;
+                    case BuriedKingPose.FractureTell when change.FractureProgress == 0f:
+                        float spinBaitDistance = skipFirstSpinSlot && fractures == 0 ? 6f : 5f;
+                        fractures++;
+                        world.PlayerPosition = (_body.Position + spinBaitDistance * Vector3.forward).ToNum();
+                        break;
+                    case BuriedKingPose.SpinTell:
+                    case BuriedKingPose.SlamTell:
+                    case BuriedKingPose.CastTell:
+                    case BuriedKingPose.RecallTell:
+                        break;
+                    default:
+                        continue;
+                }
 
-            BuriedKingStateChanged change = poses[^1];
-            switch (change.Pose)
-            {
-                case BuriedKingPose.SpinTell:
-                    attacks.Add(change.Pose);
-                    if (recovered >= 0)
-                    {
-                        repeated = frame;
-                    }
-                    break;
-                case BuriedKingPose.SpinRecovery:
-                    recovered = frame;
-                    Vector3 offset = leap ? 6f * Vector3.back : 3.8f * Vector3.right;
-                    world.PlayerPosition = (_body.transform.position + offset).ToNum();
-                    Assert.That(king.IsVulnerable, Is.True);
-                    break;
-                case BuriedKingPose.LungeTell:
-                    attacks.Add(change.Pose);
-                    world.PlayerPosition = (change.End.ToUnity() + 3.8f * Vector3.right).ToNum();
-                    break;
-                case BuriedKingPose.SlamTell:
-                    attacks.Add(change.Pose);
-                    break;
-                case BuriedKingPose.SweepTell:
-                    attacks.Add(change.Pose);
-                    world.PlayerPosition = 2f * _body.Position.ToNum() - world.PlayerPosition;
-                    break;
-            }
-
-            if (repeated >= 0)
-            {
-                break;
+                Assert.That(next, Is.LessThan(expected.Count));
+                Assert.That(change.Pose, Is.EqualTo(expected[next]), $"Warning {next + 1}, frame {frame}");
+                next++;
             }
         }
 
-        Assert.That(attacks, Is.EqualTo(leap
-            ? new[] { BuriedKingPose.SpinTell, BuriedKingPose.LungeTell, BuriedKingPose.SlamTell,
-                BuriedKingPose.SweepTell, BuriedKingPose.SpinTell }
-            : new[] { BuriedKingPose.SpinTell, BuriedKingPose.SweepTell, BuriedKingPose.SweepTell,
-                BuriedKingPose.SpinTell }));
-        float repeatSeconds = (repeated - recovered) * world.Dt;
-        Assert.That(repeatSeconds, Is.InRange(1.6f, 17.99f));
-        TestContext.WriteLine($"Second spin warning starts {repeatSeconds:F2}s after the first spin enters recovery.");
+        Assert.That(next, Is.EqualTo(expected.Count));
         session.End();
     }
 

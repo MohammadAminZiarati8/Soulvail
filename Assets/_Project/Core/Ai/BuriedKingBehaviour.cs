@@ -16,6 +16,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         LungeApproach, LungeTell, Lunging, LungeRecovery, CutRecovery, Recovery, Dead,
         SpinTell, SpinActive, SpinRecovery
     }
+    private enum AttackSlot { Leap, Sweep, Throw, Spin }
+
     private readonly EnemyAgent _agent;
     private readonly Stat _sweepReach = new(4f);
     private readonly Stat _sweepDegrees = new(120f);
@@ -64,7 +66,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _spinFirstPulse = new(0.75f);
     private readonly Stat _spinPulseInterval = new(1f);
     private readonly Stat _spinRepeatRange = new(5f);
-    private const int AttacksBetweenSpins = 2;
+    private AttackSlot _nextAttack;
+    private AttackSlot? _activeAttack;
     private State _state;
     private Vector2 _facing = Vector2.UnitY;
     private Vector3 _start;
@@ -83,7 +86,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private bool _spinDebuted;
     private double _spinElapsed;
     private float _nextSpinPulse;
-    private int _attacksSinceSpin;
 
     public BuriedKingBehaviour(EnemyAgent agent)
     {
@@ -185,6 +187,12 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
                         Publish(ctx.Events, BuriedKingPose.Held);
                     }
 
+                    if (_activeAttack is AttackSlot completed)
+                    {
+                        _nextAttack = NextSlot(completed);
+                        _activeAttack = null;
+                    }
+
                     _state = State.Ready;
                     velocity = Select(ctx, board, hero);
                 }
@@ -208,7 +216,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _spinUnlocked = _spinDebuted = false;
         _spinElapsed = 0d;
         _nextSpinPulse = 0f;
-        _attacksSinceSpin = 0;
+        _nextAttack = AttackSlot.Leap;
+        _activeAttack = null;
     }
 
     internal void ObserveLungeClearance(float distance) =>
@@ -231,106 +240,127 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         Vector2 toHero = Ground(hero - board.SelfPosition);
         float distance = toHero.Length();
         Face(toHero);
-        bool close = distance <= _sweepReach.Value;
-        if (_state == State.Ready && TryStartSpin(ctx, board, distance))
+        if (_spinUnlocked && !_spinDebuted)
         {
+            EndLungeApproach(ctx);
+            _spinDebuted = true;
+            StartSpin(ctx, board.SelfPosition);
             return Vector2.Zero;
         }
 
-        if (_lungeReady && board.HasLineOfSight && distance >= _minimumLungeRange.Value
-            && _lungeClearance >= _leap.Length)
-        {
-            float untilInRange = distance - _leap.Length;
-            if (untilInRange > 0.00001f)
-            {
-                if (_state != State.LungeApproach)
-                {
-                    _state = State.LungeApproach;
-                    Publish(ctx.Events, BuriedKingPose.LungeApproach);
-                }
-
-                float runSpeed = _agent.MoveSpeed.Value * _lungeRunSpeedMultiplier.Value;
-                if (ctx.Dt > 0f)
-                {
-                    runSpeed = MathF.Min(runSpeed, untilInRange / ctx.Dt);
-                }
-
-                return Approach(board, runSpeed);
-            }
-
-            _lungeReady = false;
-            _sweeps = 0;
-            _backOffElapsed = 0f;
-            _start = board.SelfPosition;
-            Vector3 axis = new(_facing.X, 0f, _facing.Y);
-            _end = _start + axis * _leap.Length;
-            _state = State.LungeTell;
-            _remaining = _lungeWindup.Value;
-            PublishLunge(ctx.Events, BuriedKingPose.LungeTell, _remaining);
-            return Vector2.Zero;
-        }
-
+        bool canLeap = _lungeReady && board.HasLineOfSight && distance >= _minimumLungeRange.Value
+            && _lungeClearance >= _leap.Length;
         if (_state == State.LungeApproach)
         {
-            _state = State.Ready;
-            Publish(ctx.Events, BuriedKingPose.Held);
-            if (TryStartSpin(ctx, board, distance))
+            if (canLeap)
             {
-                return Vector2.Zero;
+                return SelectLeap(ctx, board, distance);
             }
+
+            EndLungeApproach(ctx);
         }
 
-        // After a lunge, walk into sweep reach or cast if the player opens more distance.
-        if (board.HasLineOfSight && !close && (_lungeReady || distance > _spentLungeCastRange.Value)
-            && TryLanding(ctx, board.SelfPosition, hero, out Vector3 landing))
+        bool close = distance <= _sweepReach.Value;
+        bool backingOff = close && _sweeps >= 2 && _backOffElapsed < _backOffTime.Value;
+        AttackSlot slot = _nextAttack;
+        do
         {
-            _lungeReady = true;
-            _fractureOnReturn = _fractureUnlocked;
-            _sweeps = 0;
-            _backOffElapsed = 0f;
-            Face(Ground(landing - board.SelfPosition));
-            Lock(ctx, State.CastTell, BuriedKingPose.CastTell, board.SelfPosition, landing, _laneTell.Value);
+            switch (slot)
+            {
+                case AttackSlot.Leap when canLeap:
+                    return SelectLeap(ctx, board, distance);
+                case AttackSlot.Sweep when close && board.HasLineOfSight && !backingOff:
+                    _activeAttack = slot;
+                    if (_sweeps >= 2)
+                    {
+                        _sweeps = 0;
+                        _backOffElapsed = 0f;
+                    }
+
+                    _sweeps++;
+                    _lungeReady = true;
+                    Vector3 tip = board.SelfPosition + new Vector3(_facing.X, 0f, _facing.Y) * _sweepReach.Value;
+                    Lock(ctx, State.SweepTell, BuriedKingPose.SweepTell, board.SelfPosition, tip, _sweepTell.Value);
+                    return Vector2.Zero;
+                case AttackSlot.Throw when board.HasLineOfSight && !close
+                    && (_lungeReady || distance > _spentLungeCastRange.Value)
+                    && TryLanding(ctx, board.SelfPosition, hero, out Vector3 landing):
+                    _activeAttack = slot;
+                    _lungeReady = true;
+                    _fractureOnReturn = _fractureUnlocked;
+                    _sweeps = 0;
+                    _backOffElapsed = 0f;
+                    Face(Ground(landing - board.SelfPosition));
+                    Lock(ctx, State.CastTell, BuriedKingPose.CastTell, board.SelfPosition, landing, _laneTell.Value);
+                    return Vector2.Zero;
+                case AttackSlot.Spin when _spinDebuted && board.HasLineOfSight && distance <= _spinRepeatRange.Value:
+                    _activeAttack = slot;
+                    StartSpin(ctx, board.SelfPosition);
+                    return Vector2.Zero;
+            }
+
+            slot = NextSlot(slot);
         }
-        else if (close && _sweeps >= 2 && _backOffElapsed < _backOffTime.Value)
+        while (slot != _nextAttack);
+
+        if (backingOff)
         {
             _backOffElapsed += ctx.Dt;
             return -_facing * _agent.MoveSpeed.Value;
         }
-        else if (close && board.HasLineOfSight)
+
+        return Approach(board, _agent.MoveSpeed.Value);
+    }
+
+    private Vector2 SelectLeap(in EnemyTickContext ctx, EnemyBlackboard board, float distance)
+    {
+        float untilInRange = distance - _leap.Length;
+        if (untilInRange > 0.00001f)
         {
-            if (_sweeps >= 2)
+            if (_state != State.LungeApproach)
             {
-                _sweeps = 0;
-                _backOffElapsed = 0f;
+                _state = State.LungeApproach;
+                Publish(ctx.Events, BuriedKingPose.LungeApproach);
             }
 
-            _sweeps++;
-            _lungeReady = true;
-            Vector3 tip = board.SelfPosition + new Vector3(_facing.X, 0f, _facing.Y) * _sweepReach.Value;
-            Lock(ctx, State.SweepTell, BuriedKingPose.SweepTell, board.SelfPosition, tip, _sweepTell.Value);
-        }
-        else
-        {
-            return Approach(board, _agent.MoveSpeed.Value);
+            float runSpeed = _agent.MoveSpeed.Value * _lungeRunSpeedMultiplier.Value;
+            if (ctx.Dt > 0f)
+            {
+                runSpeed = MathF.Min(runSpeed, untilInRange / ctx.Dt);
+            }
+
+            return Approach(board, runSpeed);
         }
 
+        _activeAttack = AttackSlot.Leap;
+        _lungeReady = false;
+        _sweeps = 0;
+        _backOffElapsed = 0f;
+        _start = board.SelfPosition;
+        Vector3 axis = new(_facing.X, 0f, _facing.Y);
+        _end = _start + axis * _leap.Length;
+        _state = State.LungeTell;
+        _remaining = _lungeWindup.Value;
+        PublishLunge(ctx.Events, BuriedKingPose.LungeTell, _remaining);
         return Vector2.Zero;
     }
 
-    private bool TryStartSpin(in EnemyTickContext ctx, EnemyBlackboard board, float distance)
+    private void EndLungeApproach(in EnemyTickContext ctx)
     {
-        if (!_spinUnlocked || (_spinDebuted && (_attacksSinceSpin < AttacksBetweenSpins
-            || !board.HasLineOfSight || distance > _spinRepeatRange.Value)))
+        if (_state == State.LungeApproach)
         {
-            return false;
+            _state = State.Ready;
+            Publish(ctx.Events, BuriedKingPose.Held);
         }
+    }
 
-        _spinDebuted = true;
-        _attacksSinceSpin = 0;
+    private AttackSlot NextSlot(AttackSlot slot) => slot == AttackSlot.Spin ? AttackSlot.Leap : slot + 1;
+
+    private void StartSpin(in EnemyTickContext ctx, Vector3 center)
+    {
         _state = State.SpinTell;
         _remaining = _spinTell.Value;
-        PublishSpin(ctx.Events, BuriedKingPose.SpinTell, board.SelfPosition, _remaining);
-        return true;
+        PublishSpin(ctx.Events, BuriedKingPose.SpinTell, center, _remaining);
     }
 
     private Vector2 AdvanceSpin(in EnemyTickContext ctx, EnemyBlackboard board, Vector3 hero)
@@ -573,11 +603,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
     private void Recover(in EnemyTickContext ctx, float duration, BuriedKingPose pose = BuriedKingPose.Held)
     {
-        if (_spinDebuted && _attacksSinceSpin < AttacksBetweenSpins)
-        {
-            _attacksSinceSpin++;
-        }
-
         _state = pose == BuriedKingPose.Held ? State.Recovery : State.CutRecovery;
         _remaining = duration;
         Publish(ctx.Events, pose);

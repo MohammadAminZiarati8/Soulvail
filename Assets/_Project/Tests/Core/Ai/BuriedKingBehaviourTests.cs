@@ -114,6 +114,7 @@ public sealed class BuriedKingBehaviourTests
         Assert.That(cast.Start, Is.EqualTo(Vector3.Zero));
         Assert.That(cast.End, Is.EqualTo(_hero));
         Assert.That(cast.Width, Is.EqualTo(1.6f));
+        Assert.That(cast.LandingRadius, Is.EqualTo(2f));
 
         _hero = new Vector3(5f, 0f, 6f);
         _ground = new[] { _hero };
@@ -124,19 +125,20 @@ public sealed class BuriedKingBehaviourTests
         Tick(0.5f);
         AssertPath(BuriedKingPose.Embedded, cast);
         Assert.That(LastPose().WeaponPosition, Is.EqualTo(cast.End));
+        Assert.That(LastPose().LandingRadius, Is.EqualTo(cast.LandingRadius));
 
+        Vector3 planted = _position;
         Tick(1.59f);
-        Assert.That(_intents.LastEnemyMove.Velocity.Length(), Is.Positive);
+        AssertPlantedAndTargetable(planted);
         Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Embedded));
         Assert.That(_events.Count<PlayerDamaged>(), Is.Zero);
         Tick(0.02f);
-        Vector3 planted = _position;
-        Tick(0f);
+        AssertPlantedAndTargetable(planted);
         BuriedKingStateChanged recall = LastPose();
         Assert.That(recall.Pose, Is.EqualTo(BuriedKingPose.RecallTell));
         Assert.That(recall.Start, Is.EqualTo(cast.End));
         Assert.That(recall.End, Is.EqualTo(planted));
-        Assert.That(recall.End.X, Is.Positive);
+        Assert.That(recall.End, Is.EqualTo(cast.Start));
 
         _hero = -8f * Vector3.UnitX;
         Tick(0.99f);
@@ -148,7 +150,29 @@ public sealed class BuriedKingBehaviourTests
         AssertPath(BuriedKingPose.Returning, recall);
         Vector3 expected = recall.Start + Vector3.Normalize(recall.End - recall.Start) * 1.8f;
         Assert.That(Vector3.Distance(LastPose().WeaponPosition, expected), Is.LessThan(0.001f));
-        Assert.That(_position, Is.EqualTo(planted));
+        AssertPlantedAndTargetable(planted);
+        Tick(0.5f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        AssertPlantedAndTargetable(planted);
+    }
+
+    [TestCase(1.99f, 84f)]
+    [TestCase(2f, 84f)]
+    [TestCase(2.01f, 100f)]
+    public void Landing_HitsTheLockedCircleAtImpact(float offset, float expectedHp)
+    {
+        Tick(0f);
+        Vector3 landing = LastPose().End;
+        _hero = landing + new Vector3(offset, 1f, 0f);
+        Tick(1f);
+        Tick(0.4f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Outbound));
+        Assert.That(_events.Of<PlayerDamaged>(), Is.Empty);
+        Tick(0.06f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Embedded));
+        Tick(0.4f);
+        Assert.That(_player.Health.Current, Is.EqualTo(expectedHp));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(expectedHp < 100f ? 1 : 0));
     }
 
     [TestCase(false, 64f)]
@@ -165,8 +189,10 @@ public sealed class BuriedKingBehaviourTests
         Tick(0.12f);
         Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
 
-        _hero = 8f * Vector3.UnitZ;
+        _hero = new Vector3(1.5f, 0f, 8f);
         Tick(0.3f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Embedded));
+        Assert.That(_events.Count<PlayerDamaged>(), Is.EqualTo(1));
         BuriedKingStateChanged recall = AdvanceAndArmRecall();
         Assert.That(Vector3.Distance(recall.Start, recall.End), Is.GreaterThanOrEqualTo(2f));
         Tick(1f);
@@ -517,7 +543,6 @@ public sealed class BuriedKingBehaviourTests
     private BuriedKingStateChanged AdvanceAndArmRecall()
     {
         Tick(1.6f);
-        Tick(0f);
         return LastPose();
     }
 

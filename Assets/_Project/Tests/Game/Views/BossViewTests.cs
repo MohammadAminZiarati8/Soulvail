@@ -89,12 +89,36 @@ public sealed class BossViewTests
             step(0.5f);
             Assert.That(fill.GetComponent<MeshRenderer>().enabled, Is.True);
             Assert.That(fill.sharedMesh.bounds.size.z, Is.EqualTo(0.5f * footprint.sharedMesh.bounds.size.z).Within(0.001f));
+            if (pose == BuriedKingPose.CastTell)
+            {
+                var landing = floor.transform.Find("Landing warning").GetComponent<MeshFilter>();
+                var landingFill = floor.transform.Find("Landing warning fill").GetComponent<MeshFilter>();
+                Assert.That(landing.sharedMesh.bounds.size.x, Is.EqualTo(4f).Within(0.001f));
+                Assert.That(landingFill.sharedMesh.bounds.size.x, Is.EqualTo(2f).Within(0.001f));
+            }
+
             step(0.5f);
             Assert.That(fill.sharedMesh.bounds.size.z, Is.EqualTo(footprint.sharedMesh.bounds.size.z).Within(0.001f));
+            if (pose == BuriedKingPose.CastTell)
+            {
+                Publish(BuriedKingPose.Embedded);
+                var ring = floor.GetComponentInChildren<LineRenderer>();
+                var dust = floor.GetComponentInChildren<SlamDustView>();
+                Assert.That(ring.enabled, Is.True);
+                Assert.That(dust.IsLive, Is.True);
+                Assert.That(ring.transform.position.z, Is.EqualTo(4f));
+                Assert.That(dust.transform.position.z, Is.EqualTo(4f));
+                float initialRadius = ring.transform.localScale.x;
+                step(0.12f);
+                Assert.That(ring.transform.localScale.x, Is.GreaterThan(initialRadius));
+            }
+
             Publish(BuriedKingPose.Cleared);
             Assert.That(footprint.GetComponent<MeshRenderer>().enabled, Is.False);
             Assert.That(fill.GetComponent<MeshRenderer>().enabled, Is.False);
             Assert.That(sword.gameObject.activeSelf, Is.False);
+            Assert.That(floor.GetComponentInChildren<LineRenderer>().enabled, Is.False);
+            Assert.That(floor.GetComponentInChildren<SlamDustView>().IsLive, Is.False);
         }
         finally
         {
@@ -104,7 +128,7 @@ public sealed class BossViewTests
         void Publish(BuriedKingPose current)
         {
             var state = (BuriedKingStateChanged)Activator.CreateInstance(typeof(BuriedKingStateChanged), Private,
-                null, new object[] { 1, current, Vector3.Zero, 4f * Vector3.UnitZ, 1.6f, 120f, Vector3.Zero, 3.5f, 0f, 1f }, null);
+                null, new object[] { 1, current, Vector3.Zero, 4f * Vector3.UnitZ, 1.6f, 120f, Vector3.Zero, 3.5f, 0f, 1f, 2f }, null);
             _hub.Publish(state);
         }
     }

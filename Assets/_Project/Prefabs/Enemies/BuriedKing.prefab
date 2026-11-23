@@ -273,7 +273,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 2, y: 2, z: 2}
+  m_LocalScale: {x: 2.3, y: 2.3, z: 2.3}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1144056373666776644}
@@ -356,6 +356,7 @@ MonoBehaviour:
   _model: {fileID: 820426908698267809}
   _walk: {fileID: 455867200774271528, guid: 78188bd097779fc4e987712a97ffaa28, type: 3}
   _sword: {fileID: 919132149155446097, guid: 2fe8d4cf34fc1b249ae3fb5721643044, type: 3}
+  _landingDust: {fileID: 2373594765693874534, guid: cf6d52cf806aab14eb0d05ecd110cdcb, type: 3}
 --- !u!114 &6267501769602756206
 MonoBehaviour:
   m_ObjectHideFlags: 0

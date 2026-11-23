@@ -10,7 +10,7 @@ namespace Soulvail.Core.Ai;
 
 public sealed class BuriedKingBehaviour : IEnemyBehaviour
 {
-    private enum State { Ready, SweepTell, CastTell, Outbound, Advance, RecallTell, Returning, FractureTell, SlamTell, Recovery, Dead }
+    private enum State { Ready, SweepTell, CastTell, Outbound, Embedded, RecallTell, Returning, FractureTell, SlamTell, Recovery, Dead }
     private enum ReturnPhase { Recall, Reclaim, Shattered }
 
     private readonly EnemyAgent _agent;
@@ -19,9 +19,10 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _sweepTell = new(0.85f);
     private readonly Stat _sweepRecovery = new(1.4f);
     private readonly Stat _laneWidth = new(1.6f);
+    private readonly Stat _landingRadius = new(2f);
     private readonly Stat _laneTell = new(1f);
     private readonly Stat _flightSpeed = new(18f);
-    private readonly Stat _advanceTime = new(1.6f);
+    private readonly Stat _embeddedTime = new(1.6f);
     private readonly Stat _catchRecovery = new(2.1f);
     private readonly Stat _reclaimThreshold = new(0.66f);
     private readonly Stat _shatteredThreshold = new(0.33f);
@@ -32,7 +33,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _shatteredRecovery = new(2.7f);
     private readonly Stat _minimumCastLength = new(4f);
     private readonly Stat _landingSnap = new(1.5f);
-    private readonly Stat _weaponClearance = new(2f);
     private readonly Stat _backOffTime = new(1.6f);
     private readonly Stat _sweepDamage = new(24f);
     private readonly Stat _outboundDamage = new(16f);
@@ -94,8 +94,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             case State.Returning:
                 Fly(ctx, hero);
                 break;
-            case State.Advance:
-                velocity = Advance(ctx, board);
+            case State.Embedded:
+                if (Elapsed(ctx.Dt))
+                {
+                    Lock(ctx, State.RecallTell, BuriedKingPose.RecallTell, _end, board.SelfPosition, _laneTell.Value);
+                }
                 break;
             case State.FractureTell:
                 if (Elapsed(ctx.Dt))
@@ -160,6 +163,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             _castPhase = _unlockedPhase;
             _sweeps = 0;
             _backOffElapsed = 0f;
+            Face(Ground(landing - board.SelfPosition));
             Lock(ctx, State.CastTell, BuriedKingPose.CastTell, board.SelfPosition, landing, _laneTell.Value);
         }
         else if (close && _sweeps >= 2 && _backOffElapsed < _backOffTime.Value)
@@ -221,26 +225,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         Recover(ctx, _sweepRecovery.Value);
     }
 
-    private Vector2 Advance(in EnemyTickContext ctx, EnemyBlackboard board)
-    {
-        if (_remaining <= 0f)
-        {
-            Vector3 scepter = _end;
-            Face(Ground(scepter - board.SelfPosition));
-            Lock(ctx, State.RecallTell, BuriedKingPose.RecallTell, scepter, board.SelfPosition, _laneTell.Value);
-            return Vector2.Zero;
-        }
-
-        // Keep enough space for a readable return even if the player hugs the embedded weapon.
-        float clearance = MathF.Max(0f, Ground(_end - board.SelfPosition).Length() - _weaponClearance.Value);
-        float step = MathF.Min(ctx.Dt, _remaining);
-        _remaining -= step;
-        Vector2 velocity = Approach(board);
-        float speed = velocity.Length();
-        float travel = speed * ctx.Dt;
-        return travel > 0f ? velocity * (MathF.Min(speed * step, clearance) / travel) : Vector2.Zero;
-    }
-
     private void StartFlight(in EnemyTickContext ctx, bool returning)
     {
         _state = returning ? State.Returning : State.Outbound;
@@ -286,8 +270,14 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
         else
         {
-            _state = State.Advance;
-            _remaining = _advanceTime.Value;
+            float radius = _landingRadius.Value;
+            if (!_hit && Ground(hero - _end).LengthSquared() <= radius * radius)
+            {
+                ctx.Player.ApplyDamage(_outboundDamage.Value, ctx.Now);
+            }
+
+            _state = State.Embedded;
+            _remaining = _embeddedTime.Value;
             Publish(ctx.Events, BuriedKingPose.Embedded, _end);
         }
     }
@@ -366,7 +356,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private void Publish(IDomainEvents events, BuriedKingPose pose, Vector3 weapon = default,
         float fractureProgress = 0f, float warningSeconds = 0f) =>
         events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _laneWidth.Value, _sweepDegrees.Value,
-            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f, fractureProgress, warningSeconds));
+            weapon, pose == BuriedKingPose.SlamTell ? _slamRadius.Value : 0f, fractureProgress, warningSeconds,
+            pose is BuriedKingPose.CastTell or BuriedKingPose.Embedded ? _landingRadius.Value : 0f));
 
     private static Vector2 Ground(Vector3 vector) => new(vector.X, vector.Z);
 }

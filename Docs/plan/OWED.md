@@ -955,3 +955,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - SS-20e [device] — Start Sunscar at Stage 30. At phone scale, check that the
   embedded scepter remains readable against the Dunes floor with the recall lane
   active. Check the sweep arc, landing marker, fracture pulse and slam circle.
+
+### SS-21a — Buried King leap lane
+
+- [ ] Phone: DT-01 Sunscar 30. Sidestep the leap on foot with roll on cooldown. Check both ends stay readable through travel and that confirmed landing flashes once.

@@ -85,6 +85,7 @@ public sealed class EnemyViews : IDisposable
     private readonly IDisposable _despawnedSubscription;
     private readonly DomainEventHub _hub;
     private readonly int _coverMask = LayerMask.GetMask(ArenaView.CoverLayerName);
+    private readonly BuriedKingLeapStats _kingLeap = new();
 
     private bool _warnedAboutCapacity;
     private bool _disposed;
@@ -272,47 +273,94 @@ public sealed class EnemyViews : IDisposable
             sense.Id = view.Id;
             sense.Position = view.Position.ToNum();
             sense.Velocity = view.Velocity.ToNum();
-            sense.KingLungeClearance = rental.BuriedKing == null || playBounds.width <= 0f
+            sense.KingLungeClearance = rental.KingController == null
                 ? 0f
-                : MeasureLungeClearance((CapsuleCollider)view.Body, snapshot.PlayerPosition.ToUnity(), playBounds);
+                : MeasureLungeClearance(rental.KingController, snapshot.PlayerPosition.ToUnity(), playBounds,
+                    _kingLeap, _coverMask);
             sense.PathDirectionToPlayer = System.Numerics.Vector2.Zero;
         }
     }
 
-    private float MeasureLungeClearance(CapsuleCollider body, Vector3 hero, Rect bounds)
+    private static float MeasureLungeClearance(CharacterController body, Vector3 hero, Rect bounds,
+        BuriedKingLeapStats leap, int coverMask)
     {
+        if (!(bounds.width > 0f) || !(bounds.height > 0f) || coverMask == 0
+            || !float.IsFinite(bounds.min.sqrMagnitude) || !float.IsFinite(bounds.max.sqrMagnitude))
+        {
+            return 0f;
+        }
+
         Transform origin = body.transform;
         Vector3 direction = Vector3.ProjectOnPlane(hero - origin.position, Vector3.up).normalized;
-        if (direction == Vector3.zero)
+        if (!float.IsFinite(direction.sqrMagnitude) || direction == Vector3.zero)
         {
             return 0f;
         }
 
         Vector3 center = origin.TransformPoint(body.center);
         Vector3 scale = origin.lossyScale;
-        float radius = body.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
-        float minX = bounds.xMin + radius, maxX = bounds.xMax - radius;
-        float minZ = bounds.yMin + radius, maxZ = bounds.yMax - radius;
-        if (center.x < minX || center.x > maxX || center.z < minZ || center.z > maxZ)
+        float radius = (body.radius + body.skinWidth) * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+        float reach = BoundReach(center, direction, new Vector2(radius, radius), bounds, leap.Length);
+        Vector3 cap = Vector3.up * Mathf.Max(0f, (body.height * 0.5f - body.radius) * Mathf.Abs(scale.y));
+        if (!(reach > 0f) || Physics.CheckCapsule(center - cap, center + cap, radius, coverMask, QueryTriggerInteraction.Ignore))
         {
             return 0f;
         }
 
-        float x = direction.x > 0f ? (maxX - center.x) / direction.x
-            : direction.x < 0f ? (minX - center.x) / direction.x : float.PositiveInfinity;
-        float z = direction.z > 0f ? (maxZ - center.z) / direction.z
-            : direction.z < 0f ? (minZ - center.z) / direction.z : float.PositiveInfinity;
-        float reach = Mathf.Min(x, z);
-        Vector3 cap = Vector3.up * Mathf.Max(0f, body.height * Mathf.Abs(scale.y) * 0.5f - radius);
-        Vector3 bottom = center - cap;
-        Vector3 top = center + cap;
-        if (Physics.CheckCapsule(bottom, top, radius, _coverMask, QueryTriggerInteraction.Ignore))
+        const float contactMargin = 0.01f;
+        if (Physics.CapsuleCast(center - cap, center + cap, radius, direction, out RaycastHit hit, reach,
+                coverMask, QueryTriggerInteraction.Ignore))
+        {
+            reach = Mathf.Max(0f, hit.distance - contactMargin);
+        }
+
+        // Sunscar has a flat walkable floor inside PlayBounds. Sweep the lane plus a continuous
+        // exit corridor on each side against Cover. The hero can use either clear long edge.
+        const float playerRadius = 0.495f; // Player and Ranger controllers, including skin.
+        const float playerHeight = 1.8f;
+        float exitWidth = 2f * playerRadius + contactMargin;
+        float halfWidth = (leap.Width + exitWidth) * 0.5f;
+        Vector3 side = Vector3.Cross(Vector3.up, direction);
+        Vector3 stripStart = origin.position + Vector3.up * (playerHeight * 0.5f);
+        return Mathf.Max(
+            EscapeReach(stripStart + side * (exitWidth * 0.5f), direction, halfWidth, playerHeight * 0.5f,
+                playerRadius, bounds, reach, coverMask),
+            EscapeReach(stripStart - side * (exitWidth * 0.5f), direction, halfWidth, playerHeight * 0.5f,
+                playerRadius, bounds, reach, coverMask));
+    }
+
+    private static float EscapeReach(Vector3 start, Vector3 direction, float halfWidth, float halfHeight,
+        float endPadding, Rect bounds, float reach, int coverMask)
+    {
+        // Include room for the player's body at both flat ends, even when exiting at a corner.
+        Vector2 inset = new(Mathf.Abs(direction.z) * halfWidth + Mathf.Abs(direction.x) * endPadding,
+            Mathf.Abs(direction.x) * halfWidth + Mathf.Abs(direction.z) * endPadding);
+        reach = BoundReach(start, direction, inset, bounds, reach);
+        Vector3 half = new(halfWidth, halfHeight, endPadding);
+        Quaternion rotation = Quaternion.LookRotation(direction);
+        if (!(reach > 0f) || Physics.CheckBox(start, half, rotation, coverMask, QueryTriggerInteraction.Ignore))
         {
             return 0f;
         }
 
-        return Physics.CapsuleCast(bottom, top, radius, direction, out RaycastHit hit, reach,
-            _coverMask, QueryTriggerInteraction.Ignore) ? hit.distance : reach;
+        return Physics.BoxCast(start, half, direction, out RaycastHit hit, rotation, reach,
+            coverMask, QueryTriggerInteraction.Ignore) ? Mathf.Max(0f, hit.distance - 0.01f) : reach;
+    }
+
+    private static float BoundReach(Vector3 start, Vector3 direction, Vector2 inset, Rect bounds, float reach)
+    {
+        float minX = bounds.xMin + inset.x, maxX = bounds.xMax - inset.x;
+        float minZ = bounds.yMin + inset.y, maxZ = bounds.yMax - inset.y;
+        if (start.x < minX || start.x > maxX || start.z < minZ || start.z > maxZ)
+        {
+            return 0f;
+        }
+
+        float x = direction.x > 0f ? (maxX - start.x) / direction.x
+            : direction.x < 0f ? (minX - start.x) / direction.x : float.PositiveInfinity;
+        float z = direction.z > 0f ? (maxZ - start.z) / direction.z
+            : direction.z < 0f ? (minZ - start.z) / direction.z : float.PositiveInfinity;
+        return Mathf.Min(reach, Mathf.Min(x, z));
     }
 
     /// <summary>
@@ -506,6 +554,7 @@ public sealed class EnemyViews : IDisposable
             View = view;
             Pool = pool;
             BuriedKing = buriedKing;
+            KingController = buriedKing != null ? view.GetComponent<CharacterController>() : null;
         }
 
         public EnemyView View { get; }
@@ -513,5 +562,6 @@ public sealed class EnemyViews : IDisposable
         public ViewPool<EnemyView> Pool { get; }
 
         public BuriedKingView BuriedKing { get; }
+        public CharacterController KingController { get; }
     }
 }

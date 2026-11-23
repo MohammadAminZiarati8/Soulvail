@@ -43,14 +43,14 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _returnDamage = new(20f);
     private readonly Stat _slamDamage = new(28f);
     private readonly Stat _lungeWindup = new(1f);
-    private readonly Stat _lungeDistance = new(5f);
+    private readonly BuriedKingLeapStats _leap = new();
+    private readonly Stat _minimumLungeLength = new(5f);
     private readonly Stat _lungeRunSpeedMultiplier = new(1.6f);
     private readonly Stat _lungeTravel = new(0.55f);
     private readonly Stat _lungeCut = new(0.15f);
     private readonly Stat _lungeRecovery = new(0.9f);
-    private readonly Stat _lungeSlashStart = new(4.1f);
-    private readonly Stat _lungeSlashEnd = new(7.4f);
-    private readonly Stat _lungeWidth = new(2.5f);
+    private readonly Stat _minimumLungeRange = new(4.1f);
+    private readonly Stat _spentLungeCastRange = new(7.4f);
     private readonly Stat _lungeDamage = new(26f);
     private readonly Stat _lungeDeceleration = new(0.25f);
     private readonly Stat _lungePositionTolerance = new(0.08f);
@@ -68,8 +68,6 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private float _lungeClearance;
     private bool _lungeReady = true;
     private Vector3 _lungeExpectedPosition;
-    private Vector3 _slashStart;
-    private Vector3 _slashEnd;
 
     public BuriedKingBehaviour(EnemyAgent agent)
     {
@@ -139,7 +137,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
                 }
                 break;
             case State.LungeTell:
-                if (Elapsed(ctx.Dt))
+                if (!AtLungePosition(board.SelfPosition, _start))
+                {
+                    RecoverLunge(ctx, interrupted: true);
+                }
+                else if (Elapsed(ctx.Dt))
                 {
                     _state = State.Lunging;
                     _remaining = _lungeTravel.Value;
@@ -181,7 +183,8 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _lungeReady = true;
     }
 
-    internal void ObserveLungeClearance(float distance) => _lungeClearance = distance;
+    internal void ObserveLungeClearance(float distance) =>
+        _lungeClearance = float.IsFinite(distance) ? MathF.Min(distance, _leap.Length) : 0f;
 
     internal void ClearEncounter(IDomainEvents events)
     {
@@ -201,10 +204,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         float distance = toHero.Length();
         Face(toHero);
         bool close = distance <= _sweepReach.Value;
-        if (_lungeReady && board.HasLineOfSight && distance >= _lungeSlashStart.Value
-            && _lungeClearance >= _lungeDistance.Value)
+        if (_lungeReady && board.HasLineOfSight && distance >= _minimumLungeRange.Value
+            && _lungeClearance >= _minimumLungeLength.Value)
         {
-            if (distance > _lungeSlashEnd.Value)
+            float untilInRange = distance - _lungeClearance;
+            if (untilInRange > 0.00001f)
             {
                 if (_state != State.LungeApproach)
                 {
@@ -215,7 +219,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
                 float runSpeed = _agent.MoveSpeed.Value * _lungeRunSpeedMultiplier.Value;
                 if (ctx.Dt > 0f)
                 {
-                    runSpeed = MathF.Min(runSpeed, (distance - _lungeDistance.Value) / ctx.Dt);
+                    runSpeed = MathF.Min(runSpeed, untilInRange / ctx.Dt);
                 }
 
                 return Approach(board, runSpeed);
@@ -226,9 +230,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             _backOffElapsed = 0f;
             _start = board.SelfPosition;
             Vector3 axis = new(_facing.X, 0f, _facing.Y);
-            _end = _start + axis * _lungeDistance.Value;
-            _slashStart = _start + axis * _lungeSlashStart.Value;
-            _slashEnd = _start + axis * _lungeSlashEnd.Value;
+            _end = _start + axis * _lungeClearance;
             _state = State.LungeTell;
             _remaining = _lungeWindup.Value;
             PublishLunge(ctx.Events, BuriedKingPose.LungeTell, _remaining);
@@ -242,7 +244,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         }
 
         // After a lunge, walk into sweep reach or cast if the player opens more distance.
-        if (board.HasLineOfSight && !close && (_lungeReady || distance > _lungeSlashEnd.Value)
+        if (board.HasLineOfSight && !close && (_lungeReady || distance > _spentLungeCastRange.Value)
             && TryLanding(ctx, board.SelfPosition, hero, out Vector3 landing))
         {
             _lungeReady = true;
@@ -280,19 +282,15 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
 
     private Vector2 AdvanceLunge(in EnemyTickContext ctx, Vector3 position, Vector3 hero)
     {
-        float tolerance = _lungePositionTolerance.Value;
-        bool arrived = Ground(position - _lungeExpectedPosition).LengthSquared() <= tolerance * tolerance;
+        bool arrived = AtLungePosition(position, _lungeExpectedPosition);
         if (!arrived || _remaining <= 0f)
         {
-            if (arrived && IsInRectangle(hero, _slashStart, _facing, 0f,
-                    _lungeSlashEnd.Value - _lungeSlashStart.Value, _lungeWidth.Value))
+            if (arrived && IsInLungeLane(hero))
             {
                 ctx.Player.ApplyDamage(_lungeDamage.Value, ctx.Now);
             }
 
-            _state = State.LungeRecovery;
-            _remaining = _lungeRecovery.Value;
-            PublishLunge(ctx.Events, BuriedKingPose.LungeRecovery, _remaining, interrupted: !arrived);
+            RecoverLunge(ctx, interrupted: !arrived);
             return Vector2.Zero;
         }
 
@@ -305,14 +303,38 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         float progress = 1f - _remaining / _lungeTravel.Value;
         float glide = progress + _lungeDeceleration.Value * progress * (1f - progress);
         Vector3 next = Vector3.Lerp(_start, _end, glide);
-        Vector2 velocity = Ground(next - _lungeExpectedPosition) / ctx.Dt;
+        Vector2 velocity = Ground(next - position) / ctx.Dt;
         _lungeExpectedPosition = next;
         return velocity;
     }
 
+    private bool AtLungePosition(Vector3 observed, Vector3 expected)
+    {
+        float tolerance = _lungePositionTolerance.Value;
+        return Ground(observed - expected).LengthSquared() <= tolerance * tolerance;
+    }
+
+    private bool IsInLungeLane(Vector3 hero)
+    {
+        Vector2 axis = Vector2.Normalize(Ground(_end - _start));
+        Vector2 fromStart = Ground(hero - _start);
+        Vector2 fromEnd = Ground(hero - _end);
+        float across = MathF.Abs(fromStart.X * axis.Y - fromStart.Y * axis.X);
+        const float rounding = 0.00001f;
+        return Vector2.Dot(fromStart, axis) >= -rounding && Vector2.Dot(fromEnd, axis) <= rounding
+            && across <= _leap.Width * 0.5f + rounding;
+    }
+
+    private void RecoverLunge(in EnemyTickContext ctx, bool interrupted)
+    {
+        _state = State.LungeRecovery;
+        _remaining = _lungeRecovery.Value;
+        PublishLunge(ctx.Events, BuriedKingPose.LungeRecovery, _remaining, interrupted);
+    }
+
     private void PublishLunge(IDomainEvents events, BuriedKingPose pose, float duration, bool interrupted = false) =>
-        events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _lungeWidth.Value,
-            0f, default, 0f, 0f, duration, 0f, _slashStart, _slashEnd, interrupted ? 0f : _lungeCut.Value));
+        events.Publish(new BuriedKingStateChanged(_agent.Id, pose, _start, _end, _leap.Width,
+            0f, default, 0f, 0f, duration, 0f, interrupted ? 0f : _lungeCut.Value));
 
     private bool TryLanding(in EnemyTickContext ctx, Vector3 origin, Vector3 hero, out Vector3 landing)
     {

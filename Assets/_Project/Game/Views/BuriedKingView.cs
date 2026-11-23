@@ -245,8 +245,19 @@ internal sealed class BuriedKingView : IDisposable
         StepImpact(dt);
         float progress = _warningSeconds > 0f ? Mathf.Clamp01(_poseTime / _warningSeconds) : 0f;
         UpdateStance(dt, progress);
-        _footprint.Fill(_pose == BuriedKingPose.LungeTravel ? 1f : progress,
-            _pose == BuriedKingPose.FractureTell);
+        if (_pose == BuriedKingPose.LungeRecovery)
+        {
+            if (_poseTime >= _cutSeconds)
+            {
+                _footprint.Clear();
+            }
+        }
+        else
+        {
+            _footprint.Fill(_pose == BuriedKingPose.LungeTravel ? 1f : progress,
+                _pose == BuriedKingPose.FractureTell);
+        }
+
         _landing.Fill(progress);
         switch (_pose)
         {
@@ -312,7 +323,7 @@ internal sealed class BuriedKingView : IDisposable
                 _windupBlade = _model.InverseTransformDirection(_grip.up);
                 _guardRelease = 0f;
                 _poseTime = 0f;
-                _footprint.Lane(state.SlashStart.ToUnity(), state.SlashEnd.ToUnity(), state.Width);
+                _footprint.Lane(start, end, state.Width);
                 ShowLungeArrow(start, end);
                 break;
             case BuriedKingPose.LungeTravel:
@@ -323,6 +334,12 @@ internal sealed class BuriedKingView : IDisposable
                 _poseTime = 0f;
                 _cutSeconds = state.CutSeconds;
                 _recoveryStart = _lungePose;
+                if (_cutSeconds > 0f)
+                {
+                    _footprint.FlashLane(start, end, state.Width);
+                    _dust.Play(end, _id);
+                }
+
                 break;
             case BuriedKingPose.SweepTell:
                 PoseToward(SweepReady, _warningSeconds * 0.65f);
@@ -920,6 +937,14 @@ internal sealed class BuriedKingView : IDisposable
             _fillMesh.RecalculateBounds();
             Tint(_fill, pulse ? 0.75f + 0.13f * Mathf.Sin(progress * 4f * Mathf.PI) : 0.85f);
             _fill.enabled = true;
+        }
+
+        public void FlashLane(Vector3 start, Vector3 end, float width)
+        {
+            Lane(start, end, width);
+            Fill(1f);
+            _color.SetColor("_BaseColor", new Color(1f, 0.72f, 0.39f, 0.92f));
+            _fill.SetPropertyBlock(_color);
         }
 
         public void Clear()

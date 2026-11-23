@@ -21,6 +21,7 @@ internal sealed class BuriedKingView : IDisposable
     private const float HandBlendDistance = 1.35f;
     private const float LandingBlendDistance = 0.85f;
     private const float WalkCycleDistance = 1.15f;
+    private const float RunCycleDistance = 1.8f;
     private const float ImpactRingSeconds = 0.34f;
     private const float SupportGripSpacing = 0.24f;
 
@@ -66,6 +67,7 @@ internal sealed class BuriedKingView : IDisposable
     private readonly Transform _model;
     private readonly Quaternion _modelRest;
     private readonly AnimationClip _walk;
+    private readonly AnimationClip _run;
     private readonly Joint[] _joints;
     private readonly GameObject _floor;
     private readonly Material _danger;
@@ -126,6 +128,7 @@ internal sealed class BuriedKingView : IDisposable
         _modelRest = _model.localRotation;
         _visualFacing = _model.rotation;
         _walk = rig.Walk;
+        _run = rig.Run;
         Transform[] bones = _model.Find("Rig_Medium").GetComponentsInChildren<Transform>(true);
         _joints = new Joint[bones.Length];
         for (int i = 0; i < bones.Length; i++)
@@ -354,6 +357,7 @@ internal sealed class BuriedKingView : IDisposable
                 _footprint.Arc(start, Vector3.forward * state.SlamRadius, 360f);
                 break;
             case BuriedKingPose.Held:
+            case BuriedKingPose.LungeApproach:
                 PoseToward(Rest, 0.38f);
                 break;
             case BuriedKingPose.Cleared:
@@ -415,11 +419,14 @@ internal sealed class BuriedKingView : IDisposable
         // Distance drives the in-place cycle. Playing it backwards keeps the King's eyes on
         // the player when he backs off, and collisions slow his feet with his actual movement.
         float direction = Vector3.Dot(velocity, _body.transform.forward) < 0f ? -1f : 1f;
-        _stride = Mathf.Repeat(_stride + direction * dt * speed / (_model.lossyScale.x * WalkCycleDistance), 1f);
+        bool running = _pose == BuriedKingPose.LungeApproach;
+        float cycleDistance = running ? RunCycleDistance : WalkCycleDistance;
+        _stride = Mathf.Repeat(_stride + direction * dt * speed / (_model.lossyScale.x * cycleDistance), 1f);
         _gait = swordAway ? 0f : Mathf.MoveTowards(_gait, Mathf.Clamp01(speed / 1.8f), 8f * dt);
         if (_gait > 0f)
         {
-            _walk.SampleAnimation(_model.gameObject, _stride * _walk.length);
+            AnimationClip clip = running ? _run : _walk;
+            clip.SampleAnimation(_model.gameObject, _stride * clip.length);
         }
 
         foreach (Joint joint in _joints)

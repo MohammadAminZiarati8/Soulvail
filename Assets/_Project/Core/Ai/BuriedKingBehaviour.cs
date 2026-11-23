@@ -13,7 +13,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private enum State
     {
         Ready, SweepTell, CastTell, Outbound, Embedded, RecallTell, Returning, FractureTell, SlamTell,
-        LungeTell, Lunging, LungeRecovery, Recovery, Dead
+        LungeApproach, LungeTell, Lunging, LungeRecovery, Recovery, Dead
     }
     private enum ReturnPhase { Recall, Reclaim, Shattered }
 
@@ -44,6 +44,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private readonly Stat _slamDamage = new(28f);
     private readonly Stat _lungeWindup = new(1f);
     private readonly Stat _lungeDistance = new(5f);
+    private readonly Stat _lungeRunSpeedMultiplier = new(1.6f);
     private readonly Stat _lungeTravel = new(0.55f);
     private readonly Stat _lungeCut = new(0.15f);
     private readonly Stat _lungeRecovery = new(0.9f);
@@ -65,6 +66,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
     private ReturnPhase _unlockedPhase;
     private ReturnPhase _castPhase;
     private float _lungeClearance;
+    private bool _lungeReady = true;
     private Vector3 _lungeExpectedPosition;
     private Vector3 _slashStart;
     private Vector3 _slashEnd;
@@ -94,6 +96,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         switch (_state)
         {
             case State.Ready:
+            case State.LungeApproach:
                 velocity = Select(ctx, board, hero);
                 break;
             case State.SweepTell:
@@ -175,6 +178,7 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         _hit = false;
         _unlockedPhase = _castPhase = ReturnPhase.Recall;
         _lungeClearance = 0f;
+        _lungeReady = true;
     }
 
     internal void ObserveLungeClearance(float distance) => _lungeClearance = distance;
@@ -197,10 +201,27 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         float distance = toHero.Length();
         Face(toHero);
         bool close = distance <= _sweepReach.Value;
-        if (_unlockedPhase != ReturnPhase.Recall && board.HasLineOfSight && !close
-            && distance >= _lungeSlashStart.Value && distance <= _lungeSlashEnd.Value
+        if (_lungeReady && board.HasLineOfSight && distance >= _lungeSlashStart.Value
             && _lungeClearance >= _lungeDistance.Value)
         {
+            if (distance > _lungeSlashEnd.Value)
+            {
+                if (_state != State.LungeApproach)
+                {
+                    _state = State.LungeApproach;
+                    Publish(ctx.Events, BuriedKingPose.LungeApproach);
+                }
+
+                float runSpeed = _agent.MoveSpeed.Value * _lungeRunSpeedMultiplier.Value;
+                if (ctx.Dt > 0f)
+                {
+                    runSpeed = MathF.Min(runSpeed, (distance - _lungeDistance.Value) / ctx.Dt);
+                }
+
+                return Approach(board, runSpeed);
+            }
+
+            _lungeReady = false;
             _sweeps = 0;
             _backOffElapsed = 0f;
             _start = board.SelfPosition;
@@ -211,10 +232,20 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             _state = State.LungeTell;
             _remaining = _lungeWindup.Value;
             PublishLunge(ctx.Events, BuriedKingPose.LungeTell, _remaining);
+            return Vector2.Zero;
         }
-        else if (board.HasLineOfSight && !close
+
+        if (_state == State.LungeApproach)
+        {
+            _state = State.Ready;
+            Publish(ctx.Events, BuriedKingPose.Held);
+        }
+
+        // After a lunge, walk into sweep reach or cast if the player opens more distance.
+        if (board.HasLineOfSight && !close && (_lungeReady || distance > _lungeSlashEnd.Value)
             && TryLanding(ctx, board.SelfPosition, hero, out Vector3 landing))
         {
+            _lungeReady = true;
             _castPhase = _unlockedPhase;
             _sweeps = 0;
             _backOffElapsed = 0f;
@@ -235,12 +266,13 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
             }
 
             _sweeps++;
+            _lungeReady = true;
             Vector3 tip = board.SelfPosition + new Vector3(_facing.X, 0f, _facing.Y) * _sweepReach.Value;
             Lock(ctx, State.SweepTell, BuriedKingPose.SweepTell, board.SelfPosition, tip, _sweepTell.Value);
         }
         else
         {
-            return Approach(board);
+            return Approach(board, _agent.MoveSpeed.Value);
         }
 
         return Vector2.Zero;
@@ -432,11 +464,11 @@ public sealed class BuriedKingBehaviour : IEnemyBehaviour
         return _remaining <= 0f;
     }
 
-    private Vector2 Approach(EnemyBlackboard board)
+    private Vector2 Approach(EnemyBlackboard board, float speed)
     {
         Vector2 direction = board.PathDirectionToPlayer == Vector2.Zero ? board.DirectionToPlayer : board.PathDirectionToPlayer;
         Face(direction);
-        return direction * _agent.MoveSpeed.Value;
+        return direction * speed;
     }
 
     private void Face(Vector2 direction)

@@ -527,13 +527,12 @@ public sealed class BuriedKingBehaviourTests
             _enemies.SpawnBuriedKingPrototype(new Vector3(float.NaN, 0f, 0f)));
     }
 
-    [TestCase(1f, 6f, 12f, BuriedKingPose.CastTell)]
+    [TestCase(1f, 6f, 12f, BuriedKingPose.LungeTell)]
     [TestCase(0.66f, 3f, 12f, BuriedKingPose.SweepTell)]
     [TestCase(0.66f, 6f, 12f, BuriedKingPose.LungeTell)]
     [TestCase(0.33f, 6f, 5f, BuriedKingPose.LungeTell)]
-    [TestCase(0.33f, 8f, 12f, BuriedKingPose.CastTell)]
     [TestCase(0.33f, 6f, 4.99f, BuriedKingPose.CastTell)]
-    public void LungeSelection_RequiresPhaseRangeAndFullClearance(float hp, float distance, float clearance,
+    public void LungeSelection_RequiresRangeAndFullClearanceAtAnyHealth(float hp, float distance, float clearance,
         BuriedKingPose expected)
     {
         SetKingHealthFraction(hp);
@@ -542,6 +541,46 @@ public sealed class BuriedKingBehaviourTests
         _lungeClearance = clearance;
         Tick(0.01f);
         Assert.That(LastPose().Pose, Is.EqualTo(expected));
+    }
+
+    [TestCase(0.5f)]
+    [TestCase(3f)]
+    public void OpeningLunge_RunsIntoRangeThenPlantsForTheWarning(float step)
+    {
+        _hero = 9f * Vector3.UnitZ;
+        _lungeClearance = 12f;
+        Tick(step);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeApproach));
+        Assert.That(LastPose().WarningSeconds, Is.Zero);
+        Assert.That(_intents.LastEnemyMove.Velocity.Z, Is.Positive);
+        Vector3 planted = _position;
+        Assert.That(_hero.Z - planted.Z, Is.InRange(4.1f, 7.4f));
+
+        Tick(0.01f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeTell));
+        Assert.That(LastPose().Start, Is.EqualTo(planted));
+        Assert.That(_position, Is.EqualTo(planted));
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
+    }
+
+    [Test]
+    public void AfterLunge_WalksIntoSweepRangeBeforeRearmingTheLunge()
+    {
+        StartLunge();
+        Tick(1f);
+        Tick(0.55f);
+        _hero = 10.5f * Vector3.UnitZ;
+        Tick(0.01f);
+        Tick(0.91f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.Held));
+        Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(_king.MoveSpeed.Value * Vector3.UnitZ));
+
+        Tick(0.01f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.SweepTell));
+        _hero = 12f * Vector3.UnitZ;
+        Tick(0.85f);
+        Tick(1.4f);
+        Assert.That(LastPose().Pose, Is.EqualTo(BuriedKingPose.LungeTell));
     }
 
     [Test]
@@ -620,7 +659,6 @@ public sealed class BuriedKingBehaviourTests
 
     private BuriedKingStateChanged StartLunge()
     {
-        SetKingHealthFraction(0.66f);
         _hero = 6f * Vector3.UnitZ;
         _lungeClearance = 12f;
         Tick(0.01f);

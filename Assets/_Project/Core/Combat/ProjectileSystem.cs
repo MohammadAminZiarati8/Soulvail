@@ -752,6 +752,7 @@ public sealed class ProjectileSystem
     {
         Projectile shot = flight.Shot;
         Vector3 impact = flight.Impact;
+        Vector3 towardSource = shot.Origin - shot.Target;
         int contactId = flight.ContactId;
         damagedId = NoContact;
         if (contactId == CoverContact)
@@ -772,7 +773,8 @@ public sealed class ProjectileSystem
             float far = EagleEye.FarDistance;
             float multiplier = ((delta.X * delta.X) + (delta.Z * delta.Z)) > far * far ? farMultiplier : 1f;
             float damage = PlayerCombat.ShotDamage(shot.Damage * multiplier);
-            if (enemies.ApplyHeroDamage(target.Id, damage, now, player, playerPosition).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
+            if (enemies.ApplyHeroDamage(target.Id, damage, now, player, playerPosition, towardSource).Applied > 0f
+                && shot.ShotOrigin == ShotOrigin.Ranger)
             {
                 player.HitAndRun.OnHit(now);
             }
@@ -820,7 +822,7 @@ public sealed class ProjectileSystem
                 return false;
             }
 
-            if (enemies.ApplyHeroDamage(target.Id, shot.Damage, now, player, playerPosition).Applied > 0f)
+            if (enemies.ApplyHeroDamage(target.Id, shot.Damage, now, player, playerPosition, towardSource).Applied > 0f)
             {
                 if (shot.ShotOrigin == ShotOrigin.Ranger)
                 {
@@ -872,7 +874,8 @@ public sealed class ProjectileSystem
             // `this` to the same door: a bolt that kills a Bloater is a bolt that set one off, and
             // whether that reaches the player is PlayerCombat.ApplyDamage's question rather than
             // this method's. Only applied damage refreshes Hit and Run.
-            if (enemies.ApplyHeroDamage(agent.Id, shot.Damage, now, player, playerPosition).Applied > 0f && shot.ShotOrigin == ShotOrigin.Ranger)
+            if (enemies.ApplyHeroDamage(agent.Id, shot.Damage, now, player, playerPosition, towardSource).Applied > 0f
+                && shot.ShotOrigin == ShotOrigin.Ranger)
             {
                 player.HitAndRun.OnHit(now);
             }

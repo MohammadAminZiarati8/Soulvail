@@ -1043,6 +1043,8 @@ MonoBehaviour:
     _text: Shardback
   - _key: enemy.hierophant.name
     _text: Sunscar Hierophant
+  - _key: enemy.sundial_colossus.name
+    _text: Sundial Colossus
   - _key: enemy.carrion_matriarch.name
     _text: Carrion Matriarch
   - _key: enemy.buried_king.name

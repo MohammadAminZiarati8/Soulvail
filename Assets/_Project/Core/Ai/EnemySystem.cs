@@ -272,7 +272,8 @@ public sealed class EnemySystem
         DepthScaling scaling,
         int capacity,
         Func<EnemyAgent, BossSpec, IEnemyBehaviour> bossInner = null,
-        Veilrot veilrot = null)
+        Veilrot veilrot = null,
+        bool usesCampaignBossXp = false)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _events = events ?? throw new ArgumentNullException(nameof(events));
@@ -967,8 +968,10 @@ public sealed class EnemySystem
         => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true,
             heroPosition: player?.Blackboard.PlayerPosition);
 
-    internal DamageResult ApplyHeroDamage(int enemyId, float amount, float now, PlayerCombat player, Vector3 heroPosition)
-        => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true, heroPosition: heroPosition);
+    internal DamageResult ApplyHeroDamage(int enemyId, float amount, float now, PlayerCombat player,
+        Vector3 heroPosition, Vector3 towardSource)
+        => ResolveDamage(enemyId, amount, now, player, execute: false, explode: true,
+            heroPosition: heroPosition, towardSource: towardSource);
 
     /// <summary>
     /// BT-09b: damage that knows where it came from. A frontal guard judges <paramref name="from"/>
@@ -985,7 +988,8 @@ public sealed class EnemySystem
 
         bool pierce = Registry.TryGet(enemyId, out EnemyAgent agent) && agent.IsAlive
             && FindGuard(agent) is IFrontalGuard guard && !Covers(guard, agent.Position, from);
-        return ResolveDamage(enemyId, amount, now, player, execute: false, explode: true, pierceGuard: pierce);
+        return ResolveDamage(enemyId, amount, now, player, execute: false, explode: true,
+            pierceGuard: pierce, damageSource: from);
     }
 
     /// <summary>Killshot ignores frontal guards, while phase beats and other immunity still block it.</summary>
@@ -1014,7 +1018,8 @@ public sealed class EnemySystem
 
     private DamageResult ResolveDamage(
         int enemyId, float amount, float now, PlayerCombat player, bool execute, bool explode,
-        bool pierceGuard = false, Vector3? heroPosition = null)
+        bool pierceGuard = false, Vector3? heroPosition = null, Vector3? towardSource = null,
+        Vector3? damageSource = null)
     {
         if (player is null)
         {
@@ -1047,7 +1052,11 @@ public sealed class EnemySystem
             float wardScale = agent.Behaviour is BossBehaviour { Inner: HierophantBehaviour hierophant }
                 ? hierophant.WardDamageScale(Registry)
                 : 1f;
-            result = agent.Health.ApplyDamage(amount * agent.DamageTaken.Value * wardScale, now, ignoreGuard);
+            float scaledAmount = amount * agent.DamageTaken.Value * wardScale;
+            result = !pierceGuard && agent.Behaviour is BossBehaviour { Inner: ColossusBehaviour colossus }
+                && (towardSource ?? ((damageSource ?? heroPosition) - agent.Position)) is Vector3 direction
+                ? colossus.ApplyShoulderHit(scaledAmount, now, direction, _events)
+                : agent.Health.ApplyDamage(scaledAmount, now, ignoreGuard);
         }
 
         // Spelled as "nothing arrived" rather than as a comparison against None, so a future
@@ -1368,6 +1377,10 @@ public sealed class EnemySystem
                 king.ObserveLungeClearance(sense.KingLungeClearance);
             }
 
+            if (agent.Behaviour is BossBehaviour { Inner: ColossusBehaviour colossus })
+            {
+                colossus.ObserveShoulders(sense.ShoulderAxis);
+            }
 
             // The two senses core cannot derive: pathfinding is Unity's (AR §3) and so is
             // visibility. Copied as given, zero included — a behaviour reads a zero path direction
@@ -1680,6 +1693,14 @@ public sealed class EnemySystem
         // this method could not state.
     }
 
+    /// <summary>Hands over the campaign boss deaths since the last drain.</summary>
+    internal int DrainBossRewards()
+    {
+        int earned = _pendingBossRewards;
+        _pendingBossRewards = 0;
+        return earned;
+    }
+
     /// <summary>
     /// Hands over everything <see cref="PendingXp"/> has collected and zeroes it.
     /// </summary>
@@ -1703,14 +1724,6 @@ public sealed class EnemySystem
 
         PendingXp = 0f;
 
-        return earned;
-    }
-
-    /// <summary>Hands over the campaign boss deaths since the last drain.</summary>
-    internal int DrainBossRewards()
-    {
-        int earned = _pendingBossRewards;
-        _pendingBossRewards = 0;
         return earned;
     }
 

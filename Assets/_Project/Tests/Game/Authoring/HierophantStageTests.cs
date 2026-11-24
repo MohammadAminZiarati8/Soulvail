@@ -57,7 +57,8 @@ public sealed class HierophantStageTests
             Is.EqualTo("Sunscar Hierophant"));
         Assert.That(Load<LocalizationTable>("Data/Localisation/Pseudo.asset").ToDictionary()[name], Is.Not.Empty);
 
-        AssertSchedule(catalog.Mode(Sunscar), (5, "boss.duneclaw"), (10, "boss.shardback"), (15, bossId.Value));
+        AssertSchedule(catalog.Mode(Sunscar), (5, "boss.duneclaw"), (10, "boss.shardback"), (15, bossId.Value),
+            (20, "boss.sundial_colossus"));
         AssertSchedule(catalog.Mode(new ContentId("mode.jungle")), (5, "boss.croaker"), (10, "boss.mother_pitcher"),
             (15, "boss.mossguard_warlord"), (20, "boss.thornheart"), (25, "boss.gravemaw"), (30, "boss.apex"));
         Assert.That(catalog.Mode(Sunscar).TryGetScriptedStage(14, out _), Is.True);

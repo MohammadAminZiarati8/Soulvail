@@ -9,7 +9,7 @@ _2026-11-24._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-22b Sunscar cousins. |
+| **Last built** | SS-18a–g Sundial Colossus. |
 | **Next task** | LV-03d. |
 | **Verified** | EditMode 7381/7473, 0 fail, 1 inconcl., 91 skip. |
 

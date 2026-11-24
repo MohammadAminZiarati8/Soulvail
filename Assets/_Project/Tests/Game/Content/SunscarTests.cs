@@ -77,10 +77,10 @@ public sealed class SunscarTests
                 (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Hooktail, 21, 0),
                 (Vulture, 22, 0), (Twinshot, 23, 0), (Crosswind, 24, 0),
             }));
-        Assert.That(mode.BossRoster, Has.Count.EqualTo(5));
+        Assert.That(mode.BossRoster, Has.Count.EqualTo(6));
         for (int stage = 1; stage <= mode.FinalStage; stage++)
         {
-            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage is 5 or 10 or 15 or 25 or 30));
+            Assert.That(mode.TryGetBossFor(stage, out ContentId boss), Is.EqualTo(stage is 5 or 10 or 15 or 20 or 25 or 30));
             if (stage == 5)
             {
                 Assert.That(boss.Value, Is.EqualTo("boss.duneclaw"));
@@ -92,6 +92,10 @@ public sealed class SunscarTests
             else if (stage == 15)
             {
                 Assert.That(boss.Value, Is.EqualTo("boss.hierophant"));
+            }
+            else if (stage == 20)
+            {
+                Assert.That(boss.Value, Is.EqualTo("boss.sundial_colossus"));
             }
             else if (stage == 25)
             {

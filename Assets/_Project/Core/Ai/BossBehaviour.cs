@@ -185,6 +185,7 @@ public sealed class BossBehaviour : IEnemyBehaviour
 
         if (wasInBeat)
         {
+            (Inner as ColossusBehaviour)?.RepairPlates();
             SetBeat(false);
 
             ctx.Events.Publish(new BossBeatEnded(_agent.Id));

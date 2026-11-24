@@ -1,0 +1,301 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &278986649374704732
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2501322003101858321}
+  - component: {fileID: 946772045953762676}
+  - component: {fileID: 5415529654612683072}
+  - component: {fileID: 2637826310607647567}
+  - component: {fileID: 5457506216958236323}
+  - component: {fileID: 4765964123096199390}
+  m_Layer: 8
+  m_Name: SundialColossus
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2501322003101858321
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278986649374704732}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3159493890000429164}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!136 &946772045953762676
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278986649374704732}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.94
+  m_Height: 3.9
+  m_Direction: 1
+  m_Center: {x: 0, y: 1.95, z: 0}
+--- !u!143 &5415529654612683072
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278986649374704732}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 3.5
+  m_Radius: 0.94
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1.75, z: 0}
+--- !u!114 &2637826310607647567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278986649374704732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 667bad2d798076243a6aa40e92b92a3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.EnemyView
+--- !u!82 &5457506216958236323
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278986649374704732}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 0.65
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 6
+  MaxDistance: 40
+  Pan2D: 0
+  rolloffMode: 1
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!114 &4765964123096199390
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278986649374704732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa032d83b955a40458903f432cda205c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Views.ColossusView
+  _animator: {fileID: 9023219278777940502}
+  _sweepPivot: {fileID: 7254464734031666483}
+  _handTip: {fileID: 7592215881734619739}
+  _sandstone: {fileID: 2100000, guid: 35483db8611a94a43aac7fe237b67f29, type: 2}
+  _warningMaterial: {fileID: 2100000, guid: 8c98b626af6463147882735e2c1c412a, type: 2}
+  _audio: {fileID: 5457506216958236323}
+  _sweepCue: {fileID: 8300000, guid: 970f26fe1d70f4f4289dbbb8f619ae90, type: 3}
+  _stompCue: {fileID: 8300000, guid: 0e6cff4b53fa1354590a3bc6b824b8c5, type: 3}
+--- !u!1001 &3193755314189191047
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2501322003101858321}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_Name
+      value: Rig
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 5202c099b1f36144ca42f40ab2f9c5bb, type: 2}
+    - target: {fileID: 5866666021909216657, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+      propertyPath: m_CullingMode
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+--- !u!4 &3159493890000429164 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+  m_PrefabInstance: {fileID: 3193755314189191047}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7254464734031666483 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -3963318631155295564, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+  m_PrefabInstance: {fileID: 3193755314189191047}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &7592215881734619739 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -4247308311774607908, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+  m_PrefabInstance: {fileID: 3193755314189191047}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &9023219278777940502 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 8e8d27c1b7804db1a041f8dd335159fe, type: 3}
+  m_PrefabInstance: {fileID: 3193755314189191047}
+  m_PrefabAsset: {fileID: 0}

@@ -186,6 +186,15 @@ public sealed class EnemyViews : IDisposable
         return false;
     }
 
+    public void ApplyMove(in EnemyMoveIntent move, float dt)
+    {
+        if (_byId.TryGetValue(move.Id, out Rental rental) && rental.View != null)
+        {
+            rental.View.Apply(move, dt);
+            rental.Colossus?.Step(dt);
+        }
+    }
+
     /// <summary>
     /// How many bodies of <paramref name="body"/> are waiting in its pool; null means the shared
     /// body. Zero for a body no look named, which has no pool.
@@ -278,6 +287,7 @@ public sealed class EnemyViews : IDisposable
                 : MeasureLungeClearance(rental.KingController, snapshot.PlayerPosition.ToUnity(), playBounds,
                     _kingLeap, _coverMask);
             sense.PathDirectionToPlayer = System.Numerics.Vector2.Zero;
+            sense.ShoulderAxis = rental.Colossus != null ? rental.Colossus.ShoulderAxis : default;
         }
     }
 
@@ -553,6 +563,7 @@ public sealed class EnemyViews : IDisposable
         {
             View = view;
             Pool = pool;
+            Colossus = view.GetComponent<ColossusView>();
             BuriedKing = buriedKing;
             KingController = buriedKing != null ? view.GetComponent<CharacterController>() : null;
         }
@@ -561,6 +572,7 @@ public sealed class EnemyViews : IDisposable
 
         public ViewPool<EnemyView> Pool { get; }
 
+        public ColossusView Colossus { get; }
         public BuriedKingView BuriedKing { get; }
         public CharacterController KingController { get; }
     }

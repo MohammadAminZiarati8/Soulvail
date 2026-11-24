@@ -597,14 +597,7 @@ public sealed class RunTicker : IStartable, ITickable, IDisposable
 
         for (int i = 0; i < moves.Count; i++)
         {
-            EnemyMoveIntent move = moves[i];
-
-            if (!_enemyViews.TryGet(move.Id, out EnemyView view) || view == null)
-            {
-                continue;
-            }
-
-            view.Apply(move, _snapshot.Dt);
+            _enemyViews.ApplyMove(moves[i], _snapshot.Dt);
         }
     }
 

@@ -25,6 +25,9 @@ public struct EnemySense
     /// <summary>Clear straight-line travel towards the player for the King's body, in metres.</summary>
     public float KingLungeClearance;
 
+    /// <summary>Ground direction from the Colossus's visible left shoulder to its right.</summary>
+    public Vector2 ShoulderAxis;
+
     /// <summary>
     /// Unit XZ direction along the NavMesh path towards the player, or zero when there is no
     /// path. A sense, not an instruction — core decides what to do about it.

@@ -51,6 +51,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
     private readonly int _enemyCapacity;
     private readonly int _deviceEnemyCap;
     private readonly int _projectileCapacity;
+    private CampaignXpProfile _campaignXp;
 
     /// <summary>
     /// Where <c>EnemySystem.DrainDeaths</c> writes each tick's dead, for Rise to read.
@@ -594,6 +595,7 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // applies them is a spawn. A run's depth starts at the config's stage — a fresh run reads
         // it from the mode's StartingStage, a resumed one from the save (M2-14b) — and M2-10 moves
         // it at each boundary.
+        _campaignXp = mode.CampaignXp;
         var enemies = new EnemySystem(
             _catalog,
             _events,
@@ -613,7 +615,8 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
             // **GD §10.2's 25 row, read at every spawn rather than pushed at the crossing**
             // (M6-04 rule 4). Optional on the constructor and never absent here: a run without a
             // meter is a fixture, and every run this class starts has one.
-            veilrot)
+            veilrot,
+            usesCampaignBossXp: _campaignXp is not null)
         {
             Depth = config.StageIndex,
         };
@@ -1584,6 +1587,12 @@ public sealed class RunSession : IRunSession, IPlayerCommands, IProgressionComma
         // anything that is not greater than zero, so there is no branch here for a caller to get
         // wrong.
         State.Progression.Grant(State.Enemies.DrainXp());
+        int bossRewards = State.Enemies.DrainBossRewards();
+        for (int i = 0; i < bossRewards; i++)
+        {
+            State.Progression.GrantBoss(_campaignXp.BossFraction);
+        }
+
         State.Tree?.SyncLevel(State.Progression.Level);
 
         // The same drain in the other currency (M3-12a rule 5), immediately beside it because the

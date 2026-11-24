@@ -203,6 +203,8 @@ public sealed class EnemySystem
     /// cent of one wave's move speed.
     /// </remarks>
     private readonly Veilrot _veilrot;
+    private readonly bool _usesCampaignBossXp;
+    private int _pendingBossRewards;
 
     private int _depth = MinDepth;
 
@@ -278,6 +280,7 @@ public sealed class EnemySystem
         _scaling = scaling ?? throw new ArgumentNullException(nameof(scaling));
         _bossInner = bossInner;
         _veilrot = veilrot;
+        _usesCampaignBossXp = usesCampaignBossXp;
 
         Registry = new EnemyRegistry(capacity);
         Tornadoes = new TornadoField(_events);
@@ -1103,10 +1106,17 @@ public sealed class EnemySystem
             // about *who* killed it would need a second mechanism the day minions exist, and GD §15
             // says only that experience is granted on kill.
             //
-            // The one exception is a boss's summon, which pays nothing (EnemyAgent.PaysXp).
+            // Summons pay nothing. Campaign bosses bank a grant to be priced by progression.
             if (agent.PaysXp)
             {
-                PendingXp += agent.Spec.XpValue;
+                if (_usesCampaignBossXp && agent.Behaviour is BossBehaviour)
+                {
+                    _pendingBossRewards++;
+                }
+                else
+                {
+                    PendingXp += agent.Spec.XpValue;
+                }
             }
 
             // On the same line and through the same door, so that "every death pays" is one rule
@@ -1637,6 +1647,7 @@ public sealed class EnemySystem
         // here so that the day something clears the arena mid-tick, the loss is a documented one
         // rather than a stage's last kill silently paying twice or not at all.
         PendingXp = 0f;
+        _pendingBossRewards = 0;
 
         // And the kills that earned it, for exactly the same reason and with exactly the same
         // caveat — banked on the same line, so they are dropped on the same one.
@@ -1682,6 +1693,14 @@ public sealed class EnemySystem
 
         PendingXp = 0f;
 
+        return earned;
+    }
+
+    /// <summary>Hands over the campaign boss deaths since the last drain.</summary>
+    internal int DrainBossRewards()
+    {
+        int earned = _pendingBossRewards;
+        _pendingBossRewards = 0;
         return earned;
     }
 

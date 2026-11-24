@@ -740,7 +740,8 @@ public sealed class ModeSpec
         ContentId unlockedBy = default,
         bool isListed = true,
         IReadOnlyList<ScriptedStage> scriptedStages = null,
-        LevelGrowthSpec levelGrowth = default)
+        LevelGrowthSpec levelGrowth = default,
+        CampaignXpProfile campaignXp = null)
     {
         if (id.Value is null)
         {
@@ -792,7 +793,8 @@ public sealed class ModeSpec
         // curve is a struct handed straight in rather than wrapped in a class that could check it
         // (AR §18.3: a struct with an invariant needs the check at both ends). LevelTracker asks
         // again at the other end, which is the end that would hang.
-        if (!xp.IsAuthored)
+        Xp = campaignXp?.Curve ?? xp;
+        if (!Xp.IsAuthored)
         {
             throw new ArgumentException(
                 $"'{id}'s xp curve is a default value and never passed a constructor, so every "
@@ -807,7 +809,7 @@ public sealed class ModeSpec
         IsEndless = isEndless;
         FinalStage = effectiveFinal;
         Scaling = scaling;
-        Xp = xp;
+        CampaignXp = campaignXp;
 
         // LevelGrowthSpec's constructor validates it, and its
         // zeroed form is a mode whose levels grow nothing (LV-01a).
@@ -904,6 +906,9 @@ public sealed class ModeSpec
     /// fast the player pushes back — and a mode is free to change one without the other.
     /// </remarks>
     public XpCurve Xp { get; }
+
+    /// <summary>The shared campaign policy, when the mode opts in.</summary>
+    public CampaignXpProfile CampaignXp { get; }
 
     /// <summary>
     /// What every level gained adds to base max HP and weapon damage (LV-01a) — 3 % and 2 % in the

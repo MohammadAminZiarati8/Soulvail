@@ -154,8 +154,27 @@ public sealed class LevelTracker
             return;
         }
 
-        float amount = baseXp * MathF.Max(0f, XpGain.Value);
+        GrantExact(baseXp * MathF.Max(0f, XpGain.Value));
+    }
 
+    /// <summary>Award a fraction of the current threshold independently of XP gain modifiers.</summary>
+    public void GrantBoss(float fraction)
+    {
+        if (IsMaxLevel)
+        {
+            return;
+        }
+
+        if (!(fraction > 0f && fraction < 1f))
+        {
+            throw new ArgumentOutOfRangeException(nameof(fraction));
+        }
+
+        GrantExact(fraction * XpToNext);
+    }
+
+    private void GrantExact(float amount)
+    {
         if (!(amount > 0f) || float.IsInfinity(amount))
         {
             return;

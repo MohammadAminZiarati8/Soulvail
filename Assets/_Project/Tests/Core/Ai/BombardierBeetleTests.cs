@@ -18,6 +18,8 @@ public sealed class BombardierBeetleTests
     private const int Capacity = 16;
     private const float Windup = 0.7f;
     private const float Dt = 0.025f;
+    private const float LobRadius = 1.6f;
+    private const float PairSpread = 3.6f;
     private static readonly ContentId Beetle = new("enemy.beetle");
     private static readonly ContentId Pitcher = new("enemy.spitter");
     private static readonly BombardierSpec Bombardier = new(45f, 10f, 20f);
@@ -193,6 +195,92 @@ public sealed class BombardierBeetleTests
         Assert.That(Vector2.Dot(braced, Facing), Is.EqualTo(MathF.Sqrt(0.5f)).Within(1e-5f));
         Assert.That(_intents.LastEnemyMove.Velocity, Is.EqualTo(Vector3.Zero));
         Assert.That(_events.Count<EnemyTelegraph>(), Is.EqualTo(1));
+        Assert.That(_events.Count<ProjectileFired>(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Release_PairedBombardier_FiresTwoMarkedLandings()
+    {
+        Build(_events, projectileCount: 2, spread: PairSpread);
+        Aim();
+        Vector3 target = Ingest(11f, 190f, velocity: Vector3.UnitX);
+        Tick(Windup);
+
+        var shots = _events.Of<ProjectileFired>();
+        Assert.That(shots.Count, Is.EqualTo(2));
+        Assert.That(shots[0].Id, Is.Not.EqualTo(shots[1].Id));
+        Vector3 halfSpread = Vector3.Normalize(new Vector3(target.Z, 0f, -target.X)) * (PairSpread / 2f);
+        Assert.That(Vector3.Distance(shots[0].Target, target - halfSpread), Is.LessThan(1e-5f));
+        Assert.That(Vector3.Distance(shots[1].Target, target + halfSpread), Is.LessThan(1e-5f));
+        foreach (ProjectileFired shot in shots)
+        {
+            Assert.That(shot.Radius, Is.EqualTo(LobRadius));
+            Assert.That(shot.FlightTime, Is.GreaterThan(0f));
+        }
+
+        Assert.That(Behaviour.State, Is.EqualTo(SpitterState.Recover));
+        Tick(1f);
+        Assert.That(Behaviour.State, Is.EqualTo(SpitterState.Recover));
+        Assert.That(_events.Count<EnemyTelegraph>(), Is.EqualTo(1));
+        Assert.That(_events.Count<ProjectileFired>(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Release_PairedBombardierOutsideCone_DropsBoth()
+    {
+        Build(_events, projectileCount: 2, spread: PairSpread);
+        Aim();
+        Ingest(6f, 205f);
+        Tick(Windup);
+
+        Assert.That(_events.Single<EnemyAimDropped>().Id, Is.EqualTo(_agent.Id));
+        Assert.That(_events.Count<ProjectileFired>(), Is.Zero);
+        Assert.That(_projectiles.InFlightCount, Is.Zero);
+        Assert.That(Behaviour.State, Is.EqualTo(SpitterState.Approach));
+    }
+
+    [Test]
+    public void Release_PairedBombardierOneFreeSlot_PublishesOneShot()
+    {
+        Build(_events, projectileCount: 2, spread: PairSpread);
+        var filler = new Projectile(Beetle, _agent.Id, Vector3.Zero, Vector3.UnitZ, 6f, LobRadius, 12f);
+        for (int i = 0; i < Capacity - 1; i++)
+        {
+            _projectiles.Fire(filler, _now);
+        }
+
+        _events.Clear();
+        Aim();
+        Vector3 target = Ingest(11f, 180f);
+        Tick(Windup);
+
+        ProjectileFired shot = _events.Single<ProjectileFired>();
+        Assert.That(Vector3.Distance(shot.Target, target + (Vector3.UnitX * (PairSpread / 2f))), Is.LessThan(1e-5f));
+        Assert.That(_projectiles.InFlightCount, Is.EqualTo(Capacity));
+        Assert.That(Behaviour.State, Is.EqualTo(SpitterState.Recover));
+        Tick(_agent.Spec.RecoverTime);
+        Assert.That(Behaviour.State, Is.EqualTo(SpitterState.Approach));
+        Assert.That(_events.Count<ProjectileFired>(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Release_PairedBombardier_NoAlloc()
+    {
+        var silent = new SilentEvents();
+        Build(silent, projectileCount: 2, spread: PairSpread);
+        Ingest(12f, 180f);
+
+        AllocationAssert.None(() =>
+        {
+            _projectiles.Clear();
+            Behaviour.Reset();
+            Tick(Dt, silent);
+            Tick(Dt, silent);
+            Tick(Windup, silent);
+        }, iterations: 300);
+
+        Assert.That(_projectiles.InFlightCount, Is.EqualTo(2));
+        Assert.That(Behaviour.State, Is.EqualTo(SpitterState.Recover));
     }
 
     [Test]
@@ -303,7 +391,7 @@ public sealed class BombardierBeetleTests
         Behaviour.Tick(new EnemyTickContext(dt, _now, _player, _intents, events ?? _events, _projectiles, _enemies));
     }
 
-    private void Build(IDomainEvents events)
+    private void Build(IDomainEvents events, int projectileCount = 1, float spread = 0f)
     {
         var character = new CharacterSpec(new ContentId("character.oathbound"),
             new LocKey("character.oathbound.name"), new LocKey("character.oathbound.description"), 140f,
@@ -314,7 +402,7 @@ public sealed class BombardierBeetleTests
             new MovementSkillSpec(MovementSkillKind.Charge, 8f, 0.5f, 2.5f, 0.15f, 16f, 4f, 0.05f));
         var catalog = new ContentCatalog(new[] { character }, new[]
         {
-            Spec(Beetle, EnemyBehaviourKind.Spitter, Bombardier),
+            Spec(Beetle, EnemyBehaviourKind.Spitter, Bombardier, projectileCount: projectileCount, spread: spread),
             Spec(Pitcher, EnemyBehaviourKind.Spitter),
         });
         _enemies = new EnemySystem(catalog, events, new FixedRandom(), new DepthScaling(Scalings.Design()), Capacity);
@@ -325,10 +413,12 @@ public sealed class BombardierBeetleTests
     }
 
     private static EnemySpec Spec(ContentId id, EnemyBehaviourKind kind, BombardierSpec bombardier = null,
-        SlingerSpec slinger = null)
+        SlingerSpec slinger = null, int projectileCount = 1, float spread = 0f)
     {
         ProjectileSpec projectile = kind == EnemyBehaviourKind.Spitter
-            ? bombardier is null ? new ProjectileSpec(14f, 7f, 1.6f) : new ProjectileSpec(12f, 6f, 1.6f)
+            ? bombardier is null
+                ? new ProjectileSpec(14f, 7f, LobRadius)
+                : new ProjectileSpec(12f, 6f, LobRadius, projectileCount, spread)
             : null;
         return new EnemySpec(id, new LocKey(id.Value + ".name"), 28f, 2.8f, 3, 7, 21f, false, 12f,
             1.2f, Windup, 2.3f, 30f, kind, projectile: projectile, slinger: slinger, bombardier: bombardier);

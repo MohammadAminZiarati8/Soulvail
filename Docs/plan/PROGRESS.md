@@ -9,9 +9,9 @@ _2026-11-24._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | Buried King fixed rotation. |
+| **Last built** | SS-22a paired bombardier lobs. |
 | **Next task** | Await owner go. |
-| **Verified** | EditMode 7352/7444, 0 fail, 1 inconcl., 91 skip. DT-01 12/12. |
+| **Verified** | EditMode 7356/7448, 0 fail, 1 inconcl., 91 skip. DT-01 12/12. |
 
 ## What works
 

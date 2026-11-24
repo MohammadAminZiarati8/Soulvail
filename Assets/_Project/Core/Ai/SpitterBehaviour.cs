@@ -404,9 +404,8 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
     /// §12.3's d(n) is already in it; the speed and the radius are the archetype's projectile block.
     /// </para>
     /// <para>
-    /// <b>A refused shot is not a special case.</b> <c>Fire</c> answers <c>NoProjectile</c> when the
-    /// sky is full and this does not look: the Spitter believes it fired, which is the only reading
-    /// that does not require an enemy to know the projectile system's capacity (M2-07a rule 7).
+    /// When <c>Fire</c> answers <c>NoProjectile</c>, the remaining lobs are skipped and the Spitter
+    /// follows its normal recovery (M2-07a rule 7).
     /// </para>
     /// </remarks>
     private void EnterRelease()
@@ -423,7 +422,7 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
             ? blackboard.PlayerPosition
             : LeadPoint(origin, blackboard.PlayerPosition, blackboard.PlayerVelocity, projectile.Speed, slinger.MaxLead);
         Vector3 across = Across(target - origin, blackboard.DirectionToPlayer);
-        int count = _agent.Spec.Bombardier is null ? projectile.Count : 1;
+        int count = projectile.Count;
         float damage = _agent.ContactDamage.Value;
 
         // JG-21c: centre out, so a full sky drops the outside lobs first (rule 4). Lob i's offset in

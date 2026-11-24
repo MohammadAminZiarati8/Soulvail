@@ -79,6 +79,8 @@ public sealed class BombardierBeetleTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new BombardierSpec(45f, 180f, 20f));
         Assert.Throws<ArgumentOutOfRangeException>(() => new BombardierSpec(45f, 10f, 9f));
         Assert.Throws<ArgumentOutOfRangeException>(() => new BombardierSpec(45f, 10f, 180f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BombardierSpec(45f, 10f, 20f, -0.9f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new BombardierSpec(45f, 10f, 20f, float.NaN));
         Assert.That(new BombardierSpec(45f, 10f, 10f).DropConeDegrees, Is.EqualTo(10f));
     }
 
@@ -198,10 +200,11 @@ public sealed class BombardierBeetleTests
         Assert.That(_events.Count<ProjectileFired>(), Is.EqualTo(1));
     }
 
-    [Test]
-    public void Release_PairedBombardier_FiresTwoMarkedLandings()
+    [TestCase(0f)]
+    [TestCase(0.9f)]
+    public void Release_PairedBombardier_FiresTwoMarkedLandings(float impactGap)
     {
-        Build(_events, projectileCount: 2, spread: PairSpread);
+        Build(_events, projectileCount: 2, spread: PairSpread, impactGap: impactGap);
         Aim();
         Vector3 target = Ingest(11f, 190f, velocity: Vector3.UnitX);
         Tick(Windup);
@@ -217,6 +220,12 @@ public sealed class BombardierBeetleTests
             Assert.That(shot.Radius, Is.EqualTo(LobRadius));
             Assert.That(shot.FlightTime, Is.GreaterThan(0f));
         }
+
+        Assert.That(shots[1].FlightTime - shots[0].FlightTime, Is.EqualTo(impactGap).Within(1e-5f));
+        _projectiles.Tick(_now + shots[0].FlightTime + 0.001f, target, _player, _enemies);
+        Assert.That(_events.Count<ProjectileImpacted>(), Is.EqualTo(impactGap == 0f ? 2 : 1));
+        _projectiles.Tick(_now + shots[1].FlightTime + 0.001f, target, _player, _enemies);
+        Assert.That(_events.Count<ProjectileImpacted>(), Is.EqualTo(2));
 
         Assert.That(Behaviour.State, Is.EqualTo(SpitterState.Recover));
         Tick(1f);
@@ -391,7 +400,7 @@ public sealed class BombardierBeetleTests
         Behaviour.Tick(new EnemyTickContext(dt, _now, _player, _intents, events ?? _events, _projectiles, _enemies));
     }
 
-    private void Build(IDomainEvents events, int projectileCount = 1, float spread = 0f)
+    private void Build(IDomainEvents events, int projectileCount = 1, float spread = 0f, float impactGap = 0f)
     {
         var character = new CharacterSpec(new ContentId("character.oathbound"),
             new LocKey("character.oathbound.name"), new LocKey("character.oathbound.description"), 140f,
@@ -400,9 +409,11 @@ public sealed class BombardierBeetleTests
             new WeaponSpec(WeaponKind.Cone, 13f, 3f, 8f, 60f, 0.4f),
             new FocusSpec(0.4f, 1f, 1f),
             new MovementSkillSpec(MovementSkillKind.Charge, 8f, 0.5f, 2.5f, 0.15f, 16f, 4f, 0.05f));
+        var bombardier = new BombardierSpec(Bombardier.TurnRateDegrees, Bombardier.StartConeDegrees,
+            Bombardier.DropConeDegrees, impactGap);
         var catalog = new ContentCatalog(new[] { character }, new[]
         {
-            Spec(Beetle, EnemyBehaviourKind.Spitter, Bombardier, projectileCount: projectileCount, spread: spread),
+            Spec(Beetle, EnemyBehaviourKind.Spitter, bombardier, projectileCount: projectileCount, spread: spread),
             Spec(Pitcher, EnemyBehaviourKind.Spitter),
         });
         _enemies = new EnemySystem(catalog, events, new FixedRandom(), new DepthScaling(Scalings.Design()), Capacity);

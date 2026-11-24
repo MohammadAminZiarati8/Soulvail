@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10160b18a6654b64b8e81b06a81fbd79, type: 3}
+  m_Name: HooktailScorpion
+  m_EditorClassIdentifier: Soulvail.Game::Soulvail.Game.Authoring.EnemyDefinition
+  _id: enemy.hooktail-scorpion
+  _nameKey: enemy.hooktail-scorpion.name
+  _maxHp: 36
+  _moveSpeed: 2.2
+  _targetPriority: 1
+  _threatCost: 4
+  _xpValue: 18
+  _isElite: 0
+  _isLight: 1
+  _contactDamage: 8
+  _reach: 1.8
+  _windupTime: 0.6
+  _recoverTime: 0.65
+  _aggroRange: 30
+  _behaviour: 1
+  _hopTime: 0
+  _hopRestTime: 0
+  _skitterRingRadius: 4
+  _skitterFanDegrees: 120
+  _skitterSpreadTimeout: 3
+  _skitterZoneLength: 2.4
+  _skitterZoneHalfWidth: 0.7
+  _tint: {r: 0.38, g: 0.27, b: 0.21, a: 1}
+  _bodyScale: 1.15
+  _body: {fileID: 7309528593867231867, guid: 5a8cc4eef02209a418eff542611e77c2, type: 3}

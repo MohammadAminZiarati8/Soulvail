@@ -50,6 +50,9 @@ public sealed class SunscarTests
     private static readonly ContentId Cobra = new("enemy.cobra");
     private static readonly ContentId Caller = new("enemy.storm-caller");
     private static readonly ContentId Vulture = new("enemy.vulture");
+    private static readonly ContentId Hooktail = new("enemy.hooktail-scorpion");
+    private static readonly ContentId Twinshot = new("enemy.twinshot-bombardier");
+    private static readonly ContentId Crosswind = new("enemy.crosswind-viper");
     private static readonly ContentId Dunes = new("arena.sunscar.dunes");
     private static readonly ContentId BuriedKing = new("boss.buried_king");
 
@@ -64,14 +67,15 @@ public sealed class SunscarTests
     }
 
     [Test]
-    public void Sunscar_Mode_RosterIsScorpionBeetleBroodViperJackalGlassbackAntlionPriestCobraCallerVulture()
+    public void Sunscar_Mode_RosterAndBossSchedule()
     {
         ModeSpec mode = Mode("Sunscar");
         Assert.That(mode.Roster.Select(entry => (entry.SpecId, entry.IntroducedAtStage, entry.RetiredAtStage)),
             Is.EqualTo(new[]
             {
-                (Scorpion, 1, 0), (Beetle, 2, 0), (Brood, 4, 0), (Viper, 6, 0), (Jackal, 8, 0), (Glassback, 9, 0),
-                (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Vulture, 22, 0),
+                (Scorpion, 1, 21), (Beetle, 2, 23), (Brood, 4, 0), (Viper, 6, 24), (Jackal, 8, 0), (Glassback, 9, 0),
+                (Antlion, 11, 0), (Priest, 14, 0), (Cobra, 16, 0), (Caller, 18, 0), (Hooktail, 21, 0),
+                (Vulture, 22, 0), (Twinshot, 23, 0), (Crosswind, 24, 0),
             }));
         Assert.That(mode.BossRoster, Has.Count.EqualTo(5));
         for (int stage = 1; stage <= mode.FinalStage; stage++)
@@ -139,8 +143,8 @@ public sealed class SunscarTests
         float clearXp = 0f;
         foreach (ScriptedSpawn spawn in script.Spawns)
         {
-            Assert.That(mode.Roster.Any(entry => entry.SpecId == spawn.SpecId && entry.IntroducedAtStage <= stage),
-                Is.True, $"{spawn.SpecId} appears before its introduction.");
+            Assert.That(mode.Roster.Any(entry => entry.SpecId == spawn.SpecId && entry.IsEligibleAt(stage)),
+                Is.True, $"{spawn.SpecId} is ineligible at stage {stage}.");
             EnemySpec enemy = catalog.Enemy(spawn.SpecId);
             float reward = enemy.XpValue;
             if (enemy.Brood is BroodSpec brood)
@@ -196,7 +200,7 @@ public sealed class SunscarTests
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
-            if (spec.Id != Scorpion && spec.Id != Brood && spec.Id != Scorpling)
+            if (spec.Id != Scorpion && spec.Id != Brood && spec.Id != Scorpling && spec.Id != Hooktail)
             {
                 Assert.That(spec.Skitter, Is.Null, path);
             }
@@ -265,7 +269,7 @@ public sealed class SunscarTests
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
-            if (spec.Id != Beetle)
+            if (spec.Id != Beetle && spec.Id != Twinshot)
             {
                 Assert.That(spec.Bombardier, Is.Null, path);
             }
@@ -421,7 +425,7 @@ public sealed class SunscarTests
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             EnemySpec spec = AssetDatabase.LoadAssetAtPath<EnemyDefinition>(path).ToSpec();
-            if (spec.Id != Viper)
+            if (spec.Id != Viper && spec.Id != Crosswind)
             {
                 Assert.That(spec.Sidewinder, Is.Null, path);
             }
@@ -1002,16 +1006,120 @@ public sealed class SunscarTests
     }
 
     [Test]
+    public void Sunscar_CousinDefinitions_MatchAuthoredVariants()
+    {
+        var english = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/English.asset").ToDictionary();
+        var pseudo = AssetDatabase.LoadAssetAtPath<LocalizationTable>(Root + "Data/Localisation/Pseudo.asset").ToDictionary();
+        var definitions = BootEnemies().ToDictionary(definition => definition.ToSpec().Id);
+        foreach (var (baseId, id, name, scale, tint) in new[]
+        {
+            (Scorpion, Hooktail, "Hooktail Scorpion", 1.15f, new Color(0.38f, 0.27f, 0.21f)),
+            (Beetle, Twinshot, "Twinshot Bombardier", 1.1f, new Color(0.37f, 0.43f, 0.56f)),
+            (Viper, Crosswind, "Crosswind Viper", 1.1f, new Color(0.91f, 0.85f, 0.72f)),
+        })
+        {
+            EnemySpec original = definitions[baseId].ToSpec();
+            EnemySpec cousin = definitions[id].ToSpec();
+            EnemyLook originalLook = definitions[baseId].ToLook();
+            EnemyLook cousinLook = definitions[id].ToLook();
+            Assert.That(cousin.NameKey.Key, Is.EqualTo($"{id.Value}.name"));
+            Assert.That(english[cousin.NameKey], Is.EqualTo(name));
+            Assert.That(pseudo[cousin.NameKey], Is.Not.Empty.And.Not.EqualTo(name));
+            Assert.That(cousinLook.Body, Is.SameAs(originalLook.Body));
+            Assert.That(cousinLook.Projectile, Is.EqualTo(originalLook.Projectile));
+            Assert.That(cousinLook.MarksLanding, Is.EqualTo(originalLook.MarksLanding));
+            Assert.That((cousinLook.BodyScale, cousinLook.Tint), Is.EqualTo((scale, tint)));
+            Assert.That(cousinLook.Tint, Is.Not.EqualTo(originalLook.Tint));
+            Assert.That((cousin.MaxHp, cousin.ContactDamage, cousin.MoveSpeed, cousin.XpValue,
+                    cousin.ThreatCost, cousin.TargetPriority, cousin.AggroRange),
+                Is.EqualTo((original.MaxHp, original.ContactDamage, original.MoveSpeed, original.XpValue,
+                    original.ThreatCost, original.TargetPriority, original.AggroRange)));
+            Assert.That((cousin.Behaviour, cousin.IsElite, cousin.IsLight),
+                Is.EqualTo((original.Behaviour, original.IsElite, original.IsLight)));
+            Assert.That(cousin.BodyRadius, Is.EqualTo(original.BodyRadius * scale / originalLook.BodyScale).Within(1e-5f));
+        }
+
+        EnemySpec hooktail = definitions[Hooktail].ToSpec();
+        Assert.That((hooktail.Reach, hooktail.WindupTime, hooktail.RecoverTime,
+            hooktail.Skitter.ZoneLength, hooktail.Skitter.ZoneHalfWidth), Is.EqualTo((1.8f, 0.6f, 0.65f, 2.4f, 0.7f)));
+        Assert.That((hooktail.Skitter.RingRadius, hooktail.Skitter.FanDegrees, hooktail.Skitter.SpreadTimeout),
+            Is.EqualTo((4f, 120f, 3f)));
+
+        EnemySpec twinshot = definitions[Twinshot].ToSpec();
+        Assert.That((twinshot.Bombardier.TurnRateDegrees, twinshot.Bombardier.StartConeDegrees, twinshot.Bombardier.DropConeDegrees),
+            Is.EqualTo((45f, 10f, 20f)));
+        Assert.That((twinshot.Projectile.Count, twinshot.Projectile.Radius, twinshot.Projectile.Spread,
+            twinshot.Projectile.StandoffRange, twinshot.Projectile.Speed, twinshot.WindupTime, twinshot.RecoverTime),
+            Is.EqualTo((2, 1.35f, 3.6f, 12f, 6f, 0.9f, 2.8f)));
+        Assert.That(twinshot.Bombardier.ImpactGap, Is.EqualTo(0.9f));
+        Assert.That(definitions[Twinshot].ToLook().MarksLanding, Is.True);
+
+        EnemySpec crosswind = definitions[Crosswind].ToSpec();
+        Assert.That((crosswind.Sidewinder.ArcDegrees, crosswind.Sidewinder.Speed, crosswind.Sidewinder.Timeout,
+            crosswind.Sidewinder.Radius, crosswind.Sidewinder.MissRecoverTime), Is.EqualTo((70f, 3.3f, 3.4f, 7f, 2f)));
+        Assert.That((crosswind.WindupTime, crosswind.Lunge.HalfWidth, crosswind.Lunge.Range,
+            crosswind.Lunge.Length, crosswind.Lunge.Speed, crosswind.Lunge.Cooldown),
+            Is.EqualTo((0.9f, 0.8f, 8f, 12f, 30f, 0f)));
+    }
+
+    [Test]
+    public void Sunscar_Cousins_ReplaceBaseOnDebut()
+    {
+        ModeSpec mode = Mode("Sunscar");
+        var roster = new RosterEntry[mode.Roster.Count];
+        for (int stage = 1; stage <= mode.FinalStage; stage++)
+        {
+            int count = mode.RosterFor(stage, roster);
+            ContentId[] eligible = roster.Take(count).Select(entry => entry.SpecId).ToArray();
+            foreach (var (baseId, cousin, start, debut) in new[]
+            {
+                (Scorpion, Hooktail, 1, 21), (Beetle, Twinshot, 2, 23), (Viper, Crosswind, 6, 24),
+            })
+            {
+                Assert.That(eligible.Contains(baseId), Is.EqualTo(stage >= start && stage < debut), $"Stage {stage}: {baseId}");
+                Assert.That(eligible.Contains(cousin), Is.EqualTo(stage >= debut), $"Stage {stage}: {cousin}");
+            }
+        }
+
+        foreach (var (stage, scorpions, beetles, vipers) in new[]
+        {
+            (21, new[] { 3, 3, 2, 3 }, new[] { 1, 1, 2, 1 }, new[] { 1, 0, 1, 0 }),
+            (22, new[] { 3, 3, 2, 3 }, new[] { 1, 2, 1, 1 }, new[] { 0, 1, 1, 0 }),
+            (23, new[] { 4, 2, 2, 3 }, new[] { 1, 1, 1, 2 }, new[] { 0, 1, 1, 0 }),
+            (24, new[] { 5, 2, 2, 3 }, new[] { 1, 2, 1, 1 }, new[] { 0, 1, 1, 0 }),
+            (26, new[] { 3, 3, 2, 2, 3 }, new[] { 1, 1, 1, 1, 1 }, new[] { 1, 0, 0, 1, 0 }),
+            (27, new[] { 3, 3, 2, 2, 3 }, new[] { 1, 1, 1, 1, 1 }, new[] { 1, 0, 0, 1, 0 }),
+            (28, new[] { 3, 3, 2, 2, 3 }, new[] { 1, 1, 1, 1, 1 }, new[] { 1, 0, 1, 1, 0 }),
+            (29, new[] { 3, 3, 2, 3, 3 }, new[] { 1, 1, 1, 1, 1 }, new[] { 1, 0, 1, 1, 0 }),
+        })
+        {
+            Assert.That(mode.TryGetScriptedStage(stage, out ScriptedStage script), Is.True);
+            for (int wave = 1; wave <= script.WaveCount; wave++)
+            {
+                ScriptedSpawn[] spawns = script.Spawns.Where(spawn => spawn.Wave == wave).ToArray();
+                int Count(ContentId id) => spawns.Where(spawn => spawn.SpecId == id).Sum(spawn => spawn.Count);
+                Assert.That((Count(Hooktail), Count(stage < 23 ? Beetle : Twinshot), Count(stage < 24 ? Viper : Crosswind)),
+                    Is.EqualTo((scorpions[wave - 1], beetles[wave - 1], vipers[wave - 1])), $"Stage {stage}, wave {wave}");
+            }
+        }
+
+        Assert.That(mode.ScriptedStages.First(script => script.Spawns.Any(spawn => spawn.SpecId == Vulture)).Stage,
+            Is.EqualTo(22));
+        Assert.That(mode.TryGetScriptedStage(22, out ScriptedStage debutStage), Is.True);
+        Assert.That(debutStage.Spawns.First(spawn => spawn.SpecId == Vulture).Wave, Is.EqualTo(1));
+    }
+
+    [Test]
     public void Sunscar_RosterByStage_VultureFrom22()
     {
         ModeSpec mode = Mode("Sunscar");
         var roster = new RosterEntry[mode.Roster.Count];
         int count = mode.RosterFor(21, roster);
         Assert.That(roster.Take(count).Select(entry => entry.SpecId),
-            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller }));
+            Is.EqualTo(new[] { Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Hooktail }));
         count = mode.RosterFor(22, roster);
         Assert.That(roster.Take(count).Select(entry => entry.SpecId),
-            Is.EqualTo(new[] { Scorpion, Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture }));
+            Is.EqualTo(new[] { Beetle, Brood, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Hooktail, Vulture }));
     }
 
     [Test]
@@ -1209,11 +1317,18 @@ public sealed class SunscarTests
     public void Sunscar_Stage22_WavesClear()
     {
         RecordingEvents events = AssertStageWavesClear(22,
-            new[] { Scorpion, Beetle, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture },
+            new[] { Hooktail, Beetle, Viper, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture },
             maxSeconds: 300, sidestepTells: true, dodgeLandings: true, seed: 2, keepHeroAlive: true,
             spendRangerPoints: true);
         Assert.That(events.Of<EnemySpawned>().Select(spawn => spawn.SpecId), Does.Contain(Vulture));
     }
+
+    [Test]
+    public void Sunscar_Stage24_WavesClearAndLeadToMatriarch() =>
+        AssertStageWavesClear(24,
+            new[] { Hooktail, Twinshot, Crosswind, Jackal, Glassback, Antlion, Priest, Cobra, Caller, Vulture },
+            maxSeconds: 360, sidestepTells: true, dodgeLandings: true, seed: 2, keepHeroAlive: true,
+            spendRangerPoints: true);
 
     private static RecordingEvents AssertStageWavesClear(int stage, params ContentId[] expectedEnemies) =>
         AssertStageWavesClear(stage, expectedEnemies, maxSeconds: 180);
@@ -1396,25 +1511,25 @@ public sealed class SunscarTests
                 .Select(spawn => $"{spawn.SpecId} at {positions.GetValueOrDefault(spawn.Id, spawn.Position)}");
             Assert.That(events.Count<StageCleared>(), Is.EqualTo(1),
                 $"Stage {stage} after {maxSeconds}s, player at {player}, survivors: {string.Join(", ", survivors)}");
-            if (stage == 14)
+            if (stage is 14 or 24)
             {
-                // Take the progression path from Stage 14, without a Stage 15 restore.
                 NumericsVector3 gate = events.Single<StageCleared>().GatePosition;
                 int before = events.Count<EnemySpawned>();
                 for (int frame = 0; frame < 15f / frameTime && events.Count<EnemySpawned>() == before; frame++)
                 {
                     world.Clear();
                     world.Dt = frameTime;
-                    world.PlayerPosition = session.State.StageIndex == 14 ? gate : player;
+                    world.PlayerPosition = session.State.StageIndex == stage ? gate : player;
                     world.HasGate = true;
                     world.GatePosition = gate;
                     world.SpawnPoints = points;
                     session.Tick(world);
                 }
                 Assert.That(events.Of<StageArrived>().Select(e => (e.Stage, e.ArenaId)),
-                    Is.EqualTo(new[] { (14, Dunes), (15, Dunes) }));
+                    Is.EqualTo(new[] { (stage, Dunes), (stage + 1, Dunes) }));
+                var boss = new ContentId(stage == 14 ? "enemy.hierophant" : "enemy.carrion_matriarch");
                 Assert.That(events.Of<EnemySpawned>().Skip(before).Select(e => e.SpecId),
-                    Is.EqualTo(new[] { new ContentId("enemy.hierophant") }));
+                    Is.EqualTo(new[] { boss }));
             }
             return events;
         }

@@ -976,3 +976,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ## LV-03c — DT-01 campaign test start
 
 - In DT-01, enter a campaign boss stage and the stage after it. Check the banked points and partial XP, then enter a late stage and check that a capped entry opens with 29 points.
+
+
+## SS-22b — Sunscar cousins
+
+- **[Editor]** DT-01 stages 21, 23 and 24. Read the wider tail tell, dodge the paired rings and punish the viper’s miss.
+- **[Device]** Check all three bodies and tells in portrait, including simultaneous ground markers.

@@ -65,16 +65,16 @@ MonoBehaviour:
   _roster:
   - _specId: enemy.scorpion
     _introducedAtStage: 1
-    _retiredAtStage: 0
+    _retiredAtStage: 21
   - _specId: enemy.beetle
     _introducedAtStage: 2
-    _retiredAtStage: 0
+    _retiredAtStage: 23
   - _specId: enemy.brood
     _introducedAtStage: 4
     _retiredAtStage: 0
   - _specId: enemy.viper
     _introducedAtStage: 6
-    _retiredAtStage: 0
+    _retiredAtStage: 24
   - _specId: enemy.jackal
     _introducedAtStage: 8
     _retiredAtStage: 0
@@ -93,8 +93,17 @@ MonoBehaviour:
   - _specId: enemy.storm-caller
     _introducedAtStage: 18
     _retiredAtStage: 0
+  - _specId: enemy.hooktail-scorpion
+    _introducedAtStage: 21
+    _retiredAtStage: 0
   - _specId: enemy.vulture
     _introducedAtStage: 22
+    _retiredAtStage: 0
+  - _specId: enemy.twinshot-bombardier
+    _introducedAtStage: 23
+    _retiredAtStage: 0
+  - _specId: enemy.crosswind-viper
+    _introducedAtStage: 24
     _retiredAtStage: 0
   _arenas:
   - _arenaId: arena.sunscar.dunes
@@ -698,7 +707,7 @@ MonoBehaviour:
   - _stage: 21
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 1
       _specId: enemy.beetle
@@ -710,7 +719,7 @@ MonoBehaviour:
       _specId: enemy.antlion
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 2
       _specId: enemy.beetle
@@ -725,7 +734,7 @@ MonoBehaviour:
       _specId: enemy.storm-caller
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
       _specId: enemy.beetle
@@ -740,7 +749,7 @@ MonoBehaviour:
       _specId: enemy.jackal-priest
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 4
       _specId: enemy.beetle
@@ -754,7 +763,7 @@ MonoBehaviour:
   - _stage: 22
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 1
       _specId: enemy.beetle
@@ -766,7 +775,7 @@ MonoBehaviour:
       _specId: enemy.vulture
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 2
       _specId: enemy.beetle
@@ -781,7 +790,7 @@ MonoBehaviour:
       _specId: enemy.cobra
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
       _specId: enemy.beetle
@@ -799,7 +808,7 @@ MonoBehaviour:
       _specId: enemy.jackal-priest
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 4
       _specId: enemy.beetle
@@ -816,10 +825,10 @@ MonoBehaviour:
   - _stage: 23
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 4
     - _wave: 1
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 1
       _specId: enemy.jackal
@@ -828,10 +837,10 @@ MonoBehaviour:
       _specId: enemy.vulture
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 2
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 2
       _specId: enemy.viper
@@ -846,10 +855,10 @@ MonoBehaviour:
       _specId: enemy.storm-caller
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 3
       _specId: enemy.viper
@@ -867,10 +876,10 @@ MonoBehaviour:
       _specId: enemy.cobra
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 4
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 2
     - _wave: 4
       _specId: enemy.cobra
@@ -884,10 +893,10 @@ MonoBehaviour:
   - _stage: 24
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 5
     - _wave: 1
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 1
       _specId: enemy.jackal
@@ -896,13 +905,13 @@ MonoBehaviour:
       _specId: enemy.vulture
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 2
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 2
     - _wave: 2
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 2
       _specId: enemy.glassback
@@ -914,13 +923,13 @@ MonoBehaviour:
       _specId: enemy.storm-caller
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 3
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 3
       _specId: enemy.jackal
@@ -935,10 +944,10 @@ MonoBehaviour:
       _specId: enemy.cobra
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 4
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 4
       _specId: enemy.antlion
@@ -955,22 +964,22 @@ MonoBehaviour:
   - _stage: 26
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 1
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 1
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 1
       _specId: enemy.jackal
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 2
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 2
       _specId: enemy.glassback
@@ -982,10 +991,10 @@ MonoBehaviour:
       _specId: enemy.storm-caller
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 3
       _specId: enemy.jackal
@@ -997,13 +1006,13 @@ MonoBehaviour:
       _specId: enemy.vulture
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 4
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 4
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 4
       _specId: enemy.glassback
@@ -1012,10 +1021,10 @@ MonoBehaviour:
       _specId: enemy.cobra
       _count: 1
     - _wave: 5
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 5
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 5
       _specId: enemy.cobra
@@ -1029,22 +1038,22 @@ MonoBehaviour:
   - _stage: 27
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 1
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 1
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 1
       _specId: enemy.jackal
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 2
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 2
       _specId: enemy.glassback
@@ -1056,10 +1065,10 @@ MonoBehaviour:
       _specId: enemy.storm-caller
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 3
       _specId: enemy.jackal
@@ -1071,13 +1080,13 @@ MonoBehaviour:
       _specId: enemy.vulture
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 4
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 4
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 4
       _specId: enemy.glassback
@@ -1089,10 +1098,10 @@ MonoBehaviour:
       _specId: enemy.cobra
       _count: 1
     - _wave: 5
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 5
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 5
       _specId: enemy.cobra
@@ -1106,22 +1115,22 @@ MonoBehaviour:
   - _stage: 28
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 1
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 1
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 1
       _specId: enemy.jackal
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 2
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 2
       _specId: enemy.glassback
@@ -1133,13 +1142,13 @@ MonoBehaviour:
       _specId: enemy.storm-caller
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 3
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 3
       _specId: enemy.jackal
@@ -1151,13 +1160,13 @@ MonoBehaviour:
       _specId: enemy.vulture
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 4
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 4
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 4
       _specId: enemy.glassback
@@ -1169,10 +1178,10 @@ MonoBehaviour:
       _specId: enemy.cobra
       _count: 1
     - _wave: 5
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 5
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 5
       _specId: enemy.cobra
@@ -1186,22 +1195,22 @@ MonoBehaviour:
   - _stage: 29
     _spawns:
     - _wave: 1
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 1
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 1
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 1
       _specId: enemy.jackal
       _count: 1
     - _wave: 2
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 2
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 2
       _specId: enemy.glassback
@@ -1213,13 +1222,13 @@ MonoBehaviour:
       _specId: enemy.storm-caller
       _count: 1
     - _wave: 3
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 2
     - _wave: 3
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 3
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 3
       _specId: enemy.jackal
@@ -1231,13 +1240,13 @@ MonoBehaviour:
       _specId: enemy.vulture
       _count: 1
     - _wave: 4
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 4
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 4
-      _specId: enemy.viper
+      _specId: enemy.crosswind-viper
       _count: 1
     - _wave: 4
       _specId: enemy.glassback
@@ -1249,10 +1258,10 @@ MonoBehaviour:
       _specId: enemy.cobra
       _count: 1
     - _wave: 5
-      _specId: enemy.scorpion
+      _specId: enemy.hooktail-scorpion
       _count: 3
     - _wave: 5
-      _specId: enemy.beetle
+      _specId: enemy.twinshot-bombardier
       _count: 1
     - _wave: 5
       _specId: enemy.cobra

@@ -120,6 +120,9 @@ namespace Soulvail.Game.Authoring
         [SerializeField, Range(0f, 180f)] private float _bombardierStartConeDegrees;
         [SerializeField, Range(0f, 180f)] private float _bombardierDropConeDegrees;
 
+        [Tooltip("Seconds between the two impacts of a paired lob. Zero lands them together.")]
+        [SerializeField, Min(0f)] private float _bombardierImpactGap;
+
         [Header("Explosion — leave the radius at 0 on an archetype that does not explode")]
         [Tooltip("Metres the blast reaches. 0 means this archetype does not explode. 3 for the " +
                  "Bloater (GD §8.1).")]
@@ -453,7 +456,7 @@ namespace Soulvail.Game.Authoring
                         : null,
                     bombardier: _bombardierTurnRateDegrees > 0f
                         ? new BombardierSpec(_bombardierTurnRateDegrees, _bombardierStartConeDegrees,
-                            _bombardierDropConeDegrees)
+                            _bombardierDropConeDegrees, _bombardierImpactGap)
                         : null,
                     slinger: _slingerMaxLead > 0f
                         ? new SlingerSpec(_slingerMaxLead, _slingerRetreatSpeedFraction, _slingerRetreatTime)

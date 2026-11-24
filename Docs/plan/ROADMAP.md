@@ -331,6 +331,7 @@ Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go
 - [x] **SS-21c** — Buried King pursuit spin at 66% HP (M)
 
 - [x] **SS-22a** — Paired bombardier lobs (S)
+- [x] **SS-22b** — Harder enemy variants debut at 21, 23 and 24 (M)
 
 **The Mossguard Warlord, stage 15's boss** (owner, 2026-11-01; design [GD §9.1–9.2](../GameDesign.md)). Specs in [tasks/](tasks/); each built only on the owner's go, one at a time, in this order (15e may go any time before 15f). Playtestable from JG-15g with DT-01's test start at stage 15.
 

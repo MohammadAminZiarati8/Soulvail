@@ -183,11 +183,17 @@ public readonly struct EnemyTelegraph
     /// </summary>
     public readonly int Move;
 
-    public EnemyTelegraph(int id, float duration, int move = 0)
+    /// <summary>Ground-strip dimensions in metres, when the attack locks a strip.</summary>
+    public readonly float StripLength;
+    public readonly float StripHalfWidth;
+
+    public EnemyTelegraph(int id, float duration, int move = 0, float stripLength = 0f, float stripHalfWidth = 0f)
     {
         Id = id;
         Duration = duration;
         Move = move;
+        StripLength = stripLength;
+        StripHalfWidth = stripHalfWidth;
     }
 }
 

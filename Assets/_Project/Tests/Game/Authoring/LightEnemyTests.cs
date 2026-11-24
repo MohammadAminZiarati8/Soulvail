@@ -24,7 +24,7 @@ public sealed class LightEnemyTests
         Assert.That(light, Is.EquivalentTo(new[]
         {
             "Frog", "Rootling", "Puffball", "Spitter", "Pitcher", "Panther", "ShadowPanther", "ThornPitcher", "ChainBomber", "Scorpion", "Beetle", "Viper", "Jackal", "Glassback",
-            "Antlion", "Cobra", "Vulture",
+            "Antlion", "Cobra", "Vulture", "HooktailScorpion", "TwinshotBombardier", "CrosswindViper",
         }));
     }
 }

@@ -467,12 +467,14 @@ public sealed class ChaserBehaviour : IEnemyBehaviour
         _attackPetId = _agent.Blackboard.QuarryPetId;
         _agent.Blackboard.StateTimer = 0f;
 
-        if (_agent.Spec.Skitter != null)
+        SkitterSpec skitter = _agent.Spec.Skitter;
+        if (skitter != null)
         {
             _lockedFacing = _agent.Blackboard.DirectionToPlayer;
         }
 
-        _events.Publish(new EnemyTelegraph(_agent.Id, _agent.Spec.WindupTime));
+        _events.Publish(new EnemyTelegraph(_agent.Id, _agent.Spec.WindupTime,
+            stripLength: skitter?.ZoneLength ?? 0f, stripHalfWidth: skitter?.ZoneHalfWidth ?? 0f));
     }
 
     /// <summary>Rule 3: stand, stare, and either swing or give up on it.</summary>

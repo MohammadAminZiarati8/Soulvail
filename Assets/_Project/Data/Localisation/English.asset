@@ -523,14 +523,20 @@ MonoBehaviour:
     _text: The Sunscar
   - _key: enemy.scorpion.name
     _text: Sand Scorpion
+  - _key: enemy.hooktail-scorpion.name
+    _text: Hooktail Scorpion
   - _key: enemy.beetle.name
     _text: Bombardier Beetle
+  - _key: enemy.twinshot-bombardier.name
+    _text: Twinshot Bombardier
   - _key: enemy.brood.name
     _text: Brood Scorpion
   - _key: enemy.scorpling.name
     _text: Scorpling
   - _key: enemy.viper.name
     _text: Sidewinder Viper
+  - _key: enemy.crosswind-viper.name
+    _text: Crosswind Viper
   - _key: enemy.jackal.name
     _text: Jackal Slinger
   - _key: enemy.glassback.name

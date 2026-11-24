@@ -70,8 +70,11 @@ namespace Soulvail.Game.Views
             _duration = evt.Duration;
             _elapsed = 0f;
             Transform strip = _strip.transform;
-            strip.localPosition = new Vector3(0f, LaneGroundOffset, _stripLength * 0.5f);
-            strip.localScale = new Vector3(2f * _stripHalfWidth, _stripLength, 1f);
+            Vector3 bodyScale = strip.parent.lossyScale;
+            float length = evt.StripLength > 0f ? evt.StripLength / bodyScale.z : _stripLength;
+            float halfWidth = evt.StripHalfWidth > 0f ? evt.StripHalfWidth / bodyScale.x : _stripHalfWidth;
+            strip.localPosition = new Vector3(0f, LaneGroundOffset, length * 0.5f);
+            strip.localScale = new Vector3(2f * halfWidth, length, 1f);
             Paint(_tip, 1f);
             Paint(_strip, 0.3f);
             _tip.enabled = _strip.enabled = IsShowing = true;

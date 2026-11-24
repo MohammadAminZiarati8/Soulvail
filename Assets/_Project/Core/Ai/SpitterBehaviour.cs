@@ -424,6 +424,8 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
         Vector3 across = Across(target - origin, blackboard.DirectionToPlayer);
         int count = projectile.Count;
         float damage = _agent.ContactDamage.Value;
+        float impactGap = _agent.Spec.Bombardier?.ImpactGap ?? 0f;
+        float secondLobFlight = 0f;
 
         // JG-21c: centre out, so a full sky drops the outside lobs first (rule 4). Lob i's offset in
         // spreads: odd counts 0, −1, +1, −2, +2; even counts −½, +½, −1½, +1½.
@@ -440,12 +442,20 @@ public sealed class SpitterBehaviour : IEnemyBehaviour
                 target + (across * (offset * projectile.Spread)),
                 projectile.Speed,
                 projectile.Radius,
-                damage);
+                damage,
+                minimumFlight: secondLobFlight);
 
             if (_projectiles.Fire(shot, _now) == ProjectileSystem.NoProjectile)
             {
                 // Whatever is left is further out and will not fit either.
                 break;
+            }
+
+            if (count == 2 && i == 0 && impactGap > 0f)
+            {
+                // Both offsets have equal flight distance. Give the second lob more time in
+                // the air so both rings appear on release and count down to distinct impacts.
+                secondLobFlight = shot.FlightTime + impactGap;
             }
         }
 

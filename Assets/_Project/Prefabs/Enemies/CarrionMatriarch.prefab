@@ -878,6 +878,34 @@ PrefabInstance:
       propertyPath: m_CullingMode
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+      propertyPath: m_Mesh
+      value:
+      objectReference: {fileID: -6925359696184993212, guid: 314372f7eeaba3d41a7de158f261c3af, type: 3}
+    - target: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value:
+      objectReference: {fileID: 2100000, guid: 8d69c32936ca4500919a50bbf71d91b6, type: 2}
+    - target: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+      propertyPath: m_AABB.m_Center.y
+      value: 0.55
+      objectReference: {fileID: 0}
+    - target: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+      propertyPath: m_AABB.m_Center.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+      propertyPath: m_AABB.m_Extent.x
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+      propertyPath: m_AABB.m_Extent.y
+      value: 1.65
+      objectReference: {fileID: 0}
+    - target: {fileID: -55206788728616941, guid: cb2495310dc944c469ef910787d668b6, type: 3}
+      propertyPath: m_AABB.m_Extent.z
+      value: 1.45
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

@@ -9,9 +9,9 @@ _2026-11-25._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | LV-03d shared Jungle/Sunscar XP. |
+| **Last built** | SS-19e Carrion Matriarch final model. |
 | **Next task** | Awaiting owner's go. |
-| **Verified** | EditMode 7386/7478, 0 fail, 1 inconcl., 91 skip. |
+| **Verified** | EditMode 7388/7480, 0 fail, 1 inconcl., 91 skip. |
 
 ## What works
 

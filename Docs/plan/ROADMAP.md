@@ -314,12 +314,13 @@ SS-16d verified locked tells and broke and restored authored cover with the real
 
 Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go. Balance target: level 30 after stage 24, with at most one level earned per boss. The regular waves set the full-clear XP budgets. The XP curve and boss rewards need a separate tuning pass to reach that target.
 
-**The Carrion Matriarch, Sunscar's stage-25 boss** ([GD §9.7](../GameDesign.md#97-the-sunscar--stage-25-the-carrion-matriarch)). Stage 25 is playable with the prototype after SS-19d. SS-19e waits for the owner's Matriarch sculpt.
+**The Carrion Matriarch, Sunscar's stage-25 boss** ([GD §9.7](../GameDesign.md#97-the-sunscar--stage-25-the-carrion-matriarch)). Stage 25 uses the owner-supplied sculpt on the existing vulture rig.
 
 - [x] **SS-19a** — Ruin Shove, Carrion Pounce and smooth turns (M)
 - [x] **SS-19b** — Brood Call, Feather Spears and Carrion Dive (M)
 - [x] **SS-19c** — Prototype, warnings, cues and landing shake (M)
 - [x] **SS-19d** — Stage 25 registration, arena checks and tuning (M)
+- [x] **SS-19e** — Final model on the vulture rig (M)
 - [x] **SS-19f** — 2,080 HP, double-size body and shadow, moving shadow-only flight (M)
 - [x] **SS-19g** — Replace airborne spear lanes with circular Feather Rain (M)
 

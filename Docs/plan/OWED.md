@@ -984,3 +984,9 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 - **[Device]** Check all three bodies and tells in portrait, including simultaneous ground markers.
 
 - **[Editor] LV-03d.** Use DT-01 in Jungle and Sunscar. Stage 24 should open at level 29 with 477.09 XP and 28 points. Stage 25 should open at MAX with 29 points and stay at MAX after the boss.
+
+
+## SS-19e — Carrion Matriarch final model
+
+- **[Editor]** Play stage 25 and compare the Matriarch against both summoned vultures through flight and the two landings.
+- **[Device]** Check that the boss silhouette and full dive rim read at normal portrait camera scale.

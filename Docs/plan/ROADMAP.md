@@ -435,6 +435,7 @@ Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go
 - [x] **LV-02d** — Marksman ranks merge to fit 29 points; over-rank saves refunded (S)
 
 - [x] **LV-03a** — Shared XP policy and boss rewards (M)
+- [x] **LV-03b** — Exact regular-stage budgets, including brood (M)
 
 **Playtest fixes** (owner, 2026-11-05). Any order; each its own commit.
 

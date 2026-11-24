@@ -236,6 +236,8 @@ public sealed class EnemyAgent
     /// </summary>
     public bool PaysXp { get; internal set; }
 
+    internal ArraySegment<int> XpShares { get; set; }
+
     /// <summary>
     /// True only for a body <c>EnemySystem.SpawnSummon</c> made, this life: a boss's add. When any boss
     /// dies, every living summon dies with it (JG-26d). Cleared by <c>Initialise</c>, so a pooled body
@@ -273,6 +275,7 @@ public sealed class EnemyAgent
         Velocity = Vector3.Zero;
         IsVulnerable = true;
         PaysXp = true;
+        XpShares = default;
         IsSummon = false;
         EscortOwner = null;
         IsHidden = false;

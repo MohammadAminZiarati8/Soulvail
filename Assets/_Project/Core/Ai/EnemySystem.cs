@@ -426,11 +426,17 @@ public sealed class EnemySystem
         bool usesAuthoredMaxHp = false) =>
         Spawn(_catalog.Enemy(specId), position, isSummon, escortOwner, hpBonus, damageBonus, usesAuthoredMaxHp);
 
+    internal EnemyAgent SpawnPlanned(ContentId specId, Vector3 position, ArraySegment<int> xpShares) =>
+        Spawn(Enemy(specId), position, isSummon: false, xpShares: xpShares);
+
+    internal EnemySpec Enemy(ContentId id) => _catalog.Enemy(id);
+
     private EnemyAgent Spawn(EnemySpec spec, Vector3 position, bool isSummon,
         HierophantBehaviour escortOwner = null, float hpBonus = 0f, float damageBonus = 0f,
-        bool usesAuthoredMaxHp = false)
+        bool usesAuthoredMaxHp = false, ArraySegment<int> xpShares = default)
     {
         EnemyAgent agent = Registry.Spawn(spec, position);
+        agent.XpShares = xpShares;
         agent.PaysXp = !isSummon;
         agent.IsSummon = isSummon;
         agent.EscortOwner = escortOwner;
@@ -1109,7 +1115,11 @@ public sealed class EnemySystem
             // Summons pay nothing. Campaign bosses bank a grant to be priced by progression.
             if (agent.PaysXp)
             {
-                if (_usesCampaignBossXp && agent.Behaviour is BossBehaviour)
+                if (agent.XpShares.Count != 0)
+                {
+                    PendingXp += agent.XpShares[0];
+                }
+                else if (_usesCampaignBossXp && agent.Behaviour is BossBehaviour)
                 {
                     _pendingBossRewards++;
                 }
@@ -1984,7 +1994,9 @@ public sealed class EnemySystem
                 Vector3 offset = new Vector3(MathF.Sin(angle), 0f, MathF.Cos(angle)) * brood.DropRadius;
                 EnemyAgent agent = mother.IsSummon
                     ? SpawnSummon(brood.Child, center + offset)
-                    : Spawn(brood.Child, center + offset);
+                    : SpawnPlanned(brood.Child, center + offset, mother.XpShares.Count == 0
+                        ? default
+                        : mother.XpShares.Slice(child + 1, 1));
                 mother.AddBroodChild(agent.Id);
             }
 

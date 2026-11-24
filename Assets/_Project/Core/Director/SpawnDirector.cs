@@ -128,6 +128,9 @@ public sealed class SpawnDirector
     private int _stage;
 
     private WavePlan _plan;
+    private StageXpAllocation _xpAllocation;
+    private ArraySegment<int>[] _queueXp = Array.Empty<ArraySegment<int>>();
+    private ArraySegment<int>[] _pendingXp = Array.Empty<ArraySegment<int>>();
 
     /// <summary>The wave's bodies in the order they will be telegraphed, round-robin by entry.</summary>
     private ContentId[] _queue = Array.Empty<ContentId>();
@@ -323,6 +326,8 @@ public sealed class SpawnDirector
     /// with no spawning surface makes this object inert (rule 12).
     /// </param>
     /// <param name="now">Simulated run seconds, the same clock everything else in core counts.</param>
+    /// <param name="bossId">The authored boss for a boss stage.</param>
+    /// <param name="regularXpBudget">The base XP budget for this regular campaign stage.</param>
     /// <remarks>
     /// <para>
     /// <b>Held, not copied — so the plan may not be recomposed while this object still has it.</b>
@@ -355,7 +360,8 @@ public sealed class SpawnDirector
         WavePlan plan,
         IReadOnlyList<Vector3> spawnPoints,
         float now,
-        ContentId bossId = default)
+        ContentId bossId = default,
+        int? regularXpBudget = null)
     {
         if (plan is null)
         {
@@ -374,10 +380,14 @@ public sealed class SpawnDirector
 
         // Before EnsureCapacity and before anything is assigned, so a NaN point leaves this object
         // exactly as the previous stage left it rather than half-adopted into a new one.
+        StageXpAllocation allocation = bossId.Value is null && regularXpBudget is int budget
+            ? new StageXpAllocation(plan, _enemies, budget)
+            : null;
         AdoptSpawnPoints(spawnPoints);
 
         EnsureCapacity(plan);
 
+        _xpAllocation = allocation;
         _plan = plan;
         _stage = plan.Stage;
         Wave = 0;
@@ -503,6 +513,9 @@ public sealed class SpawnDirector
     public void Clear()
     {
         _plan = null;
+        _xpAllocation = null;
+        Array.Clear(_queueXp, 0, _queueXp.Length);
+        Array.Clear(_pendingXp, 0, _pendingXp.Length);
         _stage = 0;
         Wave = 0;
         _queueCount = 0;
@@ -693,6 +706,7 @@ public sealed class SpawnDirector
                 if (kept != i)
                 {
                     _pendingSpec[kept] = _pendingSpec[i];
+                    _pendingXp[kept] = _pendingXp[i];
                     _pendingPosition[kept] = _pendingPosition[i];
                     _pendingFiresAt[kept] = _pendingFiresAt[i];
                     _pendingWave[kept] = _pendingWave[i];
@@ -704,7 +718,7 @@ public sealed class SpawnDirector
 
             int wave = _pendingWave[i];
 
-            EnemyAgent agent = _enemies.Spawn(_pendingSpec[i], _pendingPosition[i]);
+            EnemyAgent agent = _enemies.SpawnPlanned(_pendingSpec[i], _pendingPosition[i], _pendingXp[i]);
 
             int index = wave - 1;
 
@@ -713,6 +727,7 @@ public sealed class SpawnDirector
             _waveOutstanding[index]--;
         }
 
+        Array.Clear(_pendingXp, kept, _pendingCount - kept);
         _pendingCount = kept;
     }
 
@@ -995,6 +1010,7 @@ public sealed class SpawnDirector
         float firesAt = now + TelegraphTime;
 
         _pendingSpec[_pendingCount] = specId;
+        _pendingXp[_pendingCount] = _queueXp[_queueHead - 1];
         _pendingPosition[_pendingCount] = position;
         _pendingFiresAt[_pendingCount] = firesAt;
         _pendingWave[_pendingCount] = Wave;
@@ -1036,14 +1052,19 @@ public sealed class SpawnDirector
 
         while (_queueCount < bodies)
         {
+            int entryStart = 0;
             for (int e = 0; e < entries; e++)
             {
+                var entry = _plan.Entry(wave, e);
+                int bodyIndex = entryStart + entry.Count - _remaining[e];
+                entryStart += entry.Count;
                 if (_remaining[e] == 0)
                 {
                     continue;
                 }
 
-                _queue[_queueCount] = _plan.Entry(wave, e).SpecId;
+                _queue[_queueCount] = entry.SpecId;
+                _queueXp[_queueCount] = _xpAllocation?.Body(wave, bodyIndex) ?? default;
                 _queueCount++;
                 _remaining[e]--;
             }
@@ -1145,6 +1166,8 @@ public sealed class SpawnDirector
         {
             _queue = new ContentId[stride];
             _pendingSpec = new ContentId[stride];
+            _pendingXp = new ArraySegment<int>[stride];
+            _queueXp = new ArraySegment<int>[stride];
             _pendingPosition = new Vector3[stride];
             _pendingFiresAt = new float[stride];
             _pendingWave = new int[stride];

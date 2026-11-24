@@ -570,7 +570,8 @@ public sealed class StageFlow
         _mode.TryGetBossFor(Stage, out ContentId bossId);
 
         _director.Clear();
-        _director.Begin(_plan, snapshot.SpawnPoints, now, bossId);
+        int? regularXpBudget = bossId.Value is null ? _mode.CampaignXp?.RegularBudget(Stage) : null;
+        _director.Begin(_plan, snapshot.SpawnPoints, now, bossId, regularXpBudget);
     }
 
     /// <summary>

@@ -972,3 +972,7 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 ### Buried King fixed rotation (Stage 30)
 - DT-01 on a portrait phone: check tell readability near cover and arena edges, particularly the landing circle, sword return and moving Spin.
 - Dodge the chains at walking speed without rolling. Confirm Oathbound can reach and hit during each recovery.
+
+## LV-03c — DT-01 campaign test start
+
+- In DT-01, enter a campaign boss stage and the stage after it. Check the banked points and partial XP, then enter a late stage and check that a capped entry opens with 29 points.

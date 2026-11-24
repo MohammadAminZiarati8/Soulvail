@@ -9,9 +9,9 @@ _2026-11-24._
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | LV-03b exact stage XP. |
-| **Next task** | LV-03c awaits go. |
-| **Verified** | EditMode 7378/7470, 0 fail, 1 inconcl., 91 skip. DT-01 12/12. |
+| **Last built** | LV-03c DT-01 campaign progression replay. |
+| **Next task** | SS-22b, then LV-03d. |
+| **Verified** | EditMode 7381/7473, 0 fail, 1 inconcl., 91 skip. |
 
 ## What works
 

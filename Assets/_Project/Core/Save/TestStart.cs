@@ -2,6 +2,7 @@ using System;
 using Soulvail.Core.Combat;
 using Soulvail.Core.Content;
 using Soulvail.Core.Ports;
+using Soulvail.Core.Progression;
 
 namespace Soulvail.Core.Save;
 
@@ -17,7 +18,7 @@ namespace Soulvail.Core.Save;
 /// added to the session for it.
 /// </para>
 /// <para>
-/// <b>The experience is the design's arithmetic, not a replay.</b> An open stage pays
+/// Campaign entries replay the shared regular budgets and boss rewards. In legacy modes an open stage pays
 /// <c>3 × B(n)</c> — every archetype is shipped worth three times its threat cost, so a stage's
 /// XP is its budget's (<see cref="EnemySpec.XpValue"/>); a scripted stage pays for the bodies it
 /// lists. A real run lands within a few threat of it, whatever the seed drew.
@@ -47,6 +48,23 @@ public sealed class TestStart
         ModeSpec mode = _catalog.Mode(modeId);
         Guard(mode, stage);
 
+        if (mode.CampaignXp is CampaignXpProfile profile)
+        {
+            LevelTracker tracker = Replay(mode, profile, stage);
+            float retained = 0f;
+            for (int level = 2; level <= tracker.Level; level++)
+            {
+                retained += mode.Xp.ToReach(level);
+            }
+
+            return retained + tracker.Xp;
+        }
+
+        return LegacyXpBefore(mode, stage);
+    }
+
+    private float LegacyXpBefore(ModeSpec mode, int stage)
+    {
         float total = 0f;
 
         for (int earlier = mode.StartingStage; earlier < stage; earlier++)
@@ -69,16 +87,29 @@ public sealed class TestStart
     public RunSnapshot At(ContentId modeId, ContentId characterId, int seed, RandomState random, int stage)
     {
         ModeSpec mode = _catalog.Mode(modeId);
-        float xp = XpBefore(modeId, stage);
+        Guard(mode, stage);
 
-        // LevelTracker.Grant's own loop, against the mode's own curve, so the level and the
-        // leftover are the ones the run would be holding after those kills.
-        int level = 1;
-
-        while (xp >= mode.Xp.ToReach(level + 1))
+        int level;
+        float xp;
+        int points;
+        if (mode.CampaignXp is CampaignXpProfile profile)
         {
-            xp -= mode.Xp.ToReach(level + 1);
-            level++;
+            LevelTracker tracker = Replay(mode, profile, stage);
+            level = tracker.Level;
+            xp = tracker.Xp;
+            points = tracker.PendingLevelUps;
+        }
+        else
+        {
+            xp = LegacyXpBefore(mode, stage);
+            level = 1;
+            while (xp >= mode.Xp.ToReach(level + 1))
+            {
+                xp -= mode.Xp.ToReach(level + 1);
+                level++;
+            }
+
+            points = level - 1;
         }
 
         return new RunSnapshot(
@@ -94,13 +125,31 @@ public sealed class TestStart
             writtenAt: default,
             level: level,
             xp: xp,
-            pendingLevelUps: level - 1,
+            pendingLevelUps: points,
             takenNodeIds: Array.Empty<ContentId>(),
             manualSkillIds: new ContentId[SkillRunner.MaxManualSlots],
             economy: default,
             banishedNodeIds: Array.Empty<ContentId>(),
             pactedNodeIds: Array.Empty<ContentId>(),
             ordealIds: Array.Empty<ContentId>());
+    }
+
+    private static LevelTracker Replay(ModeSpec mode, CampaignXpProfile profile, int stage)
+    {
+        var tracker = new LevelTracker(mode.Xp, new TestStartEvents());
+        for (int earlier = mode.StartingStage; earlier < stage && !tracker.IsMaxLevel; earlier++)
+        {
+            if (mode.TryGetBossFor(earlier, out _))
+            {
+                tracker.GrantBoss(profile.BossFraction);
+            }
+            else
+            {
+                tracker.Grant(profile.RegularBudget(earlier));
+            }
+        }
+
+        return tracker;
     }
 
     private float XpOf(ModeSpec mode, int stage)

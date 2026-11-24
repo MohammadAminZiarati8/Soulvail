@@ -441,6 +441,7 @@ Sunscar's remaining bosses are stages 25 and 30, one at a time on the owner's go
 - [x] **LV-03a** — Shared XP policy and boss rewards (M)
 - [x] **LV-03b** — Exact regular-stage budgets, including brood (M)
 - [x] **LV-03c** — Replay shared progression for DT-01 (S)
+- [x] **LV-03d** — Match Jungle and Sunscar pacing through stage 24 (M)
 
 **Playtest fixes** (owner, 2026-11-05). Any order; each its own commit.
 

@@ -318,7 +318,8 @@ public sealed class ColossusStageTests
             RunSnapshot restore = new TestStart(catalog).At(Sunscar, Ranger, Seed, random.Capture(), Stage);
             EnemySpec boss = catalog.Enemy(Colossus);
             BossHp = boss.MaxHp;
-            BossXp = boss.XpValue;
+            ModeSpec mode = catalog.Mode(Sunscar);
+            BossXp = mode.CampaignXp.BossFraction * mode.Xp.ToReach(restore.Level + 1);
             _player = Object.Instantiate(Load<GameObject>("Prefabs/Player/Player_Ranger.prefab"), _room.transform)
                 .GetComponent<PlayerView>();
             _controller = _player.GetComponent<CharacterController>();

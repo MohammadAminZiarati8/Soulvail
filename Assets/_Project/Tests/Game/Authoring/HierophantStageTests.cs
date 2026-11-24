@@ -309,7 +309,8 @@ public sealed class HierophantStageTests
             var random = new SeededRandom(12);
             RunSnapshot restore = new TestStart(catalog).At(Sunscar, Ranger, random.Seed, random.Capture(), 15);
             BaseHp = catalog.Enemy(Hierophant).MaxHp;
-            BossXp = catalog.Enemy(Hierophant).XpValue;
+            ModeSpec mode = catalog.Mode(Sunscar);
+            BossXp = mode.CampaignXp.BossFraction * mode.Xp.ToReach(restore.Level + 1);
             Player = Object.Instantiate(Load<GameObject>("Prefabs/Player/Player_Ranger.prefab"), _room.transform)
                 .GetComponent<PlayerView>();
             PlayerRadius = Player.GetComponent<CharacterController>().radius;

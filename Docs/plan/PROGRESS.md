@@ -2,16 +2,16 @@
 
 [OWED](OWED.md).
 
-_2026-11-24._
+_2026-11-25._
 
 ## State
 
 | | |
 |---|---|
 | **Milestone** | M0–M6 tagged. |
-| **Last built** | SS-18a–g Sundial Colossus. |
-| **Next task** | LV-03d. |
-| **Verified** | EditMode 7381/7473, 0 fail, 1 inconcl., 91 skip. |
+| **Last built** | LV-03d shared Jungle/Sunscar XP. |
+| **Next task** | Awaiting owner's go. |
+| **Verified** | EditMode 7386/7478, 0 fail, 1 inconcl., 91 skip. |
 
 ## What works
 
@@ -27,7 +27,7 @@ Apex 30: eye/feint, streak, +15% window, 1580 HP, 4 stones, panthers 66–33%.
 Stones stop dash/rake. Hunt: +30% speed, 3 lanes, 2 pounces.
 Warlord: guard, sweep/charge, stone daze, adds, shatter/combo in P2.
 Shaman 17–19: guard ≤12 m/hold 11/flee <4. Heal 10%/haste 25% in 8 m. XP 32/priority 8.
-+3% HP (heals)/+2% dmg per level. MAX 30/stage 25. Banked points, paused free tree/pips/Learn. Marksman 20 ranks. Death: Shards.
++3% HP (heals)/+2% dmg per level. Campaign MAX after stage 24. Banked points, paused free tree/pips/Learn. Marksman 20 ranks. Death: Shards.
 Save v8. Clash UI/LocKeys. Six-circle mirrored arc: tap Auto fire/hold toggle.
 Icons, pooled CC, immune bosses. Marksman trim/Quiver/lit arrows/Volley/roll/flinch/silent resume.
 Killshot: 3 m/4x arrow; pierces guards, not phases.

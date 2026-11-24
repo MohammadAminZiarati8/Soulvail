@@ -16,6 +16,7 @@ MonoBehaviour:
   _nameKey: mode.descent.name
   _startingStage: 1
   _isEndless: 1
+  _isCampaign: 0
   _finalStage: 1
   _scaling:
     _budgetBase: 40

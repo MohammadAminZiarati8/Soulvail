@@ -28,7 +28,7 @@ namespace Soulvail.Tests.Game.Authoring;
 public sealed class ThornheartStageTests
 {
     // LV-01b: the level the player arrives at, and the +2 % weapon damage each level past 1 adds.
-    private const int ArrivalLevel = 23;
+    private const int ArrivalLevel = 25;
     private const float LevelDamage = 1f + (0.02f * (ArrivalLevel - 1));
     private const string JunglePath = "Assets/_Project/Data/Modes/Jungle.asset";
     private const string ThornheartPath = "Assets/_Project/Data/Enemies/Thornheart.asset";

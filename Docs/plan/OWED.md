@@ -982,3 +982,5 @@ After SS-09e, use DT-01 at Sunscar stage 9. Check Idle, Walk, Bite, Hit and Deat
 
 - **[Editor]** DT-01 stages 21, 23 and 24. Read the wider tail tell, dodge the paired rings and punish the viper’s miss.
 - **[Device]** Check all three bodies and tells in portrait, including simultaneous ground markers.
+
+- **[Editor] LV-03d.** Use DT-01 in Jungle and Sunscar. Stage 24 should open at level 29 with 477.09 XP and 28 points. Stage 25 should open at MAX with 29 points and stay at MAX after the boss.

@@ -50,6 +50,9 @@ namespace Soulvail.Game.Authoring
                  "final stage below is ignored when this is on.")]
         [SerializeField] private bool _isEndless = true;
 
+        [Tooltip("Use the shared campaign XP curve and stage rewards.")]
+        [SerializeField] private bool _isCampaign;
+
         [Tooltip("The last stage a finite mode has. Ignored while Is Endless is on.")]
         [SerializeField, Min(1)] private int _finalStage = 1;
 
@@ -159,6 +162,7 @@ namespace Soulvail.Game.Authoring
         {
             try
             {
+                CampaignXpProfile campaignXp = _isCampaign ? new CampaignXpProfile() : null;
                 return new ModeSpec(
                     new ContentId(_id),
                     new LocKey(_nameKey),
@@ -166,7 +170,7 @@ namespace Soulvail.Game.Authoring
                     _isEndless,
                     _finalStage,
                     BuildScaling(),
-                    BuildXp(),
+                    campaignXp?.Curve ?? BuildXp(),
                     BuildRoster(),
                     BuildArenas(),
                     BuildBossRoster(),
@@ -180,7 +184,8 @@ namespace Soulvail.Game.Authoring
                     string.IsNullOrEmpty(_unlockedBy) ? default : new ContentId(_unlockedBy),
                     _isListed,
                     BuildScriptedStages(),
-                    BuildLevelGrowth());
+                    BuildLevelGrowth(),
+                    campaignXp);
             }
             catch (ArgumentException inner)
             {

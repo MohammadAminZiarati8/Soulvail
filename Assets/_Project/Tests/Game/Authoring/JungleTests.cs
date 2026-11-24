@@ -817,75 +817,6 @@ public sealed class JungleTests
         }
     }
 
-    /// <summary>
-    /// LV-02a rule 8: the Jungle's curve is 20 + 5.1·N^1.4 capped at 30, so level 30 costs more than
-    /// a perfect clear through stage 24 and no more than one through stage 25. A perfect clear is
-    /// every scripted spawn plus the boss body; summons pay nothing.
-    /// </summary>
-    [Test]
-    public void Jungle_LevelThirty_ArrivesWithStageTwentyFive()
-    {
-        ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
-
-        Assert.That(jungle.Xp.MaxLevel, Is.EqualTo(30));
-        Assert.That(jungle.Xp.ToReach(30), Is.EqualTo(20f + (5.1f * System.MathF.Pow(30f, 1.4f))).Within(0.01f));
-
-        var xp = new Dictionary<string, float>();
-        var bossBody = new Dictionary<string, string>();
-
-        foreach (string guid in AssetDatabase.FindAssets("t:EnemyDefinition", new[] { "Assets/_Project/Data/Enemies" }))
-        {
-            EnemySpec spec = Load<EnemyDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
-            xp[spec.Id.Value] = spec.XpValue;
-        }
-
-        foreach (string guid in AssetDatabase.FindAssets("t:BossDefinition", new[] { "Assets/_Project/Data/Enemies" }))
-        {
-            BossSpec spec = Load<BossDefinition>(AssetDatabase.GUIDToAssetPath(guid)).ToSpec();
-            bossBody[spec.Id.Value] = spec.EnemySpecId.Value;
-        }
-
-        float cleared = 0f;
-        float throughTwentyFour = 0f;
-
-        for (int stage = 1; stage <= 25; stage++)
-        {
-            bool scripted = jungle.TryGetScriptedStage(stage, out ScriptedStage script);
-            bool boss = jungle.TryGetBossFor(stage, out ContentId bossId);
-
-            Assert.That(scripted || boss, Is.True, $"Stage {stage} is neither scripted nor a boss, so a perfect clear is undefined.");
-
-            if (scripted)
-            {
-                foreach (ScriptedSpawn spawn in script.Spawns)
-                {
-                    cleared += xp[spawn.SpecId.Value] * spawn.Count;
-                }
-            }
-
-            if (boss)
-            {
-                cleared += xp[bossBody[bossId.Value]];
-            }
-
-            if (stage == 24)
-            {
-                throughTwentyFour = cleared;
-            }
-        }
-
-        float toThirty = 0f;
-
-        for (int level = 2; level <= 30; level++)
-        {
-            toThirty += jungle.Xp.ToReach(level);
-        }
-
-        Assert.That(cleared, Is.EqualTo(8593f).Within(0.5f), "A perfect clear through stage 25 moved.");
-        Assert.That(toThirty, Is.GreaterThan(throughTwentyFour), "Level 30 arrives before stage 25 is done.");
-        Assert.That(toThirty, Is.LessThanOrEqualTo(cleared), "Level 30 is out of reach at stage 25.");
-    }
-
     [Test]
     public void Jungle_RostersItsOwnEnemies()
     {
@@ -1446,7 +1377,7 @@ public sealed class JungleTests
         BossSpec boss = Load<BossDefinition>(MotherBossPath).ToSpec();
         float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(10);
         // Rule 6: stage-10 Ranger ~27 DPS, standing 60% of the fight. Buds use the same uptime.
-        const float EffectiveDps = 27f * (1f + (0.02f * (12 - 1))) * 0.6f; // LV-01b: level 12
+        const float EffectiveDps = 27f * (1f + (0.02f * (15 - 1))) * 0.6f; // Stage 10 entry
         int buds = boss.Phases.Sum(p => p.Summons.Where(a => a.SpecId == bud.Id).Sum(a => a.Count));
         float seconds = ((mother.MaxHp + buds * bud.MaxHp) * hpScale / EffectiveDps)
             + (boss.Phases.Count - 1) * boss.BeatSeconds;
@@ -1534,7 +1465,7 @@ public sealed class JungleTests
         BossSpec boss = Load<BossDefinition>(WarlordBossPath).ToSpec();
         float hpScale = Load<ModeDefinition>(JunglePath).ToSpec().Scaling.Hp.At(15);
         // Rule 6: stage-15 Ranger ~33 DPS, half of it past the front guard. Guards excluded.
-        const float EffectiveDps = 33f * (1f + (0.02f * (17 - 1))) * 0.5f; // LV-01b: level 17
+        const float EffectiveDps = 33f * (1f + (0.02f * (20 - 1))) * 0.5f; // Stage 15 entry
         float seconds = (warlord.MaxHp * hpScale / EffectiveDps) + ((boss.Phases.Count - 1) * boss.BeatSeconds);
 
         Assert.That(hpScale, Is.EqualTo(1.84f).Within(1e-5f));
@@ -1623,15 +1554,7 @@ public sealed class JungleTests
     public void Jungle_FirstStageLevelsTheHeroOnce()
     {
         ModeSpec jungle = Load<ModeDefinition>(JunglePath).ToSpec();
-        jungle.TryGetScriptedStage(1, out ScriptedStage first);
-
-        float xp = 0f;
-
-        foreach (ScriptedSpawn spawn in first.Spawns)
-        {
-            string path = $"Assets/_Project/Data/Enemies/{Capitalised(spawn.SpecId)}.asset";
-            xp += Load<EnemyDefinition>(path).ToSpec().XpValue * spawn.Count;
-        }
+        float xp = jungle.CampaignXp.RegularBudget(1);
 
         Assert.That(xp, Is.GreaterThanOrEqualTo(jungle.Xp.ToReach(2)), "Stage 1 must reach level 2.");
         Assert.That(xp, Is.LessThan(jungle.Xp.ToReach(2) + jungle.Xp.ToReach(3)), "…and not level 3.");
@@ -1719,14 +1642,6 @@ public sealed class JungleTests
         // Thornheart's ripe pods grow it (JG-20h), so the catalog must hold it.
         Assert.That(listed, Does.Contain(Load<EnemyDefinition>(RootlingPath)),
             "Thornheart's pods summon Rootlings; a catalog without one throws mid-fight.");
-    }
-
-    /// <summary><c>enemy.frog</c> → <c>Frog</c>: an asset's file name is its id's last segment.</summary>
-    private static string Capitalised(ContentId id)
-    {
-        string last = id.Value.Substring(id.Value.LastIndexOf('.') + 1);
-
-        return char.ToUpperInvariant(last[0]) + last.Substring(1);
     }
 
     private static T Load<T>(string path)

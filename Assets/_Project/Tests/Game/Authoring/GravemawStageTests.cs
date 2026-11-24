@@ -41,7 +41,7 @@ public sealed class GravemawStageTests
 
     private const int Stage = 25;
     // LV-01b: the level the player arrives at, and the +2 % weapon damage each level past 1 adds.
-    private const int ArrivalLevel = 29;
+    private const int ArrivalLevel = 30;
     private const float LevelDamage = 1f + (0.02f * (ArrivalLevel - 1));
     private const float Frame = 1f / 30f;
 
@@ -208,8 +208,7 @@ public sealed class GravemawStageTests
         float arrow = Load<CharacterDefinition>(RangerPath).ToSpec().Weapon.Damage;
         ContentCatalog catalog = Catalog(scaledHp: 2.5f * arrow);
 
-        // 2.5 base arrows: LV-02a's curve starts stage 25 near level 29, whose +2 %/level arrow is
-        // ×1.56 — so two arrows, the first crossing 50 %, as 1.5 was before the curve moved.
+        // At level 30, two arrows kill the boss and the first crosses its 50 % phase threshold.
         var events = new RecordingEvents();
         var intents = new RecordingIntents();
         RunSession session = Start(catalog, events, intents);

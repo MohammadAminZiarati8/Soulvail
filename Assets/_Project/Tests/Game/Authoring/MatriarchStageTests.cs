@@ -78,7 +78,9 @@ public sealed class MatriarchStageTests
             Assert.That(fight.Events.Of<EnemyDespawned>().Any(e => e.Id == id), Is.True);
         }
 
-        Assert.That(fight.Events.Single<XpChanged>().Gained, Is.EqualTo(fight.Catalog.Enemy(Matriarch).XpValue));
+        ModeSpec mode = fight.Catalog.Mode(Sunscar);
+        Assert.That(fight.Events.Single<XpChanged>().Gained,
+            Is.EqualTo(mode.CampaignXp.BossFraction * mode.Xp.ToReach(fight.ArrivalLevel + 1)));
         Assert.That(fight.Session.State.Level - fight.ArrivalLevel, Is.InRange(0, 1));
 
         StageCleared clear = fight.Events.Single<StageCleared>();
